@@ -25,7 +25,7 @@ services:
         db: timescaledb
         host: timescaledb
         exposed_port: 54335
-        status: active
+        status: not-active
         path: 
             base: "{base/path/base}/timescaledb/"
             compose_file: "services/timescaledb/compose.yml"
@@ -40,19 +40,19 @@ services:
 
     api:
         port: 8000
-        status: active
+        status: not-active
         path:
             compose_file: "services/api/api.yml"
 
     pygeoapi:
         port: 5000
-        status: active
+        status: not-active
         path:
             compose_file: "services/api/pygeoapi.yml"
 
     postgrest:
         port: 3000
-        status: active
+        status: not-active
         path:
             compose_file: "services/api/postgrest.yml"
 
