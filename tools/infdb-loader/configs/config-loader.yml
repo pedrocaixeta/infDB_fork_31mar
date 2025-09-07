@@ -36,7 +36,7 @@ loader:
     sources:
         package:
             status: not-active
-            url: http://ds1.need.energy:8123/opendata.zip
+            url: http://ds1.need.energy:8123/opendata-neuburg.zip
             path: 
                 base: "{loader/path/base}"
                 processed: "{loader/path/opendata}"
@@ -125,7 +125,7 @@ loader:
                 # - versorgungspunkt
                 # - weitere_nutzung_flaeche
         plz:
-            status: not-active
+            status: active
             url: "https://downloads.suche-postleitzahl.org/v2/public/plz-5stellig.geojson"
             path:
                 base: "{loader/path/opendata}/plz/"
