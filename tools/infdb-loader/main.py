@@ -1,6 +1,6 @@
 import multiprocessing as mp
 from src import utils
-from src import bkg, basemap, lod2, census2022, plz, tabula, package
+from src import bkg, basemap, lod2, census2022, plz, tabula, package, need
 from src.logger import setup_main_logger
 import multiprocessing
 import logging
@@ -10,6 +10,8 @@ log = logging.getLogger(__name__)
 if __name__ == "__main__":
     log_queue = multiprocessing.Queue()
     listener = setup_main_logger(log_queue)
+
+    need.load(log_queue)
 
     log.info("Starting loader.............................................")
     log.info("-------------------------------------------------------------")

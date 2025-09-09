@@ -40,6 +40,15 @@ loader:
             path: 
                 base: "{loader/path/base}"
                 processed: "{loader/path/opendata}"
+        need:
+            status: active
+            host: "ds1.need.energy"
+            database: need
+            port: 5431
+            user: postgres
+            password: postgres
+            schema_input: public
+            schema_output: opendata_need
 
         lod2:
             status: active

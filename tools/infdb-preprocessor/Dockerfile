@@ -13,7 +13,6 @@ ADD https://astral.sh/uv/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 
 # Install postgresql-client for pg_dump and psql commands
-# RUN apt-get install -y postgresql-client
 RUN apt install curl ca-certificates &&\
 install -d /usr/share/postgresql-common/pgdg && \
 curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
