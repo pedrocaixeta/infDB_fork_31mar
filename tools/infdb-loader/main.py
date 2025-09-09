@@ -11,8 +11,6 @@ if __name__ == "__main__":
     log_queue = multiprocessing.Queue()
     listener = setup_main_logger(log_queue)
 
-    need.load(log_queue)
-
     log.info("Starting loader.............................................")
     log.info("-------------------------------------------------------------")
     log.info("-------------------------------------------------------------")
@@ -27,6 +25,7 @@ if __name__ == "__main__":
     # Load data in parallel
     mp.freeze_support()
     processes = []
+    processes.append(mp.Process(target=need.load, args=(log_queue,), name="need"))
     processes.append(mp.Process(target=tabula.load, args=(log_queue,), name="tabula"))
     processes.append(mp.Process(target=bkg.load, args=(log_queue,), name="bkg"))
     processes.append(mp.Process(target=lod2.load, args=(log_queue,), name="lod2"))

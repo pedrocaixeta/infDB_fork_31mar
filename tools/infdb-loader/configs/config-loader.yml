@@ -47,8 +47,9 @@ loader:
             port: 5431
             user: postgres
             password: postgres
-            schema_input: public
+            schema_input: need
             schema_output: opendata_need
+            path_dump: "{loader/path/opendata}/need/"
 
         lod2:
             status: active

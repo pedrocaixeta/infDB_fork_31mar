@@ -12,27 +12,28 @@ def load(log_queue):
         if not utils.if_active("need"):
             return
         
-        # Create schema if it doesn't exist
-        schema_output = config.get_value(["loader", "sources", "need", "schema_output"])
-        sql = f"CREATE SCHEMA IF NOT EXISTS {schema_output};"
-        utils.sql_query(sql)
-
+        # Dump input schema from source database
         source_host = config.get_value(["loader", "sources", "need", "host"])
         source_port = config.get_value(["loader", "sources", "need", "port"])
         source_db = config.get_value(["loader", "sources", "need", "database"])
         source_user = config.get_value(["loader", "sources", "need", "user"])
         source_password = config.get_value(["loader", "sources", "need", "password"])
+        schema_input = config.get_value(["loader", "sources", "need", "schema_input"])
 
-        schema_output = config.get_value(["loader", "sources", "need", "schema_output"])
+        path_dump = config.get_path(["loader", "sources", "need", "path_dump"])
+        file_dump = os.path.join(path_dump, "need.dump")
+        os.makedirs(os.path.dirname(file_dump), exist_ok=True)
+
+
+        command = f"PGPASSWORD={source_password} pg_dump -h {source_host} -p {source_port} -U {source_user} -d {source_db} -n {schema_input} -F c -f {file_dump}"
+        utils.do_cmd(command)
+
+        # Restore dump into target database
         params = utils.get_db_parameters("citydb")
 
-        utils.do_cmd(f"export PGPASSWORD={source_password}")
-                     
-        for table_name in ["buildings_lod2", "basemap_verkehrslinien"]:  # Replace with actual table names
-            # command = f"pg_dump -h {source_host} -U {source_user} -d {source_db} -n {schema} -p {source_password} -P {source_port} | psql -h {params['host']} -U {params['user']} -d {params['database']} -p {params['exposed_port']} -v schema={schema}"
-            command = f"pg_dump -h {source_host} -U {source_user} -d {source_db} -t {table_name} -P {source_port} | psql -h {params['host']} -U {params['user']} -d {params['db']} -p {params['exposed_port']} -v schema={schema_output}"
-            log.debug(f"Executing command: {command}")
-            utils.do_cmd(command)
+        command = f"PGPASSWORD={params['password']} pg_restore -h {params['host']} -p {params['exposed_port']} -U {params['user']} -d {params['db']} -j 4 --clean --if-exists --no-owner --role={params['user']} {file_dump}"
+        utils.do_cmd(command)
+        
 
         log.info(f"Need data loaded successfully")
     
@@ -41,6 +42,3 @@ def load(log_queue):
         return False
 
     return True
-
-
-load(None)
