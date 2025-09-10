@@ -20,21 +20,20 @@ def load(log_queue):
         source_password = config.get_value(["loader", "sources", "need", "password"])
         schema_input = config.get_value(["loader", "sources", "need", "schema_input"])
 
+        # Create dump file path
         path_dump = config.get_path(["loader", "sources", "need", "path_dump"])
         file_dump = os.path.join(path_dump, "need.dump")
         os.makedirs(os.path.dirname(file_dump), exist_ok=True)
 
-
+        # Dump schema from source database
         command = f"PGPASSWORD={source_password} pg_dump -h {source_host} -p {source_port} -U {source_user} -d {source_db} -n {schema_input} -F c -f {file_dump}"
         utils.do_cmd(command)
 
         # Restore dump into target database
         params = utils.get_db_parameters("citydb")
-
         command = f"PGPASSWORD={params['password']} pg_restore -h {params['host']} -p {params['exposed_port']} -U {params['user']} -d {params['db']} -j 4 --clean --if-exists --no-owner --role={params['user']} {file_dump}"
         utils.do_cmd(command)
         
-
         log.info(f"Need data loaded successfully")
     
     except Exception as err:

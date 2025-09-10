@@ -48,7 +48,6 @@ loader:
             user: postgres
             password: postgres
             schema_input: need
-            schema_output: opendata_need
             path_dump: "{loader/path/opendata}/need/"
 
         lod2:
