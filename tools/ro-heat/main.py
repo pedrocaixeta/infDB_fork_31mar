@@ -199,7 +199,7 @@ def main():
 
         # Initialize the generator
         gen = TimeSeriesGenerator()
-        gen.add_objects(entise_input.head())
+        gen.add_objects(entise_input)
 
         # TODO: Adapt datetime range and temp_out
         data = {
@@ -214,6 +214,8 @@ def main():
         # Generate time series
         # TODO: Handle and save time series
         summary, df = gen.generate(data)
+
+        log.info(summary.head())
 
         log.info("Ro-heat sucessfully completed")
 
