@@ -33,7 +33,7 @@ app = FastAPI(title="cityAPI Gateway", version="1.0.0")
 # Root
 @app.get("/")
 async def root():
-    return {"message": "INFDB API is running"}
+    return {"message": "INFDB API is running."}
 
 # Health
 @app.get("/health")
@@ -80,7 +80,7 @@ async def _proxy(
     return resp
 
 # ---- PygeoAPI ----
-@app.get("/get-pygeoapi")
+@app.get("/pygeoapi/{table}")
 async def get_pygeoapi(
     request: Request,
     table: str,
@@ -88,17 +88,14 @@ async def get_pygeoapi(
     crs: str = "EPSG:25832",
 ):
     py_path = f"collections/{table}/items"
-
     bbox = None
     filter_expr = None
-
     params: List[Tuple[str, str]] = [("limit", str(limit)), ("offset", "0")]
     if bbox:
         params.append(("bbox", bbox))
         params.append(("crs", crs))
     if filter_expr:
         params.append(("filter", filter_expr))
-
     try:
         resp = await _proxy(request, PYGEOAPI_URL, py_path, override_params=params)
     except httpx.RequestError as e:
@@ -106,11 +103,74 @@ async def get_pygeoapi(
             status_code=502,
             detail=f"Cannot reach pygeoapi at {PYGEOAPI_URL}: {e.__class__.__name__}: {e}"
         )
-
     if resp.status_code != 200:
         raise HTTPException(status_code=resp.status_code, detail=f"pygeoapi error: {resp.text}")
-
     return resp.json()
+
+@app.post("/pygeoapi/{table}")
+async def post_pygeoapi(
+    request: Request,
+    table: str,
+    feature: dict
+):
+    py_path = f"collections/{table}/items"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                urljoin(PYGEOAPI_URL, py_path),
+                json=feature,
+                headers={"Content-Type": "application/geo+json"}
+            )
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Cannot reach pygeoapi at {PYGEOAPI_URL}: {e.__class__.__name__}: {e}"
+        )
+    if resp.status_code != 201:
+        raise HTTPException(status_code=resp.status_code, detail=f"pygeoapi error: {resp.text}")
+    return resp.json()
+
+@app.put("/pygeoapi/{table}/{item_id}")
+async def put_pygeoapi(
+    request: Request,
+    table: str,
+    item_id: str,
+    feature: dict
+):
+    py_path = f"collections/{table}/items/{item_id}"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.put(
+                urljoin(PYGEOAPI_URL, py_path),
+                json=feature,
+                headers={"Content-Type": "application/geo+json"}
+            )
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Cannot reach pygeoapi at {PYGEOAPI_URL}: {e.__class__.__name__}: {e}"
+        )
+    if resp.status_code not in (200, 204):
+        raise HTTPException(status_code=resp.status_code, detail=f"pygeoapi error: {resp.text}")
+    return resp.json() if resp.content else {"status": "updated"}
+
+@app.delete("/pygeoapi/{table}/{item_id}")
+async def delete_pygeoapi(
+    request: Request,
+    table: str,
+    item_id: str,
+):
+    py_path = f"collections/{table}/items/{item_id}"
+    try:
+        resp = await _proxy(request, PYGEOAPI_URL, py_path)
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Cannot reach pygeoapi at {PYGEOAPI_URL}: {e.__class__.__name__}: {e}"
+        )
+    if resp.status_code not in (200, 204):
+        raise HTTPException(status_code=resp.status_code, detail=f"pygeoapi error: {resp.text}")
+    return {"status": "deleted"}
 
 # ---- PostgREST ----
 @app.get("/get-postgrest")
