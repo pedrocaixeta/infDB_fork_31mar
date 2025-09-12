@@ -1,25 +1,20 @@
-import psycopg2
 import os
 import logging
-import time
-from src import config, logger
+from src.infdb import logger
+from src.infdb.InfdbClient import InfdbClient
+from src.infdb.InfdbConfig import InfdbConfig
 
 log = logging.getLogger(__name__)
 
+# Load InfDB configuration
+infdbconfig = InfdbConfig("preprocessor", "configs/config-preprocessor.yml")
+
 # Initialize logging
-listener = logger.setup_main_logger(None)
-
-# Schema configuration
-
-
-SCHEMA_CONFIG = {
-    'input_schema': config.get_value(["preprocessor", "data", "input_schema"]),
-    'output_schema': config.get_value(["preprocessor", "data", "output_schema"])
-}
+listener = logger.setup_main_logger(infdbconfig, None)
 
 # SQL files directory and list of files to execute in order
-WAYS_SQL_DIR = os.path.join(os.path.dirname(__file__), "sql", "ways_sql")
-BUILDINGS_SQL_DIR = os.path.join(os.path.dirname(__file__), "sql", "buildings_sql")
+WAYS_SQL_DIR = os.path.join("sql", "ways_sql")
+BUILDINGS_SQL_DIR = os.path.join("sql", "buildings_sql")
 
 WAYS_SQL_FILES = [
     '00_cleanup.sql',
@@ -49,119 +44,10 @@ BUILDINGS_SQL_FILES = [
 ]
 
 
-class PostgreSQLExecutor:
-    def __init__(self, host, port, database, username, password, input_schema=None, output_schema=None):
-        self.host = host
-        self.port = port
-        self.database = database
-        self.username = username
-        self.password = password
-        self.connection = None
-        self.cursor = None
-
-        # Schema configuration
-        self.input_schema = SCHEMA_CONFIG['input_schema']
-        self.output_schema = SCHEMA_CONFIG['output_schema']
-    
-    def get_schema_params(self):
-        """Get schema parameters for SQL template substitution"""
-        return {
-            'input_schema': self.input_schema,
-            'output_schema': self.output_schema
-        }
-
-    def connect(self):
-        """Establish database connection"""
-        try:
-            self.connection = psycopg2.connect(
-                host=self.host,
-                port=self.port,
-                database=self.database,
-                user=self.username,
-                password=self.password,
-            )
-            self.cursor = self.connection.cursor()
-            log.info(
-                f"Successfully connected to PostgreSQL database at {self.host}:{self.port}"
-            )
-
-        except Exception as e:
-            log.error(f"Failed to connect to database: {str(e)}")
-            raise
-
-    def disconnect(self):
-        """Close database connection"""
-        if self.cursor:
-            self.cursor.close()
-        if self.connection:
-            self.connection.close()
-        log.info("Database connection closed")
-
-    def execute_sql_file(self, sql_dir, file_path):
-        """Execute SQL commands from a file"""
-        start_time = time.time()
-        try:
-            full_path = os.path.join(sql_dir, file_path)
-            with open(full_path, "r", encoding="utf-8") as file:
-                sql_content = file.read()
-
-            # Apply schema parameter substitution
-            schema_params = self.get_schema_params()
-            sql_content = sql_content.format(**schema_params)
-
-            log.info(f"Executing {os.path.join(sql_dir, file_path)}")
-            self.cursor.execute(sql_content)
-            self.connection.commit()
-            log.info(
-                f"Successfully executed {file_path} in {round(time.time() - start_time, 2)} seconds"
-            )
-
-        except Exception as e:
-            log.error(
-                f"Error executing {file_path} after {round(time.time() - start_time, 2)} seconds"
-            )
-            self.connection.rollback()
-            raise e
-
-    def execute_sql_scripts(self, sql_dir, script_files):
-        """Execute multiple SQL script files in order"""
-        try:
-            self.connect()
-
-            total_files = len(script_files)
-            log.info(f"Starting execution of {total_files} SQL scripts")
-
-            for i, script_file in enumerate(script_files, 1):
-                if not os.path.exists(os.path.join(sql_dir, script_file)):
-                    msg = f"SQL file not found: {script_file}"
-                    log.error(msg)
-                    raise FileNotFoundError(msg)
-
-                log.info(f"[{i}/{total_files}] Executing script: {script_file}")
-                self.execute_sql_file(sql_dir, script_file)
-
-                # Small delay between scripts
-                if i < total_files:
-                    time.sleep(0.5)
-        except Exception as e:
-            raise e
-        finally:
-            self.disconnect()
-
-
 def main():
     try:
         # Database configuration
-        parameters = config.get_db_parameters("citydb")
-
-        # Initialize database executor
-        db_executor = PostgreSQLExecutor(
-            host=parameters["host"],
-            port=parameters["exposed_port"],
-            database=parameters["db"],
-            username=parameters["user"],
-            password=parameters["password"],
-        )
+        infdbclient = InfdbClient(infdbconfig, db_name="citydb")
 
         # Validate all SQL files exist before starting
         missing_ways = [
@@ -183,14 +69,23 @@ def main():
                     f"Missing BUILDINGS SQL files in {BUILDINGS_SQL_DIR}/: {missing_buildings}"
                 )
             return 1
+        
+        # Schema configuration
+        format_params = {
+            'input_schema': infdbconfig.get_value(["preprocessor", "data", "input_schema"]),
+            'output_schema': infdbconfig.get_value(["preprocessor", "data", "output_schema"])
+        }
+        # Datatype fix
+        log.info("Fixing SQL data types")
+        infdbclient.execute_sql_file("sql/fixing_need.sql")
 
         # Execute WAYS scripts first
         log.info("Running WAYS SQL scripts")
-        db_executor.execute_sql_scripts(WAYS_SQL_DIR, WAYS_SQL_FILES)
+        infdbclient.execute_sql_files(WAYS_SQL_DIR, WAYS_SQL_FILES, format_params=format_params)
 
         # Then BUILDINGS scripts
         log.info("Running BUILDINGS SQL scripts")
-        db_executor.execute_sql_scripts(BUILDINGS_SQL_DIR, BUILDINGS_SQL_FILES)
+        infdbclient.execute_sql_files(BUILDINGS_SQL_DIR, BUILDINGS_SQL_FILES, format_params=format_params)
 
         log.info("Prepared buildings and ways successfully!")
 

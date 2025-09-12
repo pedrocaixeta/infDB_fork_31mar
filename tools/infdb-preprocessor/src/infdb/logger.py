@@ -1,10 +1,13 @@
 import logging
 from logging.handlers import QueueHandler, QueueListener
 import sys
-from . import config
+from . import InfdbConfig
 
 
-def setup_main_logger(log_queue):
+def setup_main_logger(infdbconfig, log_queue=None):
+    """ Set up the main logger with console and file handlers.
+    If log_queue is provided, use it for multiprocessing logging.
+    """
     formatter = logging.Formatter(
         "%(asctime)s | %(processName)s | %(levelname)s: %(message)s"
     )
@@ -14,7 +17,7 @@ def setup_main_logger(log_queue):
     console_handler.setFormatter(formatter)
 
     # Logging to file
-    file_path = config.get_value(["preprocessor", "logging", "path"])
+    file_path = infdbconfig.get_value([infdbconfig.tool_name, "logging", "path"])
     # if os.path.exists(file_path):
     #     os.remove(file_path)    # for debugging
     file_handler = logging.FileHandler(file_path)
@@ -22,7 +25,7 @@ def setup_main_logger(log_queue):
 
     # Get the root logger and set its level and handlers
     root_logger = logging.getLogger()
-    level_string = config.get_value(["preprocessor", "logging", "level"])
+    level_string = infdbconfig.get_value([infdbconfig.tool_name, "logging", "level"])
     level = logging._nameToLevel.get(level_string.upper(), logging.INFO)
     root_logger.setLevel(level)
     root_logger.handlers.clear()
@@ -38,9 +41,10 @@ def setup_main_logger(log_queue):
     return listener
 
 
-def setup_worker_logger(log_queue):
+def setup_worker_logger(infdbconfig,log_queue):
+    """ Set up logger for worker processes to use the provided log queue. """
     root_logger = logging.getLogger()
-    level_string = config.get_value(["loader", "logging", "level"])
+    level_string = infdbconfig.get_value([infdbconfig.tool_name, "logging", "level"])
     level = logging._nameToLevel.get(level_string.upper(), logging.INFO)
     root_logger.setLevel(level)
     root_logger.handlers.clear()
