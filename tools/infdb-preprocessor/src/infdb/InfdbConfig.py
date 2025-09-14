@@ -4,23 +4,29 @@ import re
 import yaml
 from copy import deepcopy
 
-log = logging.getLogger(__name__)
-
 
 class InfdbConfig:
     """Class to handle InfDB configuration loading and retrieval."""
 
     def __init__(self, tool_name, config_path=None):
         self.tool_name = tool_name
-        self._CONFIG = self._merge_configs(config_path)
+        self.log = logging.getLogger(__name__)
+        self.config_path = os.path.join(config_path, f"config-{tool_name}.yml")
+        
+        
+        self._CONFIG = self._merge_configs(self.config_path)
 
+    
+    def __str__(self):
+        return f"InfdbConfig for tool '{self.tool_name}' with config: {self._CONFIG}"
 
+    
     def _load_config(self, path: str):
         if os.path.exists(path):
             with open(path, "r") as file:
                 return yaml.safe_load(file)
         else:
-            log.error(f"Configuration file '{path}' does not exist.")
+            self.log.error(f"Configuration file '{path}' does not exist.")
             return None
 
 
@@ -40,11 +46,11 @@ class InfdbConfig:
         path_infdb_config = os.path.join(
             "mnt", "configs-infdb", filename
         )  # hardcoded because of docker mount in compose.yml
-        log.debug(f"Loading configuration from '{path_infdb_config}'")
+        self.log.debug(f"Loading configuration from '{path_infdb_config}'")
         if os.path.exists(path_infdb_config):
             configs.update(self._load_config(path_infdb_config))
         else:
-            log.error(f"Failed to load {path_infdb_config}")
+            self.log.error(f"Failed to load {path_infdb_config}")
 
         # Resolve placeholders in the config
         config_resolved = self._resolve_yaml_placeholders(configs)
@@ -60,7 +66,7 @@ class InfdbConfig:
         element = config
         for key in keys:
             if key not in element:
-                log.error(f"Key '{key}' not found in configuration.")
+                self.log.error(f"Key '{key}' not found in configuration.")
                 return None
 
             element = element.get(key, {})
@@ -129,6 +135,7 @@ class InfdbConfig:
         config = self._CONFIG
         return config
 
+
     def get_db_parameters(self, service_name: str):
         """
         Retrieves and merges database connection parameters for a given service.
@@ -151,7 +158,7 @@ class InfdbConfig:
         dict_config = self.get_config()
         if "services" in dict_config:
             parameters = self.get_value(["services", service_name])
-            log.debug(f"Using infdb configuration for: {service_name}")
+            self.log.debug(f"Using infdb configuration for: {service_name}")
 
             # Override config-infdb by config-loader
             keys = parameters_loader.keys()
@@ -161,15 +168,15 @@ class InfdbConfig:
 
                 if parameters_loader[key] != "None":
                     parameters[key] = parameters_loader[key]
-                    log.debug(f"Key overridden: key = {parameters_loader[key]}")
+                    self.log.debug(f"Key overridden: key = {parameters_loader[key]}")
         else:
             # Use settings from config-loader
             parameters = parameters_loader
-            log.debug(f"Using loader configuration for: {service_name}")
+            self.log.debug(f"Using loader configuration for: {service_name}")
 
         # Check if parameters are found
         for key in parameters.keys():
             if parameters[key] is None:
-                log.error(f"Service '{service_name}' not found in configuration.")
+                self.log.error(f"Service '{service_name}' not found in configuration.")
 
         return parameters
