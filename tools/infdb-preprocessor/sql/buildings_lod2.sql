@@ -4,14 +4,14 @@
 -- 00_cleanup.sql
 -- Cleanup existing buildings table if it exists
 --------------------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS {input_schema};
-DROP TABLE IF EXISTS {input_schema}.buildings_lod2;
+CREATE SCHEMA IF NOT EXISTS {output_schema};
+DROP TABLE IF EXISTS {output_schema}.buildings_lod2;
 
 --------------------------------------------------------------
 -- 02_create_buildings_table.sql
 -- Create buildings table
 --------------------------------------------------------------
-CREATE TABLE {input_schema}.buildings_lod2
+CREATE TABLE {output_schema}.buildings_lod2
 (
     id                SERIAL PRIMARY KEY,
     feature_id        integer,
@@ -32,22 +32,22 @@ CREATE TABLE {input_schema}.buildings_lod2
     city              text,
     country          text,
     state            text,
-    geom              geometry(MultiPolygon, 3035)
+    geometry              geometry(MultiPolygon, 3035)
     -- centroid          geometry(Point, 3035)
 );
-CREATE INDEX IF NOT EXISTS building_geom_idx ON {input_schema}.buildings_lod2 USING GIST (geom);
-CREATE INDEX IF NOT EXISTS idx_building_type_check ON {input_schema}.buildings_lod2 (id, objectid, building_function_code);
+CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings_lod2 USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_lod2 (id, objectid, building_function_code);
 
 --------------------------------------------------------------
 -- 03_fill_id_object_id_building.sql
 -- Fill buildings with corresponding identifier (id, feature_id, objectid and building_function_code columns)
 --------------------------------------------------------------
-INSERT INTO {input_schema}.buildings_lod2 (feature_id, objectclass_id, objectid, building_function_code)
+INSERT INTO {output_schema}.buildings_lod2 (feature_id, objectclass_id, objectid, building_function_code)
 SELECT f.id AS 
        feature_id,
        f.objectclass_id,
        f.objectid,
-    --    {input_schema}.classify_building_use(p.val_string) as building_use,
+    --    {output_schema}.classify_building_use(p.val_string) as building_use,
        p.val_string                                     as building_function_code
 FROM feature f
          JOIN property p ON f.id = p.feature_id
@@ -68,14 +68,14 @@ WITH height_data AS (SELECT p.feature_id, p.val_double
                      FROM property p
                      WHERE p.name = 'value'
                        AND p.parent_id IN (SELECT id FROM property WHERE name = 'height'))
-UPDATE {input_schema}.buildings_lod2 b
+UPDATE {output_schema}.buildings_lod2 b
 SET height = hd.val_double
 FROM height_data hd
 WHERE b.feature_id = hd.feature_id;
 
 -- -- delete buildings below a height threshold
 -- DELETE
--- FROM {input_schema}.buildings_lod2
+-- FROM {output_schema}.buildings_lod2
 -- WHERE height < 3.5;
 
 
@@ -95,9 +95,9 @@ WITH ground_data AS (
     WHERE f.objectclass_id = 710 -- GroundSurface
     AND p.name = 'Flaeche'
 )
-UPDATE {input_schema}.buildings_lod2 b
+UPDATE {output_schema}.buildings_lod2 b
 SET groundsurface_flaeche = ground_data.area,
-    geom       = ground_data.geometry
+    geometry       = ground_data.geometry
     -- centroid   = ST_Centroid(gd.geometry)
 FROM ground_data
 WHERE objectid = building_objectid;
@@ -105,7 +105,7 @@ WHERE objectid = building_objectid;
 
 -- -- delete buildings below an area threshold
 -- DELETE
--- FROM {input_schema}.buildings_lod2
+-- FROM {output_schema}.buildings_lod2
 -- WHERE buildings.floor_area < 12;
 
 -----------------------------------------------------------------
@@ -115,7 +115,7 @@ WHERE objectid = building_objectid;
 WITH floor_number_data AS (SELECT feature_id, val_int
                            FROM property
                            WHERE name = 'storeysAboveGround')
-UPDATE {input_schema}.buildings_lod2 b
+UPDATE {output_schema}.buildings_lod2 b
 SET storeysAboveGround = GREATEST(fnd.val_int, 1)
 FROM floor_number_data fnd
 WHERE b.feature_id = fnd.feature_id;
@@ -123,9 +123,9 @@ WHERE b.feature_id = fnd.feature_id;
 -- -- fill in missing floor_number values
 -- WITH average_floor_height AS (SELECT building_use_id,
 --                                      PERCENTILE_CONT(0.5) WITHIN GROUP ( ORDER BY (height / floor_number) ) as height_per_floor
---                               FROM {input_schema}.buildings_lod2
+--                               FROM {output_schema}.buildings_lod2
 --                               GROUP BY building_use_id)
--- UPDATE {input_schema}.buildings_lod2 b
+-- UPDATE {output_schema}.buildings_lod2 b
 -- SET storeysAboveGround = GREATEST(ROUND(height / COALESCE(afh.height_per_floor, height)), 1)
 -- FROM average_floor_height afh
 -- WHERE b.storeysAboveGround IS NULL
@@ -145,11 +145,11 @@ WITH split_addresses AS (
          (regexp_match(trim(a.street), '\s*(\d+[\w,]*)$'))[1] AS house_number,
          a.street AS original_street,
          unnest(string_to_array(a.street, ';')) AS individual_street
-  FROM {input_schema}.buildings_lod2 b
+  FROM {output_schema}.buildings_lod2 b
   JOIN property p ON b.feature_id = p.feature_id
   JOIN address  a ON p.val_address_id = a.id
 )
-UPDATE {input_schema}.buildings_lod2 b
+UPDATE {output_schema}.buildings_lod2 b
 SET street = sad.street,
     house_number = sad.house_number,
     city = sad.city,
