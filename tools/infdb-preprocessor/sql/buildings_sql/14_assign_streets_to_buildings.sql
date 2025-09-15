@@ -8,7 +8,7 @@ PURPOSE
 Assign each building to the most appropriate street segment (way) by combining
 (1) semantic matching of address street names with the recorded building address and
 (2) geometric proximity to pick the nearest matching segment. The selected
-way_id is stored in buildings.address_street_id.
+way_id is stored in buildings_pylovo.address_street_id.
 
 WHAT THIS SCRIPT DOES (END-TO-END)
 ----------------------------------
@@ -19,19 +19,19 @@ WHAT THIS SCRIPT DOES (END-TO-END)
    to WAYS using its name and name_kurz columns.
 3) Among candidates, chooses the closest segment to each building centroid
    using the KNN `<->` distance operator.
-4) Updates buildings.address_street_id with the chosen way_id.
+4) Updates buildings_pylovo.address_street_id with the chosen way_id.
 
 
 INPUTS (READ)
 -------------
-- {output_schema}.buildings (must contain: id, centroid geometry column)
+- {output_schema}.buildings_pylovo (must contain: id, centroid geometry column)
 - property (links to address)
 - address (contains address text, e.g., "street")
 - {output_schema}.ways (LineString geometry per way_id, plus name, name_kurz)
 
 OUTPUT (WRITE)
 --------------
-- Updates {output_schema}.buildings.address_street_id
+- Updates {output_schema}.buildings_pylovo.address_street_id
 
 
 COORDINATE SYSTEM
@@ -57,8 +57,8 @@ CREATE INDEX IF NOT EXISTS idx_ways_geom
   ON {output_schema}.ways USING GIST (geom);
 
 -- If centroid is frequently used in proximity searches
-CREATE INDEX IF NOT EXISTS idx_buildings_centroid 
-  ON {output_schema}.buildings USING GIST (centroid);
+CREATE INDEX IF NOT EXISTS idx_buildings_pylovo_centroid 
+  ON {output_schema}.buildings_pylovo USING GIST (centroid);
 
 -- ─────────────────────────────────────────────
 -- 2) STREET ASSIGNMENT LOGIC
@@ -73,7 +73,7 @@ WITH split_addresses AS (
          a.country,
          a.street AS original_street,
          unnest(string_to_array(a.street, ';')) AS individual_street
-  FROM {output_schema}.buildings b
+  FROM {output_schema}.buildings_pylovo b
   JOIN property p ON b.id = p.feature_id
   JOIN address  a ON p.val_address_id = a.id
 ),
@@ -90,7 +90,7 @@ SELECT DISTINCT ON (ba.building_id)
        ba.building_id,
        w.way_id AS way_id_by_address
 FROM building_addresses       AS ba
-JOIN {output_schema}.buildings AS b
+JOIN {output_schema}.buildings_pylovo AS b
   ON ba.building_id = b.id
 JOIN {output_schema}.ways AS w
   ON ba.street = w.name OR ba.street = w.name_kurz
@@ -100,7 +100,7 @@ ORDER BY ba.building_id, b.centroid <-> w.geom;
 -- 3) APPLY THE UPDATE
 -- ─────────────────────────────────────────────
 
-UPDATE {output_schema}.buildings AS b
+UPDATE {output_schema}.buildings_pylovo AS b
 SET address_street_id = t.way_id_by_address
 FROM temp_closest_ways AS t
 WHERE b.id = t.building_id;

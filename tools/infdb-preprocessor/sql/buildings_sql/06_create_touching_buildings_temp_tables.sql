@@ -5,8 +5,8 @@ SELECT a.id         AS a_id,
        b.id         AS b_id,
        a.floor_area AS a_area,
        b.floor_area AS b_area
-FROM {output_schema}.buildings a
-         JOIN {output_schema}.buildings b ON
+FROM {output_schema}.buildings_pylovo a
+         JOIN {output_schema}.buildings_pylovo b ON
     a.id != b.id AND
     a.building_use = 'Residential' AND
     b.building_use = 'Residential' AND
@@ -17,6 +17,6 @@ FROM {output_schema}.buildings a
 DROP TABLE IF EXISTS temp_touching_neighbor_counts;
 CREATE TEMP TABLE temp_touching_neighbor_counts AS
 SELECT b.id as id, count(b_id) as count
-FROM {output_schema}.buildings b
+FROM {output_schema}.buildings_pylovo b
          LEFT JOIN temp_touching_neighbors n ON b.id = n.a_id
 GROUP BY b.id;

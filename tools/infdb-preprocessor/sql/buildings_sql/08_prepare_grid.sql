@@ -14,18 +14,18 @@ CREATE INDEX temp_grid_geom_idx ON temp_grid_transformed USING GIST (geom);
 -- Create table joining grid cells with buildings based on geometry
 -- Only keeps grid cells that contain at least one building centroid
 -- Optimized for later joins on x_mp and y_mp coordinates
-DROP TABLE IF EXISTS {output_schema}.buildings_grid;
-CREATE TABLE IF NOT EXISTS {output_schema}.buildings_grid AS
+DROP TABLE IF EXISTS {output_schema}.buildings_pylovo_grid;
+CREATE TABLE IF NOT EXISTS {output_schema}.buildings_pylovo_grid AS
 SELECT DISTINCT g.*
 FROM temp_grid_transformed g
-INNER JOIN {output_schema}.buildings b ON ST_Contains(g.geom, ST_Centroid(b.geom));
+INNER JOIN {input_schema}.buildings_lod2 b ON ST_Contains(g.geom, ST_Centroid(b.geom));
 
 -- Create composite index on x_mp and y_mp for efficient joins
 CREATE INDEX grid_buildings_spatial_coords_idx
-    ON {output_schema}.buildings_grid (x_mp, y_mp);
+    ON {output_schema}.buildings_pylovo_grid (x_mp, y_mp);
 
--- Add all census columns to the existing buildings_grid table
-ALTER TABLE {output_schema}.buildings_grid
+-- Add all census columns to the existing buildings_pylovo_grid table
+ALTER TABLE {output_schema}.buildings_pylovo_grid
 -- zensus_2022_100m_bevoelkerungszahl
 ADD COLUMN einwohner bigint,
 -- zensus_2022_100m_durchschn_haushaltsgroesse
@@ -54,22 +54,22 @@ ADD COLUMN a2011bis2019 double precision,
 ADD COLUMN a2020undspaeter double precision;
 
 -- Update with population data
-UPDATE {output_schema}.buildings_grid
+UPDATE {output_schema}.buildings_pylovo_grid
 SET einwohner = pop.einwohner
 FROM {input_schema}.zensus_2022_100m_bevoelkerungszahl pop
-WHERE buildings_grid.x_mp = pop.x_mp_100m
-  AND buildings_grid.y_mp = pop.y_mp_100m;
+WHERE buildings_pylovo_grid.x_mp = pop.x_mp_100m
+  AND buildings_pylovo_grid.y_mp = pop.y_mp_100m;
 
 -- Update with household size data
-UPDATE {output_schema}.buildings_grid
+UPDATE {output_schema}.buildings_pylovo_grid
 SET durchschnhhgroesse = hh.durchschnhhgroesse,
     werterlaeuternde_zeichen = hh.werterlaeuternde_zeichen
 FROM {input_schema}.zensus_2022_100m_durschn_haushaltsgroesse hh
-WHERE buildings_grid.x_mp = hh.x_mp_100m
-  AND buildings_grid.y_mp = hh.y_mp_100m;
+WHERE buildings_pylovo_grid.x_mp = hh.x_mp_100m
+  AND buildings_pylovo_grid.y_mp = hh.y_mp_100m;
 
 -- Update with building type data
-UPDATE {output_schema}.buildings_grid
+UPDATE {output_schema}.buildings_pylovo_grid
 SET insgesamt_gebaeude = bld.insgesamt_gebaeude,
     freiefh = bld.freiefh,
     efh_dhh = bld.efh_dhh,
@@ -82,11 +82,11 @@ SET insgesamt_gebaeude = bld.insgesamt_gebaeude,
     mfh_13undmehrwohnungen = bld.mfh_13undmehrwohnungen,
     anderergebaeudetyp = bld.anderergebaeudetyp
 FROM {input_schema}.zensus_2022_100m_gebaeude_typ_groesse bld
-WHERE buildings_grid.x_mp = bld.x_mp_100m
-  AND buildings_grid.y_mp = bld.y_mp_100m;
+WHERE buildings_pylovo_grid.x_mp = bld.x_mp_100m
+  AND buildings_pylovo_grid.y_mp = bld.y_mp_100m;
 
 -- Update with construction year data
-UPDATE {output_schema}.buildings_grid
+UPDATE {output_schema}.buildings_pylovo_grid
 SET vor1919 = bauj.vor1919,
     a1919bis1948 = bauj.a1919bis1948,
     a1949bis1978 = bauj.a1949bis1978,
@@ -96,5 +96,5 @@ SET vor1919 = bauj.vor1919,
     a2011bis2019 = bauj.a2011bis2019,
     a2020undspaeter = bauj.a2020undspaeter
 FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
-WHERE buildings_grid.x_mp = bauj.x_mp_100m
-  AND buildings_grid.y_mp = bauj.y_mp_100m;
+WHERE buildings_pylovo_grid.x_mp = bauj.x_mp_100m
+  AND buildings_pylovo_grid.y_mp = bauj.y_mp_100m;

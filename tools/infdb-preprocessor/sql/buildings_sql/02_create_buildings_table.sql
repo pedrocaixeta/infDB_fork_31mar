@@ -1,7 +1,8 @@
-DROP TABLE IF EXISTS {output_schema}.buildings;
-CREATE TABLE {output_schema}.buildings
+DROP TABLE IF EXISTS {output_schema}.buildings_pylovo;
+CREATE TABLE {output_schema}.buildings_pylovo
 (
     id                bigint PRIMARY KEY,
+    feature_id        integer,
     objectid          text UNIQUE NOT NULL,
     height            double precision,
     floor_area        double precision,
@@ -18,5 +19,5 @@ CREATE TABLE {output_schema}.buildings
     centroid          geometry(Point, 3035)
 );
 
-CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings USING GIST (geom);
-CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings (id, building_type, building_use);
+CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings_pylovo USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_pylovo (id, building_type, building_use);

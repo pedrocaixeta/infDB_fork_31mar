@@ -1,22 +1,23 @@
 -- fill geom and floor_area columns
 WITH ground_data AS (
-    SELECT regexp_replace(f.objectid, '_[^_]*-.*$', '') as building_objectid,
-        cast(p.val_string as double precision)          as area,
-        ST_Transform(ST_Force2D(gd.geometry), 3035)     as geometry
-    FROM feature f
-          JOIN geometry_data gd ON f.id = gd.feature_id
-          JOIN property p ON gd.feature_id = p.feature_id
-    WHERE f.objectclass_id = 710 -- GroundSurface
-    AND p.name = 'Flaeche'
+    SELECT objectid as building_objectid,
+        feature_id,
+        groundsurface_flaeche          as area,
+        ST_Transform(ST_Force2D(b.geom), 3035)     as geometry
+    FROM {input_schema}.buildings_lod2 b
+    --       JOIN geometry_data gd ON f.id = gd.feature_id
+    --       JOIN property p ON gd.feature_id = p.feature_id
+    -- WHERE f.objectclass_id = 710 -- GroundSurface
+    -- AND p.name = 'Flaeche'
 )
-UPDATE {output_schema}.buildings
+UPDATE {output_schema}.buildings_pylovo b
 SET floor_area = gd.area,
     geom       = gd.geometry,
     centroid   = ST_Centroid(gd.geometry)
 FROM ground_data gd
-WHERE objectid = building_objectid;
+WHERE b.feature_id = gd.feature_id;
 
 -- delete buildings below an area threshold
 DELETE
-FROM {output_schema}.buildings
-WHERE buildings.floor_area < 12;
+FROM {output_schema}.buildings_pylovo
+WHERE buildings_pylovo.floor_area < 12;
