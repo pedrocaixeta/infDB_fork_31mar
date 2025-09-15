@@ -18,7 +18,7 @@ SELECT
     einwohner AS population,                  -- Number of inhabitants
     ST_Transform(geometry, 3035) AS geom      -- Geometry transformed to EPSG:3035
 FROM 
-    {input_schema}."plz_plz-5stellig";
+    opendata."plz_plz-5stellig";    -- replace by {input_schema}
 
 -- 3. Add a spatial index to improve performance for spatial queries
 CREATE INDEX IF NOT EXISTS idx_postcode_geom 
