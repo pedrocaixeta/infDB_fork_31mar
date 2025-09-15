@@ -20,7 +20,7 @@ ALTER TABLE {output_schema}.buildings_pylovo ADD CONSTRAINT occupants_check CHEC
 
 ALTER TABLE {output_schema}.buildings_pylovo ADD CONSTRAINT households_check CHECK (households >= 0);
 
-ALTER TABLE {output_schema}.buildings_pylovo ALTER COLUMN construction_year SET NOT NULL;
+-- ALTER TABLE {output_schema}.buildings_pylovo ALTER COLUMN construction_year SET NOT NULL;
 ALTER TABLE {output_schema}.buildings_pylovo
    ADD CONSTRAINT construction_year_check CHECK (construction_year IN
                                                   ('-1919', '1919-1948', '1949-1978', '1979-1990', '1991-2000',
@@ -30,4 +30,4 @@ ALTER TABLE {output_schema}.buildings_pylovo
     ADD CONSTRAINT building_type_check CHECK (building_type IN
                                               ('AB', 'MFH', 'TH', 'SFH'));
 
-ALTER TABLE {output_schema}.buildings_pylovo ALTER COLUMN postcode SET NOT NULL;
+-- ALTER TABLE {output_schema}.buildings_pylovo ALTER COLUMN postcode SET NOT NULL;

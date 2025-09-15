@@ -6,7 +6,8 @@ CREATE TEMP TABLE IF NOT EXISTS temp_postcode_3035
 );
 INSERT INTO temp_postcode_3035 (plz, geometry)
 SELECT plz::int, ST_Transform(geometry, 3035)
-FROM {input_schema}."plz_plz-5stellig";
+-- FROM {input_schema}."plz_plz-5stellig";
+FROM opendata."plz_plz-5stellig";
 
 UPDATE {output_schema}.buildings_pylovo b
 SET postcode = plz::int

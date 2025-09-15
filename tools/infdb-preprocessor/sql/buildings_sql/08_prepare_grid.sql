@@ -71,16 +71,17 @@ WHERE buildings_pylovo_grid.x_mp = hh.x_mp_100m
 -- Update with building type data
 UPDATE {output_schema}.buildings_pylovo_grid
 SET insgesamt_gebaeude = bld.insgesamt_gebaeude,
-    freiefh = bld.freiefh,
-    efh_dhh = bld.efh_dhh,
-    efh_reihenhaus = bld.efh_reihenhaus,
-    freist_zfh = bld.freist_zfh,
-    zfh_dhh = bld.zfh_dhh,
-    zfh_reihenhaus = bld.zfh_reihenhaus,
-    mfh_3bis6wohnungen = bld.mfh_3bis6wohnungen,
-    mfh_7bis12wohnungen = bld.mfh_7bis12wohnungen,
-    mfh_13undmehrwohnungen = bld.mfh_13undmehrwohnungen,
-    anderergebaeudetyp = bld.anderergebaeudetyp
+    --freiefh = CAST(bld.freiefh,
+    freiefh = CAST(bld.freiefh AS double precision),
+    efh_dhh = CAST(bld.efh_dhh AS double precision),
+    efh_reihenhaus = CAST(bld.efh_reihenhaus AS double precision),
+    freist_zfh = CAST(bld.freist_zfh AS double precision),
+    zfh_dhh = CAST(bld.zfh_dhh AS double precision),
+    zfh_reihenhaus = CAST(bld.zfh_reihenhaus AS double precision),
+    mfh_3bis6wohnungen = CAST(bld.mfh_3bis6wohnungen AS double precision),
+    mfh_7bis12wohnungen = CAST(bld.mfh_7bis12wohnungen AS double precision),
+    mfh_13undmehrwohnungen = CAST(bld.mfh_13undmehrwohnungen AS double precision),
+    anderergebaeudetyp = CAST(bld.anderergebaeudetyp AS double precision)
 FROM {input_schema}.zensus_2022_100m_gebaeude_typ_groesse bld
 WHERE buildings_pylovo_grid.x_mp = bld.x_mp_100m
   AND buildings_pylovo_grid.y_mp = bld.y_mp_100m;
@@ -95,6 +96,7 @@ SET vor1919 = bauj.vor1919,
     a2001bis2010 = bauj.a2001bis2010,
     a2011bis2019 = bauj.a2011bis2019,
     a2020undspaeter = bauj.a2020undspaeter
-FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
+--FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
+FROM opendata.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
 WHERE buildings_pylovo_grid.x_mp = bauj.x_mp_100m
   AND buildings_pylovo_grid.y_mp = bauj.y_mp_100m;
