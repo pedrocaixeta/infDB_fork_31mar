@@ -19,4 +19,4 @@ preprocessor:
             exposed_port: None
     data:
         input_schema: opendata
-        output_schema: preprocesseddata
+        output_schema: basedata
