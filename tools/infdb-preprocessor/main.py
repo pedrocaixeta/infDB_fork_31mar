@@ -30,6 +30,8 @@ def main():
         'input_schema': infdb.get_config_value(["preprocessor", "data", "input_schema"]),
         'output_schema': infdb.get_config_value(["preprocessor", "data", "output_schema"])
     }
+    # Drop output schema if exists for development purposes
+    infdbclient_citydb.execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
 
     # Execute WAYS scripts
     infdblog.info("Running WAYS SQL scripts")
