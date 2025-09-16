@@ -46,6 +46,8 @@ class InfdbClient:
         Execute a SQL query and return the results.
         """
         self.cur.execute(query, params)
+        if self.cur.description is None:
+            return []
         rows = self.cur.fetchall()
         return rows
     

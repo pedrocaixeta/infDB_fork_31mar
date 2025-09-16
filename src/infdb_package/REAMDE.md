@@ -11,7 +11,7 @@ uv pip install infdb
 ```
 
 ```python
-import InfDB
+import infdb as InfDB
 
 # Load InfDB handler
 infdb = InfDB(tool_name="preprocessor")
