@@ -19,16 +19,19 @@ def main():
     # infdblog.info("Fixing SQL data types")
     # infdbclient.execute_sql_file("sql/fixing_need.sql")
 
+    input_schema = infdbhandler.get_config_value(["preprocessor", "data", "input_schema"])
+    output_schema = infdbhandler.get_config_value(["preprocessor", "data", "output_schema"])
+
     # Execute buildings_lod2.sql first to create the buildings_lod2 table
     format_params = {
-        'output_schema': infdb.get_config_value(["preprocessor", "data", "input_schema"]),
+        'output_schema': output_schema,
     }
     infdbclient_citydb.execute_sql_file("sql/buildings_lod2.sql", format_params=format_params)
 
     # Schema configuration
     format_params = {
-        'input_schema': infdb.get_config_value(["preprocessor", "data", "input_schema"]),
-        'output_schema': infdb.get_config_value(["preprocessor", "data", "output_schema"])
+        'input_schema': input_schema,
+        'output_schema': output_schema
     }
     # Drop output schema if exists for development purposes
     infdbclient_citydb.execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
