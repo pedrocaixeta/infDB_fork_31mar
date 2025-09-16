@@ -64,39 +64,37 @@ WHERE buildings_pylovo_grid.x_mp = pop.x_mp_100m
 UPDATE {output_schema}.buildings_pylovo_grid
 SET durchschnhhgroesse = hh.durchschnhhgroesse,
     werterlaeuternde_zeichen = hh.werterlaeuternde_zeichen
-FROM {input_schema}.zensus_2022_100m_durschn_haushaltsgroesse hh
+FROM {input_schema}.zensus_2022_100m_durchschn_haushaltsgroesse hh
 WHERE buildings_pylovo_grid.x_mp = hh.x_mp_100m
   AND buildings_pylovo_grid.y_mp = hh.y_mp_100m;
 
 -- Update with building type data
 UPDATE {output_schema}.buildings_pylovo_grid
 SET insgesamt_gebaeude = bld.insgesamt_gebaeude,
-    --freiefh = CAST(bld.freiefh,
-    freiefh = CAST(bld.freiefh AS double precision),
-    efh_dhh = CAST(bld.efh_dhh AS double precision),
-    efh_reihenhaus = CAST(bld.efh_reihenhaus AS double precision),
-    freist_zfh = CAST(bld.freist_zfh AS double precision),
-    zfh_dhh = CAST(bld.zfh_dhh AS double precision),
-    zfh_reihenhaus = CAST(bld.zfh_reihenhaus AS double precision),
-    mfh_3bis6wohnungen = CAST(bld.mfh_3bis6wohnungen AS double precision),
-    mfh_7bis12wohnungen = CAST(bld.mfh_7bis12wohnungen AS double precision),
-    mfh_13undmehrwohnungen = CAST(bld.mfh_13undmehrwohnungen AS double precision),
-    anderergebaeudetyp = CAST(bld.anderergebaeudetyp AS double precision)
+    freiefh = (CASE WHEN bld.freiefh IN ('-', '–') THEN 'NaN' ELSE bld.freiefh END)::double precision,
+    efh_dhh = (CASE WHEN bld.efh_dhh IN ('-', '–') THEN 'NaN' ELSE bld.efh_dhh END)::double precision,
+    efh_reihenhaus = (CASE WHEN bld.efh_reihenhaus IN ('-', '–') THEN 'NaN' ELSE bld.efh_reihenhaus END)::double precision,
+    freist_zfh = (CASE WHEN bld.freist_zfh IN ('-', '–') THEN 'NaN' ELSE bld.freist_zfh END)::double precision,
+    zfh_dhh = (CASE WHEN bld.zfh_dhh IN ('-', '–') THEN 'NaN' ELSE bld.zfh_dhh END)::double precision,
+    zfh_reihenhaus = (CASE WHEN bld.zfh_reihenhaus IN ('-', '–') THEN 'NaN' ELSE bld.zfh_reihenhaus END)::double precision,
+    mfh_3bis6wohnungen = (CASE WHEN bld.mfh_3bis6wohnungen IN ('-', '–') THEN 'NaN' ELSE bld.mfh_3bis6wohnungen END)::double precision,
+    mfh_7bis12wohnungen = (CASE WHEN bld.mfh_7bis12wohnungen IN ('-', '–') THEN 'NaN' ELSE bld.mfh_7bis12wohnungen END)::double precision,
+    mfh_13undmehrwohnungen = (CASE WHEN bld.mfh_13undmehrwohnungen IN ('-', '–') THEN 'NaN' ELSE bld.mfh_13undmehrwohnungen END)::double precision,
+    anderergebaeudetyp = (CASE WHEN bld.anderergebaeudetyp IN ('-', '–') THEN 'NaN' ELSE bld.anderergebaeudetyp END)::double precision
 FROM {input_schema}.zensus_2022_100m_gebaeude_typ_groesse bld
 WHERE buildings_pylovo_grid.x_mp = bld.x_mp_100m
   AND buildings_pylovo_grid.y_mp = bld.y_mp_100m;
 
 -- Update with construction year data
 UPDATE {output_schema}.buildings_pylovo_grid
-SET vor1919 = bauj.vor1919,
-    a1919bis1948 = bauj.a1919bis1948,
-    a1949bis1978 = bauj.a1949bis1978,
-    a1979bis1990 = bauj.a1979bis1990,
-    a1991bis2000 = bauj.a1991bis2000,
-    a2001bis2010 = bauj.a2001bis2010,
-    a2011bis2019 = bauj.a2011bis2019,
-    a2020undspaeter = bauj.a2020undspaeter
---FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
-FROM opendata.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
+SET vor1919 = (CASE WHEN bauj.vor1919 IN ('-', '–') THEN 'NaN' ELSE bauj.vor1919 END)::double precision,
+    a1919bis1948 = (CASE WHEN bauj.a1919bis1948 IN ('-', '–') THEN 'NaN' ELSE bauj.a1919bis1948 END)::double precision,
+    a1949bis1978 = (CASE WHEN bauj.a1949bis1978 IN ('-', '–') THEN 'NaN' ELSE bauj.a1949bis1978 END)::double precision,
+    a1979bis1990 = (CASE WHEN bauj.a1979bis1990 IN ('-', '–') THEN 'NaN' ELSE bauj.a1979bis1990 END)::double precision,
+    a1991bis2000 = (CASE WHEN bauj.a1991bis2000 IN ('-', '–') THEN 'NaN' ELSE bauj.a1991bis2000 END)::double precision,
+    a2001bis2010 = (CASE WHEN bauj.a2001bis2010 IN ('-', '–') THEN 'NaN' ELSE bauj.a2001bis2010 END)::double precision,
+    a2011bis2019 = (CASE WHEN bauj.a2011bis2019 IN ('-', '–') THEN 'NaN' ELSE bauj.a2011bis2019 END)::double precision,
+    a2020undspaeter = (CASE WHEN bauj.a2020undspaeter IN ('-', '–') THEN 'NaN' ELSE bauj.a2020undspaeter END)::double precision
+FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
 WHERE buildings_pylovo_grid.x_mp = bauj.x_mp_100m
   AND buildings_pylovo_grid.y_mp = bauj.y_mp_100m;
