@@ -10,7 +10,7 @@ WITH element_vars AS (SELECT 'OuterWall'::text  AS element_name,
                       SELECT 'Window', 'window', 'window_area'
                       UNION ALL
                       SELECT 'GroundFloor', 'construction_year', 'floor_area')
-SELECT b.building_id,
+SELECT b.building_objectid,
        v.element_name,
        vals.area_val::numeric AS area,
        l.thickness,

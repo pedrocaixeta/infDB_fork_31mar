@@ -15,7 +15,7 @@ WITH element_vars AS (SELECT 'OuterWall'::text  AS element_name,
                       SELECT 'Window', 'window', 'window_area', 0.13, 0.04, 0.1
                       UNION ALL
                       SELECT 'GroundFloor', 'construction_year', 'floor_area', 0.17, 0.0, 0.1),
-     element_data AS (SELECT b.building_id,
+     element_data AS (SELECT b.building_objectid,
                              v.element_name,
                              vals.area_val::numeric              AS area,
                              -- R = d / lambda; see formula (3) in DIN EN ISO 6946:2018-03
@@ -42,8 +42,8 @@ WITH element_vars AS (SELECT 'OuterWall'::text  AS element_name,
                                     ON l.material_id = m.material_id
                       WHERE vals.year_val BETWEEN t.start_year AND t.end_year
                         AND t.construction_data = vals.construction_match
-                      GROUP BY b.building_id, v.element_name, vals.area_val),
-     r_totals AS (SELECT e.building_id,
+                      GROUP BY b.building_objectid, v.element_name, vals.area_val),
+     r_totals AS (SELECT e.building_objectid,
                          e.element_name,
                          e.area,
                          -- Calculate R_tot = R_Si + sum (R_i) + R_Se; see formula (4) in DIN EN ISO 6946:2018-03
@@ -55,9 +55,9 @@ WITH element_vars AS (SELECT 'OuterWall'::text  AS element_name,
                          ((1 / (v.r_si + e.r_layers + v.r_se) + v.delta_U_WB) * e.area) AS h_value
                   FROM element_data e
                            JOIN element_vars v USING (element_name))
-SELECT r.building_id,
+SELECT r.building_objectid,
        -- R = 1 / Ht´ = 1 / (sum(H) / sum(A))
        1 / (SUM(r.h_value) / NULLIF(SUM(r.area), 0)) AS r
 FROM r_totals r
-GROUP BY building_id
-ORDER BY building_id;
+GROUP BY building_objectid
+ORDER BY building_objectid;
