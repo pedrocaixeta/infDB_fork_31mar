@@ -1,5 +1,5 @@
 import psycopg2
-from src.infdb import utils
+from . import utils
 from . import InfdbConfig
 import os, time
 import logging

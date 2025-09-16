@@ -1,19 +1,19 @@
 import os
-from src.infdb.Infdb import InfDB
+import infdb
 
 def main():
 
     # Load InfDB handler
-    infdb = InfDB(tool_name="preprocessor")
+    infdbhandler = infdb.InfDB(tool_name="preprocessor")
 
     # Database connection
-    infdbclient_citydb = infdb.connect(db_name="citydb")
+    infdbclient_citydb = infdbhandler.connect(db_name="citydb")
 
     # Logger setup
-    infdblog = infdb.get_log()
+    infdblog = infdbhandler.get_log()
 
     # Start message
-    infdblog.info(f"Starting {infdb.get_toolname()} tool")
+    infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
     
     # # Datatype fix
     # infdblog.info("Fixing SQL data types")
@@ -49,7 +49,7 @@ def main():
     infdbclient_citydb.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
 
     # End message
-    infdblog.info(f"Successfully finished {infdb.get_toolname()} tool")
+    infdblog.info(f"Successfully finished {infdbhandler.get_toolname()} tool")
 
 
 if __name__ == "__main__":

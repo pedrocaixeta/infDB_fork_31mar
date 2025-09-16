@@ -1,6 +1,6 @@
-from src.infdb.InfdbConfig import InfdbConfig
-from src.infdb.InfdbClient import InfdbClient
-from src.infdb.InfdbLogger import InfdbLogger
+from .InfdbConfig import InfdbConfig
+from .InfdbClient import InfdbClient
+from .InfdbLogger import InfdbLogger
 import logging
 
 class InfDB:

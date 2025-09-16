@@ -1,6 +1,6 @@
 [project]
 name = "infdb"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
   { name="Patrick Buchenberg", email="patrick.buchenberg@tum.de" },
 ]
@@ -25,6 +25,9 @@ dependencies = [
   "PyYAML",
   "dotenv"
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["infdb"]
 
 keywords = ["infrastructure", "energy", "database", "data handling"]
 

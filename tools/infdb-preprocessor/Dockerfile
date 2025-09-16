@@ -30,6 +30,10 @@ COPY pyproject.toml /app/pyproject.toml
 ## Install venv with uv
 RUN uv sync
 
+## Install infdb package in editable mode
+COPY infdb_package /app/infdb_package
+RUN uv pip install -e /app/infdb_package
+
 # Copy the source code into the container
 COPY src /app/src
 COPY sql /app/sql
