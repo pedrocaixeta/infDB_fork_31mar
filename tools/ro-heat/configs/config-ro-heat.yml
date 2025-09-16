@@ -18,5 +18,5 @@ ro-heat:
             host: None
             exposed_port: None
     data:
-        input_schema: opendata
-        output_schema: pylovo_input
+        input_schema: basedata
+        output_schema: ro_heat

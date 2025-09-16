@@ -14,6 +14,8 @@ rng = np.random.default_rng(seed=42)
 end_of_simulation_year = 2025
 construction_year_col = "construction_year"
 schema = "ro_heat"
+input_schema = config.get_value(["ro-heat", "data", "input_schema"])
+output_schema = config.get_value(["ro-heat", "data", "output_schema"])
 
 
 def main():
@@ -32,13 +34,13 @@ def main():
             username=parameters["user"],
             password=parameters["password"],
         )
-        sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
+        sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         db_executor.execute_sql_query(sql)
 
-        SQL_QUERY = """
-                    DROP TABLE IF EXISTS pylovo_input.temp_rc_calculation CASCADE;
+        SQL_QUERY = f"""
+                    DROP TABLE IF EXISTS {input_schema}.temp_rc_calculation CASCADE;
 
-                    CREATE TABLE pylovo_input.temp_rc_calculation AS
+                    CREATE TABLE {input_schema}.temp_rc_calculation AS
                     WITH wall_data AS (SELECT building_objectid,
                                               SUM(area) AS wall_surface_area
                                        FROM (SELECT regexp_replace(f.objectid, '_[^_]*-.*$', '') AS building_objectid,
@@ -60,7 +62,7 @@ def main():
                                                AND p.name = 'Flaeche') sub
                                        GROUP BY building_objectid)
 
-                    SELECT b.id                                                              AS building_id,
+                    SELECT b.objectid                                                            AS building_objectid,
                            b.floor_area,
                            b.floor_number,
                            b.building_type,
@@ -71,12 +73,12 @@ def main():
                            -- Assume heated area = b.floor_area * b.floor_number * 0.75
                            -- Assume window area to be 0.2 m² per heated area ()
                            b.floor_area * b.floor_number * 0.75 * 0.2                        AS window_area
-                    FROM pylovo_input.buildings b
+                    FROM {input_schema}.buildings_pylovo b
                              LEFT JOIN wall_data wd ON b.objectid = wd.building_objectid
                              LEFT JOIN roof_data rd ON b.objectid = rd.building_objectid;
 
                     SELECT *
-                    from pylovo_input.temp_rc_calculation
+                    from {input_schema}.temp_rc_calculation
                     WHERE building_type IS NOT NULL \
                     """
 
@@ -157,7 +159,7 @@ def main():
         )
 
         constructions = (
-            elements.groupby(["building_id", "element_name", "area"])["materials"]
+            elements.groupby(["building_objectid", "element_name", "area"])["materials"]
             .apply(list)
             .reset_index()
         )
@@ -171,7 +173,7 @@ def main():
 
         constructions["construction_obj"] = constructions.apply(
             lambda row: eureca_code.Construction(
-                name=f"B{row['building_id']}_{row['element_name']}",
+                name=f"B{row['building_objectid']}_{row['element_name']}",
                 materials_list=row["materials"],
                 construction_type=tabula_eureca_element_name_mapping[row["element_name"]],
             ),
@@ -188,11 +190,11 @@ def main():
         )
 
         rc_values = (
-            constructions.groupby("building_id")[["capacitance", "resistance"]].sum().sort_values("building_id")
+            constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values("building_objectid")
         )
 
         # Preparation for EnTiSe
-        entise_input = rc_values.reset_index().rename(columns={"building_id": "id"})
+        entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
         entise_input["hvac"] = "1R1C"
         entise_input["temp_min"] = 20.0
         entise_input["temp_max"] = 24.0
@@ -214,6 +216,18 @@ def main():
         # Generate time series
         # TODO: Handle and save time series
         summary, df = gen.generate(data)
+
+        summary.index.name = "building_objectid"
+        summary.to_sql(
+            "entise_output",
+            con=engine,
+            if_exists="replace",
+            schema=output_schema,
+            index=True,
+            method="multi",
+            # chunksize=1000,
+        )
+        
 
         log.info(summary.head())
 
