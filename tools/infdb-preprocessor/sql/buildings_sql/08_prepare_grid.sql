@@ -18,7 +18,7 @@ DROP TABLE IF EXISTS {output_schema}.buildings_pylovo_grid;
 CREATE TABLE IF NOT EXISTS {output_schema}.buildings_pylovo_grid AS
 SELECT DISTINCT g.*
 FROM temp_grid_transformed g
-INNER JOIN {input_schema}.buildings_lod2 b ON ST_Contains(g.geom, ST_Centroid(b.geom));
+INNER JOIN {input_schema}.buildings_lod2 b ON ST_Contains(g.geom, ST_Centroid(b.geometry));
 
 -- Create composite index on x_mp and y_mp for efficient joins
 CREATE INDEX grid_buildings_spatial_coords_idx
