@@ -28,27 +28,14 @@
 
 CREATE OR REPLACE FUNCTION {output_schema}.generate_connections_buildings_to_ways() RETURNS void AS $$
 BEGIN
-
-    -- -- Index on old_way_id for fast grouping of connections by way
-    -- -- Useful when processing multiple connections to the same way segment
-    -- CREATE INDEX buildings_pylovo_idx ON {output_schema}.buildings_pylovo (old_way_id);
-    -- CREATE INDEX ways_idx ON {output_schema}.ways (old_way_id);
-    
-    -- -- Spatial index on connection_point for fast geometric searches
-    -- -- Enables efficient spatial queries and nearest-neighbor operations
-    -- CREATE INDEX buildings_pylovo_gix ON {output_schema}.buildings_pylovo USING GIST (geom);
-    -- CREATE INDEX ways_gix ON {output_schema}.ways USING GIST (geom);
-    
-    -- Note: These indexes significantly improve performance when the temporary table
+    -- Note: Indexes significantly improve performance when the temporary table
     -- is used in subsequent spatial operations or way segmentation processes
-
-    -- MAIN PROCESSING: Create temporary table with comprehensive connection anmblysis
-    -- This table will contain all necessary data for building-to-way connections
+    
+    -- 1) Create initial connections table by matching building street names to way names
     CREATE TABLE {output_schema}.connections_buildings_to_ways AS
         WITH building_addresses_to_ways AS (
             SELECT DISTINCT ON (b.id)
             b.id as building_id,
-            -- b.objectid as building_objectid,
             w.way_id as way_way_id
             FROM {output_schema}.buildings_pylovo b
             LEFT JOIN {output_schema}.ways AS w
@@ -81,6 +68,7 @@ BEGIN
     FROM not_matched_buildings nmb
     WHERE batw.building_id = nmb.building_id;
 
+    -- 3) Add connection geometry and distance information
     ALTER TABLE {output_schema}.connections_buildings_to_ways
     ADD COLUMN IF NOT EXISTS connection_geom   geometry,
     ADD COLUMN IF NOT EXISTS startpoint_geom   geometry,
@@ -96,17 +84,10 @@ BEGIN
     WHERE batw.way_way_id = w.way_id
       AND batw.building_id = b.id;
 
-    -- Index on old_way_id for fast grouping of connections by way
-    -- Useful when processing multiple connections to the same way segment
-    CREATE INDEX temp_candidates_old_way_idx ON {output_schema}.connections_buildings_to_ways (old_way_id);
-    
-    -- Spatial index on connection_point for fast geometric searches
-    -- Enables efficient spatial queries and nearest-neighbor operations
-    CREATE INDEX temp_candidates_connection_gix ON {output_schema}.connections_buildings_to_ways USING GIST (connection_point);
-    
-    -- Note: These indexes significantly improve performance when the temporary table
-    -- is used in subsequent spatial operations or way segmentation processes
-    
+    -- 4) Add precise connection point on the way geometry
+    CREATE INDEX connections_buildings_to_ways_building_id_idx ON {output_schema}.connections_buildings_to_ways (building_id);
+    CREATE INDEX connections_buildings_to_ways_way_id_idx ON {output_schema}.connections_buildings_to_ways (way_way_id);
+
     -- For debugging: Create a test table to visualize connections
     DROP TABLE IF EXISTS {output_schema}.connections_debug;
     CREATE TABLE {output_schema}.connections_debug AS
