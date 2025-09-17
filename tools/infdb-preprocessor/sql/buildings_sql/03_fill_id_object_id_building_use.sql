@@ -1,10 +1,12 @@
 -- Fill id, objectid and building use columns
-INSERT INTO {output_schema}.buildings_pylovo (id, feature_id, objectid, building_use, building_use_id)
+INSERT INTO {output_schema}.buildings_pylovo (id, feature_id, objectid, building_use, building_use_id, street, house_number)
 SELECT b.id,
        b.feature_id,
        b.objectid,
        {output_schema}.classify_building_use(b.building_function_code) as building_use,
-       b.building_function_code                                     as building_use_id
+       b.building_function_code                                     as building_use_id,
+       b.street,
+       b.house_number
 FROM {input_schema}.buildings_lod2 b
 --          JOIN property p ON f.id = p.feature_id
 -- WHERE f.objectclass_id = 901 -- =building

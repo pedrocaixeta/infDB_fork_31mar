@@ -1,12 +1,12 @@
 /*
  * FUNCTION PURPOSE AND OVERVIEW:
  * =============================
- * This function analyzes buildings with electrical load requirements and identifies
+ * This function anmblyzes buildings with electrical load requirements and identifies
  * the optimal connection points to the existing ways network using infdb data.
  * It creates a temporary table containing precomputed connection candidates that can be used
  * for infrastructure planning and ways network extension.
  *
- * The function performs spatial analysis with address-aware matching:
+ * The function performs spatial anmblysis with address-aware matching:
  * 1. Identify buildings that require way connections (non-zero peak load)
  * 2. First attempt to match buildings to ways using address_street_id information
  * 3. Fall back to nearest suitable way if no address match is found
@@ -23,95 +23,101 @@
  * 6. Create indexed temporary table for efficient downstream processing
  *
  * INPUT: Data from 'buildings_tem' and 'ways_tem' tables (INFDB database)
- * OUTPUT: Temporary table 'connections_buildings_to_ways' with connection analysis
+ * OUTPUT: Temporary table 'connections_buildings_to_ways' with connection anmblysis
  */
 
 CREATE OR REPLACE FUNCTION {output_schema}.generate_connections_buildings_to_ways() RETURNS void AS $$
 BEGIN
-    -- MAIN PROCESSING: Create temporary table with comprehensive connection analysis
+
+    -- -- Index on old_way_id for fast grouping of connections by way
+    -- -- Useful when processing multiple connections to the same way segment
+    -- CREATE INDEX buildings_pylovo_idx ON {output_schema}.buildings_pylovo (old_way_id);
+    -- CREATE INDEX ways_idx ON {output_schema}.ways (old_way_id);
+    
+    -- -- Spatial index on connection_point for fast geometric searches
+    -- -- Enables efficient spatial queries and nearest-neighbor operations
+    -- CREATE INDEX buildings_pylovo_gix ON {output_schema}.buildings_pylovo USING GIST (geom);
+    -- CREATE INDEX ways_gix ON {output_schema}.ways USING GIST (geom);
+    
+    -- Note: These indexes significantly improve performance when the temporary table
+    -- is used in subsequent spatial operations or way segmentation processes
+
+    -- MAIN PROCESSING: Create temporary table with comprehensive connection anmblysis
     -- This table will contain all necessary data for building-to-way connections
     CREATE TABLE {output_schema}.connections_buildings_to_ways AS
-    
-    -- -- CTE 1: FILTER BUILDINGS REQUIRING CONNECTIONS
-    -- -- Extract only buildings that have electrical load requirements and address information
-    -- -- These are the buildings that need to be connected to the way network
-    -- WITH buildings AS (
-    --     SELECT 
-    --         id,              -- Unique building identifier
-    --         center,              -- Geometric center point of the building
-    --         address_street_id    -- Street ID from address data
-    --     FROM buildings
-    --     -- WHERE building_use = 'residential'  -- Only buildings with non-zero electrical load
-    --                                 -- These represent active buildings needing connections
-    -- ),
-
-    -- CTE 2: FIND BEST SUITABLE WAY FOR EACH BUILDING
-    -- First try address-based match, then fall back to nearest way search
-    WITH closest_road AS (
-        SELECT 
-            b.id,                                                              -- Building identifier
-            b.geom,                                                              -- Building center point
-            b.address_street_id,
-            direct_way.way_id AS direct_way_id,
-            nearest_way.way_id AS nearest_way_id,                                  -- Direct way ID from address match
-            COALESCE(direct_way.way_id, nearest_way.way_id) AS old_way_id,        -- ID of the matched way (address-based or nearest)
-            COALESCE(direct_way.geom, nearest_way.geom) AS old_geom,              -- Geometry of the matched way
-            ST_ShortestLine(b.geom, COALESCE(direct_way.geom, nearest_way.geom)) AS new_geom  -- Shortest connection line from building to way
-        FROM {output_schema}.buildings_pylovo b
-        
-        -- FIRST PRIORITY: Try to find direct match using address_street_id
-        LEFT JOIN {output_schema}.ways direct_way ON (
-            b.address_street_id IS NOT NULL                    -- Building must have address information
-            AND direct_way.way_id = b.address_street_id       -- Direct match with address street ID
-            AND direct_way.clazz != 110                       -- Exclude ways which are connection lines (from buildings to ways)
+        WITH building_addresses_to_ways AS (
+            SELECT DISTINCT ON (b.id)
+            b.id as building_id,
+            -- b.objectid as building_objectid,
+            w.way_id as way_way_id
+            FROM {output_schema}.buildings_pylovo b
+            LEFT JOIN {output_schema}.ways AS w
+            ON b.street = w.name OR b.street = w.name_kurz 
+            ORDER BY b.id, b.centroid <-> w.geom
         )
+        SELECT * FROM building_addresses_to_ways;
         
-        -- FALLBACK: If no direct address match, find nearest way using spatial analysis
-        -- LATERAL JOIN allows us to use building-specific filters in the subquery
-        LEFT JOIN LATERAL (
-            SELECT way_id, geom
-            FROM {output_schema}.ways w
-            WHERE w.clazz != 110                              -- Exclude ways which are connection lines (from buildings to ways)
-              AND ST_DWithin(b.geom, w.geom, 2000)         -- Limit search to 2000 units radius for performance
-              AND ST_Distance(b.geom, w.geom) > 0.1        -- Exclude ways that are too close (avoid geometric errors)
-            ORDER BY b.geom <-> w.geom                      -- Sort by distance using KNN operator (<->)
-            LIMIT 1                                           -- Take only the closest way
-        ) nearest_way ON (direct_way.way_id IS NULL)          -- Only execute if no direct match found
         
-        -- Ensure we have at least one valid way (either from address match or proximity search)
-        WHERE COALESCE(direct_way.geom, nearest_way.geom) IS NOT NULL
-    ),
-
-    -- CTE 3: CALCULATE PRECISE CONNECTION POINTS
-    -- Determine the exact point on each way where the building should connect
-    connection_line AS (
-        SELECT 
-            c.id,                                           -- Building identifier
-            ST_Centroid(c.geom) AS center,                                           -- Building center point
-            direct_way_id,
-            nearest_way_id,
-            c.old_way_id,                                       -- Connected way ID
-            c.old_geom,                                         -- Connected way geometry
-            c.new_geom,                                         -- Connection line geometry
-            ST_ClosestPoint(c.old_geom, c.new_geom) AS connection_point  -- Exact point on way for connection
-                                                                          -- This is where the way will be split
-        FROM closest_road c
+    -- 2) Find buildings without assigned way from address matching and assign nearest way
+    WITH not_matched_buildings AS (
+            SELECT  buildings.id AS building_id,
+                    streets.way_id as way_way_id
+            FROM {output_schema}.buildings_pylovo buildings
+            CROSS JOIN LATERAL (
+                SELECT streets.way_id, streets.geom <-> ST_Centroid(buildings.geom) AS dist
+                FROM {output_schema}.ways AS streets
+                WHERE streets.geom <-> ST_Centroid(buildings.geom) > 0.1 AND streets.geom <-> ST_Centroid(buildings.geom) < 1000
+                ORDER BY dist
+                LIMIT 1
+            ) streets
+            WHERE buildings.id IN (
+                SELECT building_id
+                FROM {output_schema}.connections_buildings_to_ways
+                WHERE way_way_id IS NULL
+            )
     )
+    UPDATE {output_schema}.connections_buildings_to_ways AS batw
+    SET way_way_id = nmb.way_way_id
+    FROM not_matched_buildings nmb
+    WHERE batw.building_id = nmb.building_id;
 
-    -- FINAL SELECT: Create the results table with deduplication
-    -- Handle cases where multiple buildings might connect to the same point
-    SELECT DISTINCT ON (id)                    -- Ensure one record per building
-        id,              -- Building identifier
-        center,              -- Building center point
-        new_geom,            -- Connection line from building to way
-        old_way_id,          -- ID of way that will be connected to
-        old_geom,            -- Geometry of way that will be connected to
-        connection_point,     -- Exact point on way where connection will be made
-        direct_way_id,
-        nearest_way_id
-    FROM connection_line;
+    ALTER TABLE {output_schema}.connections_buildings_to_ways
+    ADD COLUMN IF NOT EXISTS connection_geom   geometry,
+    ADD COLUMN IF NOT EXISTS startpoint_geom   geometry,
+    ADD COLUMN IF NOT EXISTS endpoint_geom     geometry,
+    ADD COLUMN IF NOT EXISTS dist   double precision;
+
+    UPDATE {output_schema}.connections_buildings_to_ways AS batw
+    SET connection_geom = ST_ShortestLine(b.centroid, w.geom),
+        startpoint_geom = ST_StartPoint(ST_ShortestLine(b.centroid, w.geom)),
+        endpoint_geom = ST_EndPoint(ST_ShortestLine(b.centroid, w.geom)),
+        dist = ST_Distance(b.centroid, w.geom)
+    FROM {output_schema}.ways w, {output_schema}.buildings_pylovo b
+    WHERE batw.way_way_id = w.way_id
+      AND batw.building_id = b.id;
 
     
+    
+    -- For debugging: Create a test table to visualize connections
+    DROP TABLE IF EXISTS {output_schema}.test;
+    CREATE TABLE {output_schema}.test AS
+    Select
+    b.geom AS building_geom,
+    w.geom AS way_geom,
+    b.street AS building_street,
+    w.name AS way_name,
+    w.name_kurz AS way_name_kurz, 
+    ST_ShortestLine(b.centroid, w.geom) AS connection_geom,
+    ST_StartPoint(ST_ShortestLine(b.centroid, w.geom)) AS startpoint_geom,
+    ST_EndPoint(ST_ShortestLine(b.centroid, w.geom)) AS endpoint_geom,
+    ST_Distance(b.centroid, w.geom) AS dist
+    FROM {output_schema}.connections_buildings_to_ways batw
+    JOIN {output_schema}.buildings_pylovo b
+      ON batw.building_id = b.id
+    JOIN {output_schema}.ways w
+      ON batw.way_way_id = w.way_id;
+
+
     -- Index on old_way_id for fast grouping of connections by way
     -- Useful when processing multiple connections to the same way segment
     CREATE INDEX temp_candidates_old_way_idx ON {output_schema}.connections_buildings_to_ways (old_way_id);
@@ -122,6 +128,6 @@ BEGIN
     
     -- Note: These indexes significantly improve performance when the temporary table
     -- is used in subsequent spatial operations or way segmentation processes
-    
+
 END;
 $$ LANGUAGE plpgsql;

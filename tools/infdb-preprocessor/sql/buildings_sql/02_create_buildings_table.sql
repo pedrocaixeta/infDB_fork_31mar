@@ -15,6 +15,8 @@ CREATE TABLE {output_schema}.buildings_pylovo
     construction_year text,
     postcode          int,
     address_street_id bigint,
+    street            text,
+    house_number      text,
     geom              geometry(MultiPolygon, 3035),
     centroid          geometry(Point, 3035)
 );
