@@ -96,12 +96,21 @@ BEGIN
     WHERE batw.way_way_id = w.way_id
       AND batw.building_id = b.id;
 
+    -- Index on old_way_id for fast grouping of connections by way
+    -- Useful when processing multiple connections to the same way segment
+    CREATE INDEX temp_candidates_old_way_idx ON {output_schema}.connections_buildings_to_ways (old_way_id);
     
+    -- Spatial index on connection_point for fast geometric searches
+    -- Enables efficient spatial queries and nearest-neighbor operations
+    CREATE INDEX temp_candidates_connection_gix ON {output_schema}.connections_buildings_to_ways USING GIST (connection_point);
+    
+    -- Note: These indexes significantly improve performance when the temporary table
+    -- is used in subsequent spatial operations or way segmentation processes
     
     -- For debugging: Create a test table to visualize connections
-    DROP TABLE IF EXISTS {output_schema}.test;
-    CREATE TABLE {output_schema}.test AS
-    Select
+    DROP TABLE IF EXISTS {output_schema}.connections_debug;
+    CREATE TABLE {output_schema}.connections_debug AS
+    SELECT
     b.geom AS building_geom,
     w.geom AS way_geom,
     b.street AS building_street,
@@ -116,18 +125,6 @@ BEGIN
       ON batw.building_id = b.id
     JOIN {output_schema}.ways w
       ON batw.way_way_id = w.way_id;
-
-
-    -- Index on old_way_id for fast grouping of connections by way
-    -- Useful when processing multiple connections to the same way segment
-    CREATE INDEX temp_candidates_old_way_idx ON {output_schema}.connections_buildings_to_ways (old_way_id);
-    
-    -- Spatial index on connection_point for fast geometric searches
-    -- Enables efficient spatial queries and nearest-neighbor operations
-    CREATE INDEX temp_candidates_connection_gix ON {output_schema}.connections_buildings_to_ways USING GIST (connection_point);
-    
-    -- Note: These indexes significantly improve performance when the temporary table
-    -- is used in subsequent spatial operations or way segmentation processes
 
 END;
 $$ LANGUAGE plpgsql;
