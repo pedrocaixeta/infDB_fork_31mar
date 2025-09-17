@@ -1,6 +1,6 @@
 [project]
 name = "infdb"
-version = "0.0.2"
+version = "0.0.5"
 authors = [
   { name="Patrick Buchenberg", email="patrick.buchenberg@tum.de" },
 ]
@@ -23,7 +23,8 @@ classifiers = [
 dependencies = [
   "psycopg2-binary",
   "PyYAML",
-  "dotenv"
+  "dotenv",
+  "SQLAlchemy",
 ]
 
 [tool.hatch.build.targets.wheel]

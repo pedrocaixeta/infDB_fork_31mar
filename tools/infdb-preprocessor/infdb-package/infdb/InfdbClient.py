@@ -1,8 +1,8 @@
 import psycopg2
-from . import utils
 from . import InfdbConfig
-import os, time
-import logging
+import os
+import time
+import sqlalchemy
 
 
 class InfdbClient:
@@ -89,8 +89,20 @@ class InfdbClient:
                 self.conn.rollback()
                 self.log.error(f"Failed to execute {file_path}: {str(e)}")
                 raise
-
-    
+   
     def execute_sql_file(self, file_path, format_params=None):
         """ Execute a single SQL file. """
         self.execute_sql_files(os.path.dirname(file_path), [os.path.basename(file_path)], format_params=format_params)
+
+    def get_db_engine(self):
+        """ Create and return a SQLAlchemy engine for the current database connection. """
+        host = self.db_params["host"]
+        user = self.db_params["user"]
+        password = self.db_params["password"]
+        db = self.db_params["db"]
+        port = self.db_params["exposed_port"]
+
+        db_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
+        engine = sqlalchemy.create_engine(db_url)
+
+        return engine
