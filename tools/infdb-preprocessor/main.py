@@ -1,10 +1,10 @@
 import os
-import infdb
+from infdb import InfDB
 
 def main():
 
     # Load InfDB handler
-    infdbhandler = infdb.InfDB(tool_name="preprocessor")
+    infdbhandler = InfDB(tool_name="preprocessor")
 
     # Database connection
     infdbclient_citydb = infdbhandler.connect(db_name="citydb")
@@ -14,11 +14,8 @@ def main():
 
     # Start message
     infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
-    
-    # # Datatype fix
-    # infdblog.info("Fixing SQL data types")
-    # infdbclient.execute_sql_file("sql/fixing_need.sql")
 
+    # Get configuration values
     input_schema = infdbhandler.get_config_value(["preprocessor", "data", "input_schema"])
     output_schema = infdbhandler.get_config_value(["preprocessor", "data", "output_schema"])
 
