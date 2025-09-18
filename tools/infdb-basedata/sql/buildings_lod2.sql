@@ -16,6 +16,7 @@ CREATE TABLE {output_schema}.buildings_lod2
     id                SERIAL PRIMARY KEY,
     feature_id        integer,
     objectid          text,
+    gemeindeschluessel text,
     objectclass_id    int,
     height            double precision,
     groundsurface_flaeche        double precision,
@@ -59,6 +60,18 @@ WHERE f.objectclass_id = 901 -- =building
   -- AND p.val_string <> '31001_2513' -- exclude water containers
 -- ORDER BY f.id
 ;
+
+-----------------------------------------------------------------
+-- 0X_fill_gemeindeschluessel.sql
+-- fill gemeindeschluessel column
+-----------------------------------------------------------------
+WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
+                           FROM property
+                           WHERE name = 'Gemeindeschluessel')
+UPDATE {output_schema}.buildings_lod2 b
+SET gemeindeschluessel = fnd.val_string
+FROM gemeindeschluessel_data fnd
+WHERE b.feature_id = fnd.feature_id;
 
 --------------------------------------------------------------
 -- 04_fill_height.sql
