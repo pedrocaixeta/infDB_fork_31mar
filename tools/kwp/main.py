@@ -18,11 +18,22 @@ def main():
     # Setup database engine
     engine = infdbclient_citydb.get_db_engine()
 
-    # Get configuration values
-    input_schema = infdbhandler.get_config_value(["kwp", "data", "input_schema"])
-    output_schema = infdbhandler.get_config_value(["kwp", "data", "output_schema"])
+    # Parameter
+    format_params = {
+    "input_schema_basedata": infdbhandler.get_config_value(["data", "input_schema_basedata"], insert_toolname=True),
+    "input_schema_ro-heat": infdbhandler.get_config_value(["data", "input_schema_ro-heat"], insert_toolname=True),
+    "output_schema": infdbhandler.get_config_value(["data", "output_schema"], insert_toolname=True)
+}
 
     try:
+        sql = f"DROP SCHEMA IF EXISTS {format_params['output_schema']} CASCADE;"
+        infdbclient_citydb.execute_query(sql)
+        sql = f"CREATE SCHEMA IF NOT EXISTS {format_params['output_schema']};"
+        infdbclient_citydb.execute_query(sql)
+
+        # Run SQL scripts within sql folder
+        infdbclient_citydb.execute_sql_files("sql", format_params=format_params)
+
         infdblog.info("kwp sucessfully completed")
 
     except Exception as e:

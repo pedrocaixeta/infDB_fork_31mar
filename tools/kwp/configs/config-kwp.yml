@@ -19,5 +19,5 @@ kwp:
             exposed_port: None
     data:
         input_schema_basedata: basedata
-        input_schema_ro-heat: ro-heat
+        input_schema_ro-heat: ro_heat
         output_schema: kwp
