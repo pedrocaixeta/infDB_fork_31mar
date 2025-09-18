@@ -21,7 +21,7 @@ def main():
 
     # Execute buildings_lod2.sql first to create the buildings_lod2 table
     format_params = {
-        'output_schema': output_schema,
+        'output_schema': input_schema,
     }
     infdbclient_citydb.execute_sql_file("sql/buildings_lod2.sql", format_params=format_params)
 
