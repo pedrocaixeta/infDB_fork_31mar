@@ -1,5 +1,5 @@
 [project]
-name = "infdb-peprocessor"
+name = "infdb-basedata"
 version = "1"
 requires-python="==3.12.*"
 dependencies = [

@@ -4,7 +4,7 @@ from infdb import InfDB
 def main():
 
     # Load InfDB handler
-    infdbhandler = InfDB(tool_name="preprocessor")
+    infdbhandler = InfDB(tool_name="infdb-basedata")
 
     # Database connection
     infdbclient_citydb = infdbhandler.connect(db_name="citydb")
@@ -16,8 +16,8 @@ def main():
     infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
 
     # Get configuration values
-    input_schema = infdbhandler.get_config_value(["preprocessor", "data", "input_schema"])
-    output_schema = infdbhandler.get_config_value(["preprocessor", "data", "output_schema"])
+    input_schema = infdbhandler.get_config_value(["infdb-basedata", "data", "input_schema"])
+    output_schema = infdbhandler.get_config_value(["infdb-basedata", "data", "output_schema"])
 
     # Execute buildings_lod2.sql first to create the buildings_lod2 table
     format_params = {
