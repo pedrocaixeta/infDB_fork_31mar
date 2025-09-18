@@ -10,14 +10,14 @@ loader:
         # - "09261000" # LA
     multiproccesing: 
         status: active
-        max_cores: 20    # max cores since of memory limitations to 2
+        max_cores: 3    # max cores since of memory limitations to 2
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
         base: "data" # only foldername - change path in ".env" file "LOADER_DATA_PATH"
         opendata: "{loader/path/base}/opendata/"
         processed: "{loader/path/base}/{loader/name}"
     logging:
-        path: "{loader/path/base}/loader.log"
+        path: "{loader/path/base}/infdb-loader.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         citydb:
@@ -169,7 +169,7 @@ loader:
             url: "https://www.zensus2022.de/DE/Ergebnisse-des-Zensus/_inhalt.html"
             schema: opendata
             prefix: zensus
-            save_local: active
+            save_local: not-active
             datasets:
                 - name: Bevoelkerungszahl
                   status: active
@@ -274,7 +274,7 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Durchschnittliche_Haushaltsgroesse_in_Gitterzellen.zip
 
                 - name: Haushaltsgroesse
-                  status: active
+                  status: not-active
                   table_name: haushaltsgroesse
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Groesse_des_privaten_Haushalts_in_Gitterzellen.zip
@@ -292,13 +292,13 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Groesse_der_Kernfamilie.zip
 
                 - name: Privathaushalt Lebensform
-                  status: active
+                  status: not-active
                   table_name: privathaushalt_lebensform
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Typ_des_privaren_Haushalts_Lebensform.zip
 
                 - name: Privathaushalt Familie
-                  status: active
+                  status: not-active
                   table_name: privathaushalt_familien
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Typ_des_privaten_Haushalts_Familien.zip
@@ -346,13 +346,13 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Durchschnittliche_Wohnflaeche_je_Bewohner_in_Gitterzellen.zip
 
                 - name: Flaeche je Wohnung
-                  status: active
+                  status: not-active
                   table_name: wohnflaeche_wohnung
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Durchschnittliche_Flaeche_je_Wohnung_in_Gitterzellen.zip
 
                 - name: Flaeche Wohnung 10m2 Intervalle
-                  status: active
+                  status: not-active
                   table_name: wohnflaeche_wohnung_intervalle
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Flaeche_der_Wohnung_10m2_Intervalle.zip
@@ -364,13 +364,13 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Wohnungen_nach_Gebaeudetyp_Groesse.zip
 
                 - name: Wohnungen nach Raeumen
-                  status: active
+                  status: not-active
                   table_name: wohnungen_raeume
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Wohnungen_nach_Zahl_der_Raeume.zip
 
                 - name: Gebaeude nach Baujahr (Jahrzehnte)
-                  status: active
+                  status: not-active
                   table_name: gebaeude_baujahr_jahrzehnte
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_nach_Baujahr_Jahrzehnte.zip
@@ -382,7 +382,7 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_nach_Baujahr_in_Mikrozensus_Klassen.zip
 
                 - name: Gebaeude nach Anzahl Wohnungen
-                  status: active
+                  status: not-active
                   table_name: gebaeude_anzahl_wohnungen
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_nach_Anzahl_der_Wohnungen_im_Gebaeude.zip
@@ -394,13 +394,13 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_Gebaeudetyp_Groesse.zip
 
                 - name: Heizungsart
-                  status: active
+                  status: not-active
                   table_name: heizungsart
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Heizungsart.zip
 
                 - name: Heizungsart (ueberwiegend)
-                  status: active
+                  status: not-active
                   table_name: heizungsart_ueberwiegend
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_ueberwiegender_Heizungsart.zip
@@ -412,7 +412,7 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Energietraeger.zip
 
                 - name: Energietraeger der Heizung
-                  status: active
+                  status: not-active
                   table_name: energietraeger_heizung
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_Energietraeger_der_Heizung.zip
@@ -424,7 +424,7 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Auslaenderanteil_EU_nichtEU_Gitterzellen.zip
 
                 - name: Gebaeude nach Baujahresklassen
-                  status: active
+                  status: not-active
                   table_name: gebaeude_baujahresklassen
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_nach_Baujahresklassen_in_Gitterzellen.zip
