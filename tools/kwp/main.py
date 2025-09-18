@@ -26,6 +26,10 @@ def main():
 }
 
     try:
+        infdblog.info(f"Input schema basedata: {format_params['input_schema_basedata']}")
+        infdblog.info(f"Input schema ro-heat: {format_params['input_schema_ro-heat']}")
+        infdblog.info(f"Output schema: {format_params['output_schema']}")
+
         sql = f"DROP SCHEMA IF EXISTS {format_params['output_schema']} CASCADE;"
         infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {format_params['output_schema']};"

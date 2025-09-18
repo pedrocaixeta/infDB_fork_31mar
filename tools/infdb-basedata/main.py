@@ -30,6 +30,8 @@ def main():
         'input_schema': input_schema,
         'output_schema': output_schema
     }
+    infdblog.info(f"Input schema: {input_schema}")
+    infdblog.info(f"Output schema: {output_schema}")
     # Drop output schema if exists for development purposes
     infdbclient_citydb.execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
 
