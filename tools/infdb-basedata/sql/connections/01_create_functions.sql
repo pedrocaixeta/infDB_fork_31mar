@@ -4,6 +4,7 @@
  * This function anmblyzes buildings with electrical load requirements and identifies
  * the optimal connection points to the existing ways network using infdb data.
  * It creates a temporary table containing precomputed connection candidates that can be used
+      AND nmb.dist <= 500;
  * for infrastructure planning and ways network extension.
  *
  * The function performs spatial anmblysis with address-aware matching:
@@ -36,7 +37,8 @@ BEGIN
         WITH building_addresses_to_ways AS (
             SELECT DISTINCT ON (b.id)
             b.id as building_id,
-            w.way_id as way_way_id
+            w.way_id as way_way_id,
+            b.centroid <-> w.geom AS dist
             FROM {output_schema}.buildings_pylovo b
             LEFT JOIN {output_schema}.ways AS w
             ON b.street = w.name OR b.street = w.name_kurz 
@@ -47,26 +49,33 @@ BEGIN
         
     -- 2) Find buildings without assigned way from address matching and assign nearest way
     WITH not_matched_buildings AS (
-            SELECT  buildings.id AS building_id,
-                    streets.way_id as way_way_id
-            FROM {output_schema}.buildings_pylovo buildings
+            SELECT  b.id AS building_id,
+                    streets.way_id as way_way_id,
+                    streets.dist as dist
+            FROM {output_schema}.buildings_pylovo b
             CROSS JOIN LATERAL (
-                SELECT streets.way_id, streets.geom <-> ST_Centroid(buildings.geom) AS dist
+                SELECT streets.way_id, streets.geom <-> b.centroid AS dist
                 FROM {output_schema}.ways AS streets
-                WHERE streets.geom <-> ST_Centroid(buildings.geom) > 0.1 AND streets.geom <-> ST_Centroid(buildings.geom) < 1000
+                WHERE streets.geom <-> b.centroid > 0.1 AND streets.geom <-> b.centroid < 300
                 ORDER BY dist
                 LIMIT 1
             ) streets
-            WHERE buildings.id IN (
+            WHERE b.id IN (
                 SELECT building_id
                 FROM {output_schema}.connections_buildings_to_ways
                 WHERE way_way_id IS NULL
             )
     )
     UPDATE {output_schema}.connections_buildings_to_ways AS batw
-    SET way_way_id = nmb.way_way_id
+    SET way_way_id = nmb.way_way_id,
+        dist = nmb.dist
     FROM not_matched_buildings nmb
     WHERE batw.building_id = nmb.building_id;
+
+    -- Remove connections that are too far away (e.g., > 500 units)
+    UPDATE {output_schema}.connections_buildings_to_ways as batw
+    SET way_way_id = NULL
+    WHERE batw.dist IS NOT NULL AND batw.dist > 500;
 
     -- 3) Add connection geometry and distance information
     ALTER TABLE {output_schema}.connections_buildings_to_ways
@@ -78,11 +87,12 @@ BEGIN
     UPDATE {output_schema}.connections_buildings_to_ways AS batw
     SET connection_geom = ST_ShortestLine(b.centroid, w.geom),
         startpoint_geom = ST_StartPoint(ST_ShortestLine(b.centroid, w.geom)),
-        endpoint_geom = ST_EndPoint(ST_ShortestLine(b.centroid, w.geom)),
-        dist = ST_Distance(b.centroid, w.geom)
+        endpoint_geom = ST_EndPoint(ST_ShortestLine(b.centroid, w.geom))
+        -- dist = ST_Distance(b.centroid, w.geom)
     FROM {output_schema}.ways w, {output_schema}.buildings_pylovo b
     WHERE batw.way_way_id = w.way_id
-      AND batw.building_id = b.id;
+      AND batw.building_id = b.id
+      AND batw.dist < 500;
 
     -- 4) Add precise connection point on the way geometry
     CREATE INDEX connections_buildings_to_ways_building_id_idx ON {output_schema}.connections_buildings_to_ways (building_id);
