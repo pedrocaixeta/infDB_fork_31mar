@@ -110,7 +110,7 @@ def process_dataset(dataset):
                 sep=";",
                 decimal=",",
                 # na_values="–",
-                low_memory=False,
+                low_memory=True,
                 encoding=detected_encoding,
             )  # , encoding="latin_1"   # GeoDataFrame laden (Beispiel) nrows=10,
 
