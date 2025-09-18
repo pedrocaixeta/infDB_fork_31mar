@@ -243,10 +243,10 @@ Once you adjusted the configuration files with the command above, you need to fi
 # on windows
 ```
 
-### Run infDB-preprocessor
+### Run infdb-basedata
 ```bash
 # on linux and macos
-  docker compose -f tools/infdb-preprocessor/compose.yml up
+  docker compose -f tools/infdb-basedata/compose.yml up
 
 # on windows
 ```

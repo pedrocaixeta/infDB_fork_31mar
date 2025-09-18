@@ -1,5 +1,5 @@
 services:
-    infdb-preprocessor:
+    infdb-basedata:
         build:
             context: .
             dockerfile: Dockerfile
