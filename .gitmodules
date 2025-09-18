@@ -1,0 +1,3 @@
+[submodule "tools/ro-heat/infdb-package"]
+	path = tools/ro-heat/infdb-package
+	url = git@gitlab.lrz.de:tum-ens/need/infdb-package.git

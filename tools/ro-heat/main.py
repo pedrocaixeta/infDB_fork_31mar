@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 import pandas as pd
+from infdb import InfDB
 from entise.core.generator import TimeSeriesGenerator
 
 from src import basic_refurbishment
@@ -14,33 +15,40 @@ rng = np.random.default_rng(seed=42)
 end_of_simulation_year = 2025
 construction_year_col = "construction_year"
 schema = "ro_heat"
-input_schema = config.get_value(["ro-heat", "data", "input_schema"])
-output_schema = config.get_value(["ro-heat", "data", "output_schema"])
 
 
 def main():
-    try:
-        # Initialize logging
-        logger.setup_main_logger(None)
-        log = logging.getLogger(__name__)
 
-        # Database configuration
-        parameters = config.get_db_parameters("citydb")
-        # Initialize database executor
-        db_executor = PostgreSQLExecutor(
-            host=parameters["host"],
-            port=parameters["exposed_port"],
-            database=parameters["db"],
-            username=parameters["user"],
-            password=parameters["password"],
-        )
+    # Load InfDB handler
+    infdbhandler = InfDB(tool_name="ro-heat")
+
+    # Database connection
+    infdbclient_citydb = infdbhandler.connect(db_name="citydb")
+
+    # Logger setup
+    infdblog = infdbhandler.get_log()
+
+    # Start message
+    infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
+
+    # Setup database engine
+    engine = infdbclient_citydb.get_db_engine()
+
+    # Get configuration values
+    input_schema = infdbhandler.get_config_value(["ro-heat", "data", "input_schema"])
+    output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output_schema"])
+
+    try:
+
+        sql = f"DROP SCHEMA IF EXISTS ro_heat CASCADE;"
+        infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
-        db_executor.execute_sql_query(sql)
+        infdbclient_citydb.execute_query(sql)
 
         SQL_QUERY = f"""
-                    DROP TABLE IF EXISTS {input_schema}.temp_rc_calculation CASCADE;
+                    DROP TABLE IF EXISTS {output_schema}.temp_rc_calculation CASCADE;
 
-                    CREATE TABLE {input_schema}.temp_rc_calculation AS
+                    CREATE TABLE {output_schema}.temp_rc_calculation AS
                     WITH wall_data AS (SELECT building_objectid,
                                               SUM(area) AS wall_surface_area
                                        FROM (SELECT regexp_replace(f.objectid, '_[^_]*-.*$', '') AS building_objectid,
@@ -78,16 +86,14 @@ def main():
                              LEFT JOIN roof_data rd ON b.objectid = rd.building_objectid;
 
                     SELECT *
-                    from {input_schema}.temp_rc_calculation
+                    from {output_schema}.temp_rc_calculation
                     WHERE building_type IS NOT NULL \
                     """
 
-        engine = config.get_db_engine("citydb")
-        with engine.connect() as connection:
-            buildings = pd.read_sql(SQL_QUERY, connection)
+        buildings = pd.read_sql(SQL_QUERY, engine)
 
-        log.debug(f"Loaded {len(buildings)} buildings from the database.")
-        log.debug(buildings.head())
+        infdblog.debug(f"Loaded {len(buildings)} buildings from the database.")
+        infdblog.debug(buildings.head())
 
         random_years = np.full(len(buildings), np.nan)
 
@@ -126,6 +132,7 @@ def main():
             },
         }
 
+        infdblog.debug("Starting refurbishment simulation")
         refurbed_df = basic_refurbishment.simulate_refurbishment(
             buildings,
             end_of_simulation_year,
@@ -134,21 +141,25 @@ def main():
             age_column=construction_year_col,
             provide_last_refurb_only=True,
         )
-        db_executor.execute_sql_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
-        with engine.connect() as connection:
-            refurbed_df.to_sql(
-                "buildings_rc", connection, if_exists="replace", schema=schema, index=False
+        infdblog.debug("Refurbishment simulation completed")
+        infdblog.debug(refurbed_df.info())
+        infdblog.debug(refurbed_df.head())
+
+        infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
+        refurbed_df.to_sql(
+                "buildings_rc", engine, if_exists="replace", schema=schema, index=False
             )
+        infdblog.debug("Refurbished data writing to database")
 
+        infdblog.debug("Starting construction of building elements")
         # Run SQL: 02_create_layer_view
-        db_executor.execute_sql_scripts("sql", "02_create_layer_view.sql")
+        infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
 
-        with engine.connect() as connection:
-            elements = pd.read_sql("""SELECT *
-                                      FROM v_element_layer_data""", connection)
+        elements = pd.read_sql("""SELECT * FROM v_element_layer_data""", engine)
 
         # TODO: sort by layer_index according to EUReCA specification
         # TODO: Handling of windows
+        infdblog.debug("Starting construction of building elements")
         elements = elements[elements["element_name"] != "Window"]
 
         elements["materials"] = elements.apply(
@@ -218,23 +229,24 @@ def main():
         summary, df = gen.generate(data)
 
         summary.index.name = "building_objectid"
+        
         summary.to_sql(
             "entise_output",
             con=engine,
             if_exists="replace",
             schema=output_schema,
-            index=True,
-            method="multi",
-            # chunksize=1000,
-        )
+        index=True,
+        method="multi",
+        # chunksize=1000,
+    )
         
 
-        log.info(summary.head())
+        infdblog.info(summary.head())
 
-        log.info("Ro-heat sucessfully completed")
+        infdblog.info("Ro-heat sucessfully completed")
 
     except Exception as e:
-        log.error(f"Something went wrong: {str(e)}")
+        infdblog.error(f"Something went wrong: {str(e)}")
         raise e
 
 
