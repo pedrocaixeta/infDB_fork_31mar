@@ -5,3 +5,6 @@
 [submodule "tools/kwp/infdb-package"]
 	path = tools/kwp/infdb-package
 	url = git@gitlab.lrz.de:tum-ens/need/infdb-package.git
+[submodule "tools/infdb-basedata/infdb-package"]
+	path = tools/infdb-basedata/infdb-package
+	url = git@gitlab.lrz.de:tum-ens/need/infdb-package.git
