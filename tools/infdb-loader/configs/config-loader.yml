@@ -1,5 +1,5 @@
 loader:
-    name: neuburg
+    name: neuburg-demo
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - 09162000  # Munich
         # - "09780139"  # Sonthofen
@@ -357,8 +357,8 @@ loader:
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Flaeche_der_Wohnung_10m2_Intervalle.zip
 
-                - name: Wohnungen nach Gebaeudetyp
-                  status: active
+                - name: Wohnungen nach Gebaeudetyp und Groesse
+                  status: not-active
                   table_name: wohnungen_gebaeudetyp
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Wohnungen_nach_Gebaeudetyp_Groesse.zip
@@ -406,7 +406,7 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_ueberwiegender_Heizungsart.zip
 
                 - name: Energietraeger
-                  status: active
+                  status: not-active
                   table_name: energietraeger
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Energietraeger.zip

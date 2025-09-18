@@ -251,6 +251,22 @@ Once you adjusted the configuration files with the command above, you need to fi
 # on windows
 ```
 
+### Run ro-heat
+```bash
+# on linux and macos
+  docker compose -f tools/ro-heat/compose.yml up
+
+# on windows
+```
+
+### Run kwp
+```bash
+# on linux and macos
+  docker compose -f tools/kwp/compose.yml up
+
+# on windows
+```
+
 ### Remove LOD2 data
 ```bash
 # on linux and macos
