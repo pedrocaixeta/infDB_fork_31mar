@@ -57,7 +57,7 @@ services:
             compose_file: "services/api/postgrest.yml"
 
     jupyter:
-        exposed_port: 88889
+        exposed_port: 8889
         enable_lab: yes
         status: active
         path:

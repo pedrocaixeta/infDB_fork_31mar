@@ -109,7 +109,7 @@ git clone git@gitlab.lrz.de:tum-ens/need/infdb.git demo
 
 # https
 # Replace "demo" by name of instance 
-git clone https://gitlab.lrz.de/tum-ens/need/infdb.git demo
+git clone --recurse-submodules https://gitlab.lrz.de/tum-ens/need/infdb.git demo
 
 # Change directory into repo
 cd demo
@@ -239,48 +239,36 @@ Once you adjusted the configuration files with the command above, you need to fi
 ```bash
 # on linux and macos
   docker compose -f tools/infdb-loader/compose.yml up
-
-# on windows
 ```
 
 ### Run infdb-basedata
 ```bash
 # on linux and macos
   docker compose -f tools/infdb-basedata/compose.yml up
-
-# on windows
 ```
 
 ### Run ro-heat
 ```bash
 # on linux and macos
   docker compose -f tools/ro-heat/compose.yml up
-
-# on windows
 ```
 
 ### Run kwp
 ```bash
 # on linux and macos
   docker compose -f tools/kwp/compose.yml up
-
-# on windows
 ```
 
 ### Remove LOD2 data
 ```bash
 # on linux and macos
 docker run --rm --add-host=host.docker.internal:host-gateway 3dcitydb/citydb-tool delete --delete-mode=delete -H host.docker.internal -d citydb -u citydb_user -p citydb_password -P 5432
-
-# on windows
 ```
 
 ### PSQL Connection to infDB
 ```bash
 # on linux and macos
 PGPASSWORD='citydb_password' psql -h localhost -p 5432 -U citydb_user -d citydb
-
-# on windows
 ```
 
 ### Configurations (only in addition for QGIS Desktop)
@@ -326,7 +314,6 @@ venv\Scripts\activate
 git fetch origin
 git reset --hard origin/develop
 git clean -fdx
-# windows
 ```
 
 ## Repository Structure
