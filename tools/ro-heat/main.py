@@ -1,14 +1,10 @@
-import logging
-
 import numpy as np
 import pandas as pd
 from infdb import InfDB
 from entise.core.generator import TimeSeriesGenerator
 
 from src import basic_refurbishment
-from src import config, logger
 from src import eureca_code
-from src.sql import PostgreSQLExecutor
 
 # Parameters
 rng = np.random.default_rng(seed=42)
