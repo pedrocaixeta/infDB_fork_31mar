@@ -105,14 +105,19 @@ cd infdb
 ```bash
 # ssh
 # Replace "demo" by name of instance 
-git clone git@gitlab.lrz.de:tum-ens/need/infdb.git demo 
+git clone --recurse-submodules git@gitlab.lrz.de:tum-ens/need/infdb.git neuburg-demo 
 
 # https
 # Replace "demo" by name of instance 
-git clone --recurse-submodules https://gitlab.lrz.de/tum-ens/need/infdb.git demo
+git clone --recurse-submodules https://gitlab.lrz.de/tum-ens/need/infdb.git neuburg-demo
 
 # Change directory into repo
-cd demo
+cd neuburg-demo
+```
+
+### Clone infDB
+```bash
+git checkout 89-need-showcase-neuburg
 ```
 
 ### Setup infDB

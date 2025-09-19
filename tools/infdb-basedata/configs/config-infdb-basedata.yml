@@ -18,5 +18,5 @@ infdb-basedata:
             host: None
             exposed_port: None
     data:
-        input_schema: need
+        input_schema: opendata
         output_schema: basedata

@@ -36,10 +36,11 @@ def main():
 
     try:
 
-        sql = f"DROP SCHEMA IF EXISTS ro_heat CASCADE;"
+        sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
         infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         infdbclient_citydb.execute_query(sql)
+        infdblog.info(f"output schema: {output_schema} created successfully")
 
         SQL_QUERY = f"""
                     DROP TABLE IF EXISTS {output_schema}.temp_rc_calculation CASCADE;
