@@ -62,7 +62,7 @@ def setup_pgadmin_servers(output_path):
     for server_id, service in enumerate(["citydb", "timescaledb"], 1):
         servers_json["Servers"][server_id] = {
             "Name": service,
-            "Group": "Servers",
+            "Group": "infDB",
             "Host": config.get_value(["services", service, "host"]),
             "Port": PORT,
             "MaintenanceDB": config.get_value(["services", service, "db"]),
