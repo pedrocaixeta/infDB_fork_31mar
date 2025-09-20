@@ -66,7 +66,7 @@ services:
             compose_file: "services/jupyter/compose.yml"
 
     qwc:
-        status: not-active
+        status: active
         exposed_port_gui: 809
         exposed_port_db: 54349
         postgres_password: infdb
