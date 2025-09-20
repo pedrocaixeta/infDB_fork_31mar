@@ -8,6 +8,7 @@ base:
     network_name: "infdb-{base/name}_network"
 services:
     citydb:
+        status: active
         user: citydb_user
         password: infdb
         db: citydb
@@ -17,15 +18,14 @@ services:
         path: 
             base: "{base/path/base}/citydb/"
             compose_file: "services/3dcitydb/compose.yml"
-        status: active
 
     timescaledb:
+        status: not-active
         user: timescaledb_user
         password: infdb
         db: timescaledb
         host: timescaledb
         exposed_port: 54339
-        status: not-active
         path: 
             base: "{base/path/base}/timescaledb/"
             compose_file: "services/timescaledb/compose.yml"
@@ -39,33 +39,34 @@ services:
             compose_file: "services/pgadmin/compose.yml"
 
     api:
-        port: 8000
         status: not-active
+        port: 8000
         path:
             compose_file: "services/api/api.yml"
 
     pygeoapi:
-        port: 5000
         status: not-active
+        port: 5000
         path:
             compose_file: "services/api/pygeoapi.yml"
 
     postgrest:
-        port: 3000
         status: not-active
+        port: 3000
         path:
             compose_file: "services/api/postgrest.yml"
 
     jupyter:
+        status: active
         exposed_port: 8889
         enable_lab: yes
-        status: active
+        token: infdb
         path:
-            base: "{base/path/base}/notebooks/"
+            base: "src/notebooks/"
             compose_file: "services/jupyter/compose.yml"
 
     qwc:
-        status: active
+        status: not-active
         exposed_port_gui: 809
         exposed_port_db: 54349
         postgres_password: infdb

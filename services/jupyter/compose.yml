@@ -1,13 +1,17 @@
 services:
     jupyter:
-        image: jupyter/scipy-notebook:latest
+        image: jupyter/base-notebook:latest
         # container_name: jupyter
         restart: unless-stopped
         ports:
             - ${SERVICES_JUPYTER_EXPOSED_PORT}:8888
         volumes:
-            - ${SERVICES_JUPYTER_PATH_BASE}:/home/jovyan/work
+            - ../../configs:/home/jovyan/mnt/configs-infdb #:ro # for *.yml configs and generated files
+            - ${SERVICES_JUPYTER_PATH_BASE}:/home/jovyan
         environment:
-            - ../${SERVICES_JUPYTER_ENABLE_LAB}
+            JUPYTER_TOKEN: ${SERVICES_JUPYTER_TOKEN}
+            JUPYTER_SERVER_ROOT: "/home/jovyan/"
         networks:
             - ${BASE_NETWORK_NAME}
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
