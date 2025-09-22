@@ -115,6 +115,13 @@ git clone --recurse-submodules https://gitlab.lrz.de/tum-ens/need/infdb.git neub
 cd neuburg-demo
 ```
 
+### Startup script
+The follwing commands for the Neuburg demo are collected in this bash script if you dont want to execute each single step separately:
+```bash
+bash startup.sh
+```
+
+
 ### Clone infDB
 ```bash
 git checkout 89-need-showcase-neuburg
