@@ -36,7 +36,8 @@ def load_envelop():
     # Download envelope
     log.info("Downloading and unzipping envelope...")
     url = config.get_value(["loader", "sources", "bkg", "vg5000", "url"])
-    files = utils.download_files(url, zip_path)
+    utils.download_files(url, zip_path)
+    files = utils.get_file(zip_path, filename="vg5000", ending=".zip")
     utils.unzip(files, unzip_path)
 
 
@@ -114,8 +115,10 @@ def load(log_queue):
     # NUTS-Gebiete
     log.info("Downloading and unzipping NUTS")
     url = config.get_value(["loader", "sources", "bkg", "nuts", "url"])
-    files = utils.download_files(url, zip_path)
+    utils.download_files(url, zip_path)
+    files = utils.get_file(zip_path, filename="nuts250", ending=".zip")
     utils.unzip(files, unzip_path)
+    
     nuts_layers = config.get_value(["loader", "sources", "bkg", "nuts", "layer"])
     file = utils.get_file(unzip_path, filename="nuts250", ending=".gpkg")
     utils.import_layers(file, nuts_layers, schema, prefix)

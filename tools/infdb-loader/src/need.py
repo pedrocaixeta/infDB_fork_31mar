@@ -26,10 +26,15 @@ def load(log_queue):
         os.makedirs(os.path.dirname(file_dump), exist_ok=True)
 
         # Dump schema from source database
-        command = f"PGPASSWORD={source_password} pg_dump -h {source_host} -p {source_port} -U {source_user} -d {source_db} -n {schema_input} -F c -f {file_dump}"
-        utils.do_cmd(command)
+        if os.path.exists(file_dump):
+            log.info(f"Dump file {file_dump} already exists and will be skipped")
+        else:
+            log.info(f"Dumping need data from source database {source_db} schema {schema_input} to {file_dump}...")
+            command = f"PGPASSWORD={source_password} pg_dump -h {source_host} -p {source_port} -U {source_user} -d {source_db} -n {schema_input} -F c -f {file_dump}"
+            utils.do_cmd(command)
 
         # Restore dump into target database
+        log.info(f"Restoring need data from dump file {file_dump} into target database...")
         params = utils.get_db_parameters("citydb")
         command = f"PGPASSWORD={params['password']} pg_restore -h {params['host']} -p {params['exposed_port']} -U {params['user']} -d {params['db']} -j 4 --clean --if-exists --no-owner --role={params['user']} {file_dump}"
         utils.do_cmd(command)
