@@ -120,6 +120,11 @@ cd neuburg-demo
 git checkout 89-need-showcase-neuburg
 ```
 
+If submodules are not initialized after cloning, run:
+```bash
+git submodule update --init --recursive
+```
+
 ### Setup infDB
 The configuration can be done via [configs/config-infdb.yml](configs/config-infdb.yml)
 ```yaml
@@ -147,8 +152,6 @@ After doing the configuration you need to generate the configurations files with
 ```bash
 # on linux and macos
 docker compose -f services/setup/compose.yml up
-
-# on windows
 ```
 
 Once you generated the configuration files with the command above, you need to finally start the infDB:
@@ -156,9 +159,7 @@ Once you generated the configuration files with the command above, you need to f
 ### Run infDB
 ```bash
 # on linux and macos
-  docker compose -f compose.yml up -d
-
-# on windows
+docker compose -f compose.yml up -d
 ```
 The infDB will be run as long as you stop it manually as described below even when the machine is restarted.
 
@@ -171,8 +172,6 @@ Please check the logs of the setup service.
 ```bash
 # on linux and macos
 docker compose -f compose.yml down -v
-
-# on windows
 ```
 
 ### Setup infDB-loader
