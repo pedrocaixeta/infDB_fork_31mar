@@ -14,4 +14,4 @@ WORKDIR /app
 # EXPOSE 8888
 
 # Start JupyterLab
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token='infdb'", "--NotebookApp.notebook_dir='/app/'"]
+CMD jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token="${SERVICES_JUPYTER_TOKEN}" --NotebookApp.notebook_dir='/app/'

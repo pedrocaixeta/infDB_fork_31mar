@@ -6,7 +6,9 @@ services:
         working_dir: /app
         restart: unless-stopped
         ports:
-            - "8888:8888"
+            - "${SERVICES_JUPYTER_EXPOSED_PORT}:8888"
+        environment:
+            SERVICES_JUPYTER_TOKEN: ${SERVICES_JUPYTER_TOKEN}
         volumes:
             - ../../configs:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
             - ${SERVICES_JUPYTER_PATH_BASE}:/app
