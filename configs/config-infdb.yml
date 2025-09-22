@@ -39,19 +39,19 @@ services:
             compose_file: "services/pgadmin/compose.yml"
 
     api:
-        status: not-active
+        status: active
         port: 8000
         path:
             compose_file: "services/api/fastapi/api.yml"
 
     pygeoapi:
-        status: not-active
+        status: active
         port: 5000
         path:
             compose_file: "services/api/pygeoapi/pygeoapi.yml"
 
     postgrest:
-        status: not-active
+        status: active
         port: 3000
         path:
             compose_file: "services/api/postgrest/postgrest.yml"
@@ -66,7 +66,7 @@ services:
             compose_file: "services/jupyter/compose.yml"
 
     qwc:
-        status: not-active
+        status: active
         exposed_port_gui: 809
         exposed_port_db: 54349
         postgres_password: infdb
