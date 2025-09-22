@@ -42,19 +42,19 @@ services:
         status: not-active
         port: 8000
         path:
-            compose_file: "services/api/api.yml"
+            compose_file: "services/api/fastapi/api.yml"
 
     pygeoapi:
         status: not-active
         port: 5000
         path:
-            compose_file: "services/api/pygeoapi.yml"
+            compose_file: "services/api/pygeoapi/pygeoapi.yml"
 
     postgrest:
         status: not-active
         port: 3000
         path:
-            compose_file: "services/api/postgrest.yml"
+            compose_file: "services/api/postgrest/postgrest.yml"
 
     jupyter:
         status: active

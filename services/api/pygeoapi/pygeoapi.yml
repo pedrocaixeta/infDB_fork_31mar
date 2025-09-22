@@ -1,0 +1,49 @@
+services:
+  configwatch:
+    container_name: citydb-pygeoapi-configwatch
+    image: python:3.12-slim
+    working_dir: /work
+    volumes:
+      - ./:/work
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVICES_CITYDB_USER: ${SERVICES_CITYDB_USER}
+      SERVICES_CITYDB_PASSWORD: ${SERVICES_CITYDB_PASSWORD}
+      SERVICES_CITYDB_DB: ${SERVICES_CITYDB_DB}
+      SERVICES_CITYDB_HOST: ${SERVICES_CITYDB_HOST}
+      SERVICES_CITYDB_EXPOSED_PORT: 5432
+      SERVICES_CITYDB_EPSG: ${SERVICES_CITYDB_EPSG}
+      SERVICES_PYGEOAPI_PORT: ${SERVICES_PYGEOAPI_PORT}
+    command:
+      - /bin/sh
+      - -lc
+      - >
+        python -m pip install --no-cache-dir pyyaml psycopg[binary]
+        && echo "[entrypoint] starting watcher"
+        && exec python -u /work/watch_and_generate_pygeoapi_config.py
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /work/pygeoapi-config.yml"]
+      interval: 2s
+      timeout: 2s
+      retries: 120
+      start_period: 2s
+    restart: unless-stopped
+    networks:
+        - ${BASE_NETWORK_NAME}
+
+  pygeoapi:
+    image: geopython/pygeoapi:latest
+    container_name: citydb-api-pygeoapi
+    environment:
+      PYGEOAPI_CONFIG: /app-config/pygeoapi-config.yml
+      CONTAINER_PORT: ${SERVICES_PYGEOAPI_PORT}
+    volumes:
+      - ./:/app-config:ro
+    ports:
+      - "${SERVICES_PYGEOAPI_PORT}:${SERVICES_PYGEOAPI_PORT}"                   
+    command: run-with-hot-reload
+    depends_on:
+      configwatch:
+        condition: service_healthy
+    networks:
+        - ${BASE_NETWORK_NAME}
