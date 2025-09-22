@@ -35,8 +35,8 @@ loader:
             exposed_port: None
     sources:
         package:
-            status: not-active
-            url: http://ds1.need.energy:8123/opendata-neuburg.zip
+            status: active
+            url: http://ds1.need.energy:8123/opendata-neuburg-demo.zip
             path: 
                 base: "{loader/path/base}"
                 processed: "{loader/path/opendata}"
