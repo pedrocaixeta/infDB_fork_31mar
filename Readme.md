@@ -83,12 +83,11 @@ To get started, follow these steps below. For more information in detail read th
 
 If you are happy with the preconfiguration and default passwords, then just follow these four steps (see detailed instructions in the corresponding sections below):
 
-1. [Clone infDB](#clone-infdb)
-2. [Setup infDB](#setup-infdb)
-3. [Run infDB](#run-infdb)
-4. Optional: [Run infDB-loader](#run-infdb-loader)
+1. [Prepare folder structure](#Suggested-folder-structure-for-infDB)   
+2. [Clone infDB](#clone-infdb)
+3. [Startup infDB](#startup-script)
 
-### Suggested folder structure of infDB
+### Suggested folder structure for infDB
 The folder structure of the infdb as shown is recommend since all of the data of all instances are stored in 'data' automatically by default:
 - infdb
   - data
@@ -103,33 +102,26 @@ cd infdb
 ```
 ### Clone infDB
 ```bash
-# ssh
-# Replace "demo" by name of instance 
+# either ssh
+# Replace "neuburg-demo" by name of instance 
 git clone --recurse-submodules git@gitlab.lrz.de:tum-ens/need/infdb.git neuburg-demo 
 
-# https
-# Replace "demo" by name of instance 
+# or https
+# Replace "neuburg-demo" by name of instance 
 git clone --recurse-submodules https://gitlab.lrz.de/tum-ens/need/infdb.git neuburg-demo
 
-# Change directory into repo
+# Change location into repo
 cd neuburg-demo
+
+# Switch to perpared branch for Neuburg Demo
+git checkout 89-need-showcase-neuburg
+git submodule update --init --recursive
 ```
 
 ### Startup script
-The follwing commands for the Neuburg demo are collected in this bash script if you dont want to execute each single step separately:
+The follwing commands below for Neuburg demo are all collected in this runnable bash script if you dont want to execute each single step separately:
 ```bash
 bash startup.sh
-```
-
-
-### Clone infDB
-```bash
-git checkout 89-need-showcase-neuburg
-```
-
-If submodules are not initialized after cloning, run:
-```bash
-git submodule update --init --recursive
 ```
 
 ### Setup infDB
