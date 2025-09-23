@@ -107,53 +107,6 @@ async def get_pygeoapi(
         raise HTTPException(status_code=resp.status_code, detail=f"pygeoapi error: {resp.text}")
     return resp.json()
 
-@app.post("/pygeoapi/{table}")
-async def post_pygeoapi(
-    request: Request,
-    table: str,
-    feature: dict
-):
-    py_path = f"collections/{table}/items"
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                urljoin(PYGEOAPI_URL, py_path),
-                json=feature,
-                headers={"Content-Type": "application/geo+json"}
-            )
-    except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Cannot reach pygeoapi at {PYGEOAPI_URL}: {e.__class__.__name__}: {e}"
-        )
-    if resp.status_code != 201:
-        raise HTTPException(status_code=resp.status_code, detail=f"pygeoapi error: {resp.text}")
-    return resp.json()
-
-@app.put("/pygeoapi/{table}/{item_id}")
-async def put_pygeoapi(
-    request: Request,
-    table: str,
-    item_id: str,
-    feature: dict
-):
-    py_path = f"collections/{table}/items/{item_id}"
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.put(
-                urljoin(PYGEOAPI_URL, py_path),
-                json=feature,
-                headers={"Content-Type": "application/geo+json"}
-            )
-    except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Cannot reach pygeoapi at {PYGEOAPI_URL}: {e.__class__.__name__}: {e}"
-        )
-    if resp.status_code not in (200, 204):
-        raise HTTPException(status_code=resp.status_code, detail=f"pygeoapi error: {resp.text}")
-    return resp.json() if resp.content else {"status": "updated"}
-
 @app.delete("/pygeoapi/{table}/{item_id}")
 async def delete_pygeoapi(
     request: Request,
@@ -208,3 +161,63 @@ async def get_postgrest(
         raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
     return _proxy_response(resp)
+
+@app.post("/postgrest/{table}")
+async def post_postgrest(
+    table: str,
+    row: dict
+):
+    """
+    Insert a new row into the specified table using PostgREST.
+    For geometry columns, send EWKT (e.g. 'SRID=25832;LINESTRING(...)') as a string.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                urljoin(POSTGREST_URL, table),
+                json=row,
+                headers={"Content-Type": "application/json"}
+            )
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
+        )
+    if resp.status_code not in (200, 201):
+        raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
+    # Only try to parse JSON if there is content
+    if resp.content:
+        return resp.json()
+    else:
+        return {"status": "success"}
+
+@app.put("/postgrest/{table}/{item_id}")
+async def put_postgrest(
+    table: str,
+    item_id: str,
+    row: dict
+):
+    """
+    Update a row in the specified table using PostgREST.
+    For geometry columns, send EWKT (e.g. 'SRID=25832;LINESTRING(...)') as a string.
+    """
+    params = {"id": f"eq.{item_id}"}
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.patch(
+                urljoin(POSTGREST_URL, table),
+                params=params,
+                json=row,
+                headers={"Content-Type": "application/json"}
+            )
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
+        )
+    if resp.status_code not in (200, 204):
+        raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
+    if resp.content:
+        return resp.json()
+    else:
+        return {"status": "updated"}
