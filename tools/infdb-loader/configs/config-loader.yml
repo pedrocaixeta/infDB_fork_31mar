@@ -9,7 +9,7 @@ loader:
         # - "09474126" # FO
         # - "09261000" # LA
     multiproccesing: 
-        status: active
+        status: not-active
         max_cores: 2    # max cores since of memory limitations to 2
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
