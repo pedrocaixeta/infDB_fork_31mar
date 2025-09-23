@@ -46,13 +46,13 @@ services:
 
     pygeoapi:
         status: active
-        port: 5000
+        port: 8001
         path:
             compose_file: "services/api/pygeoapi/pygeoapi.yml"
 
     postgrest:
         status: active
-        port: 3000
+        port: 8002
         path:
             compose_file: "services/api/postgrest/postgrest.yml"
 
