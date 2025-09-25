@@ -184,8 +184,8 @@ async def post_postgrest(
             detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
         )
     if resp.status_code not in (200, 201):
+        print("PostgREST error:", resp.text)
         raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
-    # Only try to parse JSON if there is content
     if resp.content:
         return resp.json()
     else:
