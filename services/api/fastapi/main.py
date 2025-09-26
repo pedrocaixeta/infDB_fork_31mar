@@ -126,31 +126,34 @@ async def delete_pygeoapi(
     return {"status": "deleted"}
 
 # ---- PostgREST ----
-@app.get("/get-postgrest")
+@app.get("/get-postgrest/{schema}/{table}")
 async def get_postgrest(
     request: Request,
+    schema: str,
     table: str,
     limit: int = 100,
 ):
-    table = (table or "").strip()
-    if not table or "/" in table:
-        raise HTTPException(status_code=400, detail="Invalid table name.")
-
-    if limit < 1:
-        limit = 1
-    offset = 0
-    if offset < 0:
-        offset = 0
+    # Validate schema and table
+    if not schema or not table or "/" in schema or "/" in table:
+        raise HTTPException(status_code=400, detail="Invalid schema or table name.")
 
     passthrough = [
         (k, v) for k, v in request.query_params.multi_items()
-        if k not in {"table", "limit", "offset"}
+        if k not in {"schema", "table", "limit", "offset"}
     ]
     passthrough.append(("limit", str(limit)))
-    passthrough.append(("offset", str(offset)))
+    passthrough.append(("offset", str(0)))
+
+    headers = dict(request.headers)
+    headers["Accept-Profile"] = schema
 
     try:
-        resp = await _proxy(request, POSTGREST_URL, table, override_params=passthrough)
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                urljoin(POSTGREST_URL, table),
+                params=passthrough,
+                headers=headers
+            )
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=502,
@@ -160,23 +163,21 @@ async def get_postgrest(
     if resp.status_code >= 400:
         raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
-    return _proxy_response(resp)
+    return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type"))
 
-@app.post("/postgrest/{table}")
+@app.post("/postgrest/{schema}/{table}")
 async def post_postgrest(
+    schema: str,
     table: str,
     row: dict
 ):
-    """
-    Insert a new row into the specified table using PostgREST.
-    For geometry columns, send EWKT (e.g. 'SRID=25832;LINESTRING(...)') as a string.
-    """
+    headers = {"Content-Type": "application/json", "Content-Profile": schema}
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 urljoin(POSTGREST_URL, table),
                 json=row,
-                headers={"Content-Type": "application/json"}
+                headers=headers
             )
     except httpx.RequestError as e:
         raise HTTPException(
@@ -184,23 +185,20 @@ async def post_postgrest(
             detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
         )
     if resp.status_code not in (200, 201):
-        print("PostgREST error:", resp.text)
         raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
     if resp.content:
         return resp.json()
     else:
         return {"status": "success"}
 
-@app.put("/postgrest/{table}/{item_id}")
+@app.put("/postgrest/{schema}/{table}/{item_id}")
 async def put_postgrest(
+    schema: str,
     table: str,
     item_id: str,
     row: dict
 ):
-    """
-    Update a row in the specified table using PostgREST.
-    For geometry columns, send EWKT (e.g. 'SRID=25832;LINESTRING(...)') as a string.
-    """
+    headers = {"Content-Type": "application/json", "Content-Profile": schema}
     params = {"id": f"eq.{item_id}"}
     try:
         async with httpx.AsyncClient() as client:
@@ -208,7 +206,7 @@ async def put_postgrest(
                 urljoin(POSTGREST_URL, table),
                 params=params,
                 json=row,
-                headers={"Content-Type": "application/json"}
+                headers=headers
             )
     except httpx.RequestError as e:
         raise HTTPException(
