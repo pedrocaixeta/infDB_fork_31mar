@@ -1,11 +1,12 @@
 import os
-from fastapi import FastAPI, Request, HTTPException, Response
+from fastapi import FastAPI, Request, HTTPException, Response, Query
 import httpx
 from urllib.parse import urljoin
 from typing import Optional, Mapping, Iterable, Tuple, List
 # from db.models.common_data import create_common_data_table
 # from db.models.energy_assets import energy_assets
 # from db.models.electricity_components import electricity_network_components
+
 
 def _env(key: str, default: str) -> str:
     v = os.getenv(key, default)
@@ -196,10 +197,11 @@ async def put_postgrest(
     schema: str,
     table: str,
     item_id: str,
-    row: dict
+    row: dict,
+    key_column: str = Query("id", description="Primary key column name")  # <-- Use Query here
 ):
     headers = {"Content-Type": "application/json", "Content-Profile": schema}
-    params = {"id": f"eq.{item_id}"}
+    params = {key_column: f"eq.{item_id}"}
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.patch(
