@@ -416,3 +416,10 @@ The code of this repository is licensed under the **MIT License** (MIT).
 See [LICENSE](LICENSE) for rights and obligations.  
 See the *Cite this repository* function or [CITATION.cff](CITATION.cff) for citation of this repository.  
 Copyright: [TU Munich - ENS](https://www.epe.ed.tum.de/en/ens/homepage/) | [MIT](LICENSE)
+
+# Contact
+Patrick Buchenberg
+
+Chair of Renewable and Sustainable Energy System - Technical University of Munich (TUM).
+Email: patrick.buchenberg@tum.de
+[https://www.epe.ed.tum.de/ens/staff/ensteam/patrick-buchenberg/](https://www.epe.ed.tum.de/ens/staff/ensteam/patrick-buchenberg/)
