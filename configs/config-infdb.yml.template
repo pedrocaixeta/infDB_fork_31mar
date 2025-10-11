@@ -7,6 +7,17 @@ base:
         base: "../data/{base/name}/"
     network_name: "infdb-{base/name}_network"
 services:
+    postgres:
+        status: active
+        user: infdb_user
+        password: infdb
+        db: infdb
+        host: postgres
+        exposed_port: 5432
+        epsg: 25832
+        path: 
+            base: "{base/path/base}/postgres/"
+            compose_file: "services/postgres/compose.yml"
     citydb:
         status: active
         user: citydb_user
