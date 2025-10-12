@@ -7,7 +7,7 @@ def main():
     infdbhandler = InfDB(tool_name="kwp")
 
     # Database connection
-    infdbclient_citydb = infdbhandler.connect(db_name="citydb")
+    infdbclient_citydb = infdbhandler.connect()
 
     # Logger setup
     infdblog = infdbhandler.get_log()

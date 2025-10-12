@@ -7,5 +7,6 @@ dependencies = [
     "sqlalchemy",
     "PyYAML",
     "psycopg2-binary",
-    "entise"
+    "entise",
+    "infdb @ file:/app/mnt/infdb-package",
 ]
