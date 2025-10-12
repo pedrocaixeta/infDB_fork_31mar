@@ -59,7 +59,7 @@ def setup_pgadmin_servers(output_path):
     pgpass_entries = []
     PORT = 5432
 
-    for server_id, service in enumerate(["citydb", "timescaledb"], 1):
+    for server_id, service in enumerate(["postgres"], 1):
         servers_json["Servers"][server_id] = {
             "Name": service,
             "Group": "infDB",
@@ -94,7 +94,7 @@ def write_pg_service_conf(output_path):
     Write a pg_service.conf file to enable PostgreSQL connection shortcuts.
     Example usage with psql: `psql service=infdb_citydb`
     """
-    services = ["citydb"]  # , "timescaledb"
+    services = ["postgres"]  # , "timescaledb"
     port = 5432
 
     lines = []

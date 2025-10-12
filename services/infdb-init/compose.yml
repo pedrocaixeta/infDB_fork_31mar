@@ -11,6 +11,6 @@ services:
             - /app/.venv # Exclude .venv from volume mount
         extra_hosts:
             - "host.docker.internal:host-gateway"
-        # depends_on:
-        #     postgres:
-        #         condition: service_healthy
+        depends_on:
+            postgres:
+                condition: service_healthy

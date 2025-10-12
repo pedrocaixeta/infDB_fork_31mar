@@ -18,28 +18,11 @@ services:
         path: 
             base: "{base/path/base}/postgres/"
             compose_file: "services/postgres/compose.yml"
-    citydb:
-        status: not-active
-        user: citydb_user
-        password: infdb
-        db: citydb
-        host: citydb
-        exposed_port: 54329
-        epsg: 25832 # 3035 (Europe)
-        path: 
-            base: "{base/path/base}/citydb/"
-            compose_file: "services/3dcitydb/compose.yml"
 
-    timescaledb:
-        status: not-active
-        user: timescaledb_user
-        password: infdb
-        db: timescaledb
-        host: timescaledb
-        exposed_port: 54339
+    infdb-init:
+        status: active
         path: 
-            base: "{base/path/base}/timescaledb/"
-            compose_file: "services/timescaledb/compose.yml"
+            compose_file: "services/infdb-init/compose.yml"
 
     pgadmin:
         default_email: admin@need.energy
