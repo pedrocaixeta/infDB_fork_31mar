@@ -7,4 +7,5 @@ dependencies = [
     "PyYAML",
     "dotenv",
     "SQLAlchemy",
+    "infdb @ file:/app/mnt/infdb-package",
 ]
