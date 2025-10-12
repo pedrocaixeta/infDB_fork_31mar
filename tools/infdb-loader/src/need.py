@@ -35,7 +35,7 @@ def load(log_queue):
 
         # Restore dump into target database
         log.info(f"Restoring need data from dump file {file_dump} into target database...")
-        params = utils.get_db_parameters("citydb")
+        params = utils.get_db_parameters("postgres")
         command = f"PGPASSWORD={params['password']} pg_restore -h {params['host']} -p {params['exposed_port']} -U {params['user']} -d {params['db']} -j 4 --clean --if-exists --no-owner --role={params['user']} {file_dump}"
         utils.do_cmd(command)
         

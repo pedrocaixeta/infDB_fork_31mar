@@ -124,11 +124,11 @@ def process_dataset(dataset):
                 ),
                 crs="EPSG:3035",
             )  # ETRS89 / UTM zone 32N
-            epsg = utils.get_db_parameters("citydb")["epsg"]
+            epsg = utils.get_db_parameters("postgres")["epsg"]
             gdf = gdf.to_crs(epsg=epsg)
 
             # Create a database-data-import-container connection
-            engine = utils.get_db_engine("citydb")
+            engine = utils.get_db_engine("postgres")
 
             # Get user configurations
             prefix = config.get_value(["loader", "sources", "zensus_2022", "prefix"])

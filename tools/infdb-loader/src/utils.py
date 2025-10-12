@@ -121,7 +121,7 @@ def unzip(zip_files, unzip_dir):
 def sql_query(query):
     try:
         # Connect to the PostgreSQL database-data-import-container
-        parameters = get_db_parameters("citydb")
+        parameters = get_db_parameters("postgres")
         host = parameters["host"]
         user = parameters["user"]
         password = parameters["password"]
@@ -176,8 +176,8 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
         gdf_scope = get_envelop()
     else:
         gdf_scope = None
-    epsg = get_db_parameters("citydb")["epsg"]
-    citydb_engine = get_db_engine("citydb")
+    epsg = get_db_parameters("postgres")["epsg"]
+    postgres_engine = get_db_engine("postgres")
 
     if layer_names is None:
         layer_names = layers
@@ -192,7 +192,7 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
         gdf.to_crs(epsg=epsg, inplace=True)
         # gdf.to_file(output_file, layer=layer, driver="GPKG")
         gdf.to_postgis(
-            layer_name, citydb_engine, if_exists="replace", schema=schema, index=False
+            layer_name, postgres_engine, if_exists="replace", schema=schema, index=False
         )
 
 

@@ -28,7 +28,7 @@ def load(log_queue):
         utils.do_cmd(cmd)
 
     # Run citydb tool to import the downloaded GML files
-    params = utils.get_db_parameters("citydb")
+    params = utils.get_db_parameters("postgres")
 
     import_mode = config.get_value(["loader", "sources", "lod2", "import-mode"])
     

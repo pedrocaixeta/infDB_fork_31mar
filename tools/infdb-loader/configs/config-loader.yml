@@ -20,19 +20,13 @@ loader:
         path: "{loader/path/base}/infdb-loader.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
-        citydb:
+        postgres:
             user: None
             password: None
             db: None
             host: None
             exposed_port: None
             epsg: None # 3035 (Europe)
-        timescaledb:
-            user: None
-            password: None
-            db: None
-            host: None
-            exposed_port: None
     sources:
         package:
             status: active
@@ -88,7 +82,7 @@ loader:
                 resolutions:
                     - 100m
                     # - 1km
-                    # - 10km
+                    - 10km
 
         basemap:
             status: active
@@ -155,7 +149,7 @@ loader:
         zensus_2022:
             status: active
             resolutions:
-                # - 10km
+                - 10km
                 # - 1km
                 - 100m
             years:
