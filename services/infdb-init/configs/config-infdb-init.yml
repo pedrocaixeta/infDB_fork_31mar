@@ -1,7 +1,7 @@
-infdb-basedata:
+infdb-init:
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     logging:
-        path: "infdb-basedata.log"
+        path: "infdb-init.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
@@ -11,6 +11,6 @@ infdb-basedata:
             host: None
             exposed_port: None
             epsg: None # 3035 (Europe)
-    data:
-        input_schema: opendata
-        output_schema: basedata
+    # data:
+    #     input_schema: opendata
+    #     output_schema: basedata

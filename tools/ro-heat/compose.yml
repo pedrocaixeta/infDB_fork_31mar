@@ -7,6 +7,7 @@ services:
             - ${CONFIG_INFDB_PATH}:/app/mnt/configs-infdb #:ro # for infdb configs
             - ./configs:/app/configs #:ro # for configs
             - ./:/app
+            - ../../src/infdb-package:/app/mnt/infdb-package
             - /app/.venv
         extra_hosts:
             - "host.docker.internal:host-gateway"

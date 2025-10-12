@@ -4,19 +4,13 @@ ro-heat:
         path: "ro-heat.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
-        citydb:
+        postgres:
             user: None
             password: None
             db: None
             host: None
             exposed_port: None
             epsg: None # 3035 (Europe)
-        timescaledb:
-            user: None
-            password: None
-            db: None
-            host: None
-            exposed_port: None
     data:
         input_schema: basedata
         output_schema: ro_heat

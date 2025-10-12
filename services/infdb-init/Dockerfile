@@ -31,13 +31,14 @@ COPY pyproject.toml /app/pyproject.toml
 # RUN uv sync
 
 ## Install infdb package in editable mode
-# COPY infdb-package /app/infdb-package
-# RUN uv pip install -e /app/infdb-package
+# COPY ../../src/infdb-package /app/mnt/infdb-package
+# RUN uv pip install -e /app/mnt/infdb-package
 
 # Copy the source code into the container
 COPY src /app/src
 COPY sql /app/sql
 COPY main.py /app/main.py
+COPY 3dcitydb-5.1.0 /tmp/3dcitydb
 
 # Run main.py with uv and environment defined in pyproject.toml
 CMD ["uv", "run", "python", "main.py"]

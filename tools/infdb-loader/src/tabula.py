@@ -98,7 +98,7 @@ def load(log_queue):
     prefix = config.get_value(["loader", "sources", "tabula", "prefix"])
 
     # Create database connection
-    citydb_engine = utils.get_db_engine("citydb")
+    citydb_engine = utils.get_db_engine("postgres")
 
     # Export to citdyb
     df_elements.to_sql(
