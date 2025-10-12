@@ -89,11 +89,14 @@ If you are happy with the preconfiguration and default passwords, then just foll
 
 ### Suggested folder structure for infDB
 The folder structure of the infdb as shown is recommend since all of the data of all instances are stored in 'data' automatically by default:
-- infdb
-  - data
-  - instance1
-  - ...
-  - instanceN
+```
+infdb/
+├── data/
+├── neuburg-demo/
+├── sonthofen/
+├── ...
+└── muenchen/
+```
 
 ```bash
 # linux
@@ -125,7 +128,7 @@ bash startup.sh
 ```
 
 ### Setup infDB
-The configuration can be done via [configs/config-infdb.yml](configs/config-infdb.yml)
+The configuration can be done via [configs/config-infdb.yml](configs/config-infdb.yml). Rename the template [configs/config-infdb.yml.template](configs/config-infdb.yml.template) beforehand.
 ```yaml
 base:
     name: demo
@@ -150,7 +153,7 @@ services:
 After doing the configuration you need to generate the configurations files with the following command:
 ```bash
 # on linux and macos
-docker compose -f services/setup/compose.yml up
+docker compose -f services/infdb-setup/compose.yml up
 ```
 
 Once you generated the configuration files with the command above, you need to finally start the infDB:
@@ -199,19 +202,13 @@ loader:
         path: "{loader/path/base}/loader.log"
         level: "DEBUG" # ERROR, WARNING, INFO, DEBUG
     hosts:
-        citydb:
+        postgres:
             user: None
             password: None
             db: None
             host: None
             exposed_port: None
             epsg: None # 3035 (Europe)
-        timescaledb:
-            user: None
-            password: None
-            db: None
-            host: None
-            exposed_port: None
     sources:
         package:
             status: active
