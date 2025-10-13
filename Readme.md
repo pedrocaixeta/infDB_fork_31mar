@@ -128,7 +128,11 @@ bash startup.sh
 ```
 
 ### Setup infDB
-The configuration can be done via [configs/config-infdb.yml](configs/config-infdb.yml). Rename the template [configs/config-infdb.yml.template](configs/config-infdb.yml.template) beforehand.
+The configuration can be done via [configs/config-infdb.yml](configs/config-infdb.yml). Copy and rename the template [configs/config-infdb.yml.template](configs/config-infdb.yml.template) beforehand.
+```bash
+cp configs/config-infdb.yml.template configs/config-infdb.yml
+```
+
 ```yaml
 base:
     name: demo
