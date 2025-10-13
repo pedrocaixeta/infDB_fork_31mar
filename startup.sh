@@ -5,15 +5,15 @@
 # infDB Setup Script
 # ----------------------------------------------------------------------
 # Configure your instance name here
-BRANCH_NAME="89-need-showcase-neuburg"
+BRANCH_NAME="develop"
 # ----------------------------------------------------------------------
 
 echo "=== Checkout branch '${BRANCH_NAME}' ==="
 git checkout "${BRANCH_NAME}"
-git submodule update --init --recursive
+# git submodule update --init --recursive
 
 echo "=== Setup infDB (generate config files) ==="
-docker compose -f services/setup/compose.yml up
+docker compose -f services/infdb-setup/compose.yml up
 
 echo "=== Run infDB ==="
 docker compose -f compose.yml up -d
