@@ -488,5 +488,19 @@ loader:
                   table_name: shapefile_2011
                   year: 2011
                   url: https://www.destatis.de/static/DE/zensus/2011_gitterdaten/Shapefile_Zensus2011.zip
+        openmeteo:
+          status: active
+          path:
+              base: "{loader/path/opendata}/openmeteo/"
+              processed: "{loader/path/processed}/openmeteo/"
+          timing:
+              start_date: "2020-01-01"
+              end_date: "2025-12-31"
+              interval: "P1M"  # ISO 8601 duration format, e.g. "P1M" for 1 month
+          data:
+              - temperature_2m
+              - wind_speed_10m
+              - precipitation
 
-                        
+          schema: opendata
+          prefix: openmeteo

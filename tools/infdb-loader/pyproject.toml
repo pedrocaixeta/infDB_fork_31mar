@@ -13,5 +13,9 @@ dependencies = [
     "geoalchemy2==0.17.1",
     "PyYAML",
     "chardet",
-    "pysmartdl"
+    "pysmartdl",
+    "openmeteo-requests",
+    "requests-cache",
+    "retry-requests",
+    "numpy"
 ]
