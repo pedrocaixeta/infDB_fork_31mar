@@ -16,7 +16,7 @@ This README documents how each service is built and wired, what the watchdog con
 1. [Architecture](#architecture)
 2. [Files in this directory](#files-in-this-repo)
 3. [Quick start](#quick-start)
-
+4. [FastAPI Endpoints Usage](#fastapi-endpoints-usage)
 
 ---
 
@@ -90,3 +90,130 @@ All services are joined to a shared Docker network `${BASE_NETWORK_NAME}` so the
 
    - FastAPI docs: http://localhost:8000/docs
    - pygeoapi root: http://localhost:5000/
+<br>
+
+4. **(Optional) View logs.**
+
+   To view the logs of all services:
+
+   ```bash
+   docker compose logs -f
+   ```
+
+---
+
+## FastAPI Endpoints Usage
+
+The FastAPI service provides endpoints to interact with your PostgREST API.  
+Below are the available endpoints and how to use them:
+
+---
+
+## 1. Get Data from PostgREST
+
+**Endpoint:**  
+```
+GET /get-postgrest/{schema}/{table}
+```
+
+**Parameters:**
+- `schema` (path): The database schema name (e.g., `public`)
+- `table` (path): The table name (e.g., `buildings`)
+- `limit` (query, optional): Limit the number of records returned (default: 100)
+- `tolerance` (query, optional): Geometry simplification tolerance (default: 100; higher values mean more simplification)
+
+**Example:**  
+```
+GET /get-postgrest/public/buildings?limit=10&tolerance=100
+```
+
+---
+
+## 2. Create a New Row (POST)
+
+**Endpoint:**  
+```
+POST /postgrest/{schema}/{table}
+```
+
+**Parameters:**
+- `schema` (path): The database schema name
+- `table` (path): The table name
+- Request body: JSON object representing the new row to insert
+
+**Example:**  
+```
+POST /postgrest/public/buildings
+Content-Type: application/json
+
+{
+  "name": "New Building",
+  "height": 50
+}
+```
+
+---
+
+## 3. Update an Existing Row (PUT/PATCH)
+
+**Endpoint:**  
+```
+PUT /postgrest/{schema}/{table}/{item_id}
+```
+
+**Parameters:**
+- `schema` (path): The database schema name
+- `table` (path): The table name
+- `item_id` (path): The primary key value of the row to update
+- `key_column` (query, optional): The primary key column name (default: `id`)
+- Request body: JSON object with updated fields
+
+**Example:**  
+```
+PUT /postgrest/public/buildings/1?key_column=id
+Content-Type: application/json
+
+{
+  "height": 60
+}
+```
+
+---
+
+## 4. Delete a Row
+
+**Endpoint:**  
+```
+DELETE /postgrest/{schema}/{table}/{item_id}
+```
+
+**Parameters:**
+- `schema` (path): The database schema name
+- `table` (path): The table name
+- `item_id` (path): The primary key value of the row to delete
+- `key_column` (query, optional): The primary key column name (default: `id`)
+
+**Example:**  
+```
+DELETE /postgrest/public/buildings/1?key_column=id
+```
+
+---
+
+## 5. Health Check
+
+**Endpoint:**  
+```
+GET /health
+```
+
+**Description:**  
+Checks the health of the FastAPI service.
+
+---
+
+## Notes
+
+- All endpoints are accessible via the FastAPI docs at `/docs`.
+- For endpoints that modify data (POST, PUT, DELETE), ensure you provide the correct schema, table, and primary key information.
+- The `tolerance` parameter in GET requests allows you to control geometry simplification for large geometry columns.

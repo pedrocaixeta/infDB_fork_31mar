@@ -3,9 +3,10 @@ from fastapi import FastAPI, Request, HTTPException, Response, Query
 import httpx
 from urllib.parse import urljoin
 from typing import Optional, Mapping, Iterable, Tuple, List
-# from db.models.common_data import create_common_data_table
-# from db.models.energy_assets import energy_assets
-# from db.models.electricity_components import electricity_network_components
+import json
+from fastapi.middleware.gzip import GZipMiddleware
+from shapely.geometry import shape, mapping
+from shapely.errors import ShapelyError
 
 
 def _env(key: str, default: str) -> str:
@@ -30,6 +31,7 @@ def _env(key: str, default: str) -> str:
 
 
 app = FastAPI(title="cityAPI Gateway", version="1.0.0")
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Root
 @app.get("/")
@@ -80,51 +82,6 @@ async def _proxy(
         resp = await client.request(method, target, params=params, content=body, headers=headers)
     return resp
 
-# ---- PygeoAPI ----
-@app.get("/pygeoapi/{table}")
-async def get_pygeoapi(
-    request: Request,
-    table: str,
-    limit: int = 100,
-    crs: str = "EPSG:25832",
-):
-    py_path = f"collections/{table}/items"
-    bbox = None
-    filter_expr = None
-    params: List[Tuple[str, str]] = [("limit", str(limit)), ("offset", "0")]
-    if bbox:
-        params.append(("bbox", bbox))
-        params.append(("crs", crs))
-    if filter_expr:
-        params.append(("filter", filter_expr))
-    try:
-        resp = await _proxy(request, PYGEOAPI_URL, py_path, override_params=params)
-    except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Cannot reach pygeoapi at {PYGEOAPI_URL}: {e.__class__.__name__}: {e}"
-        )
-    if resp.status_code != 200:
-        raise HTTPException(status_code=resp.status_code, detail=f"pygeoapi error: {resp.text}")
-    return resp.json()
-
-@app.delete("/pygeoapi/{table}/{item_id}")
-async def delete_pygeoapi(
-    request: Request,
-    table: str,
-    item_id: str,
-):
-    py_path = f"collections/{table}/items/{item_id}"
-    try:
-        resp = await _proxy(request, PYGEOAPI_URL, py_path)
-    except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Cannot reach pygeoapi at {PYGEOAPI_URL}: {e.__class__.__name__}: {e}"
-        )
-    if resp.status_code not in (200, 204):
-        raise HTTPException(status_code=resp.status_code, detail=f"pygeoapi error: {resp.text}")
-    return {"status": "deleted"}
 
 # ---- PostgREST ----
 @app.get("/get-postgrest/{schema}/{table}")
@@ -133,14 +90,12 @@ async def get_postgrest(
     schema: str,
     table: str,
     limit: int = 100,
+    tolerance: float = Query(100, description="Geometry simplification tolerance (units match your data)")
 ):
-    # Validate schema and table
-    if not schema or not table or "/" in schema or "/" in table:
-        raise HTTPException(status_code=400, detail="Invalid schema or table name.")
-
+    # Only pass allowed params to PostgREST
     passthrough = [
         (k, v) for k, v in request.query_params.multi_items()
-        if k not in {"schema", "table", "limit", "offset"}
+        if k not in {"schema", "table", "limit", "offset", "tolerance"}
     ]
     passthrough.append(("limit", str(limit)))
     passthrough.append(("offset", str(0)))
@@ -164,7 +119,29 @@ async def get_postgrest(
     if resp.status_code >= 400:
         raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
-    return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type"))
+    # Directly return the response, let GZipMiddleware handle compression
+    import json
+
+    def _simplify_geometry(obj, tolerance=100):
+        for key in ['geometry', 'geom']:
+            if key in obj and isinstance(obj[key], dict) and 'coordinates' in obj[key]:
+                try:
+                    geom = shape(obj[key])
+                    simple_geom = geom.simplify(tolerance, preserve_topology=True)
+                    obj[key] = mapping(simple_geom)
+                except ShapelyError:
+                    pass
+        return obj
+
+    if resp.headers.get("content-type", "").startswith("application/json"):
+        data = resp.json()
+        if isinstance(data, list):
+            data = [_simplify_geometry(item, tolerance=tolerance) for item in data]
+        elif isinstance(data, dict):
+            data = _simplify_geometry(data, tolerance=tolerance)
+        return Response(content=json.dumps(data), status_code=resp.status_code, media_type="application/json")
+    else:
+        return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type"))
 
 @app.post("/postgrest/{schema}/{table}")
 async def post_postgrest(
@@ -221,3 +198,30 @@ async def put_postgrest(
         return resp.json()
     else:
         return {"status": "updated"}
+
+# Add a PostgREST delete endpoint
+@app.delete("/postgrest/{schema}/{table}/{item_id}")
+async def delete_postgrest(
+    schema: str,
+    table: str,
+    item_id: str,
+    key_column: str = Query("id", description="Primary key column name")
+):
+    headers = {"Content-Type": "application/json", "Content-Profile": schema}
+    params = {key_column: f"eq.{item_id}"}
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.delete(
+                urljoin(POSTGREST_URL, table),
+                params=params,
+                headers=headers
+            )
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
+        )
+    if resp.status_code not in (200, 204):
+        raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
+    return {"status": "deleted"}
+
