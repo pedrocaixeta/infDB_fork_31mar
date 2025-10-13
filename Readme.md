@@ -107,18 +107,14 @@ cd infdb
 ```bash
 # either ssh
 # Replace "neuburg-demo" by name of instance 
-git clone --recurse-submodules git@gitlab.lrz.de:tum-ens/need/infdb.git neuburg-demo 
+git clone git@gitlab.lrz.de:tum-ens/need/infdb.git neuburg-demo 
 
 # or https
 # Replace "neuburg-demo" by name of instance 
-git clone --recurse-submodules https://gitlab.lrz.de/tum-ens/need/infdb.git neuburg-demo
+git clone https://gitlab.lrz.de/tum-ens/need/infdb.git neuburg-demo
 
 # Change location into repo
 cd neuburg-demo
-
-# Switch to perpared branch for Neuburg Demo
-git checkout 89-need-showcase-neuburg
-git submodule update --init --recursive
 ```
 
 ### Startup script
