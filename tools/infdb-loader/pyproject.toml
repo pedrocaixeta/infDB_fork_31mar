@@ -13,5 +13,6 @@ dependencies = [
     "geoalchemy2==0.17.1",
     "PyYAML",
     "chardet",
-    "pysmartdl"
+    "pysmartdl",
+    "infdb @ file:/app/mnt/infdb-package",
 ]

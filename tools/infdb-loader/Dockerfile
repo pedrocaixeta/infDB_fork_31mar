@@ -32,7 +32,7 @@ ENV PATH="/root/.local/bin/:$PATH"
 # COPY requiremets into the container
 COPY pyproject.toml /app/pyproject.toml
 #COPY config-loader.yml /app/config-loader.yml
-RUN uv sync
+# RUN uv sync
 
 # Copy the source code into the container
 COPY src /app/src
