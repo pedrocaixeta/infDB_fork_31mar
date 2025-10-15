@@ -56,7 +56,7 @@ def database_demo(infdb):
     """
     engine = infdb.get_db_engine()
     sql = "SELECT * FROM kwp.buildings_heat_demand"
-    gdf_buildings = gpd.read_postgis(sql, engine,  geom_col='geom')
+    gdf_buildings = gpd.read_postgis(sql, engine)
     gdf_buildings.head()
     
     return gdf_buildings
@@ -83,7 +83,7 @@ def database_demo_sqlalchemy():
     
     engine = create_engine(db_connection_url)
     sql = "SELECT * FROM kwp.buildings_heat_demand"
-    gdf_buildings = gpd.read_postgis(sql, engine, geom_col='geom')
+    gdf_buildings = gpd.read_postgis(sql, engine)
     gdf_buildings.head()
     
     return gdf_buildings
