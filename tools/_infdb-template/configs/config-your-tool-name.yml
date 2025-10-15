@@ -1,0 +1,16 @@
+your-tool-name:
+    config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
+    logging:
+        path: "your-tool-name.log"
+        level: "INFO" # ERROR, WARNING, INFO, DEBUG
+    hosts:
+        postgres:
+            user: None
+            password: None
+            db: None
+            host: None
+            exposed_port: None
+            epsg: None
+    data:
+        input_schema: basedata
+        output_schema: your-tool-name
