@@ -13,4 +13,4 @@ your-tool-name:
             epsg: None
     data:
         input_schema: basedata
-        output_schema: your-tool-name
+        output_schema: your_tool_name   # needs to be snake_case

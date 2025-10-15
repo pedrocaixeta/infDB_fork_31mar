@@ -32,7 +32,7 @@ def sql_demo(infdb):
     }
 
     # Drop output schema if exists for development purposes
-    infdb.con.execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
+    infdb.connect().execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
 
     # Execute sql scripts
     infdb.get_log().info("Running SQL scripts ...")
@@ -58,7 +58,7 @@ def database_demo(infdb):
     sql = "SELECT * FROM kwp.buildings_heat_demand"
     gdf_buildings = gpd.read_postgis(sql, engine)
     gdf_buildings.head()
-    
+
     return gdf_buildings
 
 

@@ -24,6 +24,7 @@ This template enables you to:
 2. **Customize configuration:**
    - Rename `configs/config-your-tool-name.yml` to match your tool name
    - Update configuration values (database, schemas, logging)
+   - for `output_schema` you need to use snake_case as your_tool_name for postgresql database naming convention 
 
 3. **Replace placeholder "your-tool-name":**
     - replace all remaining occurances of "your-tool-name" in the new copied folder by your tool name.
