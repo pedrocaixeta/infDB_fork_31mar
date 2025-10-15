@@ -16,7 +16,7 @@ SELECT
     note,                                     -- Optional annotation
     qkm,                                      -- Area in square kilometers
     einwohner AS population,                  -- Number of inhabitants
-    ST_Transform(geometry, 3035) AS geom      -- Geometry transformed to EPSG:3035
+    ST_Transform(geom, 3035) AS geom      -- Geometry transformed to EPSG:3035
 FROM 
     opendata."plz_plz-5stellig";    -- replace by {input_schema}
 

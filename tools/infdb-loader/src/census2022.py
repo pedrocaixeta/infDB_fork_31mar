@@ -144,6 +144,7 @@ def process_dataset(dataset):
             table_name = dataset["table_name"]
             table_name = prefix + "_" + str(dataset["year"]) + "_" + resolution + "_" + dataset["table_name"]
 
+            gdf_clipped = gdf_clipped.rename_geometry("geom")
             gdf_clipped.to_postgis(table_name, engine, if_exists='replace', schema=schema, index=False)
 
             # Save clipped data locally

@@ -3,7 +3,7 @@ WITH ground_data AS (
     SELECT objectid as building_objectid,
         feature_id,
         groundsurface_flaeche          as area,
-        ST_Transform(ST_Force2D(b.geometry), 3035)     as geometry
+        ST_Transform(ST_Force2D(b.geom), 3035)     as geom
     FROM {input_schema}.buildings_lod2 b
     --       JOIN geometry_data gd ON f.id = gd.feature_id
     --       JOIN property p ON gd.feature_id = p.feature_id
@@ -12,8 +12,8 @@ WITH ground_data AS (
 )
 UPDATE {output_schema}.buildings_pylovo b
 SET floor_area = gd.area,
-    geom       = gd.geometry,
-    centroid   = ST_Centroid(gd.geometry)
+    geom       = gd.geom,
+    centroid   = ST_Centroid(gd.geom)
 FROM ground_data gd
 WHERE b.feature_id = gd.feature_id;
 
