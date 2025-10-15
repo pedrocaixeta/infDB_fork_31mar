@@ -43,6 +43,10 @@
 				"python.defaultInterpreterPath": ".venv/bin/python",
 				"python.terminal.activateEnvironment": true
 			}
+			"extensions": [
+				"ms-toolsai.jupyter",
+        		"ms-toolsai.datawrangler"
+			]
 		}
 	}
 

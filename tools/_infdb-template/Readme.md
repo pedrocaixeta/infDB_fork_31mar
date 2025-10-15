@@ -15,8 +15,11 @@ This template enables you to:
 
 ### Development Workflow
 
+0. **Define tool name:**
+   - think of tool name
+   - use kebab-case naming convention as for example "your-tool-name" 
+
 1. **Copy and rename the template:**
-   Please use the kebab-case naming convention for naming your tool as for example "your-tool-name"
    ```bash
    cp -r tools/_infdb-template tools/your-tool-name
    ```
@@ -24,13 +27,15 @@ This template enables you to:
 2. **Customize configuration:**
    - Rename `configs/config-your-tool-name.yml` to match your tool name
    - Update configuration values (database, schemas, logging)
+   - `None` will be automatically adopted by settings defined in config-infdb.yml of infDB. Replace `None` by actual parameters if you want to connect to remote database
+   - for `output_schema` you need to use snake_case like "your_tool_name" since postgresql database naming convention does not accept kebab-case. 
 
 3. **Replace placeholder "your-tool-name":**
-    - replace all remaining occurances of "your-tool-name" in the new copied folder by your tool name.
+    - replace all remaining occurances of "your-tool-name" in the new copied folder by the name of your tool.
 
 4. **Add dependencies:**
    - Edit `pyproject.toml` under `dependencies` section
-   - Rebuild after changes: `docker compose up --build`
+   <!-- - Rebuild after changes: `docker compose up --build` -->
 
 5. **Implement your code:**
    - **Python:** Add modules to `src/`, implement logic in `main.py`
@@ -72,9 +77,7 @@ your-tool-name/
 
 #### `main.py`
 Entry point that:
-- Initializes InfDB client
-- Sets up logging
-- Establishes database connections
+- Initializes InfDB client (Sets up logging, database connections, etc.)
 - Executes your business logic
 
 #### `src/demo.py`

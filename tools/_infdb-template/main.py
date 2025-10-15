@@ -25,7 +25,8 @@ def main():
 
         # place here your code and delete demo code below
         
-        # Demo functions
+        # Demo Code
+        demo.sql_demo(infdb)
         demo.database_demo(infdb)
         demo.database_demo_sqlalchemy()
 
