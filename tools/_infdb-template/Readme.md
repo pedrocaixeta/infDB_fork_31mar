@@ -31,7 +31,12 @@ This template enables you to:
    - for `output_schema` you need to use snake_case like "your_tool_name" since postgresql database naming convention does not accept kebab-case. 
 
 3. **Replace placeholder "your-tool-name":**
-    - replace all remaining occurances of "your-tool-name" in the new copied folder by the name of your tool.
+   - replace all remaining occurances of "your-tool-name" in the new copied folder by the name of your tool.
+   - In VS Code for example: use Change All Occurrences accross files:
+      - Press Cmd+Shift+H (macOS) or Ctrl+Shift+H (Windows/Linux).
+      - Find: your-cool-tool → Replace: your-new-tool.
+      - Set “files to include”: tools/your-cool-tool/**
+      - Review matches and apply Replace All.
 
 4. **Add dependencies:**
    - Edit `pyproject.toml` under `dependencies` section
@@ -47,7 +52,7 @@ This template enables you to:
    docker compose -f tools/your-tool-name/compose.yml up
    ```
 
-    Develop with preconfigured VS Code as development container:
+    Develop with preconfigured [VS Code](https://code.visualstudio.com/docs/setup/setup-overview) as development container:
 
     1. Open the tool folder: `code tools/your-tool-name`
     2. Install "Dev Containers" extension
