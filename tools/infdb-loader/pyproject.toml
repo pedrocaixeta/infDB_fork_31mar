@@ -17,6 +17,6 @@ dependencies = [
     "openmeteo-requests",
     "requests-cache",
     "retry-requests",
-    "numpy"
+    "numpy",
     "infdb @ file:/app/mnt/infdb-package",
 ]
