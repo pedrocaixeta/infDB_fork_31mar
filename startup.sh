@@ -4,6 +4,8 @@
 # ----------------------------------------------------------------------
 # infDB Setup Script
 # ----------------------------------------------------------------------
+echo "=== Copy config-infdb.yml from template ==="
+cp configs/config-infdb.yml.template configs/config-infdb.yml
 
 docker compose -f services/infdb-setup/compose.yml up
 
@@ -25,4 +27,4 @@ docker compose -f tools/ro-heat/compose.yml up
 echo "=== Run kwp ==="
 docker compose -f tools/kwp/compose.yml up
 
-echo "=== Done! Instance '${INSTANCE_NAME}' is ready. ==="
+echo "=== Done! InfDB is ready. ==="
