@@ -1,7 +1,9 @@
+import os
+
 import numpy as np
 import pandas as pd
-from infdb import InfDB
 from entise.core.generator import TimeSeriesGenerator
+from infdb import InfDB
 
 from src import basic_refurbishment
 from src import eureca_code
@@ -14,12 +16,11 @@ schema = "ro_heat"
 
 
 def main():
-
     # Load InfDB handler
     infdbhandler = InfDB(tool_name="ro-heat")
 
     # Database connection
-    infdbclient_citydb = infdbhandler.connect()
+    infdbclient_citydb = infdbhandler.connect('postgres')
 
     # Logger setup
     infdblog = infdbhandler.get_log()
@@ -42,52 +43,15 @@ def main():
         infdbclient_citydb.execute_query(sql)
         infdblog.info(f"output schema: {output_schema} created successfully")
 
-        SQL_QUERY = f"""
-                    DROP TABLE IF EXISTS {output_schema}.temp_rc_calculation CASCADE;
-
-                    CREATE TABLE {output_schema}.temp_rc_calculation AS
-                    WITH wall_data AS (SELECT building_objectid,
-                                              SUM(area) AS wall_surface_area
-                                       FROM (SELECT regexp_replace(f.objectid, '_[^_]*-.*$', '') AS building_objectid,
-                                                    CAST(p.val_string AS double precision)       AS area
-                                             FROM feature f
-                                                      JOIN geometry_data gd ON f.id = gd.feature_id
-                                                      JOIN property p ON gd.feature_id = p.feature_id
-                                             WHERE f.objectclass_id = 709 -- WallSurface
-                                               AND p.name = 'Flaeche') sub
-                                       GROUP BY building_objectid),
-                         roof_data AS (SELECT building_objectid,
-                                              SUM(area) AS roof_surface_area
-                                       FROM (SELECT regexp_replace(f.objectid, '_[^_]*-.*$', '') AS building_objectid,
-                                                    CAST(p.val_string AS double precision)       AS area
-                                             FROM feature f
-                                                      JOIN geometry_data gd ON f.id = gd.feature_id
-                                                      JOIN property p ON gd.feature_id = p.feature_id
-                                             WHERE f.objectclass_id = 712 -- RoofSurface
-                                               AND p.name = 'Flaeche') sub
-                                       GROUP BY building_objectid)
-
-                    SELECT b.objectid                                                            AS building_objectid,
-                           b.floor_area,
-                           b.floor_number,
-                           b.building_type,
-                           b.construction_year,
-                           -- Reduce wall surface by the assumed window area, see below
-                           wd.wall_surface_area - b.floor_area * b.floor_number * 0.75 * 0.2 AS wall_area,
-                           rd.roof_surface_area                                              AS roof_area,
-                           -- Assume heated area = b.floor_area * b.floor_number * 0.75
-                           -- Assume window area to be 0.2 m² per heated area ()
-                           b.floor_area * b.floor_number * 0.75 * 0.2                        AS window_area
-                    FROM {input_schema}.buildings_pylovo b
-                             LEFT JOIN wall_data wd ON b.objectid = wd.building_objectid
-                             LEFT JOIN roof_data rd ON b.objectid = rd.building_objectid;
-
-                    SELECT *
-                    from {output_schema}.temp_rc_calculation
-                    WHERE building_type IS NOT NULL \
-                    """
-
-        buildings = pd.read_sql(SQL_QUERY, engine)
+        # TODO: Refactor with InfdbClient method when available
+        full_path = os.path.join("sql", "01_get_building_surface_data.sql")
+        with open(full_path, "r", encoding="utf-8") as file:
+            sql_content = file.read()
+        format_params = {
+            'input_schema': input_schema,
+        }
+        sql_content = sql_content.format(**format_params)
+        buildings = pd.read_sql(sql_content, engine)
 
         infdblog.debug(f"Loaded {len(buildings)} buildings from the database.")
         infdblog.debug(buildings.head())
@@ -144,15 +108,16 @@ def main():
 
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
         refurbed_df.to_sql(
-                "buildings_rc", engine, if_exists="replace", schema=schema, index=False
-            )
+            "buildings_rc", engine, if_exists="replace", schema=schema, index=False
+        )
         infdblog.debug("Refurbished data writing to database")
 
         infdblog.debug("Starting construction of building elements")
         # Run SQL: 02_create_layer_view
         infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
 
-        elements = pd.read_sql("""SELECT * FROM v_element_layer_data""", engine)
+        elements = pd.read_sql("""SELECT *
+                                  FROM v_element_layer_data""", engine)
 
         # TODO: sort by layer_index according to EUReCA specification
         # TODO: Handling of windows
@@ -198,7 +163,8 @@ def main():
         )
 
         rc_values = (
-            constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values("building_objectid")
+            constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values(
+                "building_objectid")
         )
 
         # Preparation for EnTiSe
@@ -226,17 +192,16 @@ def main():
         summary, df = gen.generate(data)
 
         summary.index.name = "building_objectid"
-        
+
         summary.to_sql(
             "entise_output",
             con=engine,
             if_exists="replace",
             schema=output_schema,
-        index=True,
-        method="multi",
-        # chunksize=1000,
-    )
-        
+            index=True,
+            method="multi",
+            # chunksize=1000,
+        )
 
         infdblog.info(summary.head())
 
