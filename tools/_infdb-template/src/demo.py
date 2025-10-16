@@ -76,7 +76,7 @@ def database_demo_sqlalchemy():
     # Database connection parameters
     user = "infdb_user"
     password = "infdb"
-    host = "host.docker.internal"
+    host = "ds1.need.energy"
     port = "54328"
     db = "infdb"
     db_connection_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
