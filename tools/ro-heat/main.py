@@ -56,27 +56,9 @@ def main():
         infdblog.debug(f"Loaded {len(buildings)} buildings from the database.")
         infdblog.debug(buildings.head())
 
-        random_years = np.full(len(buildings), np.nan)
-
-        # Define class-to-range mapping
-        age_class_ranges = {
-            "-1919": (1860, 1918),
-            "1919-1948": (1919, 1948),
-            "1949-1978": (1949, 1978),
-            "1979-1990": (1979, 1990),
-            "1991-2000": (1991, 2000),
-            "2001-2010": (2001, 2010),
-            "2011-2019": (2011, 2019),
-            "2020-": (2020, end_of_simulation_year),
-        }
-
-        # For each class, find matching rows and assign random years
-        for age_class, (start, end) in age_class_ranges.items():
-            mask = buildings[construction_year_col] == age_class
-            count = sum(mask)
-            random_years[mask] = rng.integers(start, end, size=count, endpoint=True)
-
-        buildings[construction_year_col] = random_years.astype(int)
+        buildings[construction_year_col] = basic_refurbishment.sample_construction_year(buildings,
+                                                                                        end_of_simulation_year,
+                                                                                        construction_year_col, rng)
 
         refurbishment_parameters = {
             "outer_wall": {

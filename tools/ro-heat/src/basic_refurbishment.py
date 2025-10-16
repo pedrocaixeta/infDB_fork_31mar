@@ -1,22 +1,49 @@
+import logging
+
+import numpy as np
 import pandas as pd
 from numpy.random import Generator
 from pandas import DataFrame, Series
-import logging
 
 log = logging.getLogger(__name__)
 
 
+def sample_construction_year(buildings: DataFrame, end_of_simulation_year: int, construction_year_col: str,
+                             random_number_generator: Generator, ):
+    random_years = np.full(len(buildings), np.nan)
+
+    # Define class-to-range mapping
+    age_class_ranges = {
+        "-1919": (1860, 1918),
+        "1919-1948": (1919, 1948),
+        "1949-1978": (1949, 1978),
+        "1979-1990": (1979, 1990),
+        "1991-2000": (1991, 2000),
+        "2001-2010": (2001, 2010),
+        "2011-2019": (2011, 2019),
+        "2020-": (2020, end_of_simulation_year),
+    }
+
+    # For each class, find matching rows and assign random years
+    for age_class, (start, end) in age_class_ranges.items():
+        mask = buildings[construction_year_col] == age_class
+        count = sum(mask)
+        random_years[mask] = random_number_generator.integers(start, end, size=count, endpoint=True)
+
+    return random_years.astype(int)
+
+
 def simulate_refurbishment(
-    df: DataFrame,
-    until_year: int,
-    parameters: dict,
-    random_number_generator: Generator,
-    fill_value=0,
-    age_column="age",
-    provide_last_refurb_only=False,
+        df: DataFrame,
+        until_year: int,
+        parameters: dict,
+        random_number_generator: Generator,
+        fill_value=0,
+        age_column="age",
+        provide_last_refurb_only=False,
 ) -> DataFrame:
     assert (
-        age_column in df.columns
+            age_column in df.columns
     ), f"Column '{age_column}' not in DataFrame, specify the correct column name via the age_column parameter"
 
     for component, distribution_params in parameters.items():
