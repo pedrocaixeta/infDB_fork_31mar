@@ -154,7 +154,7 @@ def main():
         )
 
         constructions["resistance"] = constructions.apply(
-            lambda row: 1 / ((1 / row["construction_obj"].thermal_resistance) * row["area"]),
+            lambda row: row["area"] / row["construction_obj"].thermal_resistance,
             axis=1,
         )
 
@@ -166,6 +166,7 @@ def main():
             constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values(
                 "building_objectid")
         )
+        rc_values["resistance"] = 1 / rc_values["resistance"]
 
         # Preparation for EnTiSe
         entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
