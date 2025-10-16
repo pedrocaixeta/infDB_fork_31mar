@@ -1,5 +1,5 @@
 loader:
-    name: neuburg-demo
+    name: "{base/name}"
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - 09162000  # Munich
         # - "09780139"  # Sonthofen

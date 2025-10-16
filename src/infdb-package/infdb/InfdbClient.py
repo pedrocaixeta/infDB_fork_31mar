@@ -108,3 +108,7 @@ class InfdbClient:
         engine = sqlalchemy.create_engine(db_url)
 
         return engine
+    
+    def get_db_params(self):
+        return self.db_params
+    

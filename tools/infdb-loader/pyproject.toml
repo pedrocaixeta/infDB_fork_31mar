@@ -18,4 +18,5 @@ dependencies = [
     "requests-cache",
     "retry-requests",
     "numpy"
+    "infdb @ file:/app/mnt/infdb-package",
 ]

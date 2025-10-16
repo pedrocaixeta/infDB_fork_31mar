@@ -159,6 +159,7 @@ cython_debug/
 infdb-data
 /.env
 /compose.yml
+config-infdb.yml
 
 # uv
 uv.lock
