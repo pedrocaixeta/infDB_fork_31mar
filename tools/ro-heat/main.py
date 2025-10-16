@@ -6,7 +6,7 @@ from entise.core.generator import TimeSeriesGenerator
 from infdb import InfDB
 
 from src import basic_refurbishment
-from src import eureca_code
+from src import rc_calculation
 
 # Parameters
 rng = np.random.default_rng(seed=42)
@@ -124,49 +124,7 @@ def main():
         infdblog.debug("Starting construction of building elements")
         elements = elements[elements["element_name"] != "Window"]
 
-        elements["materials"] = elements.apply(
-            lambda x: eureca_code.Material(
-                x["name"], x["thickness"], x["thermal_conduc"], x["heat_capac"], x["density"]
-            ),
-            axis=1,
-        )
-
-        constructions = (
-            elements.groupby(["building_objectid", "element_name", "area"])["materials"]
-            .apply(list)
-            .reset_index()
-        )
-
-        # Map tabula to EUReCA names
-        tabula_eureca_element_name_mapping = {
-            "GroundFloor": "GroundFloor",
-            "OuterWall": "ExtWall",
-            "Rooftop": "Roof",
-        }
-
-        constructions["construction_obj"] = constructions.apply(
-            lambda row: eureca_code.Construction(
-                name=f"B{row['building_objectid']}_{row['element_name']}",
-                materials_list=row["materials"],
-                construction_type=tabula_eureca_element_name_mapping[row["element_name"]],
-            ),
-            axis=1,
-        )
-
-        constructions["resistance"] = constructions.apply(
-            lambda row: row["area"] / row["construction_obj"].thermal_resistance,
-            axis=1,
-        )
-
-        constructions["capacitance"] = constructions.apply(
-            lambda row: row["construction_obj"].k_int * row["area"], axis=1
-        )
-
-        rc_values = (
-            constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values(
-                "building_objectid")
-        )
-        rc_values["resistance"] = 1 / rc_values["resistance"]
+        rc_values = rc_calculation.calculate_rc_values(elements)
 
         # Preparation for EnTiSe
         entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
