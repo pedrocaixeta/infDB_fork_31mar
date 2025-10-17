@@ -89,7 +89,7 @@ def load(log_queue):
     # log.info("\n=== Layer Mapping ===")
     # log.info(df_layers.head())
 
-    # Create schema if it doesn't exist
+    # Create schema
     schema = config.get_value(["loader", "sources", "tabula", "schema"])
     sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
     utils.sql_query(sql)

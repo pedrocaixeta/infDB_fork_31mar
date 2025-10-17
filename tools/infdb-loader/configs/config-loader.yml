@@ -79,9 +79,10 @@ loader:
                     - "nuts250_n2"
                     - "nuts250_n3"
             geogitter:
+                table_name: grid_cells
                 resolutions:
                     - 100m
-                    # - 1km
+                    - 1km
                     - 10km
 
         basemap:

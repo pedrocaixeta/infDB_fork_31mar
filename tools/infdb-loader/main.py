@@ -1,6 +1,6 @@
 import multiprocessing as mp
-from src import utils
-from src import bkg, basemap, lod2, census2022, plz, tabula, package, need
+from src import utils, config
+from src import bkg, basemap, lod2, census2022, plz, tabula, package, need, openmeteo, wetterdienst, base
 from src.logger import setup_main_logger
 import multiprocessing
 import logging
@@ -18,22 +18,27 @@ if __name__ == "__main__":
     # Download opendata package for development directly
     if utils.if_active("package"):
         package.load()
+
+    # Drop schema "opendata" for development purposes on clean runs
+    sql = f"DROP SCHEMA IF EXISTS opendata CASCADE;"
+    utils.sql_query(sql)
     
-    # Ensure that administrative areas are
-    bkg.load_envelop()
+    # # Ensure that administrative areas are loaded for scope of other datasets
+    bkg.load(log_queue)
 
     # Load data in parallel
     mp.freeze_support()
     processes = []
     processes.append(mp.Process(target=need.load, args=(log_queue,), name="need"))
     processes.append(mp.Process(target=tabula.load, args=(log_queue,), name="tabula"))
-    processes.append(mp.Process(target=bkg.load, args=(log_queue,), name="bkg"))
     processes.append(mp.Process(target=lod2.load, args=(log_queue,), name="lod2"))
     processes.append(mp.Process(target=plz.load, args=(log_queue,), name="plz"))
     processes.append(mp.Process(target=basemap.load, args=(log_queue,), name="basemap"))
     processes.append(
         mp.Process(target=census2022.load, args=(log_queue,), name="census2022")
     )
+    processes.append(mp.Process(target=openmeteo.load, args=(log_queue,), name="openmeteo"))
+    # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
 
     for process in processes:
         process.start()

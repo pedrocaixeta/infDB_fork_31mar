@@ -1,6 +1,6 @@
 import os
 import shutil
-from . import config, utils, logger
+from . import config, utils, logger, bkg
 import logging
 
 import openmeteo_requests
@@ -179,29 +179,24 @@ def load(log_queue):
     if not utils.if_active("openmeteo"):
         return
 
+    # Create base directory for Open-Meteo data
     base_path = config.get_path(["loader", "sources", "openmeteo", "path", "base"])
     os.makedirs(base_path, exist_ok=True)
 
-    # # Geogitter
-    log.info("Creating Geogitter layers")
-    resolutions = config.get_value(
-        ["loader", "sources", "openmeteo", "resolution", "spatial"]
-    )
-    schema = config.get_value(["loader", "sources", "openmeteo", "schema"])
-    log.info(f"Creating Geogitter for resolution {resolutions}")
-    epsg = utils.get_db_parameters("postgres")["epsg"]
-    create_geogitter(resolutions, epsg, schema)
+    # Make sure BKG grid cells with 10km resolution are available
+    bkg.create_geogitter("10km")
 
+    # Read centroid geometry (in WGS84) and numeric lat/lon columns
     engine = utils.get_db_engine("postgres")
+    schema = config.get_value(["loader", "sources", "bkg", "schema"])
+    table_name = config.get_value(["loader", "sources", "bkg", "geogitter", "table_name"])
     sql = f"""
         SELECT id,
                ST_Y(ST_Transform(ST_Centroid(geom), 4326)) AS latitude,
                ST_X(ST_Transform(ST_Centroid(geom), 4326)) AS longitude
-        FROM {schema}.grid_cells
+        FROM {schema}.{table_name}
         WHERE name='DE_Grid_ETRS89_LAEA_10km'
     """
-
-    # Read centroid geometry (in WGS84) and numeric lat/lon columns
     pd_dataframe = pd.read_sql(sql=sql, con=engine)
     print(pd_dataframe.head())
     print(len(pd_dataframe))
@@ -209,117 +204,3 @@ def load(log_queue):
     temperature_2m(pd_dataframe, engine)
 
     log.info(f"Openmeteo data loaded successfully")
-
-
-# def grid_midpoints_numpy(enevelop_geom, cell_size):
-#     """Return grid midpoints as WGS84 lat/lon arrays.
-
-#     enevelop_geom is expected to be a GeoDataFrame or GeoSeries with a CRS
-#     convertible to EPSG:3035. We generate midpoints in the projected
-#     coordinate system (meters), then transform to EPSG:4326 (WGS84) and
-#     return a dict with numpy arrays 'latitude' and 'longitude'.
-#     """
-#     # bounds in EPSG:3035
-#     xmin, ymin, xmax, ymax = enevelop_geom.to_crs(3035).total_bounds
-#     x_coords = np.arange(xmin + cell_size / 2, xmax, cell_size)
-#     y_coords = np.arange(ymin + cell_size / 2, ymax, cell_size)
-#     xs, ys = np.meshgrid(x_coords, y_coords)
-
-#     # flatten and transform from EPSG:3035 -> EPSG:4326 (WGS84)
-#     x_flat = xs.ravel()
-#     y_flat = ys.ravel()
-
-#     transformer = Transformer.from_crs(3035, 4326, always_xy=True)
-#     # transformer expects (x, y) -> (lon, lat)
-#     lons, lats = transformer.transform(x_flat, y_flat)
-
-#     coordinates = {
-#         "latitude": ",".join(map(str, lats)),
-#         "longitude": ",".join(map(str, lons))
-#     }
-
-#     return coordinates
-
-
-def create_geogitter(resolutions, epsg, schema):
-    """Create a grid_cells table containing cells for all requested resolutions.
-
-    The function drops any existing table, then creates it using the first
-    resolution and inserts additional resolutions' cells using INSERT INTO.
-    """
-    # Drop existing table if present
-    sql = f"DROP TABLE IF EXISTS {schema}.grid_cells;"
-    utils.sql_query(sql)
-
-    envelop = utils.get_envelop()
-    wkt = envelop.to_crs(3035).unary_union.wkt
-
-    created = False
-    for resolution in resolutions:
-        if resolution.endswith("km"):
-            resolution_meters = int(resolution[:-2]) * 1000
-        elif resolution.endswith("m"):
-            resolution_meters = int(resolution[:-1])
-        else:
-            # skip unknown formats
-            log.warning("Skipping resolution with unknown unit: %s", resolution)
-            continue
-
-        # Build the SELECT statement that generates grid cells for one resolution
-        select_sql = f"""
-            WITH params AS (
-                SELECT {resolution_meters}::int AS cell_size
-            ),
-            boundary AS (
-                SELECT ST_GeomFromText('{wkt}', 3035) AS geom
-            ),
-            envelope AS (
-                SELECT
-                    FLOOR(ST_XMin(b.geom) / p.cell_size) * p.cell_size AS x_min,
-                    FLOOR(ST_YMin(b.geom) / p.cell_size) * p.cell_size AS y_min,
-                    CEIL(ST_XMax(b.geom) / p.cell_size) * p.cell_size AS x_max,
-                    CEIL(ST_YMax(b.geom) / p.cell_size) * p.cell_size AS y_max,
-                    p.cell_size
-                FROM boundary b, params p
-            ),
-            grid_raw AS (
-                SELECT (ST_SquareGrid(
-                        e.cell_size,
-                        ST_MakeEnvelope(e.x_min, e.y_min, e.x_max, e.y_max, 3035)
-                        )).* 
-                FROM envelope e
-            ),
-            grid AS (
-                SELECT
-                    ST_Transform(geom, {epsg}) AS geom,
-                    ST_XMin(geom) AS x,
-                    ST_YMin(geom) AS y
-                FROM grid_raw
-            ),
-            id_named AS (
-                SELECT
-                    FORMAT('%sN%sE%s', '{resolution}', g.y::int::text, g.x::int::text) AS id,
-                    (g.x + (p.cell_size / 2.0))::int AS x_mp,
-                    (g.y + (p.cell_size / 2.0))::int AS y_mp,
-                    'DE_Grid_ETRS89_LAEA_{resolution}'::text AS name,
-                    p.cell_size::int AS resolution_meters,
-                    g.geom
-                FROM grid g, params p
-            )
-            SELECT * FROM id_named;
-        """
-
-        if not created:
-            # Create table with first resolution
-            sql = f"CREATE TABLE {schema}.grid_cells AS {select_sql}"
-            created = True
-        else:
-            # Insert subsequent resolutions' cells
-            sql = f"INSERT INTO {schema}.grid_cells {select_sql}"
-
-        utils.sql_query(sql)
-
-    
-    # Create spatial index on geom column
-    sql = f"CREATE INDEX IF NOT EXISTS building_geom_idx ON {schema}.grid_cells USING GIST (geom);"
-    utils.sql_query(sql)
