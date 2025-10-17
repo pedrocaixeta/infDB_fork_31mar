@@ -1,5 +1,5 @@
 loader:
-    name: "{base/name}"
+    name: neuburg-demo
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - 09162000  # Munich
         # - "09780139"  # Sonthofen
@@ -490,17 +490,16 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/2011_gitterdaten/Shapefile_Zensus2011.zip
         openmeteo:
           status: active
+          schema: opendata
+          prefix: openmeteo
           path:
               base: "{loader/path/opendata}/openmeteo/"
               processed: "{loader/path/processed}/openmeteo/"
           timing:
               start_date: "2020-01-01"
-              end_date: "2025-12-31"
-              interval: "P1M"  # ISO 8601 duration format, e.g. "P1M" for 1 month
+              end_date: "2024-12-31"
+              temporal: hourly  # options: hourly, daily
           data:
               - temperature_2m
               - wind_speed_10m
               - precipitation
-
-          schema: opendata
-          prefix: openmeteo
