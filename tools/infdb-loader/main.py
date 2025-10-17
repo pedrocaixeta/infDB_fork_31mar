@@ -1,6 +1,6 @@
 import multiprocessing as mp
 from src import utils, config
-from src import bkg, basemap, lod2, census2022, plz, tabula, package, need, openmeteo, wetterdienst, base
+from src import bkg, basemap, lod2, census2022, plz, tabula, package, need, openmeteo, wetterdienst
 from src.logger import setup_main_logger
 import multiprocessing
 import logging
