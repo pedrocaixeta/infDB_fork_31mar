@@ -1,6 +1,6 @@
 # InfDB Dev Container Template
 
-A reusable template for creating Docker-based development containers that interact with the InfDB infrastructure. This template provides a standardized structure for building data processing tools, loaders, and analysis scripts that work with the InfDB PostgreSQL/PostGIS database.
+A reusable template for creating Docker-based development containers that interact with the InfDB infrastructure. This template provides a standardized structure for importing (loader), preprocessing (basedata), or appyling (kwp) data within the InfDB PostgreSQL/PostGIS database.
 
 ## Overview
 
@@ -25,9 +25,9 @@ This template enables you to:
    ```
 
 2. **Customize configuration:**
-   - Rename `configs/config-your-tool-name.yml` to match your tool name
-   - Update configuration values (database, schemas, logging)
-   - `None` will be automatically adopted by settings defined in config-infdb.yml of infDB. Replace `None` by actual parameters if you want to connect to remote database
+   - Rename `tools/your-tool-name/configs/config-your-tool-name.yml` to match your tool name
+   - Update configuration values: schemas, logging, database connection only if needed
+   - For the database connection `None` will be automatically adopted by settings defined in config-infdb.yml of infDB. Replace `None` by actual parameters if you want to connect to remote database
    - for `output_schema` you need to use snake_case like "your_tool_name" since postgresql database naming convention does not accept kebab-case. 
 
 3. **Replace placeholder "your-tool-name":**
@@ -39,7 +39,7 @@ This template enables you to:
       - Review matches and apply Replace All.
 
 4. **Add dependencies:**
-   - Edit `pyproject.toml` under `dependencies` section
+   - Edit tools/your-tool-name/pyproject.toml under `dependencies` section
    <!-- - Rebuild after changes: `docker compose up --build` -->
 
 5. **Implement your code:**
