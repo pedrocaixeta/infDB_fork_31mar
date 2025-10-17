@@ -124,7 +124,7 @@ def temperature_2m(pd_dataframe, engine):
             VALUES ('{db_prefix}_hourly_temperature_2m',
                 'Temperature from Open-Meteo at 2m height, hourly',
                 '{grid_id}',
-                'hourly',
+                'measurement:temperature_2m',
                 '1 hour',
                 '°C',
                 0,
