@@ -33,7 +33,7 @@ services:
             compose_file: "services/api/fastapi/api.yml"
 
     pygeoapi:
-        status: active
+        status: not-active
         port: 8001
         base_host: localhost # HOST IP TO RUN PYGEOAPI ON (E.G 10.162.28.144)
         path:
