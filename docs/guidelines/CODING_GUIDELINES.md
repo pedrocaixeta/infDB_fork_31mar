@@ -219,6 +219,75 @@ requirements/           # Dependency management
   isort src/
   ```
 
+### Folders & Files
+
+- Use `snake_case` when creating them if they are too long
+
+### Variables
+
+#### Rules
+- **Naming:** Use `snake_case` for variables; use **`UPPER_SNAKE_CASE`** for constants.
+- **Placement:** Define constants at the top of the module.
+- **Clarity:** Prefer descriptive names (e.g., `min_rebuild_gap_seconds` over `gap`).
+- **Types:** Add type annotations when they improve clarity or tooling.
+- **Booleans:** Name so they read naturally (e.g., `schema_changed`, `enough_time_elapsed`).
+- **Environment values:** Centralize reads of environment variables; never hardcode secrets.
+
+##### Example
+```python
+import os
+import pathlib
+
+OUTPUT_PATH = pathlib.Path("out.yml")
+FALLBACK_EPSG = 25832
+
+min_rebuild_gap_seconds: float = 3.0
+schema_changed: bool = False
+port: int = int(os.getenv("PORT", "5432") or "5432")
+```
+
+
+
+### Functions
+
+#### Rules
+- **Single responsibility:** Keep functions small and single-purpose.
+- **Typing:** Annotate parameters and return types (e.g., `Optional[str]`, `int`).
+- **Docstrings:** Provide a one-line summary, then `Args` / `Returns` / `Raises` (Google style).
+- **Validation (optional):** Validate inputs early and fail fast on misuse.
+
+##### Example
+```python
+from __future__ import annotations
+
+import os
+import sys
+from typing import Optional
+
+
+def env(name: str, default: Optional[str] = None, *, required: bool = False) -> Optional[str]:
+    """Read an environment variable with default/required semantics.
+
+    Args:
+        name: Variable name.
+        default: Fallback value if the variable is unset.
+        required: If True, exit the program when the variable is missing or empty.
+
+    Returns:
+        The environment variable's value, or `default` if not set.
+
+    Raises:
+        SystemExit: If `required` is True and the variable is missing or empty.
+    """
+    val = os.getenv(name, default)
+    if required and (val is None or val == ""):
+        print(f"[ERR] missing required env: {name}", file=sys.stderr)
+        sys.exit(2)
+    return val
+```
+
+
+
 ### Type Annotations
 - Use type hints for all function parameters and return values:
   ```python

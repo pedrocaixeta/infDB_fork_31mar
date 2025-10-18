@@ -367,7 +367,7 @@ The following resources are available to help developers understand and contribu
 
 ### Coding Guidelines
 
-The [Coding Guidelines](docs/guidelines/coding_guidelines.md) document outlines the coding standards and best practices for the project. Start here when trying to understand the project as a developer.
+The [Coding Guidelines](docs/guidelines/CODING_GUIDELINES.md) document outlines the coding standards and best practices for the project. Start here when trying to understand the project as a developer.
 
 ### Architecture Documentation
 
@@ -396,7 +396,7 @@ Everyone is invited to develop this repository with good intentions. Please foll
 
 ### Coding Standards
 
-This repository follows consistent coding styles. Refer to [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) and the [Coding Guidelines](docs/guidelines/coding_guidelines.md) for detailed standards.
+This repository follows consistent coding styles. Refer to [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) and the [Coding Guidelines](docs/guidelines/CODING_GUIDELINES.md) for detailed standards.
 
 ### Pre-commit Hooks
 

@@ -13,11 +13,11 @@ def env(name, default=None, required=False):
     return v
 
 def build_dsn():
-    user = env("SERVICES_CITYDB_USER",   required=True)
-    pwd  = env("SERVICES_CITYDB_PASSWORD", required=True)
-    db   = env("SERVICES_CITYDB_DB",     required=True)
-    host = env("SERVICES_CITYDB_HOST",   required=True)
-    port = int(env("SERVICES_CITYDB_EXPOSED_PORT", "5432"))
+    user = env("SERVICES_POSTGRES_USER",   required=True)
+    pwd  = env("SERVICES_POSTGRES_PASSWORD", required=True)
+    db   = env("SERVICES_POSTGRES_DB",     required=True)
+    host = env("SERVICES_POSTGRES_HOST",   required=True)
+    port = int(env("SERVICES_POSTGRES_EXPOSED_PORT", "5432"))
     return f"postgresql://{user}:{pwd}@{host}:{port}/{db}"
 
 DSN = build_dsn()
@@ -80,17 +80,17 @@ def ensure_conf_exists():
         os.getenv("PGRST_DB_URI")
         or os.getenv("DB_URI")
         or "postgresql://{user}:{pwd}@{host}:{port}/{db}".format(
-            user=os.getenv("SERVICES_CITYDB_USER", "postgres"),
-            pwd=os.getenv("SERVICES_CITYDB_PASSWORD", ""),
-            host=os.getenv("SERVICES_CITYDB_HOST", "localhost"),
-            port=os.getenv("SERVICES_CITYDB_EXPOSED_PORT", "5432"),
-            db=os.getenv("SERVICES_CITYDB_DB", "postgres"),
+            user=os.getenv("SERVICES_POSTGRES_USER", "postgres"),
+            pwd=os.getenv("SERVICES_POSTGRES_PASSWORD", ""),
+            host=os.getenv("SERVICES_POSTGRES_HOST", "localhost"),
+            port=os.getenv("SERVICES_POSTGRES_EXPOSED_PORT", "5432"),
+            db=os.getenv("SERVICES_POSTGRES_DB", "postgres"),
         )
     )
     anon = (
         os.getenv("PGRST_DB_ANON_ROLE")
         or os.getenv("POSTGREST_DB_ANON_ROLE")
-        or os.getenv("SERVICES_CITYDB_USER", "anon")
+        or os.getenv("SERVICES_POSTGRES_USER", "anon")
     )
     port = os.getenv("PGRST_SERVER_PORT") or os.getenv("SERVICES_POSTGREST_PORT") or "3000"
 
