@@ -45,7 +45,7 @@ loader:
             path_dump: "{loader/path/opendata}/need/"
 
         lod2:
-            status: not-active
+            status: active
             import-mode: skip # delete
             url:
                 - "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4"    #scope placeholder for AGS
@@ -148,7 +148,7 @@ loader:
             schema: opendata
             prefix: tabula
         zensus_2022:
-            status: not-active
+            status: active
             resolutions:
                 - 10km
                 # - 1km
