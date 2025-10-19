@@ -1,8 +1,8 @@
 services:
   api:
     build:
-      context: ../../..                 # project root
-      dockerfile: services/api/fastapi/Dockerfile  # path from project root
+      context: ./services/api/fastapi
+      dockerfile: Dockerfile
     container_name: infdb-api
     ports:
       - ${SERVICES_API_PORT}:${SERVICES_API_PORT}
