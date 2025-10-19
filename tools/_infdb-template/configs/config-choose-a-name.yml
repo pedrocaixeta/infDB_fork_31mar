@@ -1,4 +1,4 @@
-# Configuration file for your-tool-name
+# Configuration file for choose-a-name
 #
 # This configuration file contains tool-specific settings and database connection parameters.
 #
@@ -9,10 +9,10 @@
 # - To connect to a remote infdb instance, replace 'None' values with your specific
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
-your-tool-name:
+choose-a-name:
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     logging:
-        path: "your-tool-name.log"
+        path: "choose-a-name.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
@@ -24,4 +24,4 @@ your-tool-name:
             epsg: None
     data:
         input_schema: basedata
-        output_schema: your_tool_name   # needs to be snake_case
+        output_schema: choose_a_name   # needs to be snake_case

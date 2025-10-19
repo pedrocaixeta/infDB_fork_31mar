@@ -1,5 +1,5 @@
 [project]
-name = "your-tool-name"
+name = "choose-a-name"
 version = "1"
 requires-python = "==3.12.*"
 dependencies = [

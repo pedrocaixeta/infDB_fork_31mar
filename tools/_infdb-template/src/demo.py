@@ -64,7 +64,7 @@ def database_demo(infdb):
 
 def database_demo_sqlalchemy():
     """
-    Demonstrate direct SQLAlchemy database connection.
+    Demonstrate direct SQLAlchemy database connection without using InfDB client (not recommended - configs from infDB are not considered automatically).
     
     Creates a direct database connection using SQLAlchemy engine
     and queries building heat demand data from the kwp schema.

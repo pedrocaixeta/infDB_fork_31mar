@@ -1,6 +1,6 @@
 # InfDB Dev Container Template
 
-A reusable template for creating Docker-based development containers that interact with the InfDB infrastructure. This template provides a standardized structure for importing (loader), preprocessing (basedata), or appyling (kwp) data within the InfDB PostgreSQL/PostGIS database.
+A reusable template for creating Docker-based development containers that interact with the InfDB infrastructure. This template provides a standardized structure for building data processing tools, loaders, and analysis scripts that work with the InfDB PostgreSQL/PostGIS database.
 
 ## Overview
 
@@ -12,64 +12,73 @@ This template enables you to:
 - Develop with VS Code dev containers for debugging
 
 ## Getting Started
+### Run your tool
+
+Prerequisites:
+- Docker Desktop (or Docker Engine) installed
+- Follow development workflow instructions below
+- Run commands from the repository root
+
+**Option A — Docker Compose:**
+```bash
+# Start tool
+docker compose -f tools/choose-a-name/compose.yml up
+
+# Stop tool
+docker compose -f tools/choose-a-name/compose.yml down
+
+```
+
+**Option B — VS Code Dev Containers:**
+1. Open the tool folder: `code tools/choose-a-name`
+2. Install the “Dev Containers” extension
+3. Press F1 → “Dev Containers: Reopen in Container”
+4. Run and debug (F5) with breakpoints in Python
 
 ### Development Workflow
 
 0. **Define tool name:**
    - think of tool name
-   - use kebab-case naming convention as for example "your-tool-name" 
+   - use kebab-case naming convention as for example "choose-a-name" 
 
 1. **Copy and rename the template:**
    ```bash
-   cp -r tools/_infdb-template tools/your-tool-name
+   cp -r tools/_infdb-template tools/choose-a-name
    ```
 
 2. **Customize configuration:**
-   - Rename `tools/your-tool-name/configs/config-your-tool-name.yml` to match your tool name
+   - Rename `tools/choose-a-name/configs/config-choose-a-name.yml` to match your tool name
    - Update configuration values: schemas, logging, database connection only if needed
    - For the database connection `None` will be automatically adopted by settings defined in config-infdb.yml of infDB. Replace `None` by actual parameters if you want to connect to remote database
    - for `output_schema` you need to use snake_case like "your_tool_name" since postgresql database naming convention does not accept kebab-case. 
 
-3. **Replace placeholder "your-tool-name":**
-   - replace all remaining occurances of "your-tool-name" in the new copied folder by the name of your tool.
+3. **Replace placeholder "choose-a-name":**
+   - replace all remaining occurances of "choose-a-name" in the new copied folder by the name of your tool.
    - In VS Code for example: use Change All Occurrences accross files:
-      - Press Cmd+Shift+H (macOS) or Ctrl+Shift+H (Windows/Linux).
-      - Find: your-cool-tool → Replace: your-new-tool.
-      - Set “files to include”: tools/your-cool-tool/**
+      - Right-click on the created tool folder in Explorer on the left side → **Find in Folder...** 
+      - Find: choose-a-name → Replace: your-new-tool.
       - Review matches and apply Replace All.
 
 4. **Add dependencies:**
-   - Edit tools/your-tool-name/pyproject.toml under `dependencies` section
-   <!-- - Rebuild after changes: `docker compose up --build` -->
+   - Add needed package into **dependencies** in `tools/choose-a-name/pyproject.toml`.
 
 5. **Implement your code:**
-   - **Python:** Add modules to `src/`, implement logic in `main.py`
-   - **SQL:** Add scripts to `sql/` (executed in alphabetical order)
-
-6. **Run your tool:**
-   ```bash
-   # Standard run (from project root)
-   docker compose -f tools/your-tool-name/compose.yml up
-   ```
-
-    Develop with preconfigured [VS Code](https://code.visualstudio.com/docs/setup/setup-overview) as development container:
-
-    1. Open the tool folder: `code tools/your-tool-name`
-    2. Install "Dev Containers" extension
-    3. Press `F1` → "Dev Containers: Reopen in Container"
-    4. Set breakpoints and debug with `F5`
-
+   - **Python:** Add your code to `src/`
+   - **SQL:** Add your scripts to `sql/` - We recommend adding numbers according to the execution order (executed in alphabetical order)
+   - **Execution:** Start your added python code btw. sql scripts in `main.py`. The sql files can be easily executed as shown in `src/demo.py`. This spllting ensures clarity and easy overview what is executed.
 
 ## Project Structure
 
 ```
-your-tool-name/
+choose-a-name/
 ├── src/                                    # Python source modules
 │   └── demo.py                             # Example database operations
+│   └── template.py                         # Template python file for your own code
 ├── sql/                                    # SQL scripts (alphabetical order)
 │   └── 00_cleanup.sql                      # Schema initialization
+│   └── 01_template.sql                     # Template sql file for your own code
 ├── configs/                                # Configuration files
-│   └── config-your-tool-name.yml          # Tool-specific config
+│   └── config-choose-a-name.yml            # Tool-specific config
 ├── main.py                                 # Entry point - starts here
 ├── pyproject.toml                          # Python dependencies
 ├── compose.yml                             # Docker Compose definition
