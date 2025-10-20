@@ -2,6 +2,7 @@ import os
 import shutil
 from . import config, utils, logger
 import logging
+from infdb import InfDB
 
 log = logging.getLogger(__name__)
 
@@ -50,5 +51,11 @@ def load(log_queue):
     ]
     cmd_str = " ".join(str(arg) for arg in cmd)
     utils.do_cmd(cmd_str)
+
+    infdbhandler = InfDB(tool_name="infdb-loader")
+    format_params = {
+        'output_schema': "opendata",
+    }
+    infdbhandler.connect().execute_sql_file("sql/buildings_lod2.sql", format_params)
 
     log.info(f"LOD2 data loaded successfully")

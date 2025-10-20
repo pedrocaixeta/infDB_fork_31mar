@@ -16,6 +16,7 @@ class InfDB:
 
         # Initialize logging
         self.infdblogger = InfdbLogger.InfdbLogger(self)
+        self.log = self.infdblogger.root_logger
 
     
     def __str__(self):
@@ -59,4 +60,7 @@ class InfDB:
         if insert_toolname:
             keys.insert(0, self.tool_name)
         return self.infdbconfig.get_path(keys)
-    
+
+
+    def get_db_engine(self):
+        return self.connect().get_db_engine()

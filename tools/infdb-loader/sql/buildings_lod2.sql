@@ -33,10 +33,10 @@ CREATE TABLE {output_schema}.buildings_lod2
     city              text,
     country          text,
     state            text,
-    geometry              geometry(MultiPolygon, 3035)
+    geom              geometry
     -- centroid          geometry(Point, 3035)
 );
-CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings_lod2 USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings_lod2 USING GIST (geom);
 CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_lod2 (id, objectid, building_function_code);
 
 --------------------------------------------------------------
@@ -100,7 +100,7 @@ WITH ground_data AS (
     SELECT 
         regexp_replace(f.objectid, '_[^_]*-.*$', '')    as building_objectid,
         cast(p.val_string as double precision)          as area,
-        ST_Transform(ST_Force2D(gd.geometry), 3035)     as geometry,
+        ST_Transform(ST_Force2D(gd.geometry), 3035)     as geom,
         f.id as feature_id
     FROM feature f
           JOIN geometry_data gd ON f.id = gd.feature_id
@@ -110,8 +110,8 @@ WITH ground_data AS (
 )
 UPDATE {output_schema}.buildings_lod2 b
 SET groundsurface_flaeche = ground_data.area,
-    geometry       = ground_data.geometry
-    -- centroid   = ST_Centroid(gd.geometry)
+    geom       = ground_data.geom
+    -- centroid   = ST_Centroid(gd.geom)
 FROM ground_data
 WHERE objectid = building_objectid;
 --WHERE b.feature_id = ground_data.feature_id;

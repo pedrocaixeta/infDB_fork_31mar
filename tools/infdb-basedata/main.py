@@ -19,12 +19,6 @@ def main():
     input_schema = infdbhandler.get_config_value(["data", "input_schema"], insert_toolname=True)
     output_schema = infdbhandler.get_config_value(["data", "output_schema"], insert_toolname=True)
 
-    # Execute buildings_lod2.sql first to create the buildings_lod2 table
-    format_params = {
-        'output_schema': "opendata",
-    }
-    infdbclient_citydb.execute_sql_file("sql/buildings_lod2.sql", format_params=format_params)
-
     # Schema configuration
     format_params = {
         'input_schema': input_schema,
