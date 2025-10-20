@@ -29,7 +29,7 @@ docker compose -f tools/choose-a-name/compose.yml down
 ```
 
 **Option B — VS Code Dev Containers:**
-1. Open the tool folder: `code tools/choose-a-name`
+1. Open created tool folder in [*Visual Studio Code*](https://code.visualstudio.com/download): `code tools/choose-a-name`
 2. Install the “Dev Containers” extension
 3. Press F1 → “Dev Containers: Reopen in Container”
 4. Run and debug (F5) with breakpoints in Python

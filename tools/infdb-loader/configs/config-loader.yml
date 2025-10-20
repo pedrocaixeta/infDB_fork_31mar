@@ -177,7 +177,7 @@ loader:
                   table_name: deutsche_staatsangehoerige_18plus
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Deutsche_Staatsangehoerige_ab_18_Jahren.zip
-  
+
                 - name: Auslaenderanteil
                   status: not-active
                   table_name: auslaenderanteil
@@ -317,7 +317,7 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Durchschnittliche_Nettokaltmiete_und_Anzahl_der_Wohnungen.zip
 
                 - name: Eigentuemerquote
-                  status: not-active
+                  status: active
                   table_name: eigentuemerquote
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Eigentuemerquote_in_Gitterzellen.zip
@@ -341,7 +341,7 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Durchschnittliche_Wohnflaeche_je_Bewohner_in_Gitterzellen.zip
 
                 - name: Flaeche je Wohnung
-                  status: not-active
+                  status: active
                   table_name: wohnflaeche_wohnung
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Durchschnittliche_Flaeche_je_Wohnung_in_Gitterzellen.zip
@@ -353,13 +353,13 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Flaeche_der_Wohnung_10m2_Intervalle.zip
 
                 - name: Wohnungen nach Gebaeudetyp und Groesse
-                  status: active
+                  status: not-active
                   table_name: wohnungen_gebaeudetyp
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Wohnungen_nach_Gebaeudetyp_Groesse.zip
 
                 - name: Wohnungen nach Raeumen
-                  status: active
+                  status: not-active
                   table_name: wohnungen_raeume
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Wohnungen_nach_Zahl_der_Raeume.zip
@@ -377,7 +377,7 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_nach_Baujahr_in_Mikrozensus_Klassen.zip
 
                 - name: Gebaeude nach Anzahl Wohnungen
-                  status: not-active
+                  status: active
                   table_name: gebaeude_anzahl_wohnungen
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_nach_Anzahl_der_Wohnungen_im_Gebaeude.zip
@@ -401,13 +401,13 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_ueberwiegender_Heizungsart.zip
 
                 - name: Energietraeger
-                  status: not-active
+                  status: active
                   table_name: energietraeger
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Energietraeger.zip
 
                 - name: Energietraeger der Heizung
-                  status: not-active
+                  status: active
                   table_name: energietraeger_heizung
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_Energietraeger_der_Heizung.zip
@@ -431,61 +431,61 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Shapefile_Zensus2022.zip
 
                 - name: Bevoelkerung (100m Raster)
-                  status: active
+                  status: not-active
                   table_name: bevoelkerung_100m
                   year: 2011
                   url: http://www.destatis.de/static/DE/zensus/2011_gitterdaten/Download-Tabelle_Bevoelkerung_im_100_Meter-Gitter.zip
 
                 - name: Demographie (100m Raster)
-                  status: active
+                  status: not-active
                   table_name: demographie_100m
                   year: 2011
                   url: http://www.destatis.de/static/DE/zensus/2011_gitterdaten/Demographie_100_Meter-Gitter.zip
 
                 - name: Familien (100m Raster)
-                  status: active
+                  status: not-active
                   table_name: familien_100m
                   year: 2011
                   url: http://www.destatis.de/static/DE/zensus/2011_gitterdaten/Download-Tabelle_Familien_im_100_Meter-Gitter.zip
 
                 - name: Haushalte (100m Raster)
-                  status: active
+                  status: not-active
                   table_name: haushalte_100m
                   year: 2011
                   url: http://www.destatis.de/static/DE/zensus/2011_gitterdaten/Tabelle_Haushalt_im_100_Meter-Gitter.zip
 
                 - name: Wohnungen (100m Raster)
-                  status: active
+                  status: not-active
                   table_name: wohnungen_100m
                   year: 2011
                   url: http://www.destatis.de/static/DE/zensus/2011_gitterdaten/Wohnungen_im_100_Meter-Gitter.zip
 
                 - name: Gebaeude und Wohnungen (100m Raster)
-                  status: active
+                  status: not-active
                   table_name: gebaeude_wohnungen_100m
                   year: 2011
                   url: http://www.destatis.de/static/DE/zensus/2011_gitterdaten/Gebaeude_und_Wohnungen_im_100_Meter-Gitter.zip
 
                 - name: Klassierte Werte (1km Raster)
-                  status: active
+                  status: not-active
                   table_name: klassierte_werte_1km
                   year: 2011
                   url: http://www.destatis.de/static/DE/zensus/2011_gitterdaten/Tabelle_und_Datensatzbeschreibung_Klassierte_Werte_im_ein_Kilometer-Gitter.zip
 
                 - name: Spitze Werte (1km Raster)
-                  status: active
+                  status: not-active
                   table_name: spitze_werte_1km
                   year: 2011
                   url: http://www.destatis.de/static/DE/zensus/2011_gitterdaten/Tabelle_und_Datensatzbeschreibung_Spitze_Werte_im_ein_Kilometer-Gitter.zip
 
                 - name: Shapefile 1km Raster
-                  status: active
+                  status: not-active
                   table_name: shapefile_1km
                   year: 2011
                   url: http://www.destatis.de/static/DE/zensus/2011_gitterdaten/Shapefile_eines_ein_Kilometer-Gitters_fuer_Deutschland_INSPIRE_konform.zip
 
                 - name: Shapefile Zensus 2011
-                  status: active
+                  status: not-active
                   table_name: shapefile_2011
                   year: 2011
                   url: https://www.destatis.de/static/DE/zensus/2011_gitterdaten/Shapefile_Zensus2011.zip

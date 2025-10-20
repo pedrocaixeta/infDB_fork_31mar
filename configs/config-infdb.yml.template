@@ -12,7 +12,6 @@ services:
         user: infdb_user
         password: infdb
         db: infdb
-        host: postgres
         exposed_port: 54328
         epsg: 25832
         path: 
