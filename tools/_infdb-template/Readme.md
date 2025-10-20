@@ -97,8 +97,8 @@ Docker Compose service definition:
 ### Development Workflow
 
 1. **Define tool name:**
-   - think of tool name
-   - use kebab-case naming convention as for example "choose-a-name" 
+   - Think of tool name
+   - Use kebab-case naming convention as for example "choose-a-name" 
 
 2. **Copy and rename the template:**
    ```bash
@@ -112,7 +112,7 @@ Docker Compose service definition:
    - for `output_schema` you need to use snake_case like "your_tool_name" since postgresql database naming convention does not accept kebab-case. 
 
 4. **Replace placeholder "choose-a-name":**
-   - replace all remaining occurances of "choose-a-name" in the new copied folder by the name of your tool.
+   - Replace all remaining occurances of "choose-a-name" in the new copied folder by the name of your tool.
    - In VS Code for example: use Change All Occurrences accross files:
       - Right-click on the created tool folder in Explorer on the left side → **Find in Folder...** 
       - Find: choose-a-name → Replace: your-new-tool.
@@ -120,6 +120,7 @@ Docker Compose service definition:
 
 5. **Add dependencies:**
    - Add needed package into **dependencies** in `tools/choose-a-name/pyproject.toml`.
+   - Run `uv sync` in order to update virtual environment with new packages or (re-start) docker via `docker compose -f tools/choose-a-name/compose.yml up`
 
 6. **Implement your code:**
    - **Python:** Add your code to `src/`
