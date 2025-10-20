@@ -16,11 +16,8 @@ def __load_config(path: str):
 
 def __load_configs():
     base_path = os.path.join("infdb-root/configs", "config-infdb.yml")
-    print(f"Loading config from: {base_path}")
     configs = __load_config(base_path)
-    print(f"Loaded configs: {configs}")
-    if not configs:
-        print("WARNING: Config is empty or file not found!")
+
     resolved_configs = resolve_yaml_placeholders(configs)
     return resolved_configs
 
