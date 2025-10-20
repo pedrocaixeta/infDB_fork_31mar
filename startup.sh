@@ -15,7 +15,7 @@ echo "=== Run infDB ==="
 docker compose -f compose.yml up -d
 
 echo "=== Wait for core services to initialize ==="
-sleep 20
+sleep 5
 
 echo "=== Run infDB-loader ==="
 docker compose -f tools/infdb-loader/compose.yml up

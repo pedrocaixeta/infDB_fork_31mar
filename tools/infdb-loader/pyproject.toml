@@ -18,5 +18,7 @@ dependencies = [
     "requests-cache",
     "retry-requests",
     "numpy",
+    "wetterdienst",
+    "charset-normalizer",
     "infdb @ file:/app/mnt/infdb-package",
 ]

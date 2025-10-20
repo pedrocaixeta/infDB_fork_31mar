@@ -5,6 +5,7 @@ import chardet
 import pandas as pd
 import geopandas as gpd
 from . import utils, config, logger
+from charset_normalizer import from_path
 
 log = logging.getLogger(__name__)
 
@@ -96,22 +97,17 @@ def process_dataset(dataset):
                 log.warning(f"No file for {dataset["name"]} with resolution {resolution} found")
                 continue
 
+            # Detect encoding of file
+            encoding = from_path(file).best().encoding
+            log.debug(f"Detected encoding for file: {encoding}")
 
-            csv_path = file
-
-            with open(csv_path, "rb") as f:
-                raw_bytes = f.read(1000)
-                detected_encoding = chardet.detect(raw_bytes)["encoding"]
-                log.debug(f"Detected encoding for {csv_path}: {detected_encoding}")
-
-            # csv_path = utils.ensure_utf8_encoding(csv_path)  # <-- check and fix encoding
             df = pd.read_csv(
-                csv_path,
+                file,
                 sep=";",
                 decimal=",",
                 # na_values="–",
                 low_memory=True,
-                encoding=detected_encoding,
+                encoding=encoding,
             )  # , encoding="latin_1"   # GeoDataFrame laden (Beispiel) nrows=10,
 
             df.fillna(0, inplace=True)

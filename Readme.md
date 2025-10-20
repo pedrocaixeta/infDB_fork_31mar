@@ -92,7 +92,7 @@ The folder structure of the infdb as shown is recommend since all of the data of
 ```
 infdb/
 ├── data/
-├── neuburg-demo/
+├── infdb-demo/
 ├── sonthofen/
 ├── ...
 └── muenchen/
@@ -106,15 +106,15 @@ cd infdb
 ### Clone infDB
 ```bash
 # either ssh
-# Replace "neuburg-demo" by name of instance 
-git clone git@gitlab.lrz.de:tum-ens/need/infdb.git neuburg-demo 
+# Replace "infdb-demo" by name of instance 
+git clone git@git-ce.rwth-aachen.de:need/NEED-infdb.git infdb-demo 
 
 # or https
-# Replace "neuburg-demo" by name of instance 
-git clone https://gitlab.lrz.de/tum-ens/need/infdb.git neuburg-demo
+# Replace "infdb-demo" by name of instance 
+git clone https://git-ce.rwth-aachen.de/need/NEED-infdb.git infdb-demo
 
 # Change location into repo
-cd neuburg-demo
+cd infdb-demo
 ```
 
 ### Startup script
@@ -131,22 +131,21 @@ cp configs/config-infdb.yml.template configs/config-infdb.yml
 
 ```yaml
 base:
-    name: demo
+    name: infdb-demo
     path:
         base: "../data/{base/name}/"
     network_name: "infdb-{base/name}_network"
 services:
-    citydb:
-        user: citydb_user
-        password: infdb
-        db: citydb
-        host: citydb
-        exposed_port: 5432
-        epsg: 25832 # 3035 (Europe)
-        path: 
-            base: "{base/path/base}/{base/name}/citydb/"
-            compose_file: "services/3dcitydb/compose.yml"
+    postgres:
         status: active
+        user: infdb_user
+        password: infdb
+        db: infdb
+        exposed_port: 54328
+        epsg: 25832
+        path: 
+            base: "{base/path/base}/postgres/"
+            compose_file: "services/postgres/compose.yml"
 
         ...
 ```
