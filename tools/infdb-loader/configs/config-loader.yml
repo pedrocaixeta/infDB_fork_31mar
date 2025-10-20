@@ -1,5 +1,5 @@
 loader:
-    name: "{base/name}"
+    name: neuburg-demo
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - 09162000  # Munich
         # - "09780139"  # Sonthofen
@@ -79,9 +79,10 @@ loader:
                     - "nuts250_n2"
                     - "nuts250_n3"
             geogitter:
+                table_name: grid_cells
                 resolutions:
                     - 100m
-                    # - 1km
+                    - 1km
                     - 10km
 
         basemap:
@@ -96,37 +97,37 @@ loader:
             schema: opendata
             prefix: basemap
             layer:
-                # - barrierenlinie
-                # - bauwerksflaeche
-                # - bauwerkslinie
-                # - bauwerkspunkt
-                # - besondere_flaeche
-                # - besondere_linie
-                # - besonderer_punkt
-                # - gewaesserflaeche
-                # - gewaesserlinie
-                # - gewaesserpunkt
-                # - grenze_flaeche
-                # - grenze_linie
-                # - grenze_punkt
-                # - historische_flaeche
-                # - historische_linie
-                # - historischer_punkt
-                # - name_flaeche
-                # - name_punkt
-                # - reliefflaeche
-                # - relieflinie
-                # - reliefpunkt
-                # - siedlungsflaeche
-                # - vegetationsflaeche
-                # - vegetationslinie
-                # - vegetationspunkt
-                # - verkehrsflaeche
+                - barrierenlinie
+                - bauwerksflaeche
+                - bauwerkslinie
+                - bauwerkspunkt
+                - besondere_flaeche
+                - besondere_linie
+                - besonderer_punkt
+                - gewaesserflaeche
+                - gewaesserlinie
+                - gewaesserpunkt
+                - grenze_flaeche
+                - grenze_linie
+                - grenze_punkt
+                - historische_flaeche
+                - historische_linie
+                - historischer_punkt
+                - name_flaeche
+                - name_punkt
+                - reliefflaeche
+                - relieflinie
+                - reliefpunkt
+                - siedlungsflaeche
+                - vegetationsflaeche
+                - vegetationslinie
+                - vegetationspunkt
+                - verkehrsflaeche
                 - verkehrslinie
-                # - verkehrspunkt
-                # - versorgungslinie
-                # - versorgungspunkt
-                # - weitere_nutzung_flaeche
+                - verkehrspunkt
+                - versorgungslinie
+                - versorgungspunkt
+                - weitere_nutzung_flaeche
         plz:
             status: active
             url: "https://downloads.suche-postleitzahl.org/v2/public/plz-5stellig.geojson"
@@ -352,13 +353,13 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Flaeche_der_Wohnung_10m2_Intervalle.zip
 
                 - name: Wohnungen nach Gebaeudetyp und Groesse
-                  status: not-active
+                  status: active
                   table_name: wohnungen_gebaeudetyp
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Wohnungen_nach_Gebaeudetyp_Groesse.zip
 
                 - name: Wohnungen nach Raeumen
-                  status: not-active
+                  status: active
                   table_name: wohnungen_raeume
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Wohnungen_nach_Zahl_der_Raeume.zip
@@ -388,13 +389,13 @@ loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_Gebaeudetyp_Groesse.zip
 
                 - name: Heizungsart
-                  status: not-active
+                  status: active
                   table_name: heizungsart
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Heizungsart.zip
 
                 - name: Heizungsart (ueberwiegend)
-                  status: not-active
+                  status: active
                   table_name: heizungsart_ueberwiegend
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_ueberwiegender_Heizungsart.zip
@@ -488,5 +489,18 @@ loader:
                   table_name: shapefile_2011
                   year: 2011
                   url: https://www.destatis.de/static/DE/zensus/2011_gitterdaten/Shapefile_Zensus2011.zip
-
-                        
+        openmeteo:
+          status: active
+          schema: opendata
+          prefix: openmeteo
+          path:
+              base: "{loader/path/opendata}/openmeteo/"
+              processed: "{loader/path/processed}/openmeteo/"
+          timing:
+              start_date: "2020-01-01"
+              end_date: "2024-12-31"
+              temporal: hourly  # options: hourly, daily
+          data:
+              - temperature_2m
+              - wind_speed_10m
+              - precipitation

@@ -6,7 +6,8 @@ SELECT
     x_mp,
     y_mp,
     ST_Transform(geom, 3035) as geom
-FROM opendata.bkg_de_grid_etrs89_laea_100m; -- todo move bkg_de_grid to input_sche
+FROM {input_schema}.grid_cells
+WHERE name='DE_Grid_ETRS89_LAEA_100m';
 
 -- Create spatial index on transformed geometry (fixed column name)
 CREATE INDEX temp_grid_geom_idx ON temp_grid_transformed USING GIST (geom);

@@ -14,5 +14,9 @@ dependencies = [
     "PyYAML",
     "chardet",
     "pysmartdl",
+    "openmeteo-requests",
+    "requests-cache",
+    "retry-requests",
+    "numpy",
     "infdb @ file:/app/mnt/infdb-package",
 ]

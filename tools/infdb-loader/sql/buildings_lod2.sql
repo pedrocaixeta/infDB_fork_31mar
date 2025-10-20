@@ -33,10 +33,11 @@ CREATE TABLE {output_schema}.buildings_lod2
     city              text,
     country          text,
     state            text,
-    geom              geometry
-    -- centroid          geometry(Point, 3035)
+    geom              geometry,
+    centroid          geometry
 );
 CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings_lod2 USING GIST (geom);
+CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.buildings_lod2 USING GIST (centroid);
 CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_lod2 (id, objectid, building_function_code);
 
 --------------------------------------------------------------
@@ -110,8 +111,8 @@ WITH ground_data AS (
 )
 UPDATE {output_schema}.buildings_lod2 b
 SET groundsurface_flaeche = ground_data.area,
-    geom       = ground_data.geom
-    -- centroid   = ST_Centroid(gd.geom)
+    geom       = ground_data.geom,
+    centroid   = ST_Centroid(ground_data.geom)
 FROM ground_data
 WHERE objectid = building_objectid;
 --WHERE b.feature_id = ground_data.feature_id;
