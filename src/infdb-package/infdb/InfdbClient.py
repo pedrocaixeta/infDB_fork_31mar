@@ -74,9 +74,11 @@ class InfdbClient:
                 with open(full_path, "r", encoding="utf-8") as file:
                     sql_content = file.read()
 
-                # todo: Check for empty query and not only empty lines
-                if sql_content.strip() == "":
-                    self.log.warning(f"SQL file {file_path} is empty. Skipping.")
+                # Skip if file is empty or contains only comments/whitespace
+                stripped_content = sql_content.strip()
+                if not stripped_content or all(line.strip().startswith('--') or line.strip() == '' 
+                                               for line in stripped_content.splitlines()):
+                    self.log.warning(f"SQL file {file_path} is empty or contains only comments. Skipping.")
                     continue
                 
                 # # Apply schema parameter substitution

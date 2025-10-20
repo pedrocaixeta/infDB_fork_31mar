@@ -57,7 +57,8 @@ choose-a-name/
 ├── compose.yml                             # Docker Compose definition
 ├── Dockerfile                              # Docker image build
 ├── .env                                    # Environment variables
-└── Readme.md                               # This file
+├── Readme_template.md                      # Readme for tool users
+└── Readme.md                               # Readme for tool developers
 ```
 
 ### Key Files
@@ -124,3 +125,7 @@ Docker Compose service definition:
    - **Python:** Add your code to `src/`
    - **SQL:** Add your scripts to `sql/` - We recommend adding numbers according to the execution order (executed in alphabetical order)
    - **Execution:** Start your added python code btw. sql scripts in `main.py`. The sql files can be easily executed as shown in `src/demo.py`. This spllting ensures clarity and easy overview what is executed.
+
+7. **Document your code:**
+   - Add docstrings and comments to your code
+   - Update Readme_template.md for user of your tool
