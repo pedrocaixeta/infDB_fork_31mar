@@ -16,15 +16,15 @@ def env(name, default=None, required=False):
     return v
 
 def build_dsn():
-    user = env("SERVICES_CITYDB_USER", required=True)
-    pwd  = env("SERVICES_CITYDB_PASSWORD", required=True)
-    db   = env("SERVICES_CITYDB_DB", required=True)
-    host = env("SERVICES_CITYDB_HOST", required=True)
-    port = int(env("SERVICES_CITYDB_EXPOSED_PORT", "5432"))
+    user = env("SERVICES_POSTGRES_USER", required=True)
+    pwd  = env("SERVICES_POSTGRES_PASSWORD", required=True)
+    db   = env("SERVICES_POSTGRES_DB", required=True)
+    host = env("SERVICES_POSTGRES_HOST", required=True)
+    port = int(env("SERVICES_POSTGRES_EXPOSED_PORT", "5432"))
     return f"postgresql://{user}:{pwd}@{host}:{port}/{db}"
 
 PYGEO_PORT = int(env("SERVICES_PYGEOAPI_PORT", "5000"))
-DEFAULT_EPSG = env("SERVICES_CITYDB_EPSG")
+DEFAULT_EPSG = env("SERVICES_POSTGRES_EPSG")
 DSN = build_dsn()
 
 # ---------- io helpers ----------
@@ -214,11 +214,11 @@ def build_config_on_conn(conn):
                 "type": "feature",
                 "name": "PostgreSQL",
                 "data": {
-                    "host": os.getenv("SERVICES_CITYDB_HOST", "citydb"),
-                    "port": int(os.getenv("SERVICES_CITYDB_EXPOSED_PORT", "5432")),
-                    "dbname": os.getenv("SERVICES_CITYDB_DB"),
-                    "user": os.getenv("SERVICES_CITYDB_USER"),
-                    "password": os.getenv("SERVICES_CITYDB_PASSWORD"),
+                    "host": os.getenv("SERVICES_POSTGRES_HOST", "citydb"),
+                    "port": int(os.getenv("SERVICES_POSTGRES_EXPOSED_PORT", "5432")),
+                    "dbname": os.getenv("SERVICES_POSTGRES_DB"),
+                    "user": os.getenv("SERVICES_POSTGRES_USER"),
+                    "password": os.getenv("SERVICES_POSTGRES_PASSWORD"),
                     "search_path": [schema],
                 },
                 "id_field": table_pk_column(cur, schema, table),

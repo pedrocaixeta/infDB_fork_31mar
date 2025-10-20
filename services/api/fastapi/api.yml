@@ -1,7 +1,7 @@
 services:
   api:
     build:
-      context: ./services/api/fastapi
+      context: .
       dockerfile: Dockerfile
     container_name: infdb-api
     ports:
@@ -11,6 +11,6 @@ services:
       - POSTGREST_INTERNAL=http://citydb-api-postgrest:${SERVICES_POSTGREST_PORT}/ 
     restart: unless-stopped
     networks:
-      - infdb-neuburg-demo_network
+      - infdb-infdb-demo_network
 
 
