@@ -26,12 +26,13 @@ def main():
         # ===========================================================
         # Start your added python code in folder "src"
         # ===========================================================
+        infdb.log().info("Running python code ...")
         choose_a_name.example_function(variable="Hello, InfDB!")
 
         # ===========================================================
         # Start your added sql scripts in folder "sql"
         # ===========================================================
-        infdb.get_log().info("Running SQL scripts ...")
+        infdb.log().info("Running SQL scripts ...")
         format_params = {
             'input_schema': infdb.get_config_value(["data", "input_schema"], insert_toolname=True),
             'output_schema': infdb.get_config_value(["data", "output_schema"], insert_toolname=True),
@@ -42,6 +43,7 @@ def main():
         # ===========================================================
         # Demonstrate database querying - remove or comment out if not needed
         # ===========================================================
+        infdb.log().info("Running demo ...")
         demo.sql_demo(infdb)
         demo.database_demo(infdb)
         demo.database_demo_sqlalchemy()
