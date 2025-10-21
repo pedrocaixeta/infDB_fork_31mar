@@ -46,7 +46,7 @@ def env(var_name: str, default: Optional[str] = None, required: bool = False) ->
     """
     value = os.getenv(var_name, default)
     if required and (value is None or value == ""):
-        log.error("Missing required env: %s", var_name)
+        log.error("Missing required env variable: %s", var_name)
         sys.exit(2)
     return value
 
@@ -70,7 +70,7 @@ PYGEOAPI_HOST: Optional[str] = env("SERVICES_PYGEOAPI_BASE_HOST")
 POSTGRES_USER: str = env("SERVICES_POSTGRES_USER", required=True) or ""
 POSTGRES_PASSWORD: str = env("SERVICES_POSTGRES_PASSWORD", required=True) or ""
 POSTGRES_DB: str = env("SERVICES_POSTGRES_DB", required=True) or ""
-POSTGRES_HOST: str = env("SERVICES_POSTGRES_HOST", required=True) or ""
+POSTGRES_HOST: str = "postgres"
 POSTGRES_PORT: int = int(env("SERVICES_POSTGRES_EXPOSED_PORT", "5432") or "5432")
 
 FALLBACK_EPSG: int = int(env("FALLBACK_EPSG", "25832") or "25832")  # keep default 25832

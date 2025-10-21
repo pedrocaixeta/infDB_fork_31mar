@@ -64,3 +64,7 @@ class InfDB:
 
     def get_db_engine(self):
         return self.connect().get_db_engine()
+    
+    
+    def get_db_cursor(self):
+        return self.connect().get_db_cursor()
