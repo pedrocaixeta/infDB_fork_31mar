@@ -54,7 +54,7 @@ def create_geogitter(resolutions, clear_existing=False):
             log.warning("Skipping resolution with unknown unit: %s", resolution)
             continue
 
-        # Generate grid cells for one resolution
+        # Generate grid cells for one resolution, only insert if id does not already exist
         generate_grid_cells_sql = f"""
             WITH params AS (
                 SELECT {resolution_meters}::int AS cell_size
@@ -95,10 +95,11 @@ def create_geogitter(resolutions, clear_existing=False):
                     g.geom
                 FROM grid g, params p
             )
-            SELECT * FROM id_named;
+            SELECT * FROM id_named
+            WHERE id NOT IN (SELECT id FROM {schema}.{table_name});
         """
 
-        # Insert subsequent resolutions' cells
+        # Insert subsequent resolutions' cells, only if id does not exist
         sql = f"INSERT INTO {schema}.{table_name} {generate_grid_cells_sql};"
         utils.sql_query(sql)
 

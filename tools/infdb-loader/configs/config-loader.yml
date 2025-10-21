@@ -1,5 +1,5 @@
 loader:
-    name: neuburg-demo
+    name: "{base/name}"
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - 09162000  # Munich
         # - "09780139"  # Sonthofen
@@ -497,8 +497,8 @@ loader:
               base: "{loader/path/opendata}/openmeteo/"
               processed: "{loader/path/processed}/openmeteo/"
           timing:
-              start_date: "2020-01-01"
-              end_date: "2024-12-31"
+              start_time: "2020-01-01"
+              end_time: "2024-12-31"
               temporal: hourly  # options: hourly, daily
           data:
               - temperature_2m
