@@ -507,8 +507,8 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
             non_geom_properties = [name for name, typ in columns if typ not in ("geometry", "geography")]
 
             resource_id = f"{table}"
-            resource_title = f"{table} table (postgis)"
-            resource_description = f"{table} table (postgis)"
+            resource_title = f"{table}"
+            resource_description = f"{table}"
             keywords = [token for token in table.replace("-", "_").split("_") if token] or [table]
 
             table_value = table
