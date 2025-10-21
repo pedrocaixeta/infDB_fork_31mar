@@ -5,6 +5,8 @@ from entise.core.generator import TimeSeriesGenerator
 
 from src import basic_refurbishment
 from src import eureca_code
+from src import timedata
+import os
 
 # Parameters
 rng = np.random.default_rng(seed=42)
@@ -78,7 +80,7 @@ def main():
                            -- Assume heated area = b.floor_area * b.floor_number * 0.75
                            -- Assume window area to be 0.2 m² per heated area ()
                            b.floor_area * b.floor_number * 0.75 * 0.2                        AS window_area
-                    FROM {input_schema}.buildings_pylovo b
+                    FROM {input_schema}.buildings b
                              LEFT JOIN wall_data wd ON b.objectid = wd.building_objectid
                              LEFT JOIN roof_data rd ON b.objectid = rd.building_objectid;
 
@@ -212,18 +214,20 @@ def main():
         gen.add_objects(entise_input)
 
         # TODO: Adapt datetime range and temp_out
+        df_hourly_temperature2m = timedata.get_hourly_temperature_2m(objectid="DEBY_LOD2_107940731", database_connection=engine, start_time="2023-01-01", end_time="2023-12-31")
+
         data = {
             "weather": pd.DataFrame(
                 {
-                    "temp_out": [0.0] * 24,
-                    "datetime": pd.date_range("2025-01-01", periods=24, freq="h"),
+                    "temp_out": df_hourly_temperature2m["value"].values,
+                    "datetime": df_hourly_temperature2m.index,
                 }
             )
         }
 
         # Generate time series
         # TODO: Handle and save time series
-        summary, df = gen.generate(data)
+        summary, df = gen.generate(data, workers=os.cpu_count())
 
         summary.index.name = "building_objectid"
         

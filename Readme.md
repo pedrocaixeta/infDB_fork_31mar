@@ -177,7 +177,7 @@ docker compose -f compose.yml down -v
 
 ### Setup infDB-loader
 
-The configuration can be done via [configs/config-loader.yml](configs/config-loader.yml)
+The configuration can be done via [tools/indfb-loader/configs/config-loader.yml](tools/indfb-loader/configs/config-loader.yml)
 ```yaml
 loader:
     name: demo-sonthofen

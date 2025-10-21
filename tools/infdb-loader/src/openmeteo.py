@@ -67,12 +67,17 @@ def temperature_2m(pd_dataframe, engine):
     """
     utils.sql_query(drop_sql)
 
-    # Ensure table exists with appropriate types (grid_id, date, temperature, ts_id)
+    # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
     create_sql = f"""
     CREATE TABLE IF NOT EXISTS {db_schema}.{table_name} (
         ts_metadata_id integer,
-        date timestamptz,
-        temperature_2m double precision
+        time timestamptz,
+        value double precision
+    )
+    WITH (
+        timescaledb.hypertable,
+        timescaledb.partition_column='time',
+        timescaledb.segmentby='ts_metadata_id'
     );
     """
     utils.sql_query(create_sql)
@@ -90,8 +95,8 @@ def temperature_2m(pd_dataframe, engine):
         params = {
             "latitude": coordinates["latitude"],
             "longitude": coordinates["longitude"],
-            "start_date": config.get_value(["loader", "sources", "openmeteo", "timing", "start_date"]),
-            "end_date": config.get_value(["loader", "sources", "openmeteo", "timing", "end_date"]),
+            "start_date": config.get_value(["loader", "sources", "openmeteo", "timing", "start_time"]),
+            "end_date": config.get_value(["loader", "sources", "openmeteo", "timing", "end_time"]),
             "hourly": "temperature_2m",
         }
 
@@ -107,7 +112,7 @@ def temperature_2m(pd_dataframe, engine):
             hourly = response.Hourly()
             hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
 
-            hourly_data = {"date": pd.date_range(
+            hourly_data = {"time": pd.date_range(
                 start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
                 end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
                 freq = pd.Timedelta(seconds = hourly.Interval()),
@@ -144,21 +149,21 @@ def temperature_2m(pd_dataframe, engine):
             except Exception as e:
                 log.error("Failed to insert/retrieve metadata record: %s", e)
             
-            hourly_data["temperature_2m"] = hourly_temperature_2m
+            hourly_data["value"] = hourly_temperature_2m
             hourly_data["ts_metadata_id"] = ts_metadata_id
             hourly_dataframe = pd.DataFrame(data = hourly_data)
 
             try:
 
                 # write CSV to an in-memory buffer without header/index
-                # Reorder columns to match COPY target: grid_id, date, temperature_2m, ts_id
+                # Reorder columns to match COPY target: grid_id, time, value, ts_id
                 buf = io.StringIO()
-                hourly_dataframe[['ts_metadata_id', 'date', 'temperature_2m']].to_csv(buf, index=False, header=False)
+                hourly_dataframe[['ts_metadata_id', 'time', 'value']].to_csv(buf, index=False, header=False)
                 buf.seek(0)
 
                 conn = engine.raw_connection()
                 cur = conn.cursor()
-                copy_sql = f"COPY {db_schema}.{table_name} (ts_metadata_id, date, temperature_2m) FROM STDIN WITH (FORMAT csv)"
+                copy_sql = f"COPY {db_schema}.{table_name} (ts_metadata_id, time, value) FROM STDIN WITH (FORMAT csv)"
                 cur.copy_expert(copy_sql, buf)
                 conn.commit()
                 cur.close()
