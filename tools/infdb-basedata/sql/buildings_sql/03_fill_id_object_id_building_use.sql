@@ -1,5 +1,5 @@
 -- Fill id, objectid and building use columns
-INSERT INTO {output_schema}.buildings_pylovo (id, feature_id, objectid, building_use, building_use_id, street, house_number)
+INSERT INTO {output_schema}.buildings (id, feature_id, objectid, building_use, building_use_id, street, house_number)
 SELECT b.id,
        b.feature_id,
        b.objectid,

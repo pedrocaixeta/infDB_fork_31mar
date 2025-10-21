@@ -10,7 +10,7 @@ WITH ground_data AS (
     -- WHERE f.objectclass_id = 710 -- GroundSurface
     -- AND p.name = 'Flaeche'
 )
-UPDATE {output_schema}.buildings_pylovo b
+UPDATE {output_schema}.buildings b
 SET floor_area = gd.area,
     geom       = gd.geom,
     centroid   = ST_Centroid(gd.geom)
@@ -19,5 +19,5 @@ WHERE b.feature_id = gd.feature_id;
 
 -- delete buildings below an area threshold
 DELETE
-FROM {output_schema}.buildings_pylovo
-WHERE buildings_pylovo.floor_area < 12;
+FROM {output_schema}.buildings
+WHERE buildings.floor_area < 12;

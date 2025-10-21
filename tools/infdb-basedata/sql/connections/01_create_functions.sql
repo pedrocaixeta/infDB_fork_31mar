@@ -24,22 +24,22 @@
  * 6. Create indexed temporary table for efficient downstream processing
  *
  * INPUT: Data from 'buildings_tem' and 'ways_tem' tables (INFDB database)
- * OUTPUT: Temporary table 'connections_buildings_to_ways' with connection anmblysis
+ * OUTPUT: Temporary table 'buildings_to_ways' with connection anmblysis
  */
 
-CREATE OR REPLACE FUNCTION {output_schema}.generate_connections_buildings_to_ways() RETURNS void AS $$
+CREATE OR REPLACE FUNCTION {output_schema}.generate_buildings_to_ways() RETURNS void AS $$
 BEGIN
     -- Note: Indexes significantly improve performance when the temporary table
     -- is used in subsequent spatial operations or way segmentation processes
     
     -- 1) Create initial connections table by matching building street names to way names
-    CREATE TABLE {output_schema}.connections_buildings_to_ways AS
+    CREATE TABLE {output_schema}.buildings_to_ways AS
         WITH building_addresses_to_ways AS (
             SELECT DISTINCT ON (b.id)
             b.id as building_id,
             w.way_id as way_way_id,
             b.centroid <-> w.geom AS dist
-            FROM {output_schema}.buildings_pylovo b
+            FROM {output_schema}.buildings b
             LEFT JOIN {output_schema}.ways AS w
             ON b.street = w.name OR b.street = w.name_kurz 
             ORDER BY b.id, b.centroid <-> w.geom
@@ -52,7 +52,7 @@ BEGIN
             SELECT  b.id AS building_id,
                     streets.way_id as way_way_id,
                     streets.dist as dist
-            FROM {output_schema}.buildings_pylovo b
+            FROM {output_schema}.buildings b
             CROSS JOIN LATERAL (
                 SELECT streets.way_id, streets.geom <-> b.centroid AS dist
                 FROM {output_schema}.ways AS streets
@@ -62,41 +62,41 @@ BEGIN
             ) streets
             WHERE b.id IN (
                 SELECT building_id
-                FROM {output_schema}.connections_buildings_to_ways
+                FROM {output_schema}.buildings_to_ways
                 WHERE way_way_id IS NULL
             )
     )
-    UPDATE {output_schema}.connections_buildings_to_ways AS batw
+    UPDATE {output_schema}.buildings_to_ways AS batw
     SET way_way_id = nmb.way_way_id,
         dist = nmb.dist
     FROM not_matched_buildings nmb
     WHERE batw.building_id = nmb.building_id;
 
     -- Remove connections that are too far away (e.g., > 500 units)
-    UPDATE {output_schema}.connections_buildings_to_ways as batw
+    UPDATE {output_schema}.buildings_to_ways as batw
     SET way_way_id = NULL
     WHERE batw.dist IS NOT NULL AND batw.dist > 500;
 
     -- 3) Add connection geometry and distance information
-    ALTER TABLE {output_schema}.connections_buildings_to_ways
+    ALTER TABLE {output_schema}.buildings_to_ways
     ADD COLUMN IF NOT EXISTS connection_geom   geometry,
     ADD COLUMN IF NOT EXISTS startpoint_geom   geometry,
     ADD COLUMN IF NOT EXISTS endpoint_geom     geometry,
     ADD COLUMN IF NOT EXISTS dist   double precision;
 
-    UPDATE {output_schema}.connections_buildings_to_ways AS batw
+    UPDATE {output_schema}.buildings_to_ways AS batw
     SET connection_geom = ST_ShortestLine(b.centroid, w.geom),
         startpoint_geom = ST_StartPoint(ST_ShortestLine(b.centroid, w.geom)),
         endpoint_geom = ST_EndPoint(ST_ShortestLine(b.centroid, w.geom))
         -- dist = ST_Distance(b.centroid, w.geom)
-    FROM {output_schema}.ways w, {output_schema}.buildings_pylovo b
+    FROM {output_schema}.ways w, {output_schema}.buildings b
     WHERE batw.way_way_id = w.way_id
       AND batw.building_id = b.id
       AND batw.dist < 500;
 
     -- 4) Add precise connection point on the way geometry
-    CREATE INDEX connections_buildings_to_ways_building_id_idx ON {output_schema}.connections_buildings_to_ways (building_id);
-    CREATE INDEX connections_buildings_to_ways_way_id_idx ON {output_schema}.connections_buildings_to_ways (way_way_id);
+    CREATE INDEX buildings_to_ways_building_id_idx ON {output_schema}.buildings_to_ways (building_id);
+    CREATE INDEX buildings_to_ways_way_id_idx ON {output_schema}.buildings_to_ways (way_way_id);
 
     -- For debugging: Create a test table to visualize connections
     DROP TABLE IF EXISTS {output_schema}.connections_debug;
@@ -111,8 +111,8 @@ BEGIN
     ST_StartPoint(ST_ShortestLine(b.centroid, w.geom)) AS startpoint_geom,
     ST_EndPoint(ST_ShortestLine(b.centroid, w.geom)) AS endpoint_geom,
     ST_Distance(b.centroid, w.geom) AS dist
-    FROM {output_schema}.connections_buildings_to_ways batw
-    JOIN {output_schema}.buildings_pylovo b
+    FROM {output_schema}.buildings_to_ways batw
+    JOIN {output_schema}.buildings b
       ON batw.building_id = b.id
     JOIN {output_schema}.ways w
       ON batw.way_way_id = w.way_id;

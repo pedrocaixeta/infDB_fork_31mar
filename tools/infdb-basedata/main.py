@@ -29,6 +29,7 @@ def main():
     infdblog.info(f"Output schema: {output_schema}")
 
     # Drop output schema if exists for development purposes
+    infdblog.info(f"Dropping output schema '{output_schema}' if it exists")
     infdbclient_citydb.execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
 
     # Execute WAYS scripts
