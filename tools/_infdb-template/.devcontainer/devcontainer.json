@@ -44,8 +44,14 @@
 				"python.terminal.activateEnvironment": true
 			}
 			"extensions": [
+				"ms-python.python",
+				"ms-python.debugpy",
 				"ms-toolsai.jupyter",
-        		"ms-toolsai.datawrangler"
+        		"ms-toolsai.datawrangler",
+				"ms-ossdata.vscode-pgsql",
+				"gitlab.gitlab-workflow",
+				"github.copilot-chat",
+				"charliermarsh.ruff"
 			]
 		}
 	}
