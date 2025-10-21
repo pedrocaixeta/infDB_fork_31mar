@@ -8,41 +8,33 @@ from fastapi.middleware.gzip import GZipMiddleware
 from shapely.geometry import shape, mapping
 from shapely.errors import ShapelyError
 
-
+# Helper to get environment variables with a default value
 def _env(key: str, default: str) -> str:
     v = os.getenv(key, default)
+    # Ensure URLs end with a slash for proper joining
     if (key.upper().startswith("PYGEOAPI") or key.upper().startswith("POSTGREST")) and not v.endswith("/"):
         v = v + "/"
     return v
 
+# Internal URLs for pygeoapi and PostgREST services
 PYGEOAPI_URL = _env("PYGEOAPI_INTERNAL", os.getenv("PYGEOAPI_URL", "http://citydb-api-pygeoapi:5000/"))
 POSTGREST_URL = _env("POSTGREST_INTERNAL", os.getenv("POSTGREST_URL", "http://citydb-api-postgrest:3000/"))
 
-def _env(key: str, default: str) -> str:
-    v = os.getenv(key, default)
-    if (key.upper().startswith("PYGEOAPI") or key.upper().startswith("POSTGREST")) and not v.endswith("/"):
-        v = v + "/"
-    return v
-
-# schema = "our_schema"  # <-- Replace with our schema name
-# create_common_data_table(schema)
-# energy_assets(schema)
-# electricity_network_components(schema)
-
-
+# FastAPI app setup
 app = FastAPI(title="cityAPI Gateway", version="1.0.0")
-app.add_middleware(GZipMiddleware, minimum_size=500)
+app.add_middleware(GZipMiddleware, minimum_size=500)  # Enable gzip compression for large responses
 
-# Root
+# Root endpoint for basic API status
 @app.get("/")
 async def root():
     return {"message": "INFDB API is running."}
 
-# Health
+# Health check endpoint
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
+# Health check for PostgREST service
 @app.get("/postgrest/health")
 async def postgrest_health():
     timeout = httpx.Timeout(5.0, read=5.0)
@@ -54,6 +46,7 @@ async def postgrest_health():
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"PostgREST unreachable at {url}: {e}")
 
+# Helper to proxy HTTP responses, preserving headers except for hop-by-hop headers
 def _proxy_response(resp: httpx.Response) -> Response:
     media = resp.headers.get("content-type", "application/json")
     r = Response(content=resp.content, status_code=resp.status_code, media_type=media)
@@ -65,6 +58,7 @@ def _proxy_response(resp: httpx.Response) -> Response:
             r.headers[k] = v
     return r
 
+# Helper to proxy requests to another service
 async def _proxy(
     req: Request,
     base_url: str,
@@ -82,8 +76,9 @@ async def _proxy(
         resp = await client.request(method, target, params=params, content=body, headers=headers)
     return resp
 
+# ---- PostgREST Endpoints ----
 
-# ---- PostgREST ----
+# GET endpoint to fetch data from PostgREST, with geometry simplification
 @app.get("/get-postgrest/{schema}/{table}")
 async def get_postgrest(
     request: Request,
@@ -92,7 +87,7 @@ async def get_postgrest(
     limit: int = 100,
     tolerance: float = Query(100, description="Geometry simplification tolerance (units match your data)")
 ):
-    # Only pass allowed params to PostgREST
+    # Only pass allowed params to PostgREST, filter out internal params
     passthrough = [
         (k, v) for k, v in request.query_params.multi_items()
         if k not in {"schema", "table", "limit", "offset", "tolerance"}
@@ -101,7 +96,7 @@ async def get_postgrest(
     passthrough.append(("offset", str(0)))
 
     headers = dict(request.headers)
-    headers["Accept-Profile"] = schema
+    headers["Accept-Profile"] = schema  # Specify schema for PostgREST
 
     try:
         async with httpx.AsyncClient() as client:
@@ -119,9 +114,7 @@ async def get_postgrest(
     if resp.status_code >= 400:
         raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
-    # Directly return the response, let GZipMiddleware handle compression
-    import json
-
+    # Simplify geometry in the response if present
     def _simplify_geometry(obj, tolerance=100):
         for key in ['geometry', 'geom']:
             if key in obj and isinstance(obj[key], dict) and 'coordinates' in obj[key]:
@@ -143,6 +136,7 @@ async def get_postgrest(
     else:
         return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type"))
 
+# POST endpoint to insert a new row into a table via PostgREST
 @app.post("/postgrest/{schema}/{table}")
 async def post_postgrest(
     schema: str,
@@ -169,13 +163,14 @@ async def post_postgrest(
     else:
         return {"status": "success"}
 
+# PUT endpoint to update an existing row in a table via PostgREST
 @app.put("/postgrest/{schema}/{table}/{item_id}")
 async def put_postgrest(
     schema: str,
     table: str,
     item_id: str,
     row: dict,
-    key_column: str = Query("id", description="Primary key column name")  # <-- Use Query here
+    key_column: str = Query("id", description="Primary key column name")
 ):
     headers = {"Content-Type": "application/json", "Content-Profile": schema}
     params = {key_column: f"eq.{item_id}"}
@@ -199,7 +194,7 @@ async def put_postgrest(
     else:
         return {"status": "updated"}
 
-# Add a PostgREST delete endpoint
+# DELETE endpoint to remove a row from a table via PostgREST
 @app.delete("/postgrest/{schema}/{table}/{item_id}")
 async def delete_postgrest(
     schema: str,
