@@ -22,7 +22,7 @@ services:
         status: active
         default_email: admin@need.energy
         default_password: infdb
-        exposed_port: 81
+        exposed_port: 82
         path:
             compose_file: "services/pgadmin/compose.yml"
 
