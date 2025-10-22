@@ -136,7 +136,7 @@ bash infdb-startup.sh
 ```
 Run toolchain of use case Linear Heat Density:
 ```bash
-bash run_linear-heat-density.sh
+bash tools/run_linear-heat-density.sh
 ```
 
 ### Setup infDB
