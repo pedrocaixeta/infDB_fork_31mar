@@ -86,6 +86,11 @@ If you are happy with the preconfiguration and default passwords, then just foll
 1. [Prepare folder structure](#Suggested-folder-structure-for-infDB)   
 2. [Clone infDB](#clone-infdb)
 3. [Startup infDB](#startup-script)
+4. [Import data and run toolchain](#setup-infdb-loader)
+
+**Important:** We strongly recommend executing all commands on **macOS or Linux**. 
+
+**Windows users:** Please install [Ubuntu as Windows Subsystem for Linux (WSL)](https://apps.microsoft.com/detail/9nz3klhxdjp5?ocid=webpdpshare) from the Microsoft Store. After installation, launch the Linux terminal by searching for "Ubuntu" in your applications.
 
 ### Suggested folder structure for infDB
 The folder structure of the infdb as shown is recommend since all of the data of all instances are stored in 'data' automatically by default:
@@ -104,13 +109,15 @@ mkdir infdb
 cd infdb
 ```
 ### Clone infDB
-Either ssh
+You can access the repository either with ssh or https as you like:
+
+**ssh**
 ```bash
 # Replace "infdb-demo" by name of instance 
 git clone git@git-ce.rwth-aachen.de:need/NEED-infdb.git infdb-demo 
 ```
 
-or https 
+or using **https** 
 ```bash
 # Replace "infdb-demo" by name of instance
 git clone https://git-ce.rwth-aachen.de/need/NEED-infdb.git infdb-demo
@@ -199,8 +206,8 @@ loader:
         # - "09474126" # FO
         # - "09261000" # LA
     multiproccesing: 
-        status: active
-        max_cores: 4    # max cores since of memory limitations to 2
+        status: not-active
+        max_cores: 2    # max cores since of memory limitations to 2
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
         base: "data" # only foldername - change path in ".env" file "LOADER_DATA_PATH"
@@ -226,7 +233,7 @@ loader:
                 processed: "{loader/path/opendata}"
 
         lod2:
-            status: not-active
+            status: active
             url:
                 - "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4"    #scope placeholder for AGS
             path:
