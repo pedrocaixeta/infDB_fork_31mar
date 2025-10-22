@@ -132,7 +132,7 @@ cd infdb-demo
 The follwing commands below for Neuburg demo are all collected in this runnable bash script if you dont want to execute each single step separately, then execute startup and run_linear-heat-density:
 Startup of infDB without any imported data:
 ```bash
-bash startup.sh
+bash infdb-startup.sh
 ```
 Run toolchain of use case Linear Heat Density:
 ```bash
