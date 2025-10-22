@@ -104,23 +104,32 @@ mkdir infdb
 cd infdb
 ```
 ### Clone infDB
+Either ssh
 ```bash
-# either ssh
 # Replace "infdb-demo" by name of instance 
 git clone git@git-ce.rwth-aachen.de:need/NEED-infdb.git infdb-demo 
+```
 
-# or https
-# Replace "infdb-demo" by name of instance 
+or https 
+```bash
+# Replace "infdb-demo" by name of instance
 git clone https://git-ce.rwth-aachen.de/need/NEED-infdb.git infdb-demo
+```
 
-# Change location into repo
+Then, change location into repo
+```bash
 cd infdb-demo
 ```
 
 ### Startup script
-The follwing commands below for Neuburg demo are all collected in this runnable bash script if you dont want to execute each single step separately:
+The follwing commands below for Neuburg demo are all collected in this runnable bash script if you dont want to execute each single step separately, then execute startup and run_linear-heat-density:
+Startup of infDB without any imported data:
 ```bash
 bash startup.sh
+```
+Run toolchain of use case Linear Heat Density:
+```bash
+bash run_linear-heat-density.sh
 ```
 
 ### Setup infDB
