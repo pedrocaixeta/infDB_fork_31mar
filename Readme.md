@@ -32,7 +32,7 @@
 
 ## Purpose
 
-**infDB (Infrastructure Database)** offers a flexible and easy-to-configure data infrastructure with essential services, minimizing the effort required for data management. By providing standardized interfaces and APIs, infDB streamlines collaboration in energy modeling and analysis, enabling users to focus on insights rather than data handling.
+**infDB (Infrastructure and Energy Database)** offers a flexible and easy-to-configure data infrastructure with essential services, minimizing the effort required for data management. By providing standardized interfaces and APIs, infDB streamlines collaboration in energy modeling and analysis, enabling users to focus on insights rather than data handling.
 
 For instance, it can be used for the following applications:
 - Energy System Modeling
@@ -42,21 +42,28 @@ For instance, it can be used for the following applications:
 
 ## How it works?
 The infDB architecture is composed of three coordinated layers as shown in the figure below:
-1. **3D City Database** – foundational geospatial and semantic building data (center)
+1. **PostgreSQL** – foundational geospatial and semantic building data (center)
 2. **Services** – preconfigured platform services (top)
 3. **Tools** – external connected software and scripts. (right)
 
-The 3D City Database is the basis and extended by services and tools. More information of each layer is described below. 
-The 3D City Database and all services are dockerized for a modular and flexible application.
+The PostgreSQL database is the basis and extended by services and tools. More information of each layer is described below. 
+The PostgreSQL and all services are dockerized for a modular and flexible application.
 ![alt text](docs/img/infdb-overview.png)
 
-### 3D City Database
-The 3D City Database is developed by the Chair of Geoinformatics at Technical University of Munich (TUM) and the basis for infDB. It is a solution for managing, analyzing, and utilizing virtual 3D city models on top of a spatial database system. More information on [http://www.3dcitydb.org/](http://www.3dcitydb.org/)
+### PostgreSQL
+The foundation is a PostgreSQL database enhanced with TimescaleDB, PostGIS, PGRouting, and the 3D City Database:
+
+- [TimescaleDB](https://www.timescale.com/): Scalable time-series storage (weather, load, generation) with hypertables, compression, optional continuous aggregates.
+
+- [PostGIS](https://postgis.net/): Spatial/geographic objects (buildings, parcels, networks) with geometry queries, projections, and spatial indexing.
+- [PGRouting](https://pgrouting.org/): Network routing algorithms (shortest path, reachability) on road and infrastructure graphs for mobility and grid analysis.
+
+- [3D City Database](http://www.3dcitydb.org/): Virtual 3D city model storage (buildings, terrain, infrastructure) with CityGML support, spatial indexing, and semantic queries for detailed urban analysis.
 
 ### Services
 Integrated, preconfigured services extending the 3D City Database:
 
-- [TimescaleDB](https://www.timescale.com/): Scalable time-series storage (weather, load, generation) with hypertables, compression, optional continuous aggregates.
+
 - [pgAdmin](https://www.pgadmin.org/): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
 - [FastAPI](https://fastapi.tiangolo.com/): REST endpoints (/city, /weather) with OpenAPI docs and validated access to 3D, geospatial, and time-series data.
 - [Jupyter](https://jupyter.org/): Notebook environment (dependencies and env vars preloaded) for exploratory queries, ETL prototypes, reproducible analysis.
@@ -67,16 +74,18 @@ Integrated, preconfigured services extending the 3D City Database:
 These services provide core functionalities and support a seamless path from ingestion to analysis and visualization.
 
 ### Tools
-Tools are external software that is already adopted to the infDB.
+Tools are external software, scripts, or workflows that connect to infDB through its standardized APIs and database schemas, enabling specialized analysis and processing capabilities.
 
-Currently integrated tools include:
+#### Currently Integrated Tools
 
-- infDB-loader: Containerized automated loading public open data for Germany
-- infDB-processor: Containerized data transformation and enrichment
-- [pylovo](https://github.com/tum-ens/pylovo): Tool for generating synthetic low-voltage distribution grids 
+The following tools are currently integrated with infDB:
 
-More community or domain-specific tools can be attached through the standardized APIs and database schemas.
+- **infDB-loader**: Containerized solution for automated ingestion of public open data for Germany
+- **infDB-basedata**: Containerized pipeline for data transformation, validation, and enrichment
+- **[pylovo](https://github.com/tum-ens/pylovo)**: Python tool for generating synthetic low-voltage distribution grids
+- **[EnTiSe](https://github.com/tum-ens/EnTiSe)**: Python tool for energy time series generation and management
 
+Additional community-developed or domain-specific tools can be easily integrated through infDB's standardized APIs and database schemas.
 
 ## Getting Started
 To get started, follow these steps below. For more information in detail read the [https://infdb.readthedocs.io/](https://infdb.readthedocs.io/).
@@ -92,8 +101,8 @@ If you are happy with the preconfiguration and default passwords, then just foll
 
 **Windows users:** Please install [Ubuntu as Windows Subsystem for Linux (WSL)](https://apps.microsoft.com/detail/9nz3klhxdjp5?ocid=webpdpshare) from the Microsoft Store. After installation, launch the Linux terminal by searching for "Ubuntu" in your applications.
 
-### Suggested folder structure for infDB
-The folder structure of the infdb as shown is recommend since all of the data of all instances are stored in 'data' automatically by default:
+### Folder Structure of infDB
+The infDB provides a modular folder structure that allows managing multiple database instances independently. Each instance represents a separate deployment with its own data, configuration, and services—ideal for handling different regions, projects, or environments.
 ```
 infdb/
 ├── data/
@@ -102,183 +111,111 @@ infdb/
 ├── ...
 └── muenchen/
 ```
+The recommended structure places all instance data in a shared `data/` folder while keeping each instance's configuration and tools in separate directories (e.g., `infdb-demo/`, `sonthofen/`, `muenchen/`). This approach simplifies backups, migrations, and multi-instance management.
 
+First of all, create the main `infdb` directory and navigate into it:
 ```bash
 # linux
 mkdir infdb
 cd infdb
 ```
 ### Clone infDB
-You can access the repository either with ssh or https as you like:
+Then, you can access the repository either with SSH or HTTPS as you like:
 
-**ssh**
-```bash
-# Replace "infdb-demo" by name of instance 
-git clone git@git-ce.rwth-aachen.de:need/NEED-infdb.git infdb-demo 
-```
+**SSH vs HTTPS:**
+- **SSH (Secure Shell)**: Uses cryptographic key pairs for authentication. Once set up, you won't need to enter credentials for each operation. Recommended for frequent Git operations.
+  ```bash
+  # Replace "infdb-demo" by name of instance 
+  git clone git@git-ce.rwth-aachen.de:need/NEED-infdb.git infdb-demo 
+  ```
 
+- **HTTPS**: Uses username and password (or personal access token) for authentication. Simpler to set up initially but may require credentials for each operation unless you configure credential caching.
 or using **https** 
-```bash
-# Replace "infdb-demo" by name of instance
-git clone https://git-ce.rwth-aachen.de/need/NEED-infdb.git infdb-demo
-```
+  ```bash
+  # Replace "infdb-demo" by name of instance
+  git clone https://git-ce.rwth-aachen.de/need/NEED-infdb.git infdb-demo
+  ```
 
-Then, change location into repo
+Both methods are secure and work identically for cloning, pushing, and pulling. Your choice depends on your workflow preferences and environment constraints.
+
+Navigate to the instance directory:
 ```bash
 cd infdb-demo
 ```
 
-### Startup script
-The follwing commands below for Neuburg demo are all collected in this runnable bash script if you dont want to execute each single step separately, then execute startup and run_linear-heat-density:
-Startup of infDB without any imported data:
+### Start infDB
+The startup script simplifies the startup process if you dont want to execute each single step as shown below separately and are happy with the default configurations and passwords:
 ```bash
 bash infdb-startup.sh
 ```
-Run toolchain of use case Linear Heat Density:
+
+In order to start the tools of the use case Linear Heat Density, please use the following script:
 ```bash
 bash tools/run_linear-heat-density.sh
 ```
 
-### Setup infDB
-The configuration can be done via [configs/config-infdb.yml](configs/config-infdb.yml). Copy and rename the template [configs/config-infdb.yml.template](configs/config-infdb.yml.template) beforehand.
-```bash
-cp configs/config-infdb.yml.template configs/config-infdb.yml
-```
+### Setup infDB Configuration
 
-```yaml
-base:
-    name: infdb-demo
-    path:
-        base: "../data/{base/name}/"
-    network_name: "infdb-{base/name}_network"
-services:
-    postgres:
-        status: active
-        user: infdb_user
-        password: infdb
-        db: infdb
-        exposed_port: 54328
-        epsg: 25832
-        path: 
-            base: "{base/path/base}/postgres/"
-            compose_file: "services/postgres/compose.yml"
+Before starting infDB, you need to configure it:
 
-        ...
-```
-After doing the configuration you need to generate the configurations files with the following command:
+1. **Copy the configuration template:**
+    ```bash
+    cp configs/config-infdb.yml.template configs/config-infdb.yml
+    ```
+
+2. **Edit the configuration file** at `configs/config-infdb.yml` to customize your infDB instance settings (database credentials, ports, paths, etc.).
+    
+    **Note:** If you're using the default configuration, you can skip editing and proceed directly to generating the configuration files.
+
+    ```yaml
+    base:
+        name: infdb-demo
+        path:
+            base: "../data/{base/name}/"
+        network_name: "infdb-{base/name}_network"
+    services:
+        postgres:
+            status: active
+            user: infdb_user
+            password: infdb
+            db: infdb
+            exposed_port: 54328
+            epsg: 25832
+            path: 
+                base: "{base/path/base}/postgres/"
+                compose_file: "services/postgres/compose.yml"
+
+            ...
+    ```
+
+
+
+After completing the configuration, generate the necessary configuration files by running:
 ```bash
-# on linux and macos
 docker compose -f services/infdb-setup/compose.yml up
 ```
 
-Once you generated the configuration files with the command above, you need to finally start the infDB:
-
 ### Run infDB
+After the configuration files are generated, you can start all infDB services with:
+
 ```bash
-# on linux and macos
 docker compose -f compose.yml up -d
 ```
-The infDB will be run as long as you stop it manually as described below even when the machine is restarted.
 
-**Hint:** If compose.yml is not found, you either forgot to run the command above or something went wrong. 
-Please check the logs of the setup service.
+**Hint:** If compose.yml is not found, you either forgot to run the command above or something went wrong. Please check the logs of the setup service.
 
 **Hint:** The infDB will be run as long as you stop it manually as described below even when the machine is restarted.
 
-### Stop infDB
+### Remove infDB
+To stop all running infDB services and remove them, execute:
 ```bash
-# on linux and macos
 docker compose -f compose.yml down -v
 ```
 
-### Setup infDB-loader
+# Tools Directory
+For detailed information about each tool, their usage, configuration options, and examples, please refer to the [tools/Readme.md](tools/Readme.md) file.
 
-The configuration can be done via [tools/indfb-loader/configs/config-loader.yml](tools/indfb-loader/configs/config-loader.yml)
-```yaml
-loader:
-    name: demo-sonthofen
-    scope:  # AGS (Amtlicher Gemeindeschlüssel)
-        # - 09162000  # Munich
-        - "09780139"  # Sonthofen
-        # - "09780116"  # Bolsterlang
-        # - "09162000" # M
-        # - "09185149" # ND
-        # - "09474126" # FO
-        # - "09261000" # LA
-    multiproccesing: 
-        status: not-active
-        max_cores: 2    # max cores since of memory limitations to 2
-    config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
-    path:
-        base: "data" # only foldername - change path in ".env" file "LOADER_DATA_PATH"
-        opendata: "{loader/path/base}/opendata/"
-        processed: "{loader/path/base}/{loader/name}"
-    logging:
-        path: "{loader/path/base}/loader.log"
-        level: "DEBUG" # ERROR, WARNING, INFO, DEBUG
-    hosts:
-        postgres:
-            user: None
-            password: None
-            db: None
-            host: None
-            exposed_port: None
-            epsg: None # 3035 (Europe)
-    sources:
-        package:
-            status: active
-            url: http://ds1.need.energy:8123/opendata.zip
-            path: 
-                base: "{loader/path/base}"
-                processed: "{loader/path/opendata}"
-
-        lod2:
-            status: active
-            url:
-                - "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4"    #scope placeholder for AGS
-            path:
-                lod2: "{loader/path/opendata}/lod2/"
-                gml: "{loader/path/opendata}/lod2/{loader/name}"
-        ...
-```
-
-**Hint:** In case you move the infdb-loader source folder outside of the folder tools in repo or want to change the location where the downloaded data is stored, the paths to data and to configs folder need to be defined in [.env](.env)
-```bash
-CONFIG_INFDB_PATH=../infdb/configs  # Change if you moved the "configs" folder
-LOADER_DATA_PATH=./     # Change if you moved the "data" folder
-```
-
-Once you adjusted the configuration files with the command above, you need to finally start the infDB-loader and start importing:
-
-### Run infDB-loader
-```bash
-# on linux and macos
-  docker compose -f tools/infdb-loader/compose.yml up
-```
-
-### Run infdb-basedata
-```bash
-# on linux and macos
-  docker compose -f tools/infdb-basedata/compose.yml up
-```
-
-### Run ro-heat
-```bash
-# on linux and macos
-  docker compose -f tools/ro-heat/compose.yml up
-```
-
-### Run kwp
-```bash
-# on linux and macos
-  docker compose -f tools/kwp/compose.yml up
-```
-
-### Remove LOD2 data
-```bash
-# on linux and macos
-docker run --rm --add-host=host.docker.internal:host-gateway 3dcitydb/citydb-tool delete --delete-mode=delete -H host.docker.internal -d citydb -u citydb_user -p citydb_password -P 5432
-```
+## Hints for Advanced Users
 
 ### PSQL Connection to infDB
 ```bash
@@ -298,9 +235,9 @@ password=citydb_password
 sslmode=disable
 ```
 
-
-
 # For Developers
+
+
 
 ### Local development environment for InfDB for developers
 ```bash
