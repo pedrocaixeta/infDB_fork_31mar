@@ -54,10 +54,8 @@ The PostgreSQL and all services are dockerized for a modular and flexible applic
 The foundation is a PostgreSQL database enhanced with TimescaleDB, PostGIS, PGRouting, and the 3D City Database:
 
 - [TimescaleDB](https://www.timescale.com/): Scalable time-series storage (weather, load, generation) with hypertables, compression, optional continuous aggregates.
-
 - [PostGIS](https://postgis.net/): Spatial/geographic objects (buildings, parcels, networks) with geometry queries, projections, and spatial indexing.
 - [PGRouting](https://pgrouting.org/): Network routing algorithms (shortest path, reachability) on road and infrastructure graphs for mobility and grid analysis.
-
 - [3D City Database](http://www.3dcitydb.org/): Virtual 3D city model storage (buildings, terrain, infrastructure) with CityGML support, spatial indexing, and semantic queries for detailed urban analysis.
 
 ### Services
