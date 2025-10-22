@@ -11,21 +11,49 @@ This template enables you to:
 - Execute SQL scripts for database operations
 - Develop with VS Code dev containers for debugging
 
+## Workflow
+Each tool in the InfDB infrastructure operates in its own isolated database schema, named after the tool itself. This schema isolation ensures that multiple developers can work independently without interfering with each other's data or processes.
+
+### Schema Isolation
+
+```
+PostgreSQL Database (infdb)
+│
+├── Schema: infdb-loader          # Data import tool
+│   ├── Tables
+│   ├── Views
+│   └── Functions
+│
+├── Schema: infdb-basedata        # Base data processing
+│   ├── Tables
+│   ├── Views
+│   └── Functions
+│
+├── Schema: kwp                   # Analysis scripts
+│   ├── Tables
+│   ├── Views
+│   └── Functions
+│
+└── Schema: choose-a-name         # Your new tool
+   ├── Tables
+   ├── Views
+   └── Functions
+```
+
+The schema name is automatically configured from your tool name and available in SQL scripts via the `{output_schema}` template variable.
+
 ## Getting Started
 ### Run your tool
 
 Prerequisites:
 - [Docker Desktop](https://docs.docker.com/get-started/get-docker/) (or Docker Engine) installed
-- Follow development workflow instructions below
+- Follow [development workflow instructions](#development-workflow) below
 - Run commands from the repository root
 
 **Option A — Docker Compose:**
+Start tool
 ```bash
-# Start tool
 docker compose -f tools/choose-a-name/compose.yml up
-
-# Stop tool
-docker compose -f tools/choose-a-name/compose.yml down
 ```
 
 **Option B — VS Code Dev Containers:**
@@ -34,9 +62,9 @@ docker compose -f tools/choose-a-name/compose.yml down
 3. Press F1 → “Dev Containers: Reopen in Container”
 4. Run and debug (F5) with breakpoints in Python
 
-Hint: If there is an error on startup while building since dev container already exists by using **Option A**, then delete it before manually:
+**Hint**: If there is an error on startup while building since dev container already exists by using **Option A**, then delete it before manually:
 ```bash
-# Remove tool
+# Remove docker
 docker compose -f tools/choose-a-name/compose.yml down
 ```
 
@@ -55,6 +83,7 @@ choose-a-name/
 ├── main.py                                 # Entry point - starts here
 ├── pyproject.toml                          # Python dependencies
 ├── compose.yml                             # Docker Compose definition
+├── create_new_tool.yml                     # Creates new tool based on infdb-template
 ├── Dockerfile                              # Docker image build
 ├── .env                                    # Environment variables
 ├── Readme_template.md                      # Readme for tool users
@@ -97,26 +126,14 @@ Docker Compose service definition:
 ### Development Workflow
 
 1. **Define tool name:**
-   - Think of tool name
+   - Think of a tool name
    - Use kebab-case naming convention as for example "choose-a-name" 
 
-2. **Copy and rename the template:**
+2. **Create Dev Container:**
    ```bash
-   cp -r tools/_infdb-template tools/choose-a-name
+   # Replace choose-a-name
+   bash tools/_infdb-template/create_new_tool.sh choose-a-name
    ```
-
-3. **Customize configuration:**
-   - Rename `tools/choose-a-name/configs/config-choose-a-name.yml` to match your tool name
-   - Update configuration values: schemas, logging, database connection only if needed
-   - For the database connection `None` will be automatically adopted by settings defined in config-infdb.yml of infDB. Replace `None` by actual parameters if you want to connect to remote database
-   - for `output_schema` you need to use snake_case like "your_tool_name" since postgresql database naming convention does not accept kebab-case. 
-
-4. **Replace placeholder "choose-a-name":**
-   - Replace all remaining occurances of "choose-a-name" in the new copied folder by the name of your tool.
-   - In VS Code for example: use Change All Occurrences accross files:
-      - Right-click on the created tool folder in Explorer on the left side → **Find in Folder...** 
-      - Find: choose-a-name → Replace: your-new-tool.
-      - Review matches and apply Replace All.
 
 5. **Add dependencies:**
    - Add needed package into **dependencies** in `tools/choose-a-name/pyproject.toml`.
