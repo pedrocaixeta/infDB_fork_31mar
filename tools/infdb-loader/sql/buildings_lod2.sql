@@ -101,7 +101,7 @@ WITH ground_data AS (
     SELECT 
         regexp_replace(f.objectid, '_[^_]*-.*$', '')    as building_objectid,
         cast(p.val_string as double precision)          as area,
-        ST_Transform(ST_Force2D(gd.geometry), 3035)     as geom,
+        ST_Force2D(gd.geometry)                         as geom,
         f.id as feature_id
     FROM feature f
           JOIN geometry_data gd ON f.id = gd.feature_id

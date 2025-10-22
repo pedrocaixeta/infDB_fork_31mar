@@ -17,8 +17,8 @@ CREATE TABLE {output_schema}.buildings
     address_street_id bigint,
     street            text,
     house_number      text,
-    geom              geometry(MultiPolygon, 3035),
-    centroid          geometry(Point, 3035)
+    geom              geometry(MultiPolygon, {EPSG}),
+    centroid          geometry(Point, {EPSG})
 );
 
 CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings USING GIST (geom);

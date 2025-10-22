@@ -16,7 +16,7 @@ COLUMN DESCRIPTIONS:
 - name_kurz: Shortened street name or abbreviation
 COORDINATE SYSTEM:
 ------------------
-- EPSG:3035 – Projected European coordinate system used for accurate distance
+- EPSG:{EPSG} – Projected European coordinate system used for accurate distance
   and proximity calculations.
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS {output_schema}.ways (
     reverse_cost               DOUBLE PRECISION,
     name  TEXT,
     name_kurz  TEXT,
-    geom                       geometry(LineString, 3035),
+    geom                       geometry(LineString, {EPSG}),
     postcode                 INTEGER
 );
 

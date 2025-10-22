@@ -3,7 +3,7 @@ WITH ground_data AS (
     SELECT objectid as building_objectid,
         feature_id,
         groundsurface_flaeche          as area,
-        ST_Transform(ST_Force2D(b.geom), 3035)     as geom
+        ST_Transform(ST_Force2D(b.geom), {EPSG})     as geom
     FROM {input_schema}.buildings_lod2 b
     --       JOIN geometry_data gd ON f.id = gd.feature_id
     --       JOIN property p ON gd.feature_id = p.feature_id

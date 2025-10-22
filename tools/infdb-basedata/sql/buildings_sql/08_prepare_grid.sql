@@ -5,7 +5,7 @@ SELECT
     id,
     x_mp,
     y_mp,
-    ST_Transform(geom, 3035) as geom
+    ST_Transform(geom, {EPSG}) as geom
 FROM {input_schema}.grid_cells
 WHERE name='DE_Grid_ETRS89_LAEA_100m';
 
