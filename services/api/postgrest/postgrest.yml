@@ -1,6 +1,5 @@
 services:
   pgrstwatch:
-    container_name: citydb-postgrest-configwatch
     image: python:3.12-slim
     working_dir: /conf
     volumes:
@@ -12,6 +11,11 @@ services:
       POSTGREST_WATCH_INTERVAL_SEC: "1.0"
       POSTGREST_MIN_RELOAD_GAP_SEC: "3.0"
       POSTGREST_EXCLUDE_SCHEMAS: "pg_*,information_schema,postgrest"
+      SERVICES_POSTGRES_USER: ${SERVICES_POSTGRES_USER}
+      SERVICES_POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
+      SERVICES_POSTGRES_DB: ${SERVICES_POSTGRES_DB}
+      SERVICES_POSTGRES_HOST: ${SERVICES_POSTGRES_HOST}
+      SERVICES_POSTGRES_EXPOSED_PORT: 5432
       SERVICES_POSTGRES_USER: ${SERVICES_POSTGRES_USER}
       SERVICES_POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
       SERVICES_POSTGRES_DB: ${SERVICES_POSTGRES_DB}
@@ -39,7 +43,6 @@ services:
 
   postgrest:
     image: postgrest/postgrest:latest
-    container_name: citydb-api-postgrest
     command:
       - postgrest
       - /conf/postgrest.conf

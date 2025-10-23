@@ -66,7 +66,7 @@ All services are joined to a shared Docker network `${BASE_NETWORK_NAME}` so the
 1. **Generate the startup files.**
 
    ```bash
-   docker compose -f services/setup/compose.yml up
+   docker compose -f services/infdb-setup/compose.yml up
    ```
     This command:
 
@@ -89,131 +89,24 @@ All services are joined to a shared Docker network `${BASE_NETWORK_NAME}` so the
 3. **Access the APIs.**
 
    - FastAPI docs: http://localhost:8000/docs
-   - pygeoapi root: http://localhost:5000/
-<br>
-
-4. **(Optional) View logs.**
-
-   To view the logs of all services:
-
-   ```bash
-   docker compose logs -f
-   ```
+   - pygeoapi root: http://localhost:8001/
 
 ---
 
-## FastAPI Endpoints Usage
+## PygeoAPI Usage
+1. **Set the service host (`base_host`).**
+The pygeoapi service depends heavily on the host declared in `config/infdb-config.yml.template`. This value is used to decide the hostname (and to build absolute links) that clients will use to reach pygeoapi. Set `base_host` to the IP or DNS name where pygeoapi will be reachable:
 
-The FastAPI service provides endpoints to interact with your PostgREST API.  
-Below are the available endpoints and how to use them:
+    ```yaml
+    # config/infdb-config.yml.template
+    services:
+        pygeoapi:
+            status: active
+            port: 8001 # <- Enter the port where pygeoapi will run (e.g., 10.162.28.144)
+            base_host: localhost # <- Enter the host IP/hostname where pygeoapi will run (e.g., 10.162.28.144)
+            path:
+                compose_file: "services/api/pygeoapi/pygeoapi.yml"  
 
----
-
-## 1. Get Data from PostgREST
-
-**Endpoint:**  
-```
-GET /get-postgrest/{schema}/{table}
-```
-
-**Parameters:**
-- `schema` (path): The database schema name (e.g., `public`)
-- `table` (path): The table name (e.g., `buildings`)
-- `limit` (query, optional): Limit the number of records returned (default: 100)
-- `tolerance` (query, optional): Geometry simplification tolerance (default: 100; higher values mean more simplification)
-
-**Example:**  
-```
-GET /get-postgrest/public/buildings?limit=10&tolerance=100
-```
-
----
-
-## 2. Create a New Row (POST)
-
-**Endpoint:**  
-```
-POST /postgrest/{schema}/{table}
-```
-
-**Parameters:**
-- `schema` (path): The database schema name
-- `table` (path): The table name
-- Request body: JSON object representing the new row to insert
-
-**Example:**  
-```
-POST /postgrest/public/buildings
-Content-Type: application/json
-
-{
-  "name": "New Building",
-  "height": 50
-}
-```
-
----
-
-## 3. Update an Existing Row (PUT/PATCH)
-
-**Endpoint:**  
-```
-PUT /postgrest/{schema}/{table}/{item_id}
-```
-
-**Parameters:**
-- `schema` (path): The database schema name
-- `table` (path): The table name
-- `item_id` (path): The primary key value of the row to update
-- `key_column` (query, optional): The primary key column name (default: `id`)
-- Request body: JSON object with updated fields
-
-**Example:**  
-```
-PUT /postgrest/public/buildings/1?key_column=id
-Content-Type: application/json
-
-{
-  "height": 60
-}
-```
-
----
-
-## 4. Delete a Row
-
-**Endpoint:**  
-```
-DELETE /postgrest/{schema}/{table}/{item_id}
-```
-
-**Parameters:**
-- `schema` (path): The database schema name
-- `table` (path): The table name
-- `item_id` (path): The primary key value of the row to delete
-- `key_column` (query, optional): The primary key column name (default: `id`)
-
-**Example:**  
-```
-DELETE /postgrest/public/buildings/1?key_column=id
-```
-
----
-
-## 5. Health Check
-
-**Endpoint:**  
-```
-GET /health
-```
-
-**Description:**  
-Checks the health of the FastAPI service.
-
----
-
-## Notes
-
-- All endpoints are accessible via the FastAPI docs at `/docs`.
-- For endpoints that modify data (POST, PUT, DELETE), ensure you provide the correct schema, table, and primary key information.
-- The `tolerance` parameter in GET requests allows you to control geometry simplification for large geometry columns.
+2. **Run pygeoapi (follow the [Quick start](#quick-start)).**
+There’s no separate run step for pygeoapi—just follow the [Quick start](#quick-start)
+ above to generate `compose.yml` and bring the stack up. Once running, open the pygeoapi root on the host/port you configured (for example, this README lists `http://localhost:8001/` under Access the APIs).
