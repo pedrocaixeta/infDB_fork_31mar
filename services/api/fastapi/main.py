@@ -8,20 +8,12 @@ from fastapi.middleware.gzip import GZipMiddleware
 from shapely.geometry import shape, mapping
 from shapely.errors import ShapelyError
 
-# Helper to get environment variables with a default value
-def _env(key: str, default: str) -> str:
-    v = os.getenv(key, default)
-    # Ensure URLs end with a slash for proper joining
-    if (key.upper().startswith("PYGEOAPI") or key.upper().startswith("POSTGREST")) and not v.endswith("/"):
-        v = v + "/"
-    return v
-
 # Internal URLs for pygeoapi and PostgREST services
-PYGEOAPI_URL = _env("PYGEOAPI_INTERNAL", os.getenv("PYGEOAPI_URL", "http://citydb-api-pygeoapi:5000/"))
-POSTGREST_URL = _env("POSTGREST_INTERNAL", os.getenv("POSTGREST_URL", "http://citydb-api-postgrest:3000/"))
+PYGEOAPI_URL = os.getenv("PYGEOAPI_INTERNAL")
+POSTGREST_URL = os.getenv("POSTGREST_INTERNAL")
 
 # FastAPI app setup
-app = FastAPI(title="cityAPI Gateway", version="1.0.0")
+app = FastAPI(title="infDB API Gateway", version="1.0.0")
 app.add_middleware(GZipMiddleware, minimum_size=500)  # Enable gzip compression for large responses
 
 # Root endpoint for basic API status
@@ -79,7 +71,7 @@ async def _proxy(
 # ---- PostgREST Endpoints ----
 
 # GET endpoint to fetch data from PostgREST, with geometry simplification
-@app.get("/get-postgrest/{schema}/{table}")
+@app.get("/postgrest/{schema}/{table}")
 async def get_postgrest(
     request: Request,
     schema: str,

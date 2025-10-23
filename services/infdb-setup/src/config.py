@@ -15,7 +15,7 @@ def __load_config(path: str):
 
 
 def __load_configs():
-    base_path = os.path.join("infdb-root/configs", "config-infdb.yml")
+    base_path = os.path.join("infdb-root", "configs", "config-infdb.yml")
     configs = __load_config(base_path)
 
     resolved_configs = resolve_yaml_placeholders(configs)
