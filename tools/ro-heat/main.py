@@ -213,8 +213,8 @@ def main():
         gen = TimeSeriesGenerator()
         gen.add_objects(entise_input)
 
-        # TODO: Adapt datetime range and temp_out
-        df_hourly_temperature2m = timedata.get_hourly_temperature_2m(objectid="DEBY_LOD2_107940731", database_connection=engine, start_time="2023-01-01", end_time="2023-12-31")
+        # TODO: change datetime range to year
+        df_hourly_temperature2m = timedata.get_hourly_temperature_2m(objectid="DEBY_LOD2_107940731", database_connection=engine, start_time="2023-01-01", end_time="2023-01-02")
 
         data = {
             "weather": pd.DataFrame(

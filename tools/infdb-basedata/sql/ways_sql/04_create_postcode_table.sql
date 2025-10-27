@@ -3,7 +3,7 @@
 -- ════════════════════════════════════════════════════════════════════════
 -- This script creates a table in the {output_schema} schema that contains
 -- a simplified and renamed copy of the postcode geometries from 
--- {input_schema}."plz_plz-5stellig", transformed to SRID 3035.
+-- {input_schema}."plz_plz-5stellig", transformed to SRID {EPSG}.
 -- ════════════════════════════════════════════════════════════════════════
 
 -- 1. Drop the table if it already exists to allow clean recreation
@@ -16,7 +16,7 @@ SELECT
     note,                                     -- Optional annotation
     qkm,                                      -- Area in square kilometers
     einwohner AS population,                  -- Number of inhabitants
-    ST_Transform(geom, 3035) AS geom      -- Geometry transformed to EPSG:3035
+    ST_Transform(geom, {EPSG}) AS geom      -- Geometry transformed to EPSG:{EPSG}
 FROM 
     opendata."plz_plz-5stellig";    -- replace by {input_schema}
 

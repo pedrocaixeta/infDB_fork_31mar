@@ -22,7 +22,7 @@ services:
         status: active
         default_email: admin@need.energy
         default_password: infdb
-        exposed_port: 81
+        exposed_port: 82
         path:
             compose_file: "services/pgadmin/compose.yml"
 
@@ -33,8 +33,9 @@ services:
             compose_file: "services/api/fastapi/api.yml"
 
     pygeoapi:
-        status: not-active
+        status: active
         port: 8001
+        base_host: localhost # HOST IP TO RUN PYGEOAPI ON (E.G 10.162.28.144)
         path:
             compose_file: "services/api/pygeoapi/pygeoapi.yml"
 
@@ -45,7 +46,7 @@ services:
             compose_file: "services/api/postgrest/postgrest.yml"
 
     jupyter:
-        status: active
+        status: not-active
         exposed_port: 8888
         enable_lab: yes
         token: infdb

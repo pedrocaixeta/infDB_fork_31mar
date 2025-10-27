@@ -18,12 +18,14 @@ def main():
     # Get configuration values
     input_schema = infdbhandler.get_config_value(["data", "input_schema"], insert_toolname=True)
     output_schema = infdbhandler.get_config_value(["data", "output_schema"], insert_toolname=True)
+    epsg = infdbhandler.get_config_value(["services", "postgres", "epsg"])
 
     # Schema configuration
     format_params = {
         'input_schema': input_schema,
         'output_schema': output_schema,
-        'list_gemeindeschluessel': "todo"
+        'list_gemeindeschluessel': "todo",
+        'EPSG': epsg
     }
     infdblog.info(f"Input schema: {input_schema}")
     infdblog.info(f"Output schema: {output_schema}")

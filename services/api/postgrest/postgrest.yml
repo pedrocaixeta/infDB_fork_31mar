@@ -16,11 +16,6 @@ services:
       SERVICES_POSTGRES_DB: ${SERVICES_POSTGRES_DB}
       SERVICES_POSTGRES_HOST: ${SERVICES_POSTGRES_HOST}
       SERVICES_POSTGRES_EXPOSED_PORT: 5432
-      SERVICES_POSTGRES_USER: ${SERVICES_POSTGRES_USER}
-      SERVICES_POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
-      SERVICES_POSTGRES_DB: ${SERVICES_POSTGRES_DB}
-      SERVICES_POSTGRES_HOST: ${SERVICES_POSTGRES_HOST}
-      SERVICES_POSTGRES_EXPOSED_PORT: 5432
       SERVICES_POSTGREST_PORT: ${SERVICES_POSTGREST_PORT:-3000}
     command:
       - /bin/sh
@@ -36,8 +31,6 @@ services:
       retries: 60
       start_period: 90s              # give pip + first write time to finish
     restart: unless-stopped
-    depends_on:
-      - postgres
     networks:
       - ${BASE_NETWORK_NAME}
 

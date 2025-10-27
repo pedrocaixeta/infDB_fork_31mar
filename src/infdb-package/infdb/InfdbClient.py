@@ -114,3 +114,5 @@ class InfdbClient:
     def get_db_params(self):
         return self.db_params
     
+    def get_db_cursor(self):
+        return self.cur
