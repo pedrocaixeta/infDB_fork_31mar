@@ -42,7 +42,7 @@
 			"settings": {
 				"python.defaultInterpreterPath": ".venv/bin/python",
 				"python.terminal.activateEnvironment": true
-			}
+			},
 			"extensions": [
 				"ms-python.python",
 				"ms-python.debugpy",
