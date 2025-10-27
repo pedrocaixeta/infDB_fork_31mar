@@ -1,1 +1,1 @@
-SELECT {output_schema}.generate_connections_buildings_to_ways();
+SELECT {output_schema}.generate_buildings_to_ways();

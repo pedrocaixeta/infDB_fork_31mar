@@ -12,14 +12,14 @@ polygon geometry of postcode regions.
 
 ALGORITHM OVERVIEW:
 -------------------
-1. Create a temporary table with postcode geometries in EPSG:3035
+1. Create a temporary table with postcode geometries in EPSG:{EPSG}
 2. Use centroids of ways to avoid overmatching in dense intersection areas
 3. Perform spatial join with `ST_Intersects` to assign PLZs
 4. Index the postcode polygons for faster intersection queries
 
 INPUT REQUIREMENTS:
 -------------------
-- {output_schema}.postcode: Contains `plz` and `geom` columns (geometry in SRID 3035)
+- {output_schema}.postcode: Contains `plz` and `geom` columns (geometry in SRID {EPSG})
 - {output_schema}.ways: Contains road segment geometries to be updated
 
 OUTPUT:
@@ -33,19 +33,19 @@ OUTPUT:
 -- 1. TEMP TABLE: TRANSFORMED POSTCODE GEOMETRIES
 -- ─────────────────────────────────────────────
 
-DROP TABLE IF EXISTS temp_postcode_3035_ways;
+DROP TABLE IF EXISTS temp_postcode_{EPSG}_ways;
 
-CREATE TEMP TABLE IF NOT EXISTS temp_postcode_3035_ways
+CREATE TEMP TABLE IF NOT EXISTS temp_postcode_{EPSG}_ways
 (
     plz int,
-    geometry geometry(Multipolygon, 3035)
+    geom geometry(Multipolygon, {EPSG})
 );
 
 -- Insert transformed geometries
-INSERT INTO temp_postcode_3035_ways (plz, geometry)
+INSERT INTO temp_postcode_{EPSG}_ways (plz, geom)
 SELECT plz::int, geom FROM {output_schema}.postcode;
 
-CREATE INDEX ON temp_postcode_3035_ways USING GIST (geometry);
+CREATE INDEX ON temp_postcode_{EPSG}_ways USING GIST (geom);
 
 
 -- ─────────────────────────────────────────────
@@ -54,6 +54,6 @@ CREATE INDEX ON temp_postcode_3035_ways USING GIST (geometry);
 
 UPDATE {output_schema}.ways w
 SET postcode = p.plz
-FROM temp_postcode_3035_ways p
-WHERE ST_Intersects(ST_Centroid(w.geom), p.geometry);
+FROM temp_postcode_{EPSG}_ways p
+WHERE ST_Intersects(ST_Centroid(w.geom), p.geom);
 

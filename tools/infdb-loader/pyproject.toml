@@ -13,5 +13,12 @@ dependencies = [
     "geoalchemy2==0.17.1",
     "PyYAML",
     "chardet",
-    "pysmartdl"
+    "pysmartdl",
+    "openmeteo-requests",
+    "requests-cache",
+    "retry-requests",
+    "numpy",
+    "wetterdienst",
+    "charset-normalizer",
+    "infdb @ file:/app/mnt/infdb-package",
 ]

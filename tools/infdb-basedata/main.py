@@ -18,22 +18,20 @@ def main():
     # Get configuration values
     input_schema = infdbhandler.get_config_value(["data", "input_schema"], insert_toolname=True)
     output_schema = infdbhandler.get_config_value(["data", "output_schema"], insert_toolname=True)
-
-    # Execute buildings_lod2.sql first to create the buildings_lod2 table
-    format_params = {
-        'output_schema': "opendata",
-    }
-    infdbclient_citydb.execute_sql_file("sql/buildings_lod2.sql", format_params=format_params)
+    epsg = infdbhandler.get_config_value(["services", "postgres", "epsg"])
 
     # Schema configuration
     format_params = {
         'input_schema': input_schema,
         'output_schema': output_schema,
-        'list_gemeindeschluessel': "todo"
+        'list_gemeindeschluessel': "todo",
+        'EPSG': epsg
     }
     infdblog.info(f"Input schema: {input_schema}")
     infdblog.info(f"Output schema: {output_schema}")
+
     # Drop output schema if exists for development purposes
+    infdblog.info(f"Dropping output schema '{output_schema}' if it exists")
     infdbclient_citydb.execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
 
     # Execute WAYS scripts
