@@ -16,7 +16,7 @@ This README documents how each service is built and wired, what the watchdog con
 1. [Architecture](#architecture)
 2. [Files in this directory](#files-in-this-repo)
 3. [Quick start](#quick-start)
-4. [PygeoAPI Usage](#pygeoapi-usage)
+4. [FastAPI Endpoints Usage](#fastapi-endpoints-usage)
 
 ---
 
