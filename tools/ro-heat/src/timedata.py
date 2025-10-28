@@ -18,3 +18,41 @@ def get_hourly_temperature_2m(objectid, database_connection, start_time=None, en
     df.set_index('time', inplace=True)
 
     return df
+
+
+"""
+        data = {
+            "weather": pd.DataFrame(
+                {
+                    "temp_out": df_hourly_temperature2m["value"].values,
+                    "datetime": df_hourly_temperature2m.index,
+                }
+            )
+        }
+"""
+def get_distinct_building_ids(database_connection):
+    query = """
+        SELECT DISTINCT objectid 
+        FROM opendata.buildings_lod2
+    """
+    df = pd.read_sql(sql=query, con=database_connection)
+    return df['objectid'].tolist()
+
+def get_all_timeseries_data(database_connection):
+    query = f"""
+        SELECT *
+        FROM opendata.openmeteo_ts_data
+    """
+    df = pd.read_sql(sql=query, con=database_connection)
+    df.set_index('time', inplace=True)
+
+    return df
+
+def get_bld2ts(database_connection):
+    query = f"""
+        SELECT *
+        FROM basedata.bld2ts
+    """
+    df = pd.read_sql(sql=query, con=database_connection)
+
+    return df

@@ -203,27 +203,29 @@ def main():
             constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values("building_objectid")
         )
 
+        bld2ts = timedata.get_bld2ts(database_connection=engine)
+
+        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine)
+        all_ts_df.index.name = 'datetime'
+        all_ts_df.rename(columns={"value": "temp_out"}, inplace=True)
+        data = {x: y.sort_index() for x, y in all_ts_df.groupby('ts_metadata_id')}
+
         # Preparation for EnTiSe
         entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
         entise_input["hvac"] = "1R1C"
         entise_input["temp_min"] = 20.0
         entise_input["temp_max"] = 24.0
 
+        entise_input = entise_input.merge(
+            bld2ts[['bld_objectid', 'ts_metadata_id']].rename(columns={"ts_metadata_id": "weather"}),
+            left_on="id",
+            right_on="bld_objectid",
+            how="left",
+        ).drop(columns=["bld_objectid"])
+
         # Initialize the generator
         gen = TimeSeriesGenerator()
         gen.add_objects(entise_input)
-
-        # TODO: change datetime range to year
-        df_hourly_temperature2m = timedata.get_hourly_temperature_2m(objectid="DEBY_LOD2_107940731", database_connection=engine, start_time="2023-01-01", end_time="2023-01-02")
-
-        data = {
-            "weather": pd.DataFrame(
-                {
-                    "temp_out": df_hourly_temperature2m["value"].values,
-                    "datetime": df_hourly_temperature2m.index,
-                }
-            )
-        }
 
         # Generate time series
         # TODO: Handle and save time series
