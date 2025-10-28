@@ -28,11 +28,19 @@ INITIAL_ADMIN_PASSWORD=YourSecurePassword
 # Set path for data storage
 OC_CONFIG_DIR=/data/opencloud/config
 OC_DATA_DIR=/data/opencloud/data
+OC_APPS_DIR=/data/opencloud/apps
 ```
 
 Set permissions for data storage:
 ```bash
 sudo mkdir -p /data/opencloud/{config,data}
+sudo chown -R 1000:1000 /data/opencloud
+```
+
+Download apps to local computer via Webstore:
+```bash
+scp -r apps/ user@ds1.need.energy:/tmp/apps/
+sudo -r cp /tmp/app/* /data/opencloud/apps/
 sudo chown -R 1000:1000 /data/opencloud
 ```
 ## NGINX Reverse Proxy Manager
