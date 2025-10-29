@@ -29,7 +29,7 @@ SELECT b.objectid                                                        AS buil
        -- Assume heated area = b.floor_area * b.floor_number * 0.75
        -- Assume window area to be 0.2 m² per heated area
        b.floor_area * b.floor_number * 0.75 * 0.2                        AS window_area
-FROM {input_schema}.buildings_pylovo b
+FROM {input_schema}.buildings b
         LEFT JOIN wall_data wd
 ON b.objectid = wd.building_objectid
     LEFT JOIN roof_data rd ON b.objectid = rd.building_objectid
