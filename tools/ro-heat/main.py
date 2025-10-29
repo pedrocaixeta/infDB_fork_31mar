@@ -215,6 +215,7 @@ def main():
         entise_input["hvac"] = "1R1C"
         entise_input["temp_min"] = 20.0
         entise_input["temp_max"] = 24.0
+        entise_input["gains_solar"] = 0.0
 
         entise_input = entise_input.merge(
             bld2ts[['bld_objectid', 'ts_metadata_id']].rename(columns={"ts_metadata_id": "weather"}),
@@ -228,8 +229,20 @@ def main():
         gen.add_objects(entise_input)
 
         # Generate time series
-        # TODO: Handle and save time series
         summary, df = gen.generate(data, workers=os.cpu_count())
+
+        # TODO: Handle and save time series to infDB
+        # two tables: ts_data and ts_metadata
+        # df_flattened = df.reset_index()
+        # df_flattened.to_sql(
+        #     "entise_ts_data",
+        #     con=engine,
+        #     if_exists="replace",
+        #     schema=output_schema,
+        #     index=False,
+        #     method="multi",
+        #     # chunksize=1000,
+        # )
 
         summary.index.name = "building_objectid"
         
@@ -238,11 +251,10 @@ def main():
             con=engine,
             if_exists="replace",
             schema=output_schema,
-        index=True,
-        method="multi",
-        # chunksize=1000,
-    )
-        
+            index=True,
+            method="multi",
+            # chunksize=1000,
+        )
 
         infdblog.info(summary.head())
 
