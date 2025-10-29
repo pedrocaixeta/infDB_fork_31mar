@@ -1,5 +1,5 @@
-DROP TABLE IF EXISTS {output_schema}.buildings_pylovo;
-CREATE TABLE {output_schema}.buildings_pylovo
+DROP TABLE IF EXISTS {output_schema}.buildings;
+CREATE TABLE {output_schema}.buildings
 (
     id                bigint PRIMARY KEY,
     feature_id        integer,
@@ -17,9 +17,9 @@ CREATE TABLE {output_schema}.buildings_pylovo
     address_street_id bigint,
     street            text,
     house_number      text,
-    geom              geometry(MultiPolygon, 3035),
-    centroid          geometry(Point, 3035)
+    geom              geometry(MultiPolygon, {EPSG}),
+    centroid          geometry(Point, {EPSG})
 );
 
-CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings_pylovo USING GIST (geom);
-CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_pylovo (id, building_type, building_use);
+CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings (id, building_type, building_use);

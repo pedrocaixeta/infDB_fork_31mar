@@ -191,6 +191,7 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
         gdf = gpd.read_file(input_file, layer=layer, mask=gdf_scope)
         gdf.to_crs(epsg=epsg, inplace=True)
         # gdf.to_file(output_file, layer=layer, driver="GPKG")
+        gdf = gdf.rename_geometry("geom")
         gdf.to_postgis(
             layer_name, postgres_engine, if_exists="replace", schema=schema, index=False
         )

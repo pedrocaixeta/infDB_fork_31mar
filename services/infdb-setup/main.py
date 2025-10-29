@@ -57,13 +57,14 @@ def setup_pgadmin_servers(output_path):
     # Build pgAdmin-compatible structure
     servers_json = {"Servers": {}}
     pgpass_entries = []
+    HOST = "postgres"
     PORT = 5432
 
     for server_id, service in enumerate(["postgres"], 1):
         servers_json["Servers"][server_id] = {
             "Name": service,
             "Group": "infDB",
-            "Host": config.get_value(["services", service, "host"]),
+            "Host": HOST,
             "Port": PORT,
             "MaintenanceDB": config.get_value(["services", service, "db"]),
             "Username": config.get_value(["services", service, "user"]),
@@ -73,7 +74,7 @@ def setup_pgadmin_servers(output_path):
         }
 
         pgpass_entries.append(
-            f"{config.get_value(['services', service, 'host'])}:{PORT}:{service}:{config.get_value(['services', service, 'user'])}:{config.get_value(['services', service, 'password'])}"
+            f"{HOST}:{PORT}:{service}:{config.get_value(['services', service, 'user'])}:{config.get_value(['services', service, 'password'])}"
         )
 
     # Save to servers.json
@@ -96,11 +97,12 @@ def write_pg_service_conf(output_path):
     """
     services = ["postgres"]  # , "timescaledb"
     port = 5432
+    HOST = "postgres"
 
     lines = []
 
     for service in services:
-        host = config.get_value(["services", service, "host"])
+        host = HOST
         db = config.get_value(["services", service, "db"])
         user = config.get_value(["services", service, "user"])
         password = config.get_value(["services", service, "password"])

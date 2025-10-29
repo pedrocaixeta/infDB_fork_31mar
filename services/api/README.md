@@ -16,7 +16,7 @@ This README documents how each service is built and wired, what the watchdog con
 1. [Architecture](#architecture)
 2. [Files in this directory](#files-in-this-repo)
 3. [Quick start](#quick-start)
-
+4. [FastAPI Endpoints Usage](#fastapi-endpoints-usage)
 
 ---
 
@@ -66,7 +66,7 @@ All services are joined to a shared Docker network `${BASE_NETWORK_NAME}` so the
 1. **Generate the startup files.**
 
    ```bash
-   docker compose -f services/setup/compose.yml up
+   docker compose -f services/infdb-setup/compose.yml up
    ```
     This command:
 
@@ -89,4 +89,24 @@ All services are joined to a shared Docker network `${BASE_NETWORK_NAME}` so the
 3. **Access the APIs.**
 
    - FastAPI docs: http://localhost:8000/docs
-   - pygeoapi root: http://localhost:5000/
+   - pygeoapi root: http://localhost:8001/
+
+---
+
+## PygeoAPI Usage
+1. **Set the service host (`base_host`).**
+The pygeoapi service depends heavily on the host declared in `config/infdb-config.yml.template`. This value is used to decide the hostname (and to build absolute links) that clients will use to reach pygeoapi. Set `base_host` to the IP or DNS name where pygeoapi will be reachable:
+
+    ```yaml
+    # config/infdb-config.yml.template
+    services:
+        pygeoapi:
+            status: active
+            port: 8001 # <- Enter the port where pygeoapi will run (e.g., 10.162.28.144)
+            base_host: localhost # <- Enter the host IP/hostname where pygeoapi will run (e.g., 10.162.28.144)
+            path:
+                compose_file: "services/api/pygeoapi/pygeoapi.yml"  
+
+2. **Run pygeoapi (follow the [Quick start](#quick-start)).**
+There’s no separate run step for pygeoapi—just follow the [Quick start](#quick-start)
+ above to generate `compose.yml` and bring the stack up. Once running, open the pygeoapi root on the host/port you configured (for example, this README lists `http://localhost:8001/` under Access the APIs).

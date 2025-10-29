@@ -7,6 +7,7 @@ from infdb import InfDB
 
 from src import basic_refurbishment
 from src import rc_calculation
+from src import timedata
 
 # Parameters
 rng = np.random.default_rng(seed=42)
@@ -118,19 +119,23 @@ def main():
         gen = TimeSeriesGenerator()
         gen.add_objects(entise_input)
 
-        # TODO: Adapt datetime range and temp_out
+        # TODO: change datetime range to year
+        df_hourly_temperature2m = timedata.get_hourly_temperature_2m(objectid="DEBY_LOD2_107940731",
+                                                                     database_connection=engine,
+                                                                     start_time="2023-01-01", end_time="2023-01-02")
+
         data = {
             "weather": pd.DataFrame(
                 {
-                    "temp_out": [0.0] * 24,
-                    "datetime": pd.date_range("2025-01-01", periods=24, freq="h"),
+                    "temp_out": df_hourly_temperature2m["value"].values,
+                    "datetime": df_hourly_temperature2m.index,
                 }
             )
         }
 
         # Generate time series
         # TODO: Handle and save time series
-        summary, df = gen.generate(data)
+        summary, df = gen.generate(data, workers=os.cpu_count())
 
         summary.index.name = "building_objectid"
 

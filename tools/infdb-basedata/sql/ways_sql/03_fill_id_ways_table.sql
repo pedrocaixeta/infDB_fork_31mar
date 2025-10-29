@@ -12,7 +12,7 @@ assigns directional constraints for one-way and two-way streets.
 ALGORITHM OVERVIEW:
 -------------------
 1. Filter out non-routable classes (e.g., class 99)
-2. Transform all geometries to EPSG:3035 (ETRS89 / LAEA Europe)
+2. Transform all geometries to EPSG:{EPSG} (ETRS89 / LAEA Europe)
 3. Calculate routing cost as:  
       cost = (segment length in km) / (class-based speed in km/h)
 4. Use traffic direction info to assign appropriate `reverse_cost`:
@@ -33,7 +33,7 @@ OUTPUT:
 
 COORDINATE SYSTEM:
 ------------------
-All geometries are transformed to EPSG:3035 for consistency with other layers
+All geometries are transformed to EPSG:{EPSG} for consistency with other layers
 
 ═══════════════════════════════════════════════════════════════════════════════
 */
@@ -53,13 +53,13 @@ INSERT INTO {output_schema}.ways (
 SELECT
     v.id AS verkehrslinie_id_basemap,
     c.clazz,
-    ST_Transform(v.geometry, 3035) AS geom, 
-    ST_Length(ST_Transform(v.geometry, 3035)) / 1000.0 / NULLIF(c.kmh, 0) AS cost,
+    ST_Transform(v.geom, {EPSG}) AS geom, 
+    ST_Length(ST_Transform(v.geom, {EPSG})) / 1000.0 / NULLIF(c.kmh, 0) AS cost,
     v.name AS name,
     v.name_kurz AS name_kurz
 FROM {input_schema}.basemap_verkehrslinie v,
      LATERAL {output_schema}.map_strasse_klasse_to_class_kmh(v.klasse) AS c
-WHERE v.geometry IS NOT NULL AND c.clazz NOT IN (99);
+WHERE v.geom IS NOT NULL AND c.clazz NOT IN (99);
 
 -- ─────────────────────────────────────────────
 -- 2. SET REVERSE COST BASED ON TRAFFIC DIRECTION

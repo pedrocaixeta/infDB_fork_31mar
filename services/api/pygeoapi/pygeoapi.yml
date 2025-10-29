@@ -1,19 +1,19 @@
 services:
-  configwatch:
-    container_name: citydb-pygeoapi-configwatch
+  pygeowatch:
     image: python:3.12-slim
     working_dir: /work
     volumes:
       - ./:/work
     environment:
       PYTHONUNBUFFERED: "1"
-      SERVICES_CITYDB_USER: ${SERVICES_CITYDB_USER}
-      SERVICES_CITYDB_PASSWORD: ${SERVICES_CITYDB_PASSWORD}
-      SERVICES_CITYDB_DB: ${SERVICES_CITYDB_DB}
-      SERVICES_CITYDB_HOST: ${SERVICES_CITYDB_HOST}
-      SERVICES_CITYDB_EXPOSED_PORT: 5432
-      SERVICES_CITYDB_EPSG: ${SERVICES_CITYDB_EPSG}
+      SERVICES_POSTGRES_USER: ${SERVICES_POSTGRES_USER}
+      SERVICES_POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
+      SERVICES_POSTGRES_DB: ${SERVICES_POSTGRES_DB}
+      SERVICES_POSTGRES_HOST: ${SERVICES_POSTGRES_HOST}
+      SERVICES_POSTGRES_EXPOSED_PORT: 5432
+      SERVICES_POSTGRES_EPSG: ${SERVICES_POSTGRES_EPSG}
       SERVICES_PYGEOAPI_PORT: ${SERVICES_PYGEOAPI_PORT}
+      SERVICES_PYGEOAPI_BASE_HOST: ${SERVICES_PYGEOAPI_BASE_HOST}
     command:
       - /bin/sh
       - -lc
@@ -33,7 +33,6 @@ services:
 
   pygeoapi:
     image: geopython/pygeoapi:latest
-    container_name: citydb-api-pygeoapi
     environment:
       PYGEOAPI_CONFIG: /app-config/pygeoapi-config.yml
       CONTAINER_PORT: ${SERVICES_PYGEOAPI_PORT}
@@ -43,7 +42,7 @@ services:
       - "${SERVICES_PYGEOAPI_PORT}:${SERVICES_PYGEOAPI_PORT}"                   
     command: run-with-hot-reload
     depends_on:
-      configwatch:
+      pygeowatch:
         condition: service_healthy
     networks:
         - ${BASE_NETWORK_NAME}
