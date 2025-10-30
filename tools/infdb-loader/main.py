@@ -1,6 +1,6 @@
 import multiprocessing as mp
 from src import utils, config
-from src import bkg, basemap, lod2, census2022, plz, tabula, package, need, openmeteo, wetterdienst
+from src import bkg, basemap, lod2, census2022, plz, tabula, package, need, openmeteo, wetterdienst, opendata_bavaria
 from src.logger import setup_main_logger
 import multiprocessing
 import logging
@@ -39,6 +39,7 @@ if __name__ == "__main__":
     )
     processes.append(mp.Process(target=openmeteo.load, args=(log_queue,), name="openmeteo"))
     # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
+    processes.append(mp.Process(target=opendata_bavaria.load, args=(log_queue,), name="opendata_bavaria"))
 
     for process in processes:
         process.start()
