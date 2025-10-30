@@ -8,6 +8,8 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import sqlalchemy
 import psycopg2
+import pandas as pd
+from io import StringIO
 import geopandas as gpd
 from urllib.parse import urlparse
 from . import config
@@ -215,7 +217,28 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
             cmd += ["-clipsrc"] + clipsrc #add the clipping option so geometries are clipped to the bounding box.
         cmd += ["-sql", f"SELECT * FROM {layer}"] #Adds an SQL source selection instructing ogr2ogr to import only that layer from the input file.
 
-        subprocess.run(cmd, check=True) #run the cmd
+        subprocess.run(cmd, check=True) # run the cmd
+
+def _upload_to_postgis(df, table_name, schema, engine, srid=3035):
+    # create geometry column in WKT form
+    df["geom"] = df.apply(lambda r: f"SRID={srid};POINT({r['x_mp_100']} {r['y_mp_100']})", axis=1)
+
+    conn = engine.raw_connection() # gets the underlying DBAPI connection from SQLAlchemy.
+    cur = conn.cursor() # cursor used to execute SQL and COPY.
+
+    # prepare table
+    cols = [c for c in df.columns if c != "geom"]
+    col_defs = ", ".join([f"{c} TEXT" for c in cols]) + f", geom geometry(Point,{srid})"#Build a CREATE TABLE statement: 
+    cur.execute(f"CREATE TABLE IF NOT EXISTS {schema}.{table_name} ({col_defs});")#All columns except geom are created as TEXT.A geom column is created as geometry(Point, {srid}).
+
+    # stream CSV to Postgres
+    buffer = StringIO()
+    df.to_csv(buffer, index=False, header=False)# writes the DataFrame to that buffer in CSV format.
+    buffer.seek(0)
+    cur.copy_expert(f"COPY {schema}.{table_name} FROM STDIN WITH CSV", buffer)
+    conn.commit()#Commit the transaction so data is written and visible.
+    cur.close()# Close cursor and connection.
+    conn.close()
 
 
 def get_envelop():
