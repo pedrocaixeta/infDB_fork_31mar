@@ -171,13 +171,25 @@ def do_cmd(cmd: str):
 
 
 def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope=True):
-    #
+    # Get connection details and build an ogr2ogr connection
+    connection = get_db_engine("postgres")
+    connection_string = f"PG:host={connection['host']} dbname={connection['database']} user={connection['user']} password={connection['password']}" #passed to ogr2ogr
+    epsg = connection["epsg"]
+    postgres_engine = get_db_engine("postgres")
+
+    # get the bounding features (GeoDataFrame) that define the area you want to import.
     if scope:
         gdf_scope = get_envelop()
     else:
         gdf_scope = None
-    epsg = get_db_parameters("postgres")["epsg"]
-    postgres_engine = get_db_engine("postgres")
+
+    #handle clipping if scope is active
+    clipsrc = None
+    # If envelope exists, compute the bounding box and
+    # store as string list (ogr2ogr expects numeric args as separate tokens).
+    if gdf_scope is not None and not gdf_scope.empty:
+        xmin, ymin, xmax, ymax = gdf_scope.total_bounds
+        clipsrc = [str(xmin), str(ymin), str(xmax), str(ymax)]    
 
     if layer_names is None:
         layer_names = layers
@@ -186,15 +198,24 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
     if prefix:
         layer_names = [prefix + "_" + name for name in layer_names]
 
+    #Iterate through corresponding source layers and target table names and log start.
     for layer, layer_name in zip(layers, layer_names):
         log.info(f"Importing layer: {layer} into {schema}")
-        gdf = gpd.read_file(input_file, layer=layer, mask=gdf_scope)
-        gdf.to_crs(epsg=epsg, inplace=True)
-        # gdf.to_file(output_file, layer=layer, driver="GPKG")
-        gdf = gdf.rename_geometry("geom")
-        gdf.to_postgis(
-            layer_name, postgres_engine, if_exists="replace", schema=schema, index=False
-        )
+        cmd = [
+            "ogr2ogr", "-f", "PostgreSQL", conn_str, #PostgreSQL and destination connection.
+            input_file, #Source file
+            "-nln", f"{schema}.{layer_name}", # set the new layer name
+            "-nlt", "PROMOTE_TO_MULTI", #convert single geometries to MULTI* types if needed
+            "-lco", "GEOMETRY_NAME=geom", #create geometry column named geom
+            "-overwrite", #replace any existing table of same name.
+            "-t_srs", f"EPSG:{epsg}", # reproject source features to this CRS during import.
+            "-progress" #  show progress
+        ]
+        if clipsrc:
+            cmd += ["-clipsrc"] + clipsrc #add the clipping option so geometries are clipped to the bounding box.
+        cmd += ["-sql", f"SELECT * FROM {layer}"] #Adds an SQL source selection instructing ogr2ogr to import only that layer from the input file.
+
+        subprocess.run(cmd, check=True) #run the cmd
 
 
 def get_envelop():
