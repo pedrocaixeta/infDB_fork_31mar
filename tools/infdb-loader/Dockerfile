@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
 # Install aria2 for downloading lod2 of bavaria
 RUN apt-get install -y aria2
 
+# Install GDAL (ogr2ogr) - ADDED
+RUN apt-get update && apt-get install -y --no-install-recommends gdal-bin libgdal-dev
+
 # Install postgresql-client for pg_dump and psql commands
 RUN apt install curl ca-certificates &&\
 install -d /usr/share/postgresql-common/pgdg && \

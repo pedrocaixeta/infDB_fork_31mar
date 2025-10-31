@@ -173,10 +173,26 @@ def do_cmd(cmd: str):
 
 
 def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope=True):
-    # Get connection details and build an ogr2ogr connection
-    connection = get_db_engine("postgres")
-    connection_string = f"PG:host={connection['host']} dbname={connection['database']} user={connection['user']} password={connection['password']}" #passed to ogr2ogr
-    epsg = connection["epsg"]
+    # Get connection details from config, then override from .env if present
+    parameters = get_db_parameters("postgres") or {}
+
+    # Prefer environment (.env) values for quick testing
+    env_user = os.getenv("SERVICES_POSTGRES_USER")
+    env_password = os.getenv("SERVICES_POSTGRES_PASSWORD")
+    env_db = os.getenv("SERVICES_POSTGRES_DB")
+    env_port = os.getenv("SERVICES_POSTGRES_EXPOSED_PORT")
+    env_epsg = os.getenv("SERVICES_POSTGRES_EPSG")
+    env_host = os.getenv("SERVICES_POSTGRES_HOST")  # optional if you set it
+
+    user = env_user or parameters.get("user")
+    password = env_password or parameters.get("password")
+    db = env_db or parameters.get("db")
+    port = int(env_port) if env_port else parameters.get("exposed_port") or parameters.get("port") or 5432
+    host = env_host or parameters.get("host") or "host.docker.internal"
+    epsg = int(env_epsg) if env_epsg else parameters.get("epsg")
+
+    # Build PG connection string WITHOUT password; pass password via PGPASSWORD env
+    connection_string = f"PG:host={host} port={port} dbname={db} user={user}"
     postgres_engine = get_db_engine("postgres")
 
     # get the bounding features (GeoDataFrame) that define the area you want to import.
@@ -185,13 +201,11 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
     else:
         gdf_scope = None
 
-    #handle clipping if scope is active
+    # handle clipping if scope is active
     clipsrc = None
-    # If envelope exists, compute the bounding box and
-    # store as string list (ogr2ogr expects numeric args as separate tokens).
     if gdf_scope is not None and not gdf_scope.empty:
         xmin, ymin, xmax, ymax = gdf_scope.total_bounds
-        clipsrc = [str(xmin), str(ymin), str(xmax), str(ymax)]    
+        clipsrc = [str(xmin), str(ymin), str(xmax), str(ymax)]
 
     if layer_names is None:
         layer_names = layers
@@ -200,24 +214,34 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
     if prefix:
         layer_names = [prefix + "_" + name for name in layer_names]
 
-    #Iterate through corresponding source layers and target table names and log start.
+    # prepare env for subprocess with password for libpq
+    proc_env = os.environ.copy()
+    if password:
+        proc_env["PGPASSWORD"] = str(password)
+
     for layer, layer_name in zip(layers, layer_names):
         log.info(f"Importing layer: {layer} into {schema}")
         cmd = [
-            "ogr2ogr", "-f", "PostgreSQL", conn_str, #PostgreSQL and destination connection.
-            input_file, #Source file
-            "-nln", f"{schema}.{layer_name}", # set the new layer name
-            "-nlt", "PROMOTE_TO_MULTI", #convert single geometries to MULTI* types if needed
-            "-lco", "GEOMETRY_NAME=geom", #create geometry column named geom
-            "-overwrite", #replace any existing table of same name.
-            "-t_srs", f"EPSG:{epsg}", # reproject source features to this CRS during import.
-            "-progress" #  show progress
+            "ogr2ogr", "-f", "PostgreSQL", connection_string,
+            input_file,
+            "-nln", f"{schema}.{layer_name}",
+            "-nlt", "PROMOTE_TO_MULTI",
+            "-lco", "GEOMETRY_NAME=geom",
+            "-overwrite",
+            "-t_srs", f"EPSG:{epsg}",
+            "-progress"
         ]
         if clipsrc:
-            cmd += ["-clipsrc"] + clipsrc #add the clipping option so geometries are clipped to the bounding box.
-        cmd += ["-sql", f"SELECT * FROM {layer}"] #Adds an SQL source selection instructing ogr2ogr to import only that layer from the input file.
+            cmd += ["-clipsrc"] + clipsrc
+        cmd += ["-sql", f"SELECT * FROM \"{layer}\""]
 
-        subprocess.run(cmd, check=True) # run the cmd
+        try:
+            proc = subprocess.run(cmd, check=True, capture_output=True, text=True, env=proc_env)
+            log.debug("ogr2ogr stdout: %s", proc.stdout)
+        except subprocess.CalledProcessError as e:
+            log.error("ogr2ogr failed (rc=%s). stderr:\n%s", e.returncode, e.stderr)
+            raise
+
 
 def _upload_to_postgis(df, table_name, schema, engine, srid=3035):
     # create geometry column in WKT form
