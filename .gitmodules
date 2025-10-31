@@ -1,0 +1,3 @@
+[submodule "tools/pylovo-generation/src/pylovo"]
+	path = tools/pylovo-generation/src/pylovo
+	url = https://github.com/tum-ens/pylovo.git
