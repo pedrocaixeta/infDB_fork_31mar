@@ -5,12 +5,12 @@ infdb-basedata:
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
-            user: None
-            password: None
-            db: None
-            host: None
-            exposed_port: None
-            epsg: None # 3035 (Europe)
+            user: "{services/postgres/user}"
+            password: "{services/postgres/password}"
+            db: "{services/postgres/db}"
+            host: "{services/postgres/host}"
+            exposed_port: "{services/postgres/exposed_port}"
+            epsg: "{services/postgres/epsg}"
     data:
         input_schema: opendata
         output_schema: basedata

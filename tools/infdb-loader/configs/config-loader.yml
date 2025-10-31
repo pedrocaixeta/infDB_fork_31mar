@@ -1,13 +1,6 @@
 loader:
     name: "{base/name}"
-    scope:  # AGS (Amtlicher Gemeindeschlüssel)
-        # - "09162000"  # Munich
-        # - "09780139"  # Sonthofen
-        # - "09780116"  # Bolsterlang
-        # - "09162000" # M
-        - "09185149" # ND
-        # - "09474126" # FO
-        # - "09261000" # LA
+    scope: "{base/scope}"
     multiproccesing: 
         status: not-active
         max_cores: 2    # max cores since of memory limitations to 2
@@ -21,12 +14,12 @@ loader:
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
-            user: None
-            password: None
-            db: None
-            host: None
-            exposed_port: None
-            epsg: None # 3035 (Europe)
+            user: "{services/postgres/user}"
+            password: "{services/postgres/password}"
+            db: "{services/postgres/db}"
+            host: "{services/postgres/host}"
+            exposed_port: "{services/postgres/exposed_port}"
+            epsg: "{services/postgres/epsg}"
     sources:
         package:
             status: active
