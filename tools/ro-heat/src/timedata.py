@@ -56,3 +56,8 @@ def get_bld2ts(database_connection):
     df = pd.read_sql(sql=query, con=database_connection)
 
     return df
+
+
+def post_timeseries_data(database_connection, df_timeseries):
+    df_timeseries.to_sql('openmeteo_ts_data', con=database_connection, schema='opendata', if_exists='append', index=False)
+    
