@@ -35,7 +35,8 @@ def create_constructions(elements: DataFrame) -> DataFrame:
         "OuterWall": "ExtWall",
         "Rooftop": "Roof",
         "Ceiling": "IntCeiling",
-        "Floor": "IntFloor"
+        "Floor": "IntFloor",
+        "InnerWall": "IntWall"
     }
 
     constructions["construction_obj"] = constructions.apply(
@@ -51,8 +52,11 @@ def create_constructions(elements: DataFrame) -> DataFrame:
 
 
 def aggregate_rc_values(constructions: DataFrame) -> DataFrame:
+    # Internal elements such as inner walls, floors or ceilings do not contribute to thermal resistance
     constructions["resistance"] = constructions.apply(
-        lambda row: row["area"] / row["construction_obj"].thermal_resistance,
+        lambda row: row["area"] / row["construction_obj"].thermal_resistance if row['element_name'] in ["ExtWall",
+                                                                                                        "GroundFloor",
+                                                                                                        "Roof"] else 0,
         axis=1,
     )
 

@@ -14,7 +14,10 @@ WITH element_vars AS (SELECT 'OuterWall'::text  AS element_name,
                       UNION ALL
                       SELECT 'Ceiling', 'construction_year', 'floor_area'
                       UNION ALL
-                      SELECT 'Floor', 'construction_year', 'floor_area'),
+                      SELECT 'Floor', 'construction_year', 'floor_area'
+                      UNION ALL
+                      SELECT 'InnerWall', 'construction_year', 'floor_area'
+                      ),
 -- Precompute only rows that have nonzero area
      nonzero_elements AS (SELECT b.building_objectid,
                                  v.element_name,
@@ -31,6 +34,10 @@ WITH element_vars AS (SELECT 'OuterWall'::text  AS element_name,
                                         WHEN v.element_name IN ('Ceiling', 'Floor')
                                             THEN ((to_jsonb(b) ->> v.area_col)::numeric *
                                                   GREATEST(b.floor_number - 1, 0))
+                                        -- Calculate internal wall area as floor_area * max(b.floor_number, 0) * 2.5
+                                        WHEN v.element_name = 'InnerWall'
+                                            THEN ((to_jsonb(b) ->> v.area_col)::numeric *
+                                                  GREATEST(b.floor_number, 0) * 2.5)
                                         -- Use area_col for all other constructions
                                         ELSE (to_jsonb(b) ->> v.area_col)::numeric
                                         END
@@ -40,6 +47,8 @@ SELECT n.building_objectid,
        CASE
            WHEN n.element_name IN ('Ceiling', 'Floor')
                THEN (n.base_area * GREATEST(n.floor_number - 1, 0))
+           WHEN n.element_name = 'InnerWall'
+               THEN (n.base_area * GREATEST(n.floor_number, 0) * 2.5)
            ELSE n.base_area
            END AS area,
        l.thickness,
@@ -54,7 +63,7 @@ FROM nonzero_elements n
          JOIN LATERAL (
     SELECT CASE
                -- Lookup 'Ceiling' and 'Floor' in 'tabula_de_standard'
-               WHEN n.element_name IN ('Ceiling', 'Floor') THEN 'tabula_de_standard'
+               WHEN n.element_name IN ('Ceiling', 'Floor', 'InnerWall') THEN 'tabula_de_standard'
                -- Lookup unrefurbished constructions in 'tabula_de_standard_1_' || n.building_type
                WHEN n.year_val = n.construction_year
                    THEN 'tabula_de_standard_1_' || n.building_type
