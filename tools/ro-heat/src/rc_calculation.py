@@ -34,6 +34,8 @@ def create_constructions(elements: DataFrame) -> DataFrame:
         "GroundFloor": "GroundFloor",
         "OuterWall": "ExtWall",
         "Rooftop": "Roof",
+        "Ceiling": "IntCeiling",
+        "Floor": "IntFloor"
     }
 
     constructions["construction_obj"] = constructions.apply(
