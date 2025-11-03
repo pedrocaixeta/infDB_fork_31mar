@@ -375,6 +375,7 @@ def main():
             how="left",
         ).drop(columns=["bld_objectid"])
         
+        # For testing purposes, limit to one building
         entise_input = entise_input.iloc[:1, :]
 
         # Initialize the generator
