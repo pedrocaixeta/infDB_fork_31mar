@@ -59,22 +59,22 @@ def load(log_queue):
 
 def process_dataset(dataset):
     try:
-        log.info(f"Working on {dataset["name"]}")
+        log.info(f"Working on {dataset['name']}")
 
         # Check for status
         status = dataset["status"]
         if status == "active":
-            log.info(f"Loading {dataset["name"]} ...")
+            log.info(f"Loading {dataset['name']} ...")
         else:
-            log.info(f"{dataset["name"]} skips, status not active")
+            log.info(f"{dataset['name']} skips, status not active")
             return True
-        
-        # Check for year 
+
+        # Check for year
         years = config.get_value(["loader", "sources", "zensus_2022", "years"])
         if dataset["year"] not in years:
-            log.info(f"{dataset["name"]} skips, not in years list")
+            log.info(f"{dataset['name']} skips, not in years list")
             return True
-            
+
         # Download
         zip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
         download_path = os.path.join(zip_path, dataset["table_name"] + ".zip")
@@ -86,15 +86,15 @@ def process_dataset(dataset):
         folder_path = os.path.join(unzip_path, dataset["table_name"])
         utils.unzip(download_path, folder_path)
 
-        # Export to postgis
+        # Export to PostGIS
         resolutions = config.get_value(["loader", "sources", "zensus_2022", "resolutions"])
         for resolution in resolutions:
-            log.info(f"Processing {dataset["name"]} with {resolution} ...")
+            log.info(f"Processing {dataset['name']} with {resolution} ...")
 
             # Search for corresponding file within source folder
             file = utils.get_file(folder_path, resolution, ".csv")
             if not file:
-                log.warning(f"No file for {dataset["name"]} with resolution {resolution} found")
+                log.warning(f"No file for {dataset['name']} with resolution {resolution} found")
                 continue
 
             # Detect encoding of file
@@ -108,16 +108,27 @@ def process_dataset(dataset):
                 # na_values="–",
                 low_memory=True,
                 encoding=encoding,
-            )  # , encoding="latin_1"   # GeoDataFrame laden (Beispiel) nrows=10,
+            )
+
+            # Log column names for debugging
+            log.info(f"Columns in the dataset '{dataset['name']}' with resolution {resolution}: {list(df.columns)}")
 
             df.fillna(0, inplace=True)
             df.columns = df.columns.str.lower()
 
+            # Dynamically find the correct column names
+            x_col = next((col for col in df.columns if col.startswith("x_mp_")), None)
+            y_col = next((col for col in df.columns if col.startswith("y_mp_")), None)
+
+            if not x_col or not y_col:
+                log.warning(f"Missing required columns 'x_mp_*' or 'y_mp_*' in {file}. Skipping.")
+                continue
+
+            log.info(f"Using columns '{x_col}' and '{y_col}' for geometry.")
+
             gdf = gpd.GeoDataFrame(
                 df,
-                geometry=gpd.points_from_xy(
-                    df.loc[:, "x_mp_" + resolution], df.loc[:, "y_mp_" + resolution]
-                ),
+                geometry=gpd.points_from_xy(df[x_col], df[y_col]),
                 crs="EPSG:3035",
             )  # ETRS89 / UTM zone 32N
             epsg = utils.get_db_parameters("postgres")["epsg"]
@@ -138,10 +149,18 @@ def process_dataset(dataset):
                 gdf_clipped = gdf
 
             table_name = dataset["table_name"]
-            table_name = prefix + "_" + str(dataset["year"]) + "_" + resolution + "_" + dataset["table_name"]
+            table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
 
             #gdf_clipped = gdf_clipped.rename_geometry("geom")
-            utils._upload_to_postgis(gdf_clipped, table_name, engine, if_exists='replace', schema=schema, index=False)
+            utils._upload_to_postgis(
+                gdf_clipped,
+                table_name,
+                schema=schema,
+                engine=engine,
+                srid=epsg,  # Pass the SRID dynamically
+                x_col=x_col,  # Pass the dynamically detected x column
+                y_col=y_col   # Pass the dynamically detected y column
+            )
 
             # Save clipped data locally
             save_local = config.get_value(["loader", "sources", "zensus_2022", "save_local"])
@@ -162,10 +181,10 @@ def process_dataset(dataset):
                     index=False,
                 )
 
-            log.info(f"Processed sucessfully {file}")
+            log.info(f"Processed successfully {file}")
 
     except Exception as err:
-        log.exception(f"An error occurred while processing file: {dataset["name"]} {str(err)}")
+        log.exception(f"An error occurred while processing file: {dataset['name']} {str(err)}")
         return False
-    
+
     return True

@@ -1,7 +1,7 @@
 loader:
     name: "{base/name}"
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
-        # - "09162000"  # Munich
+         #- "09162000"  # Munich
         # - "09780139"  # Sonthofen
         # - "09780116"  # Bolsterlang
         # - "09162000" # M
@@ -86,7 +86,7 @@ loader:
                     - 10km
 
         basemap:
-            status: active
+            status: not-active
             url: "https://basemap.de/dienste/opendata/basisviews/"
             ending: ".gpkg"
             filter:

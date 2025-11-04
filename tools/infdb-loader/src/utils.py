@@ -14,7 +14,8 @@ import geopandas as gpd
 from urllib.parse import urlparse
 from . import config
 from pySmartDL import SmartDL
-import logging
+import logging, time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 log = logging.getLogger(__name__)
@@ -67,31 +68,56 @@ def get_links(url, ending, filter):
     return zip_links
 
 
-def download_files(urls, base_path):
-    if os.path.isdir(base_path):
-        os.makedirs(base_path, exist_ok=True)
+def download_files(urls, base_path, max_concurrent=3, retries=3, delay=2):
+    # If base_path looks like a file path (ends with .zip, .gpkg, etc.), use its folder instead
+    if os.path.splitext(base_path)[1]:
+        base_path = os.path.dirname(base_path) or "."
+
+    os.makedirs(base_path, exist_ok=True)
 
     if isinstance(urls, str):
         urls = [urls]
-    
-    objs = []
-    for url in urls:
-        obj = SmartDL(url, base_path, progress_bar=True)
-        target_path = obj.get_dest()
-        if os.path.exists(target_path):
-            log.info(f"File {target_path} already exists.")
-        else:
-            log.info(f"File {target_path} downloading ...")
-            obj.start(blocking=False)   # non-blocking start
-            objs.append(obj)
 
-    # Wait for all to finish
-    files = []
-    for obj in objs:
-        obj.wait()
-        files.append(obj.get_dest())
+    def _download(url):
+        dest = os.path.join(base_path, os.path.basename(url))
 
-    return files
+        # 🔥 Safety: If a directory exists with the same name, remove it
+        if os.path.isdir(dest):
+            log.warning(f"Found a directory where a file should be ({dest}), removing it.")
+            shutil.rmtree(dest, ignore_errors=True)
+
+        # ✅ If the file already exists, skip re-downloading
+        if os.path.isfile(dest):
+            log.info(f"File {dest} already exists, skipping download.")
+            return dest
+
+        for attempt in range(retries):
+            try:
+                log.info(f"Downloading {url} (try {attempt+1}) -> {dest}")
+                obj = SmartDL(url, dest, progress_bar=False)
+                obj.start(blocking=True)
+
+                if not os.path.isfile(dest):
+                    raise RuntimeError(f"Download failed or incomplete: {dest}")
+
+                return dest
+            except Exception as e:
+                log.warning(f"Retry {attempt+1} for {url}: {e}")
+                time.sleep(delay * (attempt + 1))
+
+        raise RuntimeError(f"Failed to download {url}")
+
+    results = []
+    with ThreadPoolExecutor(max_workers=max_concurrent) as pool:
+        futures = {pool.submit(_download, u): u for u in urls}
+        for future in as_completed(futures):
+            url = futures[future]
+            try:
+                results.append(future.result())
+                log.info(f"✅ Downloaded {url}")
+            except Exception as e:
+                log.error(f"❌ Failed {url}: {e}")
+    return results
 
 
 def unzip(zip_files, unzip_dir):
@@ -243,25 +269,28 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
             raise
 
 
-def _upload_to_postgis(df, table_name, schema, engine, srid=3035):
-    # create geometry column in WKT form
-    df["geom"] = df.apply(lambda r: f"SRID={srid};POINT({r['x_mp_100']} {r['y_mp_100']})", axis=1)
+def _upload_to_postgis(df, table_name, schema, engine, srid=3035, x_col=None, y_col=None):
+    if not x_col or not y_col:
+        raise ValueError("x_col and y_col must be provided for geometry creation.")
 
-    conn = engine.raw_connection() # gets the underlying DBAPI connection from SQLAlchemy.
-    cur = conn.cursor() # cursor used to execute SQL and COPY.
+    # Create geometry column in WKT form using the dynamically passed column names
+    df["geom"] = df.apply(lambda r: f"SRID={srid};POINT({r[x_col]} {r[y_col]})", axis=1)
 
-    # prepare table
+    conn = engine.raw_connection()  # Gets the underlying DBAPI connection from SQLAlchemy.
+    cur = conn.cursor()  # Cursor used to execute SQL and COPY.
+
+    # Prepare table
     cols = [c for c in df.columns if c != "geom"]
-    col_defs = ", ".join([f"{c} TEXT" for c in cols]) + f", geom geometry(Point,{srid})"#Build a CREATE TABLE statement: 
-    cur.execute(f"CREATE TABLE IF NOT EXISTS {schema}.{table_name} ({col_defs});")#All columns except geom are created as TEXT.A geom column is created as geometry(Point, {srid}).
+    col_defs = ", ".join([f"{c} TEXT" for c in cols]) + f", geom geometry(Point,{srid})"
+    cur.execute(f"CREATE TABLE IF NOT EXISTS {schema}.{table_name} ({col_defs});")
 
-    # stream CSV to Postgres
+    # Stream CSV to Postgres
     buffer = StringIO()
-    df.to_csv(buffer, index=False, header=False)# writes the DataFrame to that buffer in CSV format.
+    df.to_csv(buffer, index=False, header=False)  # Writes the DataFrame to that buffer in CSV format.
     buffer.seek(0)
     cur.copy_expert(f"COPY {schema}.{table_name} FROM STDIN WITH CSV", buffer)
-    conn.commit()#Commit the transaction so data is written and visible.
-    cur.close()# Close cursor and connection.
+    conn.commit()  # Commit the transaction so data is written and visible.
+    cur.close()  # Close cursor and connection.
     conn.close()
 
 
