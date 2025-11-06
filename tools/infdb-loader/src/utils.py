@@ -1,21 +1,28 @@
 import os
+import io
+import time
+import logging
+import shutil
 import subprocess
-import requests
 import multiprocessing
-import chardet
+
+import requests
 from zipfile import ZipFile, BadZipFile
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-import sqlalchemy
-import psycopg2
+from urllib.parse import urljoin, urlparse
+
 import pandas as pd
-from io import StringIO
 import geopandas as gpd
-from urllib.parse import urlparse
-from . import config
+
+import sqlalchemy
+from sqlalchemy import text
+
+import psycopg2            
+import chardet             
 from pySmartDL import SmartDL
-import logging, time
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from . import config
 
 
 log = logging.getLogger(__name__)
@@ -68,48 +75,56 @@ def get_links(url, ending, filter):
     return zip_links
 
 
-def download_files(urls, base_path, max_concurrent=3, retries=3, delay=2):
+def download_files(urls, base_path, max_concurrent=6, retries=3, delay=2):
     # If base_path looks like a file path (ends with .zip, .gpkg, etc.), use its folder instead
     if os.path.splitext(base_path)[1]:
         base_path = os.path.dirname(base_path) or "."
 
     os.makedirs(base_path, exist_ok=True)
-
     if isinstance(urls, str):
         urls = [urls]
 
-    def _download(url):
+    # simple, high-throughput streaming downloader with retry
+    import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+
+    sess = requests.Session()
+    retry = Retry(
+        total=retries,
+        backoff_factor=delay,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET", "HEAD"],
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry, pool_connections=max_concurrent, pool_maxsize=max_concurrent)
+    sess.mount("http://", adapter)
+    sess.mount("https://", adapter)
+
+    def _stream_download(url):
         dest = os.path.join(base_path, os.path.basename(url))
 
-        # 🔥 Safety: If a directory exists with the same name, remove it
+        # Safety: if a directory exists with same name, remove it
         if os.path.isdir(dest):
             log.warning(f"Found a directory where a file should be ({dest}), removing it.")
             shutil.rmtree(dest, ignore_errors=True)
 
-        # ✅ If the file already exists, skip re-downloading
         if os.path.isfile(dest):
             log.info(f"File {dest} already exists, skipping download.")
             return dest
 
-        for attempt in range(retries):
-            try:
-                log.info(f"Downloading {url} (try {attempt+1}) -> {dest}")
-                obj = SmartDL(url, dest, progress_bar=False)
-                obj.start(blocking=True)
-
-                if not os.path.isfile(dest):
-                    raise RuntimeError(f"Download failed or incomplete: {dest}")
-
-                return dest
-            except Exception as e:
-                log.warning(f"Retry {attempt+1} for {url}: {e}")
-                time.sleep(delay * (attempt + 1))
-
-        raise RuntimeError(f"Failed to download {url}")
+        log.info(f"Downloading {url} -> {dest}")
+        with sess.get(url, stream=True, timeout=60) as r:
+            r.raise_for_status()
+            with open(dest, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1 << 16):  # 64 KB
+                    if chunk:
+                        f.write(chunk)
+        return dest
 
     results = []
     with ThreadPoolExecutor(max_workers=max_concurrent) as pool:
-        futures = {pool.submit(_download, u): u for u in urls}
+        futures = {pool.submit(_stream_download, u): u for u in urls}
         for future in as_completed(futures):
             url = futures[future]
             try:
@@ -262,37 +277,107 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
         cmd += ["-sql", f"SELECT * FROM \"{layer}\""]
 
         try:
-            proc = subprocess.run(cmd, check=True, capture_output=True, text=True, env=proc_env)
+            proc = subprocess.run(cmd, check=True, capture_output=True, text=True, env=proc_env, timeout=1800)
             log.debug("ogr2ogr stdout: %s", proc.stdout)
         except subprocess.CalledProcessError as e:
             log.error("ogr2ogr failed (rc=%s). stderr:\n%s", e.returncode, e.stderr)
             raise
 
 
-def _upload_to_postgis(df, table_name, schema, engine, srid=3035, x_col=None, y_col=None):
+def _upload_to_postgis(
+    df,
+    table_name: str,
+    schema: str,
+    engine,
+    srid: int = 3035,
+    x_col: str = None,
+    y_col: str = None,
+    src_srid: int = None,
+    if_exists: str = "replace",
+    create_spatial_index: bool = True,
+    analyze_after: bool = False,          # <- set False to save time
+    unlogged: bool = True,                # <- speed up bulk load
+    synchronous_commit_off: bool = True,  # <- speed up bulk load
+):
     if not x_col or not y_col:
-        raise ValueError("x_col and y_col must be provided for geometry creation.")
+        raise ValueError("Provide x_col and y_col for geometry creation.")
 
-    # Create geometry column in WKT form using the dynamically passed column names
-    df["geom"] = df.apply(lambda r: f"SRID={srid};POINT({r[x_col]} {r[y_col]})", axis=1)
+    src_srid = src_srid or srid
 
-    conn = engine.raw_connection()  # Gets the underlying DBAPI connection from SQLAlchemy.
-    cur = conn.cursor()  # Cursor used to execute SQL and COPY.
+    df = df.copy()
+    df[x_col] = pd.to_numeric(df[x_col], errors="coerce")
+    df[y_col] = pd.to_numeric(df[y_col], errors="coerce")
 
-    # Prepare table
-    cols = [c for c in df.columns if c != "geom"]
-    col_defs = ", ".join([f"{c} TEXT" for c in cols]) + f", geom geometry(Point,{srid})"
-    cur.execute(f"CREATE TABLE IF NOT EXISTS {schema}.{table_name} ({col_defs});")
+    def sql_type(series: pd.Series) -> str:
+        if pd.api.types.is_integer_dtype(series): return "BIGINT"
+        if pd.api.types.is_float_dtype(series):   return "DOUBLE PRECISION"
+        if pd.api.types.is_bool_dtype(series):    return "BOOLEAN"
+        return "TEXT"
 
-    # Stream CSV to Postgres
-    buffer = StringIO()
-    df.to_csv(buffer, index=False, header=False)  # Writes the DataFrame to that buffer in CSV format.
-    buffer.seek(0)
-    cur.copy_expert(f"COPY {schema}.{table_name} FROM STDIN WITH CSV", buffer)
-    conn.commit()  # Commit the transaction so data is written and visible.
-    cur.close()  # Close cursor and connection.
-    conn.close()
+    cols = list(df.columns)
+    col_defs = ", ".join([f'"{c}" {sql_type(df[c])}' for c in cols])
 
+    target = f'"{schema}"."{table_name}"'
+    staging = f'"{schema}"."{table_name}__staging"'
+
+    # CSV buffer
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    buf.seek(0)
+
+    raw = engine.raw_connection()
+    try:
+        with raw.cursor() as cur:
+            # schema and staging
+            cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}";')
+            cur.execute(f"DROP TABLE IF EXISTS {staging};")
+
+            unlogged_sql = "UNLOGGED" if unlogged else ""
+            cur.execute(f"CREATE {unlogged_sql} TABLE {staging} ({col_defs});")
+
+            if synchronous_commit_off:
+                cur.execute("SET LOCAL synchronous_commit = OFF;")
+
+            # COPY into staging
+            col_list = ", ".join([f'"{c}"' for c in cols])
+            cur.copy_expert(
+                f"COPY {staging} ({col_list}) FROM STDIN WITH (FORMAT CSV, HEADER TRUE, DELIMITER ',')",
+                buf
+            )
+
+            # add geom column
+            cur.execute(f'ALTER TABLE {staging} ADD COLUMN "geom" geometry(Point, {srid});')
+            if src_srid == srid:
+                cur.execute(
+                    f'UPDATE {staging} SET "geom" = ST_SetSRID(ST_MakePoint("{x_col}", "{y_col}"), {srid});'
+                )
+            else:
+                cur.execute(
+                    f'UPDATE {staging} SET "geom" = ST_Transform(ST_SetSRID(ST_MakePoint("{x_col}", "{y_col}"), {src_srid}), {srid});'
+                )
+
+            # swap into final
+            if if_exists == "replace":
+                cur.execute(f"DROP TABLE IF EXISTS {target};")
+                cur.execute(f'ALTER TABLE {staging} RENAME TO "{table_name}";')
+            else:
+                # append mode: copy staging rows into target, then drop staging
+                cur.execute(f"INSERT INTO {target} SELECT * FROM {staging};")
+                cur.execute(f"DROP TABLE {staging};")
+
+        raw.commit()
+    finally:
+        raw.close()
+
+    # index + analyze in a separate transaction (optional: skip for 100m)
+    with engine.begin() as conn:
+        if create_spatial_index:
+            conn.execute(text(
+                f'CREATE INDEX IF NOT EXISTS "{table_name}_geom_gix" '
+                f'ON "{schema}"."{table_name}" USING GIST ("geom");'
+            ))
+        if analyze_after:
+            conn.execute(text(f'ANALYZE {target};'))
 
 def get_envelop():
     scope = config.get_list(["loader", "scope"])
@@ -424,23 +509,25 @@ def get_file(folder_path, filename, ending):
 
 
 def get_website_links(url):
-    # HTML-Seite herunterladen
-    response = requests.get(url)
-    html_content = response.content
+    log.info(f"Fetching Zensus link list from: {url}")
+    try:
+        resp = requests.get(url, timeout=60)
+        resp.raise_for_status()
+    except Exception as e:
+        log.error(f"Failed to fetch {url}: {e}")
+        return []
 
-    # HTML-Seite parsen
-    soup = BeautifulSoup(html_content, "html.parser")
+    soup = BeautifulSoup(resp.content, "html.parser")
 
-    # Alle Links zu ZIP-Dateien finden
     zip_links = []
     for link in soup.find_all("a", href=True):
         href = link["href"]
         if href.endswith(".zip"):
             zip_links.append(href)
 
-    # Gefundene Links ausgeben
-    for zip_link in zip_links:
-        log.debug(zip_link)
+    log.info(f"Found {len(zip_links)} .zip links on the page")
+    for z in zip_links:
+        log.debug(z)
 
     return zip_links
 

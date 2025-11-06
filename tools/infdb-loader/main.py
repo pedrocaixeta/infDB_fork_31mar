@@ -2,13 +2,13 @@ import multiprocessing as mp
 from src import utils, config
 from src import bkg, basemap, lod2, census2022, plz, tabula, package, need, openmeteo, wetterdienst
 from src.logger import setup_main_logger
-import multiprocessing
 import logging
 
 log = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    log_queue = multiprocessing.Queue()
+    mp.set_start_method("spawn", force=True)
+    log_queue = mp.Queue()
     listener = setup_main_logger(log_queue)
 
     log.info("Starting loader.............................................")

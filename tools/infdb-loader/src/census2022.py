@@ -48,143 +48,127 @@ def load(log_queue):
     unzip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
     os.makedirs(unzip_path, exist_ok=True)
 
-    number_processes = utils.get_number_processes()
-    with multiprocessing.Pool(
-        processes=number_processes,
-        initializer=logger.setup_worker_logger,
-        initargs=(log_queue,),
-    ) as pool:
-        results = pool.map(process_dataset, datasets)
+    # >>> NEW: pre-download all active Zensus archives once (moderate concurrency)
+    years = config.get_value(["loader", "sources", "zensus_2022", "years"])
+    active_urls = [
+        d["url"] for d in datasets
+        if d.get("status") == "active" and d.get("year") in years
+    ]
+    log.info(f"Pre-downloading {len(active_urls)} Zensus archives to {zip_path} with max_concurrent=6 …")
+    utils.download_files(active_urls, zip_path, max_concurrent=6)
+    log.info("Pre-download complete.")
+
+    # Serial vs Pool (spawn) depending on config
+    number_processes = utils.get_number_processes()  # returns 1 when config is 'not-active'
+    if number_processes <= 1:
+        # Run serially (no nested multiprocessing inside the census process)
+        for d in datasets:
+            process_dataset(d)
+    else:
+        # Safe Pool with spawn + short-lived workers to avoid resource buildup
+        ctx = multiprocessing.get_context("spawn")
+        with ctx.Pool(
+            processes=number_processes,
+            initializer=logger.setup_worker_logger,
+            initargs=(log_queue,),
+            maxtasksperchild=1,
+        ) as pool:
+            pool.map(process_dataset, datasets)
 
 
 def process_dataset(dataset):
     try:
         log.info(f"Working on {dataset['name']}")
 
-        # Check for status
-        status = dataset["status"]
-        if status == "active":
-            log.info(f"Loading {dataset['name']} ...")
-        else:
+        # --- Skip inactive or invalid years ---
+        if dataset["status"] != "active":
             log.info(f"{dataset['name']} skips, status not active")
             return True
 
-        # Check for year
         years = config.get_value(["loader", "sources", "zensus_2022", "years"])
         if dataset["year"] not in years:
             log.info(f"{dataset['name']} skips, not in years list")
             return True
 
-        # Download
+        # --- Unzip (use pre-downloaded file) ---
         zip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
-        download_path = os.path.join(zip_path, dataset["table_name"] + ".zip")
-        link = dataset["url"]
-        utils.download_files(link, download_path)
-
-        # Unzip
         unzip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
-        folder_path = os.path.join(unzip_path, dataset["table_name"])
-        utils.unzip(download_path, folder_path)
+        os.makedirs(unzip_path, exist_ok=True)
 
-        # Export to PostGIS
+        zip_file = os.path.join(zip_path, os.path.basename(dataset["url"]))
+        if not os.path.exists(zip_file):
+            log.error(f"Expected ZIP not found: {zip_file} — did the pre-download succeed?")
+            return False
+
+        folder_path = os.path.join(unzip_path, dataset["table_name"])
+        log.info(f"Unzipping {zip_file} -> {folder_path}")
+        utils.unzip(zip_file, folder_path)
+
+        # --- Process each resolution file ---
         resolutions = config.get_value(["loader", "sources", "zensus_2022", "resolutions"])
         for resolution in resolutions:
-            log.info(f"Processing {dataset['name']} with {resolution} ...")
+            log.info(f"Processing {dataset['name']} with {resolution} …")
 
-            # Search for corresponding file within source folder
             file = utils.get_file(folder_path, resolution, ".csv")
             if not file:
                 log.warning(f"No file for {dataset['name']} with resolution {resolution} found")
                 continue
 
-            # Detect encoding of file
-            encoding = from_path(file).best().encoding
-            log.debug(f"Detected encoding for file: {encoding}")
-
-            df = pd.read_csv(
-                file,
-                sep=";",
-                decimal=",",
-                # na_values="–",
-                low_memory=True,
-                encoding=encoding,
-            )
-
-            # Log column names for debugging
-            log.info(f"Columns in the dataset '{dataset['name']}' with resolution {resolution}: {list(df.columns)}")
+            # --- Read CSV (fast sniff: ~1 KB) ---
+            with open(file, "rb") as fh:
+                encoding = chardet.detect(fh.read(1000)).get("encoding") or "utf-8"
+            try:
+                df = pd.read_csv(file, sep=";", decimal=",", low_memory=True, encoding=encoding)
+            except UnicodeDecodeError:
+                with open(file, "r", encoding="latin-1", errors="replace") as fh:
+                    df = pd.read_csv(fh, sep=";", decimal=",", low_memory=True)
 
             df.fillna(0, inplace=True)
             df.columns = df.columns.str.lower()
+            log.info(f"Columns in '{dataset['name']}' ({resolution}): {list(df.columns)}")
 
-            # Dynamically find the correct column names
-            x_col = next((col for col in df.columns if col.startswith("x_mp_")), None)
-            y_col = next((col for col in df.columns if col.startswith("y_mp_")), None)
-
+            # --- Detect coordinate columns dynamically ---
+            x_col = next((c for c in df.columns if c.startswith("x_mp_")), None)
+            y_col = next((c for c in df.columns if c.startswith("y_mp_")), None)
             if not x_col or not y_col:
-                log.warning(f"Missing required columns 'x_mp_*' or 'y_mp_*' in {file}. Skipping.")
+                log.warning(f"Missing x_mp_*/y_mp_* in {file}, skipping.")
                 continue
-
             log.info(f"Using columns '{x_col}' and '{y_col}' for geometry.")
 
-            gdf = gpd.GeoDataFrame(
-                df,
-                geometry=gpd.points_from_xy(df[x_col], df[y_col]),
-                crs="EPSG:3035",
-            )  # ETRS89 / UTM zone 32N
-            epsg = utils.get_db_parameters("postgres")["epsg"]
-            gdf = gdf.to_crs(epsg=epsg)
-
-            # Create a database-data-import-container connection
+            # --- Upload via fast COPY path ---
             engine = utils.get_db_engine("postgres")
-
-            # Get user configurations
             prefix = config.get_value(["loader", "sources", "zensus_2022", "prefix"])
             schema = config.get_value(["loader", "sources", "zensus_2022", "schema"])
-
-            # Get envelope
-            gdf_envelope = utils.get_envelop()
-            if not gdf_envelope.empty:
-                gdf_clipped = gpd.clip(gdf, gdf_envelope)
-            else:
-                gdf_clipped = gdf
-
-            table_name = dataset["table_name"]
+            epsg = utils.get_db_parameters("postgres")["epsg"]
             table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
 
-            #gdf_clipped = gdf_clipped.rename_geometry("geom")
+            is_100m = (resolution == "100m")
+            is_1km  = (resolution == "1km")
+            is_10km = (resolution == "10km")
+
             utils._upload_to_postgis(
-                gdf_clipped,
-                table_name,
-                schema=schema,
-                engine=engine,
-                srid=epsg,  # Pass the SRID dynamically
-                x_col=x_col,  # Pass the dynamically detected x column
-                y_col=y_col   # Pass the dynamically detected y column
+                df, table_name, schema, engine,
+                srid=epsg, x_col=x_col, y_col=y_col, src_srid=3035,
+                if_exists="replace",
+                create_spatial_index=not is_100m,  # skip index for 100m
+                analyze_after=False,               # skip analyze for speed
+                unlogged=True,
+                synchronous_commit_off=True,
             )
 
-            # Save clipped data locally
+            # --- Optional: save processed CSV/GeoPackage locally ---
             save_local = config.get_value(["loader", "sources", "zensus_2022", "save_local"])
             if save_local == "active":
-                output_path = config.get_path(
-                    ["loader", "sources", "zensus_2022", "path", "processed"]
-                )
-                log.debug(f"Output path: {output_path}")
+                output_path = config.get_path(["loader", "sources", "zensus_2022", "path", "processed"])
                 os.makedirs(output_path, exist_ok=True)
-
-                gdf_clipped.to_file(
-                    os.path.join(output_path, f"zenus-2022_{resolution}.gpkg"),
-                    layer=table_name,
-                    driver="GPKG",
-                )
-                gdf_clipped.to_csv(
-                    os.path.join(output_path, f"zenus-2022_{resolution}_{table_name}.csv"),
-                    index=False,
-                )
+                out_csv = os.path.join(output_path, f"zensus-2022_{resolution}_{table_name}.csv")
+                df.to_csv(out_csv, index=False)
+                log.info(f"Saved processed CSV: {out_csv}")
 
             log.info(f"Processed successfully {file}")
 
     except Exception as err:
-        log.exception(f"An error occurred while processing file: {dataset['name']} {str(err)}")
+        log.exception(f"An error occurred while processing {dataset['name']}: {err}")
         return False
 
     return True
