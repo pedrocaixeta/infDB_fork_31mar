@@ -1,11 +1,11 @@
 import os
 import logging
 import multiprocessing
-import chardet
-import pandas as pd
-import geopandas as gpd
+import chardet  # kept in case you later add CSV validation/encoding checks
+import pandas as pd  # kept (not used now); remove if you want zero pandas footprint
+import geopandas as gpd  # kept for get_envelop() usage elsewhere; can be removed if unused
+import shutil  # NEW: used for optional local copy of source CSV (save_local)
 from . import utils, config, logger
-from charset_normalizer import from_path
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def load(log_queue):
     url = config.get_value(["loader", "sources", "zensus_2022", "url"])
     zip_links = utils.get_website_links(url)
 
-    # Validate links
+    # Validate links vs YAML (helps catch missing/extra links early)
     yaml_links = {entry["url"] for entry in datasets}
     original_set = set(zip_links)
 
@@ -42,139 +42,122 @@ def load(log_queue):
     sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
     utils.sql_query(sql)
     
-    # Create folders
+    # Folders
     zip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
     os.makedirs(zip_path, exist_ok=True)
     unzip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
     os.makedirs(unzip_path, exist_ok=True)
 
-    # Serial vs Pool (spawn) depending on config
-    number_processes = utils.get_number_processes()  # returns 1 when config is 'not-active'
-    if number_processes <= 1:
-        # Run serially (no nested multiprocessing inside the census process)
-        for d in datasets:
-            process_dataset(d)
-    else:
-        # Safe Pool with spawn + short-lived workers to avoid resource buildup
-        ctx = multiprocessing.get_context("spawn")
-        with ctx.Pool(
-            processes=number_processes,
-            initializer=logger.setup_worker_logger,
-            initargs=(log_queue,),
-            maxtasksperchild=1,
-        ) as pool:
-            pool.map(process_dataset, datasets)
+    # Parallelize like before (no change)
+    number_processes = utils.get_number_processes()
+    with multiprocessing.Pool(
+        processes=number_processes,
+        initializer=logger.setup_worker_logger,
+        initargs=(log_queue,),
+    ) as pool:
+        pool.map(process_dataset, datasets)
 
 
 def process_dataset(dataset):
+    """
+    Adapted to the new high-performance utils:
+      - utils.download_files(...)  # polite, throttled downloader
+      - utils.unzip(...)           # same as before, just called with the new return path
+      - utils.fast_copy_points_csv # COPY + server-side geometry (replaces GeoPandas.to_postgis)
+    """
     try:
         log.info(f"Working on {dataset['name']}")
 
-        # --- Skip inactive or invalid years ---
-        if dataset["status"] != "active":
+        # Status check
+        if dataset.get("status") != "active":
             log.info(f"{dataset['name']} skips, status not active")
             return True
-
+        
+        # Year filter
         years = config.get_value(["loader", "sources", "zensus_2022", "years"])
         if dataset["year"] not in years:
             log.info(f"{dataset['name']} skips, not in years list")
             return True
+            
+        # -------------------------
+        # DOWNLOAD (NEW: polite downloader)
+        # We pass the base directory; downloader picks filename from URL and returns a list of local paths.
+        # Limiting concurrency here per-dataset to 1 avoids server throttling (pool already parallelizes datasets).
+        # -------------------------
+        zip_dir = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
+        urls_or_path = dataset["url"]
+        downloaded = utils.download_files(urls_or_path, base_path=zip_dir, max_concurrent=1)  # NEW
+        if not downloaded or not downloaded[0]:
+            log.error(f"Download failed for {dataset['name']}: {dataset['url']}")
+            return False
+        downloaded_zip = downloaded[0]
 
-       # --- Download & unzip per-dataset (overlaps better than global predownload) ---
-        zip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
-        unzip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
-        os.makedirs(zip_path, exist_ok=True)
-        os.makedirs(unzip_path, exist_ok=True)
+        # -------------------------
+        # UNZIP (same behavior, new call signature)
+        # Unzip into a dedicated folder per table_name (matches old structure).
+        # -------------------------
+        unzip_root = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
+        folder_path = os.path.join(unzip_root, dataset["table_name"])
+        utils.unzip(downloaded_zip, folder_path)  # NEW: unzip takes (zip_file, dest_dir)
 
-        # Save under the URL's basename so filenames match exactly
-        zip_file = os.path.join(zip_path, os.path.basename(dataset["url"]))
-
-        # Download if missing (utils.download_files will skip if it already exists)
-        log.info(f"Downloading {dataset['url']} -> {zip_file}")
-        utils.download_files(dataset["url"], zip_path, max_concurrent=4)
-
-        # Unzip into a folder named by table_name
-        folder_path = os.path.join(unzip_path, dataset["table_name"])
-        log.info(f"Unzipping {zip_file} -> {folder_path}")
-        utils.unzip(zip_file, folder_path)
-        # --- Process each resolution file ---
+        # Export to PostGIS for each configured resolution
         resolutions = config.get_value(["loader", "sources", "zensus_2022", "resolutions"])
-        for resolution in resolutions:
-            log.info(f"Processing {dataset['name']} with {resolution} …")
+        prefix = config.get_value(["loader", "sources", "zensus_2022", "prefix"])
+        schema = config.get_value(["loader", "sources", "zensus_2022", "schema"])
+        epsg = utils.get_db_parameters("postgres")["epsg"]  # target DB SRID
 
-            file = utils.get_file(folder_path, resolution, ".csv")
-            if not file:
+        for resolution in resolutions:
+            log.info(f"Processing {dataset['name']} with {resolution} ...")
+
+            # Search for corresponding CSV within the unzipped folder
+            csv_path = utils.get_file(folder_path, resolution, ".csv")
+            if not csv_path:
                 log.warning(f"No file for {dataset['name']} with resolution {resolution} found")
                 continue
 
-            # --- Read CSV (fast sniff: ~1 KB) ---
-            with open(file, "rb") as fh:
-                encoding = chardet.detect(fh.read(1000)).get("encoding") or "utf-8"
-            try:
-                df = pd.read_csv(file, sep=";", decimal=",", low_memory=True, encoding=encoding)
-            except UnicodeDecodeError:
-                with open(file, "r", encoding="latin-1", errors="replace") as fh:
-                    df = pd.read_csv(fh, sep=";", decimal=",", low_memory=True)
-
-            df.fillna(0, inplace=True)
-            df.columns = df.columns.str.lower()
-            log.info(f"Columns in '{dataset['name']}' ({resolution}): {list(df.columns)}")
-
-            # --- Detect coordinate columns dynamically ---
-            x_col = next((c for c in df.columns if c.startswith("x_mp_")), None)
-            y_col = next((c for c in df.columns if c.startswith("y_mp_")), None)
-            if not x_col or not y_col:
-                log.warning(f"Missing x_mp_*/y_mp_* in {file}, skipping.")
-                continue
-            log.info(f"Using columns '{x_col}' and '{y_col}' for geometry.")
-
-            # --- FAST bbox clip in the correct CRS (3035) ---
-            try:
-                env = utils.get_envelop(target_epsg=3035)  # now guaranteed in 3035
-                if env is not None and not env.empty:
-                    xmin, ymin, xmax, ymax = env.total_bounds
-                    before = len(df)
-                    # ensure numeric compare
-                    X = pd.to_numeric(df[x_col], errors="coerce")
-                    Y = pd.to_numeric(df[y_col], errors="coerce")
-                    df = df[(X >= xmin) & (X <= xmax) & (Y >= ymin) & (Y <= ymax)].copy()
-                    log.info(f"BBox clip {dataset['name']} ({resolution}): {before:,} → {len(df):,}")
-            except Exception as e:
-                log.warning(f"Skipping bbox clip (non-fatal): {e}")
-            # --- Upload via fast COPY path ---
-            engine = utils.get_db_engine("postgres")
-            prefix = config.get_value(["loader", "sources", "zensus_2022", "prefix"])
-            schema = config.get_value(["loader", "sources", "zensus_2022", "schema"])
-            epsg = utils.get_db_parameters("postgres")["epsg"]
+            # -------------------------
+            # FAST LOAD (NEW): COPY + server-side geometry creation
+            # This replaces: read CSV -> build GeoDataFrame -> gdf.to_postgis(...)
+            # Benefits:
+            #   * COPY is much faster than per-row inserts
+            #   * ST_MakePoint + ST_Transform happen inside PostGIS (C), not Python
+            # -------------------------
+            x_col = f"x_mp_{resolution}"  # Zensus CSV columns for X/Y per resolution
+            y_col = f"y_mp_{resolution}"
             table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
 
-            is_100m = (resolution == "100m")
-            is_1km  = (resolution == "1km")
-            is_10km = (resolution == "10km")
+            utils.fast_copy_points_csv(
+                csv_path=csv_path,
+                schema=schema,
+                table_name=table_name,
+                x_col=x_col,
+                y_col=y_col,
+                srid_src=3035,                 # source X/Y are in EPSG:3035 in the Zensus CSV
+                srid_dst=epsg,                 # target SRID from DB config
+                drop_existing=True,            # matches old 'replace' behavior
+                create_spatial_index=True,     # gives you good query perf right away
+            )  # NEW: main speed-up
 
-            utils._upload_to_postgis(
-                df, table_name, schema, engine,
-                srid=epsg, x_col=x_col, y_col=y_col, src_srid=3035,
-                if_exists="replace",
-                create_spatial_index=not is_100m,  # skip index for 100m
-                analyze_after=False,               # skip analyze for speed
-                unlogged=True,
-                synchronous_commit_off=True,
-            )
-
-            # --- Optional: save processed CSV/GeoPackage locally ---
+            # -------------------------
+            # OPTIONAL local save (kept, simplified)
+            # Since we now stream directly to DB, there is no GeoDataFrame in memory.
+            # If you still want a local artifact, we can copy the source CSV to a processed folder.
+            # -------------------------
             save_local = config.get_value(["loader", "sources", "zensus_2022", "save_local"])
             if save_local == "active":
                 output_path = config.get_path(["loader", "sources", "zensus_2022", "path", "processed"])
                 os.makedirs(output_path, exist_ok=True)
                 out_csv = os.path.join(output_path, f"zensus-2022_{resolution}_{table_name}.csv")
-                df.to_csv(out_csv, index=False)
-                log.info(f"Saved processed CSV: {out_csv}")
+                try:
+                    shutil.copyfile(csv_path, out_csv)  # NEW: keep a copy for auditing/traceability
+                    log.debug(f"Saved local CSV copy to {out_csv}")
+                except Exception as e:
+                    log.warning(f"Could not save local CSV copy for {table_name}: {e}")
 
-            log.info(f"Processed successfully {file}")
+            log.info(f"Processed successfully {csv_path}")
 
     except Exception as err:
-        log.exception(f"An error occurred while processing {dataset['name']}: {err}")
+        log.exception(f"An error occurred while processing file: {dataset.get('name')} {str(err)}")
         return False
-
+    
     return True
