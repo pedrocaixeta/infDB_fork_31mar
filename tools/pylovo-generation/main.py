@@ -25,8 +25,6 @@ def main():
 
     try:
         infdb.log.info("Generating synthetic grids with pylovo ...")
-        # Create .env file for pylovo
-        create_pylovo_env_file(infdb)
         # Setup pylovo database
         main_constructor.main()
         # Get ags from infdb-config

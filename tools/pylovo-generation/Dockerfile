@@ -12,6 +12,12 @@ ADD https://astral.sh/uv/install.sh /uv-installer.sh
 # Run the installer then remove it
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 
+# Install GDAL required for some geo-transformations
+RUN apt install gdal-bin -y
+
+# Add build dependencies to avoid scikit-learn-extra error
+RUN apt install build-essential python3-dev -y
+
 # Ensure the installed binary is on the `PATH`
 ENV PATH="/root/.local/bin/:$PATH"
 
@@ -28,8 +34,7 @@ COPY pyproject.toml /app/pyproject.toml
 
 # Copy the source code into the container
 COPY src /app/src
-COPY sql /app/sql
-COPY main.py /app/main.py
 
-# Run main.py with uv and environment defined in pyproject.toml
-CMD ["uv", "run", "python", "main.py"]
+# Create pylovo database and generate grid files for the hardcoded ags in pylovo/config/config_generation.yaml
+CMD ["sh", "-c", "cd /app/src/pylovo && uv run python -m runme.main_constructor && uv run python -m runme.main_generation"]
+
