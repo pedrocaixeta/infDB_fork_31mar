@@ -48,16 +48,6 @@ def load(log_queue):
     unzip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
     os.makedirs(unzip_path, exist_ok=True)
 
-    # >>> NEW: pre-download all active Zensus archives once (moderate concurrency)
-    years = config.get_value(["loader", "sources", "zensus_2022", "years"])
-    active_urls = [
-        d["url"] for d in datasets
-        if d.get("status") == "active" and d.get("year") in years
-    ]
-    log.info(f"Pre-downloading {len(active_urls)} Zensus archives to {zip_path} with max_concurrent=6 …")
-    utils.download_files(active_urls, zip_path, max_concurrent=6)
-    log.info("Pre-download complete.")
-
     # Serial vs Pool (spawn) depending on config
     number_processes = utils.get_number_processes()  # returns 1 when config is 'not-active'
     if number_processes <= 1:
@@ -90,20 +80,23 @@ def process_dataset(dataset):
             log.info(f"{dataset['name']} skips, not in years list")
             return True
 
-        # --- Unzip (use pre-downloaded file) ---
+       # --- Download & unzip per-dataset (overlaps better than global predownload) ---
         zip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
         unzip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
+        os.makedirs(zip_path, exist_ok=True)
         os.makedirs(unzip_path, exist_ok=True)
 
+        # Save under the URL's basename so filenames match exactly
         zip_file = os.path.join(zip_path, os.path.basename(dataset["url"]))
-        if not os.path.exists(zip_file):
-            log.error(f"Expected ZIP not found: {zip_file} — did the pre-download succeed?")
-            return False
 
+        # Download if missing (utils.download_files will skip if it already exists)
+        log.info(f"Downloading {dataset['url']} -> {zip_file}")
+        utils.download_files(dataset["url"], zip_path, max_concurrent=4)
+
+        # Unzip into a folder named by table_name
         folder_path = os.path.join(unzip_path, dataset["table_name"])
         log.info(f"Unzipping {zip_file} -> {folder_path}")
         utils.unzip(zip_file, folder_path)
-
         # --- Process each resolution file ---
         resolutions = config.get_value(["loader", "sources", "zensus_2022", "resolutions"])
         for resolution in resolutions:
@@ -135,6 +128,19 @@ def process_dataset(dataset):
                 continue
             log.info(f"Using columns '{x_col}' and '{y_col}' for geometry.")
 
+            # --- FAST bbox clip in the correct CRS (3035) ---
+            try:
+                env = utils.get_envelop(target_epsg=3035)  # now guaranteed in 3035
+                if env is not None and not env.empty:
+                    xmin, ymin, xmax, ymax = env.total_bounds
+                    before = len(df)
+                    # ensure numeric compare
+                    X = pd.to_numeric(df[x_col], errors="coerce")
+                    Y = pd.to_numeric(df[y_col], errors="coerce")
+                    df = df[(X >= xmin) & (X <= xmax) & (Y >= ymin) & (Y <= ymax)].copy()
+                    log.info(f"BBox clip {dataset['name']} ({resolution}): {before:,} → {len(df):,}")
+            except Exception as e:
+                log.warning(f"Skipping bbox clip (non-fatal): {e}")
             # --- Upload via fast COPY path ---
             engine = utils.get_db_engine("postgres")
             prefix = config.get_value(["loader", "sources", "zensus_2022", "prefix"])

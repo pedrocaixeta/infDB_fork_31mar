@@ -295,19 +295,25 @@ def _upload_to_postgis(
     src_srid: int = None,
     if_exists: str = "replace",
     create_spatial_index: bool = True,
-    analyze_after: bool = False,          # <- set False to save time
-    unlogged: bool = True,                # <- speed up bulk load
-    synchronous_commit_off: bool = True,  # <- speed up bulk load
+    analyze_after: bool = False,          # leave False for speed; analyze later if needed
+    unlogged: bool = True,                # use UNLOGGED during bulk write
+    synchronous_commit_off: bool = True,  # faster bulk ingest
 ):
+    """
+    COPY -> staging (UNLOGGED)  →  CTAS to final with computed geom  →  drop staging
+    No full-table UPDATE anymore.
+    """
     if not x_col or not y_col:
         raise ValueError("Provide x_col and y_col for geometry creation.")
 
     src_srid = src_srid or srid
 
+    # Make sure x/y are numeric
     df = df.copy()
     df[x_col] = pd.to_numeric(df[x_col], errors="coerce")
     df[y_col] = pd.to_numeric(df[y_col], errors="coerce")
 
+    # Minimal dtype mapping
     def sql_type(series: pd.Series) -> str:
         if pd.api.types.is_integer_dtype(series): return "BIGINT"
         if pd.api.types.is_float_dtype(series):   return "DOUBLE PRECISION"
@@ -317,18 +323,18 @@ def _upload_to_postgis(
     cols = list(df.columns)
     col_defs = ", ".join([f'"{c}" {sql_type(df[c])}' for c in cols])
 
-    target = f'"{schema}"."{table_name}"'
+    target  = f'"{schema}"."{table_name}"'
     staging = f'"{schema}"."{table_name}__staging"'
 
-    # CSV buffer
+    # Prepare CSV buffer for COPY
     buf = io.StringIO()
     df.to_csv(buf, index=False)
     buf.seek(0)
 
+    # 1) Create schema + staging, COPY into staging
     raw = engine.raw_connection()
     try:
         with raw.cursor() as cur:
-            # schema and staging
             cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}";')
             cur.execute(f"DROP TABLE IF EXISTS {staging};")
 
@@ -337,58 +343,75 @@ def _upload_to_postgis(
 
             if synchronous_commit_off:
                 cur.execute("SET LOCAL synchronous_commit = OFF;")
+            # Optional extra bulk-load tunables (safe to omit if you prefer)
+            # cur.execute("SET LOCAL maintenance_work_mem = '512MB';")
+            # cur.execute("SET LOCAL temp_buffers = '128MB';")
 
-            # COPY into staging
+            # COPY
             col_list = ", ".join([f'"{c}"' for c in cols])
             cur.copy_expert(
                 f"COPY {staging} ({col_list}) FROM STDIN WITH (FORMAT CSV, HEADER TRUE, DELIMITER ',')",
                 buf
             )
-
-            # add geom column
-            cur.execute(f'ALTER TABLE {staging} ADD COLUMN "geom" geometry(Point, {srid});')
-            if src_srid == srid:
-                cur.execute(
-                    f'UPDATE {staging} SET "geom" = ST_SetSRID(ST_MakePoint("{x_col}", "{y_col}"), {srid});'
-                )
-            else:
-                cur.execute(
-                    f'UPDATE {staging} SET "geom" = ST_Transform(ST_SetSRID(ST_MakePoint("{x_col}", "{y_col}"), {src_srid}), {srid});'
-                )
-
-            # swap into final
-            if if_exists == "replace":
-                cur.execute(f"DROP TABLE IF EXISTS {target};")
-                cur.execute(f'ALTER TABLE {staging} RENAME TO "{table_name}";')
-            else:
-                # append mode: copy staging rows into target, then drop staging
-                cur.execute(f"INSERT INTO {target} SELECT * FROM {staging};")
-                cur.execute(f"DROP TABLE {staging};")
-
         raw.commit()
     finally:
         raw.close()
 
-    # index + analyze in a separate transaction (optional: skip for 100m)
+    # 2) CTAS to final with computed geometry, drop staging, index/analyze
+    geom_expr = (
+        f'ST_Transform(ST_SetSRID(ST_MakePoint("{x_col}", "{y_col}"), {src_srid}), {srid})'
+        if src_srid != srid
+        else f'ST_SetSRID(ST_MakePoint("{x_col}", "{y_col}"), {srid})'
+    )
+    select_cols = ", ".join([f'"{c}"' for c in cols])
+    create_clause = "UNLOGGED " if unlogged else ""
+
     with engine.begin() as conn:
+        if if_exists == "replace":
+            # Drop old final and create new in one pass with computed geom
+            conn.execute(text(f"DROP TABLE IF EXISTS {target};"))
+            conn.execute(text(f"""
+                CREATE {create_clause}TABLE {target} AS
+                SELECT {select_cols},
+                       {geom_expr}::geometry(Point,{srid}) AS geom
+                FROM {staging};
+            """))
+            conn.execute(text(f"DROP TABLE IF EXISTS {staging};"))
+        else:
+            # Append mode: insert rows with computed geom into existing target
+            # (target must already exist with same columns + geom)
+            try:
+                conn.execute(text(f"""
+                    INSERT INTO {target} ({select_cols}, "geom")
+                    SELECT {select_cols},
+                           {geom_expr}::geometry(Point,{srid}) AS geom
+                    FROM {staging};
+                """))
+            finally:
+                conn.execute(text(f"DROP TABLE IF EXISTS {staging};"))
+
+        # Convert final to LOGGED so it persists normally
+        conn.execute(text(f"ALTER TABLE {target} SET LOGGED;"))
+
+        # Spatial index (you can skip for very large 100m tables)
         if create_spatial_index:
             conn.execute(text(
                 f'CREATE INDEX IF NOT EXISTS "{table_name}_geom_gix" '
                 f'ON "{schema}"."{table_name}" USING GIST ("geom");'
             ))
-        if analyze_after:
-            conn.execute(text(f'ANALYZE {target};'))
 
-def get_envelop():
+        if analyze_after:
+            conn.execute(text(f"ANALYZE {target};"))
+
+
+def get_envelop(target_epsg: int = 3035):
     scope = config.get_list(["loader", "scope"])
     ags_path = config.get_path(["loader", "sources", "bkg", "path", "unzip"])
-    log.debug(f"Envelop Path: {ags_path}")
     path = get_file(ags_path, filename="vg5000", ending=".gpkg")
-    log.debug(f"Envelop Path: {path}")
     gdf = gpd.read_file(path, layer="vg5000_gem")
-
     gdf_scope = gdf[gdf["AGS"].str.startswith(tuple(scope))]
-
+    if target_epsg:
+        gdf_scope = gdf_scope.to_crs(epsg=target_epsg)
     return gdf_scope
 
 

@@ -1,15 +1,15 @@
 loader:
     name: "{base/name}"
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
-         #- "09162000"  # Munich
+         - "09162000"  # Munich
         # - "09780139"  # Sonthofen
         # - "09780116"  # Bolsterlang
         # - "09162000" # M
-        - "09185149" # ND
+        # "09185149" # ND
         # - "09474126" # FO
         # - "09261000" # LA
     multiproccesing: 
-        status: not-active
+        status: active
         max_cores: 2    # max cores since of memory limitations to 2
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
