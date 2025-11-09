@@ -44,6 +44,7 @@ loader:
             schema_input: need
             path_dump: "{loader/path/opendata}/need/"
 
+        # todo: move to opendata_bavaria (merging)
         lod2:
             status: active
             import-mode: skip # delete
@@ -52,7 +53,32 @@ loader:
             path:
                 lod2: "{loader/path/opendata}/lod2/"
                 gml: "{loader/path/opendata}/lod2/{loader/name}"
-
+        opendata_bavaria:
+            status: active
+            schema: opendata
+            prefix: bavaria
+            path: 
+                base: "{loader/path/base}/opendata_bavaria/"
+            datasets:
+                gelaendemodell_1m:
+                    name: Geländemodell Bayern 1m
+                    status: active
+                    table_name: gelaendemodell_1m
+                    url: "https://geodaten.bayern.de/odd/a/dgm/dgm1/meta/metalink/#scope.meta4"
+                building_lod2:
+                    name: 3D-Gebäudemodelle (LoD2)
+                    status: false
+                    table_name: building_lod2
+                    url: "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4" 
+                    import-mode: skip # delete
+                    path:
+                        lod2: "{loader/path/opendata}/lod2/"
+                        gml: "{loader/path/opendata}/lod2/{loader/name}"
+                tatsaechliche_nutzung:
+                    name: Tatsächliche Nutzung (TN) 
+                    status: false
+                    table_name: tatsaechliche_nutzung
+                    url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
         bkg:
             status: active
             path:
