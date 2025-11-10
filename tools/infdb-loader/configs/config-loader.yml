@@ -130,7 +130,7 @@ loader:
                 - weitere_nutzung_flaeche
         plz:
             status: active
-            url: "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/georef-germany-postleitzahl/exports/geojson?lang=en&timezone=Europe%2FBerlin"
+            url: "http://ds1.need.energy:8123/opendata/plz/plz-5stellig.geojson"
             path:
                 base: "{loader/path/opendata}/plz/"
                 processed: "{loader/path/processed}/plz/"
