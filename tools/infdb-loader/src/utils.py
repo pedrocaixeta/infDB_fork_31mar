@@ -1,373 +1,317 @@
-import os
-import subprocess
-import requests
-import multiprocessing
-import chardet
-from zipfile import ZipFile, BadZipFile
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-import sqlalchemy
-import psycopg2
-import geopandas as gpd
-from urllib.parse import urlparse
-from . import config
-from pySmartDL import SmartDL
 import logging
+import multiprocessing
+import os
+from pathlib import Path
+from typing import Iterable, List, Optional
+
+import geopandas as gpd
+import requests
+from bs4 import BeautifulSoup
+from pySmartDL import SmartDL
+from urllib.parse import urljoin, urlparse
+from zipfile import BadZipFile, ZipFile
+
+import chardet
+
+from infdb import InfdbConfig
+from infdb.utils import do_cmd, get_db_engine
+
+# ============================== Constants ==============================
+
+LOGGER_NAME: str = __name__
+CONFIG_TOOL_NAME: str = "loader"
+CONFIG_DIR: str = "configs"
+
+HTTP_TIMEOUT_SECONDS: int = 60
+WGET_PROGRESS_BAR: bool = True  # preserve SmartDL progress bar behavior
+
+ZIP_EXT: str = ".zip"
+GPKG_EXT: str = ".gpkg"
+SQL_SCHEMA_GEOMETRY_COL: str = "geom"
+EPSG_FALLBACK_KEY: str = "epsg"
+
+# Module logger
+log = logging.getLogger(LOGGER_NAME)
+
+# Single shared config object per process
+_cfg = InfdbConfig(tool_name=CONFIG_TOOL_NAME, config_path=CONFIG_DIR)
+
+# Single shared config object per process
+_cfg = InfdbConfig(tool_name="loader", config_path="configs")
+
+# ============================== Internal helpers ==============================
+
+def _ensure_list(value) -> List:
+    """Return value as list (wrap scalars); pass through lists unchanged."""
+    if isinstance(value, list):
+        return value
+    return [value]
 
 
-log = logging.getLogger(__name__)
+def _fetch_html(url: str) -> BeautifulSoup:
+    """Fetch a URL and return a BeautifulSoup parser (html.parser)."""
+    resp = requests.get(url, timeout=HTTP_TIMEOUT_SECONDS)
+    resp.raise_for_status()
+    return BeautifulSoup(resp.content, "html.parser")
 
 
-def if_multiproccesing():
-    status = config.get_value(["loader", "multiproccesing", "status"])
+# ======================== toggles & config helpers ========================
+
+def if_multiproccesing() -> bool:
+    """Return True if multiprocessing is enabled via config (original spelling/API)."""
+    status = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"])
+    return status == "active"
+
+
+def if_multiprocessing() -> bool:
+    """Correctly spelled alias for `if_multiproccesing()`; preserves public API."""
+    return if_multiproccesing()
+
+
+def if_active(service: str) -> bool:
+    """Tell whether a given source service is active; logs decision.
+
+    Args:
+        service: Service key under `loader.sources`.
+
+    Returns:
+        True if active; False otherwise (with informational log).
+    """
+    status = _cfg.get_value([CONFIG_TOOL_NAME, "sources", service, "status"])
     if status == "active":
+        log.info("Loading %s data...", service)
         return True
-    else:
-        return False
+    log.info("%s skips, status not active", service)
+    return False
 
 
-def if_active(service):
-    status = config.get_value(["loader", "sources", service, "status"])
-    if status == "active":
-        log.info(f"Loading {service} data...")
-        return True
-    else:
-        log.info("{service} skips, status not active")
-        return False
-
-
-def any_element_in_string(target_string, elements):
+def any_element_in_string(target_string: str, elements: Iterable[str]) -> bool:
+    """Return True if any element is a substring of the target string."""
     return any(element in target_string for element in elements)
 
 
-def get_links(url, ending, filter):
-    response = requests.get(url)
-    html_content = response.content
+# ======================== downloading / scraping ========================
 
-    # HTML-Seite parsen
-    soup = BeautifulSoup(html_content, "html.parser")
+def get_links(url: str, ending: str, flt: str) -> list[str]:
+    """Scrape links from a page matching an ending and substring filter.
 
-    # Alle Links zu ZIP-Dateien finden
-    zip_links = []
-    for link in soup.find_all("a", href=True):
-        href = link["href"]
-        if href.endswith(ending):
-            # Check for filters
-            if filter in href.lower():
-                # Append if url not already in list
-                full_url = urljoin(url, link["href"])
-                if full_url not in zip_links:
-                    zip_links.append(full_url)
+    Args:
+        url: Page URL to scrape.
+        ending: Required file suffix (e.g., '.zip').
+        flt: Case-insensitive substring that must appear in the href.
 
-    # Gefundene Links ausgeben
-    log.debug(zip_links)
+    Returns:
+        List of absolute link URLs, de-duplicated.
+    """
+    soup = _fetch_html(url)
+    links: list[str] = []
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if href.endswith(ending) and flt in href.lower():
+            full_url = urljoin(url, href)
+            if full_url not in links:
+                links.append(full_url)
+    log.debug(links)
+    return links
 
-    return zip_links
 
+def download_files(urls, base_path: str) -> list[str]:
+    """Download one or more files to `base_path` using SmartDL (async start + wait).
 
-def download_files(urls, base_path):
-    if os.path.isdir(base_path):
-        os.makedirs(base_path, exist_ok=True)
+    Args:
+        urls: A single URL or list of URLs.
+        base_path: Destination directory.
 
-    if isinstance(urls, str):
-        urls = [urls]
-    
-    objs = []
-    for url in urls:
-        obj = SmartDL(url, base_path, progress_bar=True)
+    Returns:
+        List of destination file paths (in the same order as started).
+    """
+    os.makedirs(base_path, exist_ok=True)
+    url_list = _ensure_list(urls)
+
+    objs: list[SmartDL] = []
+    for url in url_list:
+        obj = SmartDL(url, base_path, progress_bar=WGET_PROGRESS_BAR)
         target_path = obj.get_dest()
         if os.path.exists(target_path):
-            log.info(f"File {target_path} already exists.")
+            log.info("File %s already exists.", target_path)
         else:
-            log.info(f"File {target_path} downloading ...")
-            obj.start(blocking=False)   # non-blocking start
+            log.info("File %s downloading ...", target_path)
+            obj.start(blocking=False)
             objs.append(obj)
 
-    # Wait for all to finish
-    files = []
+    files: list[str] = []
     for obj in objs:
         obj.wait()
         files.append(obj.get_dest())
-
     return files
 
 
-def unzip(zip_files, unzip_dir):
+def unzip(zip_files, unzip_dir: str) -> None:
+    """Extract one or more zip files into `unzip_dir`, skipping if already extracted.
+
+    Args:
+        zip_files: A single .zip path or list of .zip paths.
+        unzip_dir: Destination directory for extracted files.
+    """
     os.makedirs(unzip_dir, exist_ok=True)
-
-    if isinstance(zip_files, str):
-        zip_files = [zip_files]
-
-    for zip_file in zip_files:
+    for zip_file in _ensure_list(zip_files):
         try:
-            with ZipFile(zip_file, "r") as zip_ref:
-                members = zip_ref.namelist()
-                # Check if all files already exist
-                all_exist = all(
-                    os.path.exists(os.path.join(unzip_dir, member))
-                    for member in members
-                )
-
+            with ZipFile(zip_file, "r") as zf:
+                members = zf.namelist()
+                all_exist = all(os.path.exists(os.path.join(unzip_dir, m)) for m in members)
                 if all_exist:
-                    log.info(f"Skipping {zip_file} — all files already extracted.")
+                    log.info("Skipping %s — all files already extracted.", zip_file)
                     continue
-
-                log.info(f"Unzipping {zip_file}")
-                zip_ref.extractall(unzip_dir)
+                log.info("Unzipping %s", zip_file)
+                zf.extractall(unzip_dir)
         except BadZipFile as e:
-            log.error(f"Error unzipping {zip_file}: {e}")
+            log.error("Error unzipping %s: %s", zip_file, e)
 
 
-def sql_query(query):
-    try:
-        # Connect to the PostgreSQL database-data-import-container
-        parameters = get_db_parameters("postgres")
-        host = parameters["host"]
-        user = parameters["user"]
-        password = parameters["password"]
-        db = parameters["db"]
-        port = parameters["exposed_port"]
+# =================== geospatial / DB import helpers ===================
 
-        connection = psycopg2.connect(
-            dbname=db, user=user, password=password, host=host, port=port
-        )
-        cursor = connection.cursor()
-        # # Create the users table
-        cursor.execute(query)
-        connection.commit()
+def import_layers(
+    input_file: str,
+    layers: List[str],
+    schema: str,
+    prefix: str = "",
+    layer_names: Optional[List[str]] = None,
+    scope: bool = True,
+) -> None:
+    """Import vector data into PostGIS.
 
-        # Close the connection
-        cursor.close()
-        connection.close()
-        log.debug(f"{query} executed successfully.")
+    If the source supports multiple named layers (e.g., .gpkg/.gdb/.sqlite),
+    import each requested layer. Otherwise, import the file once with no
+    'layer' argument and store it under the target name.
 
-    except Exception as error:
-        log.error(f"ProgrammingError: {error}")
+    Args:
+        input_file: Path/URL to a vector dataset.
+        layers: Source layer names to import (for multi-layer files).
+        schema: Target DB schema.
+        prefix: Optional prefix for target tables.
+        layer_names: Optional explicit target table names (aligned with layers).
+        scope: If True, spatially mask reads to the configured envelope.
 
+    Raises:
+        KeyError: If EPSG is missing in DB parameters.
+    """
+    gdf_scope = get_envelop() if scope else None
+    epsg = (_cfg.get_db_parameters("postgres") or {}).get(EPSG_FALLBACK_KEY)
+    if epsg is None:
+        raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
+    engine = get_db_engine(_cfg, db_name="postgres")
 
-def do_cmd(cmd: str):
-    log.info(f"Executing command: {cmd}")
-
-    process = subprocess.Popen(
-        cmd,
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,  # Zeilenweise Puffern
-    )
-
-    # Zeilenweise lesen und direkt loggen
-    if process.stdout:
-        for line in process.stdout:
-            log.info(line.rstrip())
-
-    # Warten bis der Prozess beendet ist
-    return_code = process.wait()
-    if return_code == 0:
-        log.info("Command completed successfully.")
-    else:
-        log.error(f"Command failed with return code {return_code}")
-
-
-def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope=True):
-    #
-    if scope:
-        gdf_scope = get_envelop()
-    else:
-        gdf_scope = None
-    epsg = get_db_parameters("postgres")["epsg"]
-    postgres_engine = get_db_engine("postgres")
-
-    if layer_names is None:
-        layer_names = layers
-
-    # Add prefix
+    # Desired target table names
+    target_names = list(layer_names) if layer_names is not None else list(layers)
     if prefix:
-        layer_names = [prefix + "_" + name for name in layer_names]
+        target_names = [f"{prefix}_{name}" for name in target_names]
 
-    for layer, layer_name in zip(layers, layer_names):
-        log.info(f"Importing layer: {layer} into {schema}")
+    # Detect if source is multi-layer
+    ext = Path(input_file).suffix.lower()
+    is_multilayer = ext in {GPKG_EXT, ".gdb", ".sqlite"}  # extend if needed
+
+    if not is_multilayer:
+        # Single-layer sources: read once and write under first target name (or fallback)
+        target_name = target_names[0] if target_names else (prefix or Path(input_file).stem)
+        log.info("Importing single-layer source into %s.%s", schema, target_name)
+        gdf = gpd.read_file(input_file, mask=gdf_scope)
+        gdf.to_crs(epsg=epsg, inplace=True)
+        gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
+        gdf.to_postgis(target_name, engine, if_exists="replace", schema=schema, index=False)
+        return
+
+    # Multi-layer path
+    for layer, layer_name in zip(layers, target_names):
+        log.info("Importing layer: %s into %s.%s", layer, schema, layer_name)
         gdf = gpd.read_file(input_file, layer=layer, mask=gdf_scope)
         gdf.to_crs(epsg=epsg, inplace=True)
-        # gdf.to_file(output_file, layer=layer, driver="GPKG")
-        gdf = gdf.rename_geometry("geom")
-        gdf.to_postgis(
-            layer_name, postgres_engine, if_exists="replace", schema=schema, index=False
-        )
+        gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
+        gdf.to_postgis(layer_name, engine, if_exists="replace", schema=schema, index=False)
 
 
 def get_envelop():
-    scope = config.get_list(["loader", "scope"])
-    ags_path = config.get_path(["loader", "sources", "bkg", "path", "unzip"])
-    log.debug(f"Envelop Path: {ags_path}")
-    path = get_file(ags_path, filename="vg5000", ending=".gpkg")
-    log.debug(f"Envelop Path: {path}")
+    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
+    scope = _cfg.get_value([CONFIG_TOOL_NAME, "scope"])
+    if isinstance(scope, str):
+        scope = [scope]
+    ags_path = _cfg.get_path([CONFIG_TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
+    log.debug("Envelop Path (unzipped): %s", ags_path)
+    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT)
+    log.debug("Envelop Path (file): %s", path)
     gdf = gpd.read_file(path, layer="vg5000_gem")
-
-    gdf_scope = gdf[gdf["AGS"].str.startswith(tuple(scope))]
-
-    return gdf_scope
+    return gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
 
 
-def get_db_parameters(service_name: str):
-    parameters_loader = config.get_value(["loader", "hosts", service_name])
+# ============================== file helpers ==============================
 
-    # Adopt settings if config-infdb exists
-    dict_config = config.get_config()
-    if "services" in dict_config:
-        parameters = config.get_value(["services", service_name])
-        log.debug(f"Using infdb configuration for: {service_name}")
-
-        # Override config-infdb by config-loader
-        keys = parameters_loader.keys()
-        for key in keys:
-            if key == "host":
-                parameters[key] = "host.docker.internal"  # default to localhost
-
-            if parameters_loader[key] != "None":
-                parameters[key] = parameters_loader[key]
-                log.debug(f"Key overridden: key = {parameters_loader[key]}")
-    else:
-        # Use settings from config-loader
-        parameters = parameters_loader
-        log.debug(f"Using loader configuration for: {service_name}")
-
-    # Check if parameters are found
-    for key in parameters.keys():
-        if parameters[key] is None:
-            log.error(f"Service '{service_name}' not found in configuration.")
-
-    return parameters
-
-
-def get_db_engine(service_name: str):
-    parameters = get_db_parameters(service_name)
-    host = parameters["host"]
-    user = parameters["user"]
-    password = parameters["password"]
-    db = parameters["db"]
-    port = parameters["exposed_port"]
-
-    db_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
-    engine = sqlalchemy.create_engine(db_url)
-
-    return engine
-
-
-def ensure_utf8_encoding(filepath: str) -> str:
-    with open(filepath, "rb") as f:
-        raw_data = f.read()
-        result = chardet.detect(raw_data)
-        source_encoding = result["encoding"]
-
-    if source_encoding is None:
-        raise ValueError(f"Could not detect encoding of file: {filepath}")
-
-    if source_encoding.lower() != "utf-8":
-        # Re-encode the file to UTF-8
-        log.info(f"Re-encoding file from {source_encoding} to UTF-8: {filepath}")
-        temp_path = filepath + "_utf8.csv"
-        with (
-            open(filepath, "r", encoding=source_encoding, errors="replace") as src,
-            open(temp_path, "w", encoding="utf-8") as dst,
-        ):
-            for line in src:
-                dst.write(line)
-        return temp_path
-
-    return filepath  # already UTF-8
-
-
-def get_all_files(folder_path, ending):
-    """
-    Recursively finds all ending files in the given folder and its subfolders.
-
-    Parameters:
-        folder_path (str): Path to the top-level folder.
-
-    Returns:
-        List[str]: List of full paths to .csv files.
-    """
-    csv_files = []
+def get_all_files(folder_path: str, ending: str) -> list[str]:
+    """Recursively collect all files under `folder_path` with the given ending."""
+    files: list[str] = []
     for dirpath, _, filenames in os.walk(folder_path):
         for filename in filenames:
             if filename.lower().endswith(ending):
-                csv_files.append(os.path.join(dirpath, filename))
-    csv_files.sort()
-    return csv_files
+                files.append(os.path.join(dirpath, filename))
+    files.sort()
+    return files
 
 
-def get_file(folder_path, filename, ending):
-    """
-    Recursively finds all ending files in the given folder and its subfolders.
-
-    Parameters:
-        folder_path (str): Path to the top-level folder.
-
-    Returns:
-        List[str]: List of full paths to .csv files.
-    """
+def get_file(folder_path: str, filename: str, ending: str) -> Optional[str]:
+    """Return the newest file path in `folder_path` containing `filename` and ending with `ending`."""
     files = get_all_files(folder_path, ending)
-
-    # Filter files that contain the filename
-    matching_files = [f for f in files if filename.lower() in f.lower()]
-
-    if not matching_files:
-        log.error(
-            f"No files found containing '{filename}' with ending '{ending}' in {folder_path}"
-        )
+    matching = [f for f in files if filename.lower() in f.lower()]
+    if not matching:
+        log.error("No files found containing '%s' with ending '%s' in %s", filename, ending, folder_path)
         return None
-
-    # Pick the newest by modification time
-    newest_file = max(matching_files, key=os.path.getmtime)
-
-    log.debug(f"Envelop Path: {newest_file}")
-    return newest_file
+    newest = max(matching, key=os.path.getmtime)
+    return newest
 
 
-def get_website_links(url):
-    # HTML-Seite herunterladen
-    response = requests.get(url)
-    html_content = response.content
-
-    # HTML-Seite parsen
-    soup = BeautifulSoup(html_content, "html.parser")
-
-    # Alle Links zu ZIP-Dateien finden
-    zip_links = []
-    for link in soup.find_all("a", href=True):
-        href = link["href"]
-        if href.endswith(".zip"):
-            zip_links.append(href)
-
-    # Gefundene Links ausgeben
-    for zip_link in zip_links:
-        log.debug(zip_link)
-
-    return zip_links
+def get_website_links(url: str) -> list[str]:
+    """Return all .zip links found on the given page (absolute or relative hrefs)."""
+    soup = _fetch_html(url)
+    links = [a["href"] for a in soup.find_all("a", href=True) if a["href"].endswith(ZIP_EXT)]
+    for link in links:
+        log.debug(link)
+    return links
 
 
-def get_file_from_url(url):
-    # Extract filename from url
+def get_file_from_url(url: str):
+    """Split a URL into (filename, stem, extension) triple."""
     path = urlparse(url).path
     filename = os.path.basename(path)
     name, extension = os.path.splitext(filename)
     return filename, name, extension
 
 
-def get_number_processes():
-    """
-    Get the maximum number of processes to use based on the configuration.
-    """
+# ======================= encoding / processes =======================
+
+def ensure_utf8_encoding(filepath: str) -> str:
+    """Detect file encoding; if not UTF-8, re-encode to a temp UTF-8 CSV and return its path."""
+    with open(filepath, "rb") as f:
+        raw = f.read()
+        result = chardet.detect(raw)
+        source_encoding = result["encoding"]
+
+    if source_encoding is None:
+        raise ValueError(f"Could not detect encoding of file: {filepath}")
+
+    if source_encoding.lower() != "utf-8":
+        log.info("Re-encoding file from %s to UTF-8: %s", source_encoding, filepath)
+        temp_path = filepath + "_utf8.csv"
+        with open(filepath, "r", encoding=source_encoding, errors="replace") as src, \
+             open(temp_path, "w", encoding="utf-8") as dst:
+            for line in src:
+                dst.write(line)
+        return temp_path
+
+    return filepath
+
+
+def get_number_processes() -> int:
+    """Determine worker process count based on CPU count and config max_cores."""
     number_processes = 1
-    max_processes = config.get_value(["loader", "multiproccesing", "max_cores"])
-
-    if config.get_value(["loader", "multiproccesing", "status"]) == "active":
+    max_processes = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "max_cores"]) or 1
+    if _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"]) == "active":
         number_processes = min(multiprocessing.cpu_count(), max_processes)
-
-    log.debug(
-        f"Max processes: {max_processes}, Number of processes: {number_processes}"
-    )
-
+    log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes

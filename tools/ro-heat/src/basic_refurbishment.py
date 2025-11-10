@@ -1,7 +1,9 @@
+import logging
+from typing import Dict, Any
+
 import pandas as pd
 from numpy.random import Generator
 from pandas import DataFrame, Series
-import logging
 
 log = logging.getLogger(__name__)
 
@@ -9,53 +11,55 @@ log = logging.getLogger(__name__)
 def simulate_refurbishment(
     df: DataFrame,
     until_year: int,
-    parameters: dict,
+    parameters: Dict[str, Dict[str, Any]],
     random_number_generator: Generator,
-    fill_value=0,
-    age_column="age",
-    provide_last_refurb_only=False,
+    fill_value: int = 0,
+    age_column: str = "age",
+    provide_last_refurb_only: bool = False,
 ) -> DataFrame:
-    assert (
-        age_column in df.columns
-    ), f"Column '{age_column}' not in DataFrame, specify the correct column name via the age_column parameter"
+    """
+    Simulate component refurbishments by drawing inter-refurbishment intervals from
+    user-provided distributions until the given cutoff year.
 
-    for component, distribution_params in parameters.items():
-        distribution = distribution_params["distribution"]
-        distribution_params = distribution_params["distribution_parameters"]
-        distribution_params["size"] = df.shape[0]
+    parameters format (per component):
+      {
+        "distribution": callable(gen, params_dict) -> np.ndarray,
+        "distribution_parameters": { ... }  # without 'size'; added automatically
+      }
+    """
+    assert age_column in df.columns, (
+        f"Column '{age_column}' not in DataFrame, specify the correct column name via the age_column parameter"
+    )
+
+    for component, cfg in parameters.items():
+        distribution = cfg["distribution"]
+        dist_params = dict(cfg["distribution_parameters"])
+        dist_params["size"] = df.shape[0]
 
         refurbishment_offsets = DataFrame(index=df.index)
-        number_of_refurbishments = 0
+        n_refurbs = 0
 
+        # Keep sampling while at least one object is still <= until_year
         while any(df[age_column] + refurbishment_offsets.sum(axis=1) <= until_year):
             samples = Series(
+                distribution(random_number_generator, dist_params).round().astype(int),
                 index=df.index,
-                name=f"{component}_{number_of_refurbishments}",
-                # Sample from the distribution using the provided parameters
-                data=distribution(random_number_generator, distribution_params)
-                .round()
-                .astype(int),
+                name=f"{component}_{n_refurbs}",
             )
             refurbishment_offsets = pd.concat([refurbishment_offsets, samples], axis=1)
-            number_of_refurbishments += 1
+            n_refurbs += 1
 
         refurb_cum_sum = refurbishment_offsets.cumsum(axis=1).astype(int)
-        # Calculate the years when the refurb happens by adding the offsets rolling sum to the building age
         refurb_years = refurb_cum_sum.add(df[age_column], axis=0)
-        # Mask any refurb_year that is larger than until_year with a fill_value
         refurb_years_masked = refurb_years.mask(refurb_years > until_year, fill_value)
-        # Drop rows with all zeros
-        zero_columns = refurb_years_masked.columns[
-            (refurb_years_masked.T == fill_value).all(axis=1)
-        ]
-        refurb_years_masked = refurb_years_masked.drop(columns=zero_columns)
+
+        # Drop columns that are all fill_value
+        zero_cols = refurb_years_masked.columns[(refurb_years_masked.T == fill_value).all(axis=1)]
+        refurb_years_masked = refurb_years_masked.drop(columns=zero_cols)
 
         if provide_last_refurb_only:
-            # Replace fill_values with building age, so that the last refurb corresponds to the building age if there
-            # was no refurb at all
-            refurb_years_masked = refurb_years_masked.mask(
-                refurb_years_masked == fill_value, df[age_column], axis=0
-            )
+            # If never refurbished, take the original construction year
+            refurb_years_masked = refurb_years_masked.mask(refurb_years_masked == fill_value, df[age_column], axis=0)
             df[component] = refurb_years_masked.max(axis=1)
         else:
             df = pd.concat([df, refurb_years_masked], axis=1)

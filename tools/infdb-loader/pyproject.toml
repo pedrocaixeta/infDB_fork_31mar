@@ -20,5 +20,5 @@ dependencies = [
     "numpy",
     "wetterdienst",
     "charset-normalizer",
-    "infdb @ file:/app/mnt/infdb-package",
+    "infdb @ file:/app/mnt/infdb_package",
 ]
