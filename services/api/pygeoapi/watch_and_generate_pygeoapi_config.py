@@ -12,6 +12,9 @@ from psycopg import sql
 from psycopg.rows import dict_row
 import yaml
 
+from infdb.utils import read_env, build_dsn_from_env, atomic_write_yaml
+
+
 # =========================
 # ===== Module Constants ===
 # =========================
@@ -22,30 +25,10 @@ LOGGER_NAME: str = "pygeoapi_config_gen"
 CRS84_URI: str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
 GERMANY_BBOX_CRS84: List[float] = [5.866315, 47.270111, 15.041932, 55.058384]
 
+
 # =========================
-# ========= Env ===========
+# ========= Logging ========
 # =========================
-
-def read_env(var_name: str, default: Optional[str] = None, required: bool = False) -> Optional[str]:
-    """Read an environment variable with optional default and required check.
-
-    Args:
-        var_name: Name of the environment variable.
-        default: Default value when the variable is missing/empty.
-        required: If True, exit when the variable is missing/empty.
-
-    Returns:
-        The environment variable value (or default).
-
-    Raises:
-        SystemExit: If `required` is True and the variable is missing/empty.
-    """
-    value = os.getenv(var_name, default)
-    if required and (value is None or value == ""):
-        log.error("Missing required env variable: %s", var_name)
-        sys.exit(2)
-    return value
-
 
 def _setup_logging() -> logging.Logger:
     """Configure and return the module logger.
@@ -64,6 +47,7 @@ def _setup_logging() -> logging.Logger:
 
 log = _setup_logging()
 
+
 # ---------- derived configuration constants (centralized env reads) ----------
 
 PYGEOAPI_PORT: int = int(read_env("SERVICES_PYGEOAPI_PORT", "5000") or "5000")
@@ -75,19 +59,17 @@ POSTGRES_DB: str = read_env("SERVICES_POSTGRES_DB", required=True) or ""
 POSTGRES_HOST: str = read_env("SERVICES_POSTGRES_HOST", "postgres") or "postgres"
 POSTGRES_PORT: int = int(read_env("SERVICES_POSTGRES_EXPOSED_PORT", "5432") or "5432")
 
-# Target EPSG comes from your provided env var
 TARGET_EPSG: int = int(read_env("SERVICES_POSTGRES_EPSG", "25832") or "25832")
-# Fallback SRID if detection fails — aligns with target by default
 FALLBACK_EPSG: int = int(read_env("SERVICES_POSTGRES_EPSG", "25832") or "25832")
 
 FORCE_CRS84_ONLY: bool = (str(read_env("FORCE_CRS84_ONLY", "false")).lower() in ("1", "true", "yes", "y"))
 
-# Force DB-side transform controls (targets, exclusions)
 FORCE_DB_TRANSFORM_TABLES_RAW: str = read_env("FORCE_DB_TRANSFORM_TABLES", "*") or "*"
 _RAW_ITEMS: List[str] = [t.strip() for t in FORCE_DB_TRANSFORM_TABLES_RAW.split(",") if t.strip()]
 _EXCLUDES: set[str] = {t[1:] for t in _RAW_ITEMS if t.startswith("!")}
 _FORCE_SET: set[str] = {t for t in _RAW_ITEMS if not t.startswith("!")}
 FORCE_DB_TRANSFORM_ALL: bool = ("*" in _FORCE_SET) or ("ALL" in _FORCE_SET)
+
 
 def make_epsg_uri(epsg: int) -> str:
     """Return OGC EPSG URI for an EPSG code.
@@ -101,16 +83,17 @@ def make_epsg_uri(epsg: int) -> str:
     return f"http://www.opengis.net/def/crs/EPSG/0/{int(epsg)}"
 
 
-def build_dsn() -> str:
-    """Construct a PostgreSQL DSN from centralized env-derived constants.
+# Build DSN using shared package helper (keeps behavior but centralizes env parsing)
+DB_DSN: str = build_dsn_from_env(
+    user_var="SERVICES_POSTGRES_USER",
+    pwd_var="SERVICES_POSTGRES_PASSWORD",
+    db_var="SERVICES_POSTGRES_DB",
+    host_var="SERVICES_POSTGRES_HOST",
+    port_var="SERVICES_POSTGRES_EXPOSED_PORT",
+    default_host="postgres",
+    default_port="5432",
+)
 
-    Returns:
-        Connection DSN string in URI form.
-    """
-    return f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-
-
-DB_DSN: str = build_dsn()
 
 # =========================
 # ======= IO helpers ======
@@ -119,7 +102,7 @@ DB_DSN: str = build_dsn()
 class NoAliasDumper(yaml.SafeDumper):
     """YAML dumper that disables anchors/aliases."""
 
-    def ignore_aliases(self, data: Any) -> bool:  # type: ignore[override]
+    def ignore_aliases(self, data: Any) -> bool:
         """Disable YAML anchors/aliases to keep output stable.
 
         Args:
@@ -130,26 +113,6 @@ class NoAliasDumper(yaml.SafeDumper):
         """
         return True
 
-
-def atomic_write_yaml(obj: Dict[str, Any], out_path: pathlib.Path) -> None:
-    """Atomically write a YAML file.
-
-    Args:
-        obj: Python object to serialize.
-        out_path: Destination path for the YAML file.
-
-    Returns:
-        None. Writes the file atomically (tempfile + replace).
-    """
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        "w", delete=False, dir=out_path.parent, suffix=".tmp", encoding="utf-8"
-    ) as tmp_file:
-        yaml.dump(obj, tmp_file, Dumper=NoAliasDumper, sort_keys=False, allow_unicode=True)
-        tmp_file.flush()
-        os.fsync(tmp_file.fileno())
-        tmp_name = tmp_file.name
-    os.replace(tmp_name, out_path)
 
 # ===============================
 # ====== Change detection =======
@@ -226,6 +189,7 @@ def get_dml_signature_geom(connection: psycopg.Connection[Any]) -> int:
         row = cursor.fetchone()
         return int((row or {}).get("dml_sum") or 0)
 
+
 # =========================
 # ======= DB helpers ======
 # =========================
@@ -253,103 +217,123 @@ def list_columns(cursor: psycopg.Cursor[Any], schema: str, table: str) -> List[T
     return [(r["column_name"], r["udt_name"]) for r in cursor.fetchall()]
 
 
-def list_geometry_sources(cursor: psycopg.Cursor[Any]) -> List[Dict[str, Any]]:
+def list_geometry_sources(cursor) -> list[dict]:
     """Enumerate geometry/geography sources in the DB.
 
     Uses geometry_columns/geography_columns if available; falls back to catalogs.
-
-    Args:
-        cursor: psycopg cursor.
-
-    Returns:
-        List of dicts with keys: schema, table, geom_col, srid, geom_type, is_geography.
+    Avoids reserved-word issues by not using `table` as a SQL column alias and
+    mapping it back to the expected Python key ('table') in the result dicts.
     """
-    sources: List[Dict[str, Any]] = []
+    sources: list[dict] = []
 
     def has_view(view_schema: str, view_name: str) -> bool:
-        """Check existence of a view/table in information_schema.
-
-        Args:
-            view_schema: Schema name to check.
-            view_name: View/table name to check.
-
-        Returns:
-            True if the relation exists, otherwise False.
-        """
         cursor.execute(
             """
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema=%s AND table_name=%s LIMIT 1
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = %s AND table_name = %s
+            LIMIT 1
             """,
             (view_schema, view_name),
         )
         return cursor.fetchone() is not None
 
+    # Prefer public/topology.geometry_columns if present
     has_geometry_view = has_view("public", "geometry_columns") or has_view("topology", "geometry_columns")
     if has_geometry_view:
         try:
             cursor.execute(
                 """
-                SELECT f_table_schema AS schema, f_table_name AS table,
-                       f_geometry_column AS geom_col, srid, type AS geom_type
+                SELECT
+                  f_table_schema AS schema,
+                  f_table_name   AS table_name,       -- avoid reserved keyword in SQL
+                  f_geometry_column AS geom_col,
+                  srid,
+                  type AS geom_type
                 FROM public.geometry_columns
                 ORDER BY 1,2,3
                 """
             )
             for row in cursor.fetchall():
-                sources.append({**row, "is_geography": False})
+                sources.append({
+                    "schema": row["schema"],
+                    "table": row["table_name"],        # map back to expected key
+                    "geom_col": row["geom_col"],
+                    "srid": row["srid"],
+                    "geom_type": row["geom_type"],
+                    "is_geography": False,
+                })
         except Exception:
+            # ignore and fall through to other options
             pass
 
-    has_geography_view = has_view("public", "geography_columns")
-    if has_geography_view:
+    # geography_columns if present
+    has_geog_view = has_view("public", "geography_columns")
+    if has_geog_view:
         try:
             cursor.execute(
                 """
-                SELECT f_table_schema AS schema, f_table_name AS table,
-                       f_geography_column AS geom_col, srid, type AS geom_type
+                SELECT
+                  f_table_schema   AS schema,
+                  f_table_name     AS table_name,     -- avoid reserved keyword in SQL
+                  f_geography_column AS geom_col,
+                  srid,
+                  type AS geom_type
                 FROM public.geography_columns
                 ORDER BY 1,2,3
                 """
             )
             for row in cursor.fetchall():
-                sources.append({**row, "is_geography": True})
+                sources.append({
+                    "schema": row["schema"],
+                    "table": row["table_name"],        # map back to expected key
+                    "geom_col": row["geom_col"],
+                    "srid": row["srid"],
+                    "geom_type": row["geom_type"],
+                    "is_geography": True,
+                })
         except Exception:
             pass
 
     if sources:
         return sources
 
+    # Fallback: catalog introspection (avoid reserved word in SQL; map in Python)
     cursor.execute(
         """
         WITH cols AS (
-          SELECT n.nspname AS schema, c.relname AS table, a.attname AS geom_col, t.typname AS typ
+          SELECT
+            n.nspname   AS schema,
+            c.relname   AS relname,     -- do not call it "table" in SQL
+            a.attname   AS geom_col,
+            t.typname   AS typname
           FROM pg_attribute a
-          JOIN pg_class c ON c.oid = a.attrelid
-          JOIN pg_namespace n ON n.oid = c.relnamespace
-          JOIN pg_type t ON t.oid = a.atttypid
-          WHERE a.attnum > 0 AND NOT a.attisdropped
+          JOIN pg_class c      ON c.oid = a.attrelid
+          JOIN pg_namespace n  ON n.oid = c.relnamespace
+          JOIN pg_type t       ON t.oid = a.atttypid
+          WHERE a.attnum > 0
+            AND NOT a.attisdropped
             AND c.relkind IN ('r','v','m','f','p')
             AND n.nspname NOT IN ('pg_catalog','information_schema','pg_toast')
             AND t.typname IN ('geometry','geography')
         )
-        SELECT schema, table, geom_col, typ AS typname
+        SELECT schema, relname, geom_col, typname
         FROM cols
-        ORDER BY 1,2,3;
+        ORDER BY 1,2,3
         """
     )
     for row in cursor.fetchall():
-        sources.append(
-            {
-                "schema": row["schema"],
-                "table": row["table"],
-                "geom_col": row["geom_col"],
-                "srid": None,
-                "geom_type": None,
-                "is_geography": (row["typname"] == "geography"),
-            }
-        )
+        sources.append({
+            "schema": row["schema"],
+            "table": row["relname"],     # map to expected key
+            "geom_col": row["geom_col"],
+            "srid": None,
+            "geom_type": None,
+            "is_geography": (row["typname"] == "geography"),
+        })
+
     return sources
+
 
 
 def pick_id_column(cursor: psycopg.Cursor[Any], schema: str, table: str) -> Optional[str]:
@@ -368,6 +352,7 @@ def pick_id_column(cursor: psycopg.Cursor[Any], schema: str, table: str) -> Opti
         if "id" in name.lower():
             return name
     return None
+
 
 # =============================
 # ===== SRID resolution =======
@@ -419,6 +404,7 @@ def resolve_srid(
     except Exception:
         pass
     return FALLBACK_EPSG
+
 
 # ==========================================
 # == helper: ensure a target-EPSG view   ===
@@ -485,6 +471,7 @@ def ensure_target_view(
     cursor.execute(drop_sql)
     cursor.execute(create_sql)
     return view_name
+
 
 # =========================
 # ========= build =========
@@ -617,6 +604,7 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
                 "providers": [provider_block],
             }
 
+        # Write YAML atomically using shared helper (preserves original behavior)
         config_document: Dict[str, Any] = {
             "server": {
                 "bind": {"host": "0.0.0.0", "port": PYGEOAPI_PORT},
@@ -653,6 +641,7 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
             "Wrote %s with %d resource(s). Skipped %d table(s).",
             OUTPUT_CONFIG_PATH.resolve(), len(resources), skipped
         )
+
 
 # =========================
 # ======= main loop =======

@@ -1,84 +1,84 @@
-import os
-import shutil
-
-from requests import request
-from . import config, utils, logger
 import logging
-
-import openmeteo_requests
-
-import pandas as pd
-import geopandas as gpd
-import requests_cache
-from retry_requests import retry
-
-import numpy as np
-import io
-from pyproj import Transformer
-
+import multiprocessing as mp
 from datetime import datetime
+from logging.handlers import QueueHandler
+from typing import Final, Tuple
+
 from zoneinfo import ZoneInfo
+from wetterdienst.provider.dwd.observation import DwdObservationRequest
 
-from wetterdienst.provider.dwd.observation import (
-    DwdObservationRequest,
-)
-
-log = logging.getLogger(__name__)
+import infdb as infdb
+from . import utils
 
 
-def load(log_queue):
-    logger.setup_worker_logger(log_queue)
+# ============================== Constants ==============================
 
-    if not utils.if_active("openmeteo"):
+LOGGER_NAME: Final[str] = __name__
+TOOL_NAME: Final[str] = "openmeteo"
+TZ_UTC: Final[ZoneInfo] = ZoneInfo("UTC")
+CRS_WGS84_EPSG: Final[int] = 4326
+BBOX_PRINT_LABEL: Final[str] = "Filter by bbox (Frankfurt)"
+ALL_STATIONS_PRINT_LABEL: Final[str] = "All stations"
+FRANKFURT_COORDS: Final[Tuple[float, float]] = (50.11, 8.68)
+START_DATE_UTC: Final[datetime] = datetime(2020, 1, 1, tzinfo=TZ_UTC)
+END_DATE_UTC: Final[datetime] = datetime(2020, 1, 20, tzinfo=TZ_UTC)
+
+
+# Module logger
+log = logging.getLogger(LOGGER_NAME)
+
+
+def _setup_worker_logger(log_queue: mp.Queue) -> logging.Logger:
+    """Send this module's logs to the main process QueueListener.
+
+    Args:
+        log_queue: Multiprocessing queue used by the central QueueListener.
+
+    Returns:
+        Configured module logger.
+    """
+    logger = logging.getLogger(LOGGER_NAME)
+    base = logging.getLogger("infdb")
+    logger.setLevel(base.level if base.handlers else logging.INFO)
+    logger.handlers.clear()
+    logger.addHandler(QueueHandler(log_queue))
+    logger.propagate = False
+    return logger
+
+
+def load(log_queue: mp.Queue) -> None:
+    """Entry point preserved: uses 'openmeteo' feature flag and prints success message."""
+    _setup_worker_logger(log_queue)
+
+    if not utils.if_active(TOOL_NAME):
         return
-
-    # base_path = config.get_path(["loader", "sources", "openmeteo", "path", "base"])
-    # os.makedirs(base_path, exist_ok=True)
 
     stations_filter_by_examples()
 
-
-    log.info(f"Openmeteo data loaded successfully")
+    log.info("Openmeteo data loaded successfully")
 
 
 def stations_filter_by_examples() -> None:
-    """Retrieve stations of DWD that measure temperature."""
+    """Retrieve DWD stations that measure air temperature; print demo outputs."""
     request = DwdObservationRequest(
         parameters=("hourly", "temperature_air"),
         periods="recent",
-        start_date=datetime(2020, 1, 1, tzinfo=ZoneInfo("UTC")),
-        end_date=datetime(2020, 1, 20, tzinfo=ZoneInfo("UTC")),
+        start_date=START_DATE_UTC,
+        end_date=END_DATE_UTC,
     )
 
-    print("All stations")
+    print(ALL_STATIONS_PRINT_LABEL)
     print(request.all().df)
 
-    # print("Filter by station_id (1048)")
-    # station_id = 1048
-    # print(request.filter_by_station_id(station_id).df)
-
-    # print("Filter by name (Dresden)")
-    # name = "Dresden Klotzsche"
-    # print(request.filter_by_name(name).df)
-
-    # frankfurt = (50.11, 8.68)
-    # print("Filter by distance (30 km)")
-    # print(request.filter_by_distance(latlon=frankfurt, distance=30).df)
-    # print("Filter by rank (3 closest stations)")
-    # print(request.filter_by_rank(latlon=frankfurt, rank=3).df)
-
-    print("Filter by bbox (Frankfurt)")
-    bbox = (8.52, 50.03, 8.80, 50.22)
+    print(BBOX_PRINT_LABEL)
     envelop = utils.get_envelop()
-    bbox = (xmin, ymin, xmax, ymax) = envelop.to_crs(4326).total_bounds
-    stations = request.filter_by_bbox(*bbox)
-    df = request.filter_by_bbox(*bbox).df
-    print(request.filter_by_bbox(*bbox).df)
-    values = stations.values.all()  
-    # print("Filter by sql (starting with Dre)")
-    # sql = "name LIKE 'Dre%'"
-    # print(request.filter_by_sql(sql).df)
+    xmin, ymin, xmax, ymax = envelop.to_crs(CRS_WGS84_EPSG).total_bounds
+    stations = request.filter_by_bbox(xmin, ymin, xmax, ymax)
+    df_bbox = stations.df
+    print(df_bbox)
 
-    frankfurt = (50.11, 8.68)
-    values = request.interpolate(frankfurt)
-    print(values)
+    values_bbox_all = stations.values.all()
+    _ = values_bbox_all
+
+    values_interpolated = request.interpolate(FRANKFURT_COORDS)
+    print(values_interpolated)

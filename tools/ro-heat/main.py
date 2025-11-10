@@ -3,7 +3,7 @@ import pandas as pd
 from infdb import InfDB
 from entise.core.generator import TimeSeriesGenerator
 
-from src import basic_refurbishment, config
+from src import basic_refurbishment
 from src import eureca_code
 from src import timedata
 import os
@@ -22,7 +22,6 @@ def post_time_series(engine, infdblog, output_schema, table_name, hourly_datafra
     # Insert time series data using auto generated ts_metadata_id
     try:
         # write CSV to an in-memory buffer without header/index
-        # Reorder columns to match COPY target: grid_id, time, value, ts_id
         buf = io.StringIO()
         hourly_dataframe[['ts_metadata_id', 'time', 'value']].to_csv(buf, index=False, header=False)
         buf.seek(0)
@@ -34,7 +33,6 @@ def post_time_series(engine, infdblog, output_schema, table_name, hourly_datafra
         conn.commit()
         cur.close()
         conn.close()
-        # infdblog.info("COPYed %d hourly rows to %s.%s (response %d/%d)", len(hourly_dataframe), output_schema, table_name, i+1, len(responses))
 
     except Exception as e:
         try:
@@ -43,7 +41,8 @@ def post_time_series(engine, infdblog, output_schema, table_name, hourly_datafra
         except Exception:
             pass
         infdblog.error("Failed to COPY hourly data to Postgres: %s", e)
-        
+
+
 def add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, column: str):
     ts_metadata_id = None
     try:
@@ -54,14 +53,14 @@ def add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_meta
                 infdblog.info("Created metadata record with id=%s", ts_metadata_id)
     except Exception as e:
         infdblog.error("Failed to insert/retrieve metadata record: %s", e)
-        
-    indoor_temp = row['hvac'].loc[:, 'indoor_temperature[C]'] 
+
+    indoor_temp = row['hvac'].loc[:, 'indoor_temperature[C]']
     hourly_dataframe = pd.DataFrame({
         'ts_metadata_id': ts_metadata_id,
         'time': indoor_temp.index,
         'value': indoor_temp.values,
     })
-    
+
     post_time_series(engine, infdblog, output_schema, table_name, hourly_dataframe)
 
 
@@ -73,7 +72,7 @@ async def add_metadata_and_ts_async(engine, infdblog, output_schema, table_name,
         loop = asyncio.get_event_loop()
         with engine.begin() as conn:
             result = await loop.run_in_executor(
-                None, 
+                None,
                 partial(pd.read_sql, insert_metadata_sql, con=conn)
             )
             if not result.empty:
@@ -82,30 +81,31 @@ async def add_metadata_and_ts_async(engine, infdblog, output_schema, table_name,
     except Exception as e:
         infdblog.error("Failed to insert/retrieve metadata record: %s", e)
         return
-    
+
     # Extract time series data based on column name
     if column in row['hvac'].columns:
         ts_data = row['hvac'].loc[:, column]
     else:
         infdblog.warning(f"Column {column} not found for objectid, skipping")
         return
-        
+
     hourly_dataframe = pd.DataFrame({
         'ts_metadata_id': ts_metadata_id,
         'time': ts_data.index,
         'value': ts_data.values,
     })
-    
+
     # Run post_time_series in thread pool
     await loop.run_in_executor(
         None,
         partial(post_time_series, engine, infdblog, output_schema, table_name, hourly_dataframe)
     )
 
+
 async def process_building(engine, infdblog, output_schema, table_name, objectid, row):
     """Process a single building with all its time series"""
     infdblog.debug(f"Processing building {objectid}")
-    
+
     # Define all time series to insert
     time_series_configs = [
         {
@@ -127,7 +127,7 @@ async def process_building(engine, infdblog, output_schema, table_name, objectid
             'column': 'cooling:load[W]'
         }
     ]
-    
+
     # Process all time series for this building concurrently
     tasks = []
     for config in time_series_configs:
@@ -145,47 +145,43 @@ async def process_building(engine, infdblog, output_schema, table_name, objectid
             RETURNING id;
         """
         task = add_metadata_and_ts_async(
-            engine, infdblog, output_schema, table_name, 
+            engine, infdblog, output_schema, table_name,
             insert_metadata_sql, row, config['column']
         )
         tasks.append(task)
-    
+
     await asyncio.gather(*tasks)
+
 
 async def process_all_buildings(engine, infdblog, output_schema, table_name, dict_df, max_concurrent=10):
     """Process all buildings with controlled concurrency"""
     semaphore = asyncio.Semaphore(max_concurrent)
-    
+
     async def bounded_process(objectid, row):
         async with semaphore:
             await process_building(engine, infdblog, output_schema, table_name, objectid, row)
-    
+
     tasks = [bounded_process(objectid, row) for objectid, row in dict_df.items()]
     await asyncio.gather(*tasks)
 
-def main():
 
-    # Load InfDB handler
+def main():
+    # Instantiate new InfDB facade (single entry point)
     infdbhandler = InfDB(tool_name="ro-heat")
 
-    # Database connection
-    infdbclient_citydb = infdbhandler.connect()
-
-    # Logger setup
+    # Logger
     infdblog = infdbhandler.get_log()
-
-    # Start message
     infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
 
-    # Setup database engine
-    engine = infdbclient_citydb.get_db_engine()
+    # DB client and engine (both via the facade)
+    infdbclient_citydb = infdbhandler.connect()
+    engine = infdbhandler.get_db_engine()
 
-    # Get configuration values
-    input_schema = infdbhandler.get_config_value(["ro-heat", "data", "input_schema"])
-    output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output_schema"])
+    # Config (use insert_toolname=True to scope under tool)
+    input_schema = infdbhandler.get_config_value(["data", "input_schema"], insert_toolname=True)
+    output_schema = infdbhandler.get_config_value(["data", "output_schema"], insert_toolname=True)
 
     try:
-
         sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
         infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
@@ -294,8 +290,8 @@ def main():
 
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
         refurbed_df.to_sql(
-                "buildings_rc", engine, if_exists="replace", schema=schema, index=False
-            )
+            "buildings_rc", engine, if_exists="replace", schema=schema, index=False
+        )
         infdblog.debug("Refurbished data writing to database")
 
         infdblog.debug("Starting construction of building elements")
@@ -366,7 +362,6 @@ def main():
         entise_input["min_temperature[C]"] = 20.0
         entise_input["max_temperature[C]"] = 24.0
         entise_input["gains_solar"] = 0.0
-        
 
         entise_input = entise_input.merge(
             bld2ts[['bld_objectid', 'ts_metadata_id']].rename(columns={"ts_metadata_id": "weather"}),
@@ -374,7 +369,7 @@ def main():
             right_on="bld_objectid",
             how="left",
         ).drop(columns=["bld_objectid"])
-        
+
         # For testing purposes, limit to one building
         entise_input = entise_input.iloc[:1, :]
 
@@ -394,7 +389,6 @@ def main():
             schema=output_schema,
             index=True,
             method="multi",
-            # chunksize=1000,
         )
         infdblog.info(summary.head())
 
@@ -419,11 +413,9 @@ def main():
             infdbclient_citydb.execute_query(metadata_sql)
         except Exception as e:
             infdblog.error("Failed to create metadata table: %s", e)
-            
+
         # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
-
         table_name = 'entise_ts_data'
-
         create_sql = f"""
         CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
             ts_metadata_id integer,
@@ -441,10 +433,9 @@ def main():
         except Exception as e:
             infdblog.error("Failed to create timeseries table: %s", e)
 
-
         for objectid, row in dict_df.items():
             infdblog.debug(f"Processing building {objectid}")
-           
+
             # Insert indoor temperature
             insert_metadata_sql = f"""
                     INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
@@ -460,7 +451,7 @@ def main():
                     RETURNING id;
                     """
             add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'indoor_temperature[C]')
-           
+
             # Insert heating load
             insert_metadata_sql = f"""
                     INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
@@ -476,7 +467,7 @@ def main():
                     RETURNING id;
                     """
             add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'heating:load[W]')
-           
+
             # Insert cooling load
             insert_metadata_sql = f"""
                     INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
@@ -492,8 +483,7 @@ def main():
                     RETURNING id;
                     """
             add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'cooling:load[W]')
-        
-        
+
         infdblog.info("Ro-heat sucessfully completed")
 
     except Exception as e:

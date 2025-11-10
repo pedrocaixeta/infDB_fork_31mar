@@ -1,66 +1,92 @@
 import os
-import logging
-import geopandas as gpd
-from . import utils, config, logger
+import time
+from typing import List, Sequence, Optional
 
-log = logging.getLogger(__name__)
+from infdb import InfDB
+from . import utils
+
+def _wait_for_file(path: str, *, min_size: int = 5_000, timeout: float = 90.0, step: float = 2.0) -> bool:
+    """Poll for a file that is being downloaded asynchronously (e.g. pySmartDL).
+
+    Returns True as soon as the file exists **and** is bigger than `min_size`.
+    Returns False if `timeout` expires.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if os.path.exists(path):
+            try:
+                if os.path.getsize(path) >= min_size:
+                    return True
+            except OSError:
+                pass
+        time.sleep(step)
+    return False
 
 
-def load(log_queue):
-    logger.setup_worker_logger(log_queue)
-
+def load(infdb: InfDB) -> None:
+    log = infdb.get_worker_logger()
     if not utils.if_active("basemap"):
+        log.info("Basemap loader inactive → skipping.")
         return
 
-    # Create folders if they do not exist
-    base_path = config.get_path(["loader", "sources", "basemap", "path", "base"])
+    base_path = infdb.get_config_path(["loader", "sources", "basemap", "path", "base"], type="loader")
     os.makedirs(base_path, exist_ok=True)
 
-    # processed_path = config.get_path(["loader", "sources", "basemap", "path", "processed"])
-    # os.makedirs(processed_path, exist_ok=True)
+    site_url = infdb.get_config_value(["loader", "sources", "basemap", "url"])
+    ending = infdb.get_config_value(["loader", "sources", "basemap", "ending"])
+    filters: Sequence[str] = infdb.get_config_value(["loader", "sources", "basemap", "filter"]) or []
 
-    site_url = config.get_value(["loader", "sources", "basemap", "url"])
-    ending = config.get_value(["loader", "sources", "basemap", "ending"])
-    filters = config.get_value(["loader", "sources", "basemap", "filter"])
+    schema = infdb.get_config_value(["loader", "sources", "basemap", "schema"])
+    prefix = infdb.get_config_value(["loader", "sources", "basemap", "prefix"])
+    layer_names: Sequence[str] = infdb.get_config_value(["loader", "sources", "basemap", "layer"]) or []
 
-    for filter in filters:
-        urls = utils.get_links(site_url, ending, filter)
-        if len(urls) == 1:
-            url = urls[0]
-        else:
-            log.warning(f"No or multiple link found for filter({filter}): {urls}")
+    # make sure schema exists
+    with infdb.connect() as db:
+        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
-        
-        log.debug(url)
+    for flt in filters:
+        urls: List[str] = utils.get_links(site_url, ending, flt)
+        if len(urls) != 1:
+            log.warning("Basemap: filter '%s' produced %d links → %s (skipping)", flt, len(urls), urls)
+            continue
+        url = urls[0]
+        log.info("Basemap: selected %s for filter '%s'", url, flt)
 
         filename, name, extension = utils.get_file_from_url(url)
+        name_no_day = name.rsplit("-", 1)[0]
+        expected_monthly_path = os.path.join(base_path, name_no_day + extension)
 
-        # remove the two lines below if you want to keep the full date in the filename
-        name = name.rsplit("-", 1)[0]   # remove day -> year and month only
-        # name = name.rsplit("-", 2)[0]   # remove day and month -> year only
+        downloaded_paths: List[str] = utils.download_files(url, base_path)
 
-        file_path = os.path.join(base_path, name + extension)
-        print(file_path)
-        download_files = utils.download_files(url, file_path)
-        log.debug(f"Download_files: {download_files}")
+        input_file: Optional[str] = None
 
-        # Create schema if it doesn't exist
-        schema = config.get_value(["loader", "sources", "basemap", "schema"])
-        sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
-        utils.sql_query(sql)
+        # wait for the file to appear
+        if downloaded_paths:
+            candidate = downloaded_paths[0]
 
-        prefix = config.get_value(["loader", "sources", "basemap", "prefix"])
-        log.debug(f"Using prefix: {prefix}")
+            if _wait_for_file(candidate, min_size=5_000, timeout=120.0):
+                input_file = candidate
+            else:
+                log.error(
+                    "Basemap: downloaded file not found on disk (%s) → skipping to fallback",
+                    candidate,
+                )
 
-        file = utils.get_file(base_path, filter, ".gpkg")
+        # skip if no file found
+        if input_file is None:
+            log.error(
+                "Basemap: no usable .gpkg for filter '%s' (download not ready and no fallback). Skipping.",
+                flt,
+            )
+            continue
 
-        log.info(f"Loading {file}...")
-        # list = gpd.list_layers(file)["name"]
-        # print(list)
-        layer_names = config.get_value(["loader", "sources", "basemap", "layer"])
+        log.info("Basemap: importing %s into schema %s", input_file, schema)
         layers = [layer + "_bdlm" for layer in layer_names]
-        utils.import_layers(
-            file, layers, schema, prefix=prefix, layer_names=layer_names
-        )  # TODO: Add if several files
 
-        log.info(f"Basemap data loaded successfully")
+        try:
+            utils.import_layers(input_file, layers, schema, prefix=prefix, layer_names=layer_names)
+        except Exception as exc:
+            log.error("Basemap: import of %s failed → %s", input_file, exc)
+            continue
+
+    log.info("Basemap data loaded successfully")

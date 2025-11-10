@@ -3,10 +3,11 @@ services:
     image: python:3.12-slim
     working_dir: /conf
     volumes:
-      - .:/conf:rw                           # mount ./postgrest → /conf
+      - .:/conf:rw
+      - ../../../src/infdb_package:/app/mnt/infdb_package
     environment:
       PYTHONUNBUFFERED: "1"
-      POSTGREST_CONF_PATH: /conf            # directory; script will create postgrest.conf
+      POSTGREST_CONF_PATH: /conf
       POSTGREST_DB_CHANNEL: pgrst
       POSTGREST_WATCH_INTERVAL_SEC: "1.0"
       POSTGREST_MIN_RELOAD_GAP_SEC: "3.0"
@@ -21,7 +22,10 @@ services:
       - /bin/sh
       - -lc
       - >
-        python -m pip install --no-cache-dir psycopg[binary]
+        python -m pip install --no-cache-dir
+        /app/mnt/infdb_package
+        psycopg[binary]
+        pyyaml
         && echo "[pgrstwatch] starting"
         && exec python -u /conf/watch_and_update_postgrest_conf.py
     healthcheck:
@@ -29,10 +33,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 60
-      start_period: 90s              # give pip + first write time to finish
+      start_period: 90s
     restart: unless-stopped
     networks:
       - ${BASE_NETWORK_NAME}
+
 
   postgrest:
     image: postgrest/postgrest:latest

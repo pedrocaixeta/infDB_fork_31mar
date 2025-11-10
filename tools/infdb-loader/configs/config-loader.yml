@@ -130,7 +130,7 @@ loader:
                 - weitere_nutzung_flaeche
         plz:
             status: active
-            url: "https://downloads.suche-postleitzahl.org/v2/public/plz-5stellig.geojson"
+            url: "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/georef-germany-postleitzahl/exports/geojson?lang=en&timezone=Europe%2FBerlin"
             path:
                 base: "{loader/path/opendata}/plz/"
                 processed: "{loader/path/processed}/plz/"
