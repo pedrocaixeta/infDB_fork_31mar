@@ -258,7 +258,7 @@ def get_all_files(folder_path: str, ending: str) -> list[str]:
 def get_file(folder_path: str, filename: str, ending: str) -> Optional[str]:
     """Return the newest file path in `folder_path` containing `filename` and ending with `ending`."""
     files = get_all_files(folder_path, ending)
-    matching = [f for f in files if filename.lower() in f.lower()]
+    matching = [f for f in files if filename.lower() in Path(f).stem.lower()]
     if not matching:
         log.error("No files found containing '%s' with ending '%s' in %s", filename, ending, folder_path)
         return None
