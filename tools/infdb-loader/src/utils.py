@@ -125,9 +125,10 @@ def download_files(urls, base_path: str) -> list[str]:
     Returns:
         List of destination file paths (in the same order as started).
     """
-    os.makedirs(base_path, exist_ok=True)
+    if not os.path.isfile(base_path) and not os.path.exists(base_path):
+        os.makedirs(base_path, exist_ok=True)
+    
     url_list = _ensure_list(urls)
-
     objs: list[SmartDL] = []
     for url in url_list:
         obj = SmartDL(url, base_path, progress_bar=WGET_PROGRESS_BAR)
@@ -177,6 +178,7 @@ def import_layers(
     prefix: str = "",
     layer_names: Optional[List[str]] = None,
     scope: bool = True,
+    if_exists: str = "replace"
 ) -> None:
     """Import vector data into PostGIS.
 
@@ -217,7 +219,7 @@ def import_layers(
         gdf = gpd.read_file(input_file, mask=gdf_scope)
         gdf.to_crs(epsg=epsg, inplace=True)
         gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
-        gdf.to_postgis(target_name, engine, if_exists="replace", schema=schema, index=False)
+        gdf.to_postgis(target_name, engine, if_exists=if_exists, schema=schema, index=False)
         return
 
     # Multi-layer path
@@ -226,7 +228,7 @@ def import_layers(
         gdf = gpd.read_file(input_file, layer=layer, mask=gdf_scope)
         gdf.to_crs(epsg=epsg, inplace=True)
         gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
-        gdf.to_postgis(layer_name, engine, if_exists="replace", schema=schema, index=False)
+        gdf.to_postgis(layer_name, engine, if_exists=if_exists, schema=schema, index=False)
 
 
 def get_envelop():
