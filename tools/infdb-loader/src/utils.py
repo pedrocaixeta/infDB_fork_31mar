@@ -242,6 +242,21 @@ def get_envelop():
     return gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
 
 
+def get_all_envelops():
+    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
+    scope = _cfg.get_value([CONFIG_TOOL_NAME, "scope"])
+    if isinstance(scope, str):
+        scope = [scope]
+    ags_path = _cfg.get_path([CONFIG_TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
+    log.debug("Envelop Path (unzipped): %s", ags_path)
+    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT)
+    log.debug("Envelop Path (file): %s", path)
+    gdf = gpd.read_file(path, layer="vg5000_gem")
+    envelop = []
+    for s in scope:
+        envelop.append(gdf[gdf["AGS"].str.startswith(s)])
+    return envelop
+
 # ============================== file helpers ==============================
 
 def get_all_files(folder_path: str, ending: str) -> list[str]:
