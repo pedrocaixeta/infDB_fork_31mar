@@ -52,6 +52,14 @@ loader:
             path:
                 lod2: "{loader/path/opendata}/lod2/"
                 gml: "{loader/path/opendata}/lod2/{loader/name}"
+        lod2-nrw:
+            status: active
+            import-mode: skip # delete
+            url:
+                - "http://ds1.need.energy:8123/3d-gm_lod2_kacheln.zip"    #scope placeholder for AGS
+            path:
+                lod2: "{loader/path/opendata}/lod2-nrw/"
+                gml: "{loader/path/opendata}/lod2-nrw/{loader/name}"
 
         bkg:
             status: active
