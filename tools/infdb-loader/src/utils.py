@@ -139,10 +139,10 @@ def download_files(urls, base_path, max_concurrent=3, max_retries=4, backoff_bas
 
     os.makedirs(base_path, exist_ok=True)
 
-    session = requests.Session()
+    session = requests.Session() # Uses a persistent requests.Session() for connection reuse (reduces overhead).
     session.headers.update({"User-Agent": "IDP-Loader/1.0"})
 
-    lock = threading.Lock()
+    lock = threading.Lock() # Threading lock ensures multiple threads don’t append to results simultaneously (thread-safe).
     results = []
 
     def _dest_for(url):
@@ -176,6 +176,7 @@ def download_files(urls, base_path, max_concurrent=3, max_retries=4, backoff_bas
                         raise requests.HTTPError(f"HTTP {r.status_code}", response=r)
                     r.raise_for_status()
 
+                    # Stream chunks to disk
                     with open(tmp, "wb") as f:
                         for chunk in r.iter_content(chunk_size=128 * 1024):
                             if chunk:
@@ -406,21 +407,44 @@ def _ogr2ogr(cmd_args, env_extra=None):
     Execute ogr2ogr with environment tuned for speed:
       - PG_USE_COPY=YES : streams via COPY (very fast)
       - OGR_ENABLE_PARTIAL_REPROJECTION=TRUE : small perf boost
-    Streams output to the logger line by line for debugging.
+    Handles spaces in arguments safely (no shell) and logs output line by line.
+    Raises RuntimeError if ogr2ogr exits with non-zero code.
     """
+    import shlex
+
+    # Normalize input to a proper list of strings
+    if isinstance(cmd_args, str):
+        cmd_args = shlex.split(cmd_args)
+    elif not isinstance(cmd_args, (list, tuple)) or not cmd_args:
+        raise ValueError("ogr2ogr expects a non-empty list or command string")
+
+    # Build environment
     env = os.environ.copy()
     env["PG_USE_COPY"] = "YES"
     env["OGR_ENABLE_PARTIAL_REPROJECTION"] = "TRUE"
     if env_extra:
         env.update(env_extra)
 
-    log.info("Executing ogr2ogr: " + " ".join(cmd_args))
-    proc = subprocess.Popen(cmd_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
+    # Log the command for debugging (shell-escaped for readability only)
+    import shlex as _shlex
+    log.info("Executing ogr2ogr: %s", _shlex.join(map(str, cmd_args)))
+
+    # Run safely (no shell), capture stdout/stderr merged
+    proc = subprocess.Popen(
+        list(map(str, cmd_args)),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env=env,
+    )
+
     for line in proc.stdout or []:
         log.info(line.rstrip())
+
     rc = proc.wait()
     if rc != 0:
         raise RuntimeError(f"ogr2ogr failed with code {rc}")
+    log.info("ogr2ogr completed successfully.")
 
 
 def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope=True, overwrite=True):
@@ -528,7 +552,7 @@ def fast_copy_points_csv(
     params = get_db_parameters("postgres")
     srid_dst = srid_dst or params["epsg"]
 
-    # Peek CSV header to build a generic TEXT staging table (robust to weird types)
+    # Peek CSV header to build a generic TEXT staging table (robust to weird types) read first line (column names)
     with open(csv_path, "r", encoding="utf-8", errors="replace", newline="") as f:
         reader = csv.reader(f, delimiter=";")
         header = next(reader)
