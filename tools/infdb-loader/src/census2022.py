@@ -1,104 +1,139 @@
-import os
 import logging
-import multiprocessing
-import chardet  # kept in case you later add CSV validation/encoding checks
-import pandas as pd  # kept (not used now); remove if you want zero pandas footprint
-import geopandas as gpd  # kept for get_envelop() usage elsewhere; can be removed if unused
-import shutil  # NEW: used for optional local copy of source CSV (save_local)
-from . import utils, config, logger
+import multiprocessing as mp
+import os
+from typing import Any, Dict, List
+import chardet
+import pandas as pd
+import geopandas as gpd
+from charset_normalizer import from_path
 
-log = logging.getLogger(__name__)
+from infdb import InfdbClient, InfdbConfig, InfdbLogger
+from . import utils
 
 
-def load(log_queue):
-    logger.setup_worker_logger(log_queue)
+# ============================== Constants ==============================
+
+LOGGER_NAME: str = __name__
+TOOL_NAME: str = "loader"
+CONFIG_DIR: str = "configs"
+DB_NAME: str = "postgres"
+CSV_SEPARATOR: str = ";"
+CSV_DECIMAL: str = ","
+GPKG_DRIVER: str = "GPKG"
+CLIPPED_PREFIX: str = "zensus-2022"
+
+# Module logger
+log = logging.getLogger(LOGGER_NAME)
+
+
+def _init_logger_for_process(cfg: InfdbConfig) -> logging.Logger:
+    """Initialize and return a worker logger for this process.
+
+    Args:
+        cfg: Shared InfdbConfig to read log path and level.
+
+    Returns:
+        A process-local logger wired through InfdbLogger's QueueListener.
+    """
+    log_path = cfg.get_value([TOOL_NAME, "logging", "path"]) or "loader.log"
+    level = cfg.get_value([TOOL_NAME, "logging", "level"]) or "INFO"
+    infdb_logger = InfdbLogger(log_path=log_path, level=level, cleanup=False)
+    return infdb_logger.setup_worker_logger()
+
+
+def load(log_queue: mp.Queue) -> None:
+    """Entry point to download, validate, and process Zensus 2022 datasets.
+
+    Behavior preserved:
+    - Respects `utils.if_active("zensus_2022")`.
+    - Validates page links vs YAML list and logs differences.
+    - Creates schema if missing.
+    - Spawns a process pool with a per-process logger initializer.
+    """
+    # package config + logger
+    cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
+
+    global log
+    log = _init_logger_for_process(cfg)
 
     if not utils.if_active("zensus_2022"):
         return
-    
-    datasets = config.get_value(["loader", "sources", "zensus_2022", "datasets"])
 
-    url = config.get_value(["loader", "sources", "zensus_2022", "url"])
-    zip_links = utils.get_website_links(url)
+    datasets: List[Dict[str, Any]] = cfg.get_value([TOOL_NAME, "sources", "zensus_2022", "datasets"])
 
-    # Validate links vs YAML (helps catch missing/extra links early)
+    url = cfg.get_value([TOOL_NAME, "sources", "zensus_2022", "url"])
+    zip_links: List[str] = utils.get_website_links(url)
+
+    # validate links
     yaml_links = {entry["url"] for entry in datasets}
     original_set = set(zip_links)
-
     missing_in_yaml = original_set - yaml_links
     extra_in_yaml = yaml_links - original_set
     if missing_in_yaml:
         log.warning("Links in original list but NOT in YAML:")
-        for l in sorted(missing_in_yaml):
-            log.warning(f" - {l}")
-
+        for lnk in sorted(missing_in_yaml):
+            log.warning(" - %s", lnk)
     if extra_in_yaml:
         log.warning("Links in YAML but NOT in original list:")
-        for l in sorted(extra_in_yaml):
-            log.warning(f" - {l}")
+        for lnk in sorted(extra_in_yaml):
+            log.warning(" - %s", lnk)
 
-    # Create schema if it doesn't exist
-    schema = config.get_value(["loader", "sources", "zensus_2022", "schema"])
-    sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
-    utils.sql_query(sql)
-    
-    # Folders
-    zip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
+    # create schema (via package client)
+    schema = cfg.get_value([TOOL_NAME, "sources", "zensus_2022", "schema"])
+    with InfdbClient(cfg, log, db_name=DB_NAME) as db:
+        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+
+    # folders
+    zip_path = cfg.get_path([TOOL_NAME, "sources", "zensus_2022", "path", "zip"], type="loader")
     os.makedirs(zip_path, exist_ok=True)
-    unzip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
+    unzip_path = cfg.get_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
     os.makedirs(unzip_path, exist_ok=True)
 
     # Parallelize like before (no change)
     number_processes = utils.get_number_processes()
-    with multiprocessing.Pool(
+    with mp.Pool(
         processes=number_processes,
-        initializer=logger.setup_worker_logger,
-        initargs=(log_queue,),
+        initializer=_init_logger_for_process,
+        initargs=(cfg,),
     ) as pool:
         pool.map(process_dataset, datasets)
 
 
-def process_dataset(dataset):
-    """
-    Adapted to the new high-performance utils:
-      - utils.download_files(...)  # polite, throttled downloader
-      - utils.unzip(...)           # same as before, just called with the new return path
-      - utils.fast_copy_points_csv # COPY + server-side geometry (replaces GeoPandas.to_postgis)
+def process_dataset(dataset: Dict[str, Any]) -> bool:
+    """Download, unzip, transform, and load one dataset to PostGIS.
+
+    Args:
+        dataset: A dataset record from config (`name`, `url`, `year`, `table_name`, `status`, ...).
+
+    Returns:
+        True on success or skip; False when an exception is encountered (logged).
     """
     try:
-        log.info(f"Working on {dataset['name']}")
+        log.info("Working on %s", dataset["name"])
 
-        # Status check
-        if dataset.get("status") != "active":
-            log.info(f"{dataset['name']} skips, status not active")
+        # status gate
+        if dataset["status"] != "active":
+            log.info("%s skips, status not active", dataset["name"])
             return True
-        
-        # Year filter
-        years = config.get_value(["loader", "sources", "zensus_2022", "years"])
+
+        # fresh cfg (per-process)
+        cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
+
+        years: Iterable[int] = cfg.get_value([TOOL_NAME, "sources", "zensus_2022", "years"])
         if dataset["year"] not in years:
-            log.info(f"{dataset['name']} skips, not in years list")
+            log.info("%s skips, not in years list", dataset["name"])
             return True
-            
-        # -------------------------
-        # DOWNLOAD (NEW: polite downloader)
-        # We pass the base directory; downloader picks filename from URL and returns a list of local paths.
-        # Limiting concurrency here per-dataset to 1 avoids server throttling (pool already parallelizes datasets).
-        # -------------------------
-        zip_dir = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
-        urls_or_path = dataset["url"]
-        downloaded = utils.download_files(urls_or_path, base_path=zip_dir, max_concurrent=1)  # NEW
-        if not downloaded or not downloaded[0]:
-            log.error(f"Download failed for {dataset['name']}: {dataset['url']}")
-            return False
-        downloaded_zip = downloaded[0]
 
-        # -------------------------
-        # UNZIP (same behavior, new call signature)
-        # Unzip into a dedicated folder per table_name (matches old structure).
-        # -------------------------
-        unzip_root = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
-        folder_path = os.path.join(unzip_root, dataset["table_name"])
-        utils.unzip(downloaded_zip, folder_path)  # NEW: unzip takes (zip_file, dest_dir)
+        # Download INTO the zip directory and use the returned file path
+        zip_dir = cfg.get_path([TOOL_NAME, "sources", "zensus_2022", "path", "zip"], type="loader")
+        link = dataset["url"]
+        downloaded = utils.download_files(link, zip_dir)  # returns [<zip_file_path>]
+        zip_file = downloaded[0]
+
+        # Unzip using the real file path
+        unzip_dir = cfg.get_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
+        folder_path = os.path.join(unzip_dir, dataset["table_name"])
+        utils.unzip(zip_file, folder_path)
 
         # Export to PostGIS for each configured resolution
         resolutions = config.get_value(["loader", "sources", "zensus_2022", "resolutions"])
@@ -107,7 +142,7 @@ def process_dataset(dataset):
         epsg = utils.get_db_parameters("postgres")["epsg"]  # target DB SRID
 
         for resolution in resolutions:
-            log.info(f"Processing {dataset['name']} with {resolution} ...")
+            log.info("Processing %s with %s ...", dataset["name"], resolution)
 
             # Search for corresponding CSV within the unzipped folder
             csv_path = utils.get_file(folder_path, resolution, ".csv")
@@ -145,19 +180,22 @@ def process_dataset(dataset):
             # -------------------------
             save_local = config.get_value(["loader", "sources", "zensus_2022", "save_local"])
             if save_local == "active":
-                output_path = config.get_path(["loader", "sources", "zensus_2022", "path", "processed"])
-                os.makedirs(output_path, exist_ok=True)
-                out_csv = os.path.join(output_path, f"zensus-2022_{resolution}_{table_name}.csv")
-                try:
-                    shutil.copyfile(csv_path, out_csv)  # NEW: keep a copy for auditing/traceability
-                    log.debug(f"Saved local CSV copy to {out_csv}")
-                except Exception as e:
-                    log.warning(f"Could not save local CSV copy for {table_name}: {e}")
+                out_dir = cfg.get_path([TOOL_NAME, "sources", "zensus_2022", "path", "processed"], type="loader")
+                os.makedirs(out_dir, exist_ok=True)
+                gdf_clipped.to_file(
+                    os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
+                    layer=table_name,
+                    driver=GPKG_DRIVER,
+                )
+                gdf_clipped.to_csv(
+                    os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}_{table_name}.csv"),
+                    index=False,
+                )
 
-            log.info(f"Processed successfully {csv_path}")
+            log.info("Processed sucessfully %s", file)
 
     except Exception as err:
-        log.exception(f"An error occurred while processing file: {dataset.get('name')} {str(err)}")
+        log.exception("An error occurred while processing file: %s %s", dataset.get("name"), str(err))
         return False
-    
+
     return True

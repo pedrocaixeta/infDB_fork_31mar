@@ -1,52 +1,76 @@
-import os
-import logging
-from . import utils, config, logger
-import pandas as pd
 import json
+import os
+from typing import Any, Dict, List, Tuple
 
-log = logging.getLogger(__name__)
+import pandas as pd
+
+from infdb import InfDB
+from . import utils
 
 
-def load(log_queue):
-    logger.setup_worker_logger(log_queue)
+# ============================== Constants ==============================
+
+TOOL_NAME: str = "loader"
+FILE_ENCODING: str = "utf-8"
+
+TYPE_ELEMENTS_BASENAME: str = "TypeElements"
+MATERIAL_BASENAME: str = "material"
+JSON_EXT: str = ".json"
+CSV_EXT: str = ".csv"
+
+
+
+
+def load(infdb: InfDB) -> bool:
+    """Download Tabula JSONs, transform them to CSV, and load into Postgres.
+
+    Behavior preserved:
+    - Skips entirely when `tabula` feature flag is inactive.
+    - Downloads from configured URLs and writes CSVs to the base path.
+    - Ensures the target schema then writes tables with `if_exists='replace'`.
+    """
+    log = infdb.get_worker_logger()
 
     if not utils.if_active("tabula"):
-        return
+        return True
 
-    base_path = config.get_path(["loader", "sources", "tabula", "path", "base"])
+    base_path = infdb.get_config_path([TOOL_NAME, "sources", "tabula", "path", "base"], type="loader")
     os.makedirs(base_path, exist_ok=True)
 
-    urls = config.get_value(["loader", "sources", "tabula", "url"])
-    files = utils.download_files(urls, base_path)
+    urls: List[str] = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "url"])
+    utils.download_files(urls, base_path)
 
-    material_path = utils.get_file(base_path, "material", ".json")
-    type_elements_path = utils.get_file(base_path, "TypeElements", ".json")
+    material_path = utils.get_file(base_path, MATERIAL_BASENAME, JSON_EXT)
+    type_elements_path = utils.get_file(base_path, TYPE_ELEMENTS_BASENAME, JSON_EXT)
 
-    # --- JSON-Dateien laden ---
-    with open(type_elements_path, "r") as f:
-        type_elements = json.load(f)
+    # --- Load JSON files ---
+    with open(type_elements_path, "r", encoding=FILE_ENCODING) as f:
+        type_elements: Dict[str, Any] = json.load(f)
 
-    with open(material_path, "r") as f:
-        materials = json.load(f)
+    with open(material_path, "r", encoding=FILE_ENCODING) as f:
+        materials: Dict[str, Any] = json.load(f)
 
-    # --- Materialdaten verarbeiten ---
+    # --- Process materials ---
     df_materials = pd.DataFrame.from_dict(materials, orient="index").reset_index()
     df_materials.rename(columns={"index": "material_id"}, inplace=True)
 
-    # --- TypeElements + Layer extrahieren ---
-    records = []
-    layer_records = []
-    type_element_id = 0
+    # --- Extract TypeElements + layers ---
+    element_records: List[Dict[str, Any]] = []
+    layer_records: List[Dict[str, Any]] = []
+    next_element_id = 0
 
     for name, data in type_elements.items():
         base_name = name.split("_")[0]
-        element_id = type_element_id
-        type_element_id += 1
+        element_id = next_element_id
+        next_element_id += 1
 
-        building_age_group = data.get("building_age_group", [None, None])
-        start_year, end_year = building_age_group
+        # building_age_group example: [start, end]
+        start_year, end_year = (None, None)
+        building_age_group = data.get("building_age_group")
+        if isinstance(building_age_group, list) and len(building_age_group) >= 2:
+            start_year, end_year = building_age_group[0], building_age_group[1]
 
-        records.append(
+        element_records.append(
             {
                 "element_id": element_id,
                 "element_name": base_name,
@@ -71,56 +95,28 @@ def load(log_queue):
                 }
             )
 
-    # --- DataFrames erzeugen ---
-    df_elements = pd.DataFrame(records)
+    # --- DataFrames ---
+    df_elements = pd.DataFrame(element_records)
     df_layers = pd.DataFrame(layer_records)
 
-    df_elements.to_csv(os.path.join(base_path, "type_elements.csv"), index=False)
-    df_layers.to_csv(os.path.join(base_path, "layers.csv"), index=False)
-    df_materials.to_csv(os.path.join(base_path, "materials.csv"), index=False)
+    # Persist CSVs
+    df_elements.to_csv(os.path.join(base_path, "type_elements" + CSV_EXT), index=False)
+    df_layers.to_csv(os.path.join(base_path, "layers" + CSV_EXT), index=False)
+    df_materials.to_csv(os.path.join(base_path, "materials" + CSV_EXT), index=False)
 
-    # # --- Ausgabe prüfen (optional) ---
-    # log.info("=== Materials ===")
-    # log.info(df_materials.head())
-    #
-    # log.info("\n=== Type Elements ===")
-    # log.info(df_elements.head())
-    #
-    # log.info("\n=== Layer Mapping ===")
-    # log.info(df_layers.head())
-
-    # Create schema
-    schema = config.get_value(["loader", "sources", "tabula", "schema"])
-    sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
-    utils.sql_query(sql)
+    # Ensure schema exists via InfdbClient and grab an engine
+    schema: str = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "schema"])
+    with infdb.connect() as db:
+        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+        engine = db.get_db_engine()
 
     # Prefix for table names
-    prefix = config.get_value(["loader", "sources", "tabula", "prefix"])
+    prefix: str = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "prefix"])
 
-    # Create database connection
-    citydb_engine = utils.get_db_engine("postgres")
+    # Export to Postgres
+    df_elements.to_sql(f"{prefix}_type_elements", engine, schema=schema, if_exists="replace", index=False)
+    df_layers.to_sql(f"{prefix}_layers", engine, schema=schema, if_exists="replace", index=False)
+    df_materials.to_sql(f"{prefix}_materials", engine, schema=schema, if_exists="replace", index=False)
 
-    # Export to citdyb
-    df_elements.to_sql(
-        f"{prefix}_type_elements",
-        citydb_engine,
-        schema=schema,
-        if_exists="replace",
-        index=False,
-    )
-    df_layers.to_sql(
-        f"{prefix}_layers",
-        citydb_engine,
-        schema=schema,
-        if_exists="replace",
-        index=False,
-    )
-    df_materials.to_sql(
-        f"{prefix}_materials",
-        citydb_engine,
-        schema=schema,
-        if_exists="replace",
-        index=False,
-    )
-
-    log.info(f"Tabula data loaded successfully")
+    log.info("Tabula data loaded successfully")
+    return True

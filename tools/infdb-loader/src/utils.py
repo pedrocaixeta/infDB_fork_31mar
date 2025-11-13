@@ -1,66 +1,100 @@
-# utils.py
-# -----------------------------------------------------------------------------
-# Purpose:
-#   - Keep the "old" utils behavior but make heavy I/O paths much faster:
-#       * import_layers(...)  -> uses GDAL/ogr2ogr with PG_USE_COPY (very fast)
-#       * fast_copy_points_csv(...) -> raw PostgreSQL COPY + server-side geometry
-#       * download_files(...) -> polite, throttled downloader with retries/backoff
-#
-# Notes:
-#   - Minimal external moving parts; rely on mature tools (GDAL, psycopg2).
-#   - Keep function names/signatures so existing code continues to work.
-#   - Heavily commented so anyone can read/maintain quickly.
-# -----------------------------------------------------------------------------
-
+import logging
+import multiprocessing
 import os
 import io
 import csv
 import time
 import random
 import logging
-import subprocess
+from pathlib import Path
+from typing import Iterable, List, Optional
+
+import geopandas as gpd
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
-import chardet
-import multiprocessing
-import sqlalchemy
-import psycopg2
-import geopandas as gpd
-
-from zipfile import ZipFile, BadZipFile
 from bs4 import BeautifulSoup
+from pySmartDL import SmartDL
 from urllib.parse import urljoin, urlparse
+from zipfile import BadZipFile, ZipFile
 
-from . import config
+import chardet
 
-log = logging.getLogger(__name__)
+from infdb import InfdbConfig
+from infdb.utils import do_cmd, get_db_engine
+
+# ============================== Constants ==============================
+
+LOGGER_NAME: str = __name__
+CONFIG_TOOL_NAME: str = "loader"
+CONFIG_DIR: str = "configs"
+
+HTTP_TIMEOUT_SECONDS: int = 60
+WGET_PROGRESS_BAR: bool = True  # preserve SmartDL progress bar behavior
+
+ZIP_EXT: str = ".zip"
+GPKG_EXT: str = ".gpkg"
+SQL_SCHEMA_GEOMETRY_COL: str = "geom"
+EPSG_FALLBACK_KEY: str = "epsg"
+
+# Module logger
+log = logging.getLogger(LOGGER_NAME)
+
+# Single shared config object per process
+_cfg = InfdbConfig(tool_name=CONFIG_TOOL_NAME, config_path=CONFIG_DIR)
+
+# Single shared config object per process
+_cfg = InfdbConfig(tool_name="loader", config_path="configs")
+
+# ============================== Internal helpers ==============================
+
+def _ensure_list(value) -> List:
+    """Return value as list (wrap scalars); pass through lists unchanged."""
+    if isinstance(value, list):
+        return value
+    return [value]
 
 
-# -----------------------------------------------------------------------------
-# Basic flags/helpers (kept from old utils)
-# -----------------------------------------------------------------------------
+def _fetch_html(url: str) -> BeautifulSoup:
+    """Fetch a URL and return a BeautifulSoup parser (html.parser)."""
+    resp = requests.get(url, timeout=HTTP_TIMEOUT_SECONDS)
+    resp.raise_for_status()
+    return BeautifulSoup(resp.content, "html.parser")
 
-def if_multiproccesing():
-    """Return True if multiprocessing is enabled in config."""
-    status = config.get_value(["loader", "multiproccesing", "status"])
+
+# ======================== toggles & config helpers ========================
+
+def if_multiproccesing() -> bool:
+    """Return True if multiprocessing is enabled via config (original spelling/API)."""
+    status = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"])
     return status == "active"
 
 
-def if_active(service):
-    """Return True if a given source/service is active; log accordingly."""
-    status = config.get_value(["loader", "sources", service, "status"])
+def if_multiprocessing() -> bool:
+    """Correctly spelled alias for `if_multiproccesing()`; preserves public API."""
+    return if_multiproccesing()
+
+
+def if_active(service: str) -> bool:
+    """Tell whether a given source service is active; logs decision.
+
+    Args:
+        service: Service key under `loader.sources`.
+
+    Returns:
+        True if active; False otherwise (with informational log).
+    """
+    status = _cfg.get_value([CONFIG_TOOL_NAME, "sources", service, "status"])
     if status == "active":
-        log.info(f"Loading {service} data...")
+        log.info("Loading %s data...", service)
         return True
-    else:
-        log.info(f"{service} skips, status not active")
-        return False
+    log.info("%s skips, status not active", service)
+    return False
 
 
-def any_element_in_string(target_string, elements):
-    """Check if any element of `elements` is a substring of `target_string`."""
+def any_element_in_string(target_string: str, elements: Iterable[str]) -> bool:
+    """Return True if any element is a substring of the target string."""
     return any(element in target_string for element in elements)
 
 
@@ -68,45 +102,29 @@ def any_element_in_string(target_string, elements):
 # HTML helpers (kept)
 # -----------------------------------------------------------------------------
 
-def get_links(url, ending, filter):
-    """
-    Scrape links ending with `ending` and containing `filter` (case-insensitive).
-    Returns absolute URLs.
-    """
-    response = requests.get(url)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.content, "html.parser")
+# ======================== downloading / scraping ========================
 
-    out = []
+def get_links(url: str, ending: str, flt: str) -> list[str]:
+    """Scrape links from a page matching an ending and substring filter.
+
+    Args:
+        url: Page URL to scrape.
+        ending: Required file suffix (e.g., '.zip').
+        flt: Case-insensitive substring that must appear in the href.
+
+    Returns:
+        List of absolute link URLs, de-duplicated.
+    """
+    soup = _fetch_html(url)
+    links: list[str] = []
     for a in soup.find_all("a", href=True):
         href = a["href"]
-        if href.endswith(ending) and filter in href.lower():
-            full = urljoin(url, href)
-            if full not in out:
-                out.append(full)
-
-    log.debug(out)
-    return out
-
-
-def get_website_links(url):
-    """
-    Scrape all .zip links on a page. Returns the raw hrefs as in the original
-    util (so existing callers behave the same).
-    """
-    response = requests.get(url)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.content, "html.parser")
-
-    zip_links = []
-    for link in soup.find_all("a", href=True):
-        href = link["href"]
-        if href.endswith(".zip"):
-            zip_links.append(href)
-
-    for z in zip_links:
-        log.debug(z)
-    return zip_links
+        if href.endswith(ending) and flt in href.lower():
+            full_url = urljoin(url, href)
+            if full_url not in links:
+                links.append(full_url)
+    log.debug(links)
+    return links
 
 
 def get_file_from_url(url):
@@ -215,127 +233,157 @@ def download_files(urls, base_path, max_concurrent=3, max_retries=4, backoff_bas
 # ZIP handling (kept, with small safety)
 # -----------------------------------------------------------------------------
 
-def unzip(zip_files, unzip_dir):
-    """
-    Unzip one or many ZIP files into `unzip_dir`.
-    Skips work if all members already exist.
+def unzip(zip_files, unzip_dir: str) -> None:
+    """Extract one or more zip files into `unzip_dir`, skipping if already extracted.
+
+    Args:
+        zip_files: A single .zip path or list of .zip paths.
+        unzip_dir: Destination directory for extracted files.
     """
     os.makedirs(unzip_dir, exist_ok=True)
-
-    if isinstance(zip_files, str):
-        zip_files = [zip_files]
-
-    for zip_file in zip_files:
+    for zip_file in _ensure_list(zip_files):
         try:
             with ZipFile(zip_file, "r") as zf:
                 members = zf.namelist()
                 all_exist = all(os.path.exists(os.path.join(unzip_dir, m)) for m in members)
                 if all_exist:
-                    log.info(f"Skipping {zip_file} — all files already extracted.")
+                    log.info("Skipping %s — all files already extracted.", zip_file)
                     continue
-
-                log.info(f"Unzipping {zip_file}")
+                log.info("Unzipping %s", zip_file)
                 zf.extractall(unzip_dir)
-
         except BadZipFile as e:
-            log.error(f"Error unzipping {zip_file}: {e}")
+            log.error("Error unzipping %s: %s", zip_file, e)
 
 
-# -----------------------------------------------------------------------------
-# DB helpers (kept)
-# -----------------------------------------------------------------------------
+# =================== geospatial / DB import helpers ===================
 
-def sql_query(query):
-    """Execute an arbitrary SQL string against the configured Postgres."""
-    try:
-        p = get_db_parameters("postgres")
-        conn = psycopg2.connect(
-            dbname=p["db"], user=p["user"], password=p["password"], host=p["host"], port=p["exposed_port"]
-        )
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            cur.execute(query)
-        conn.close()
-        log.debug(f"{query} executed successfully.")
-    except Exception as error:
-        log.error(f"ProgrammingError: {error}")
+def import_layers(
+    input_file: str,
+    layers: List[str],
+    schema: str,
+    prefix: str = "",
+    layer_names: Optional[List[str]] = None,
+    scope: bool = True,
+) -> None:
+    """Import vector data into PostGIS.
 
+    If the source supports multiple named layers (e.g., .gpkg/.gdb/.sqlite),
+    import each requested layer. Otherwise, import the file once with no
+    'layer' argument and store it under the target name.
 
-def do_cmd(cmd: str):
+    Args:
+        input_file: Path/URL to a vector dataset.
+        layers: Source layer names to import (for multi-layer files).
+        schema: Target DB schema.
+        prefix: Optional prefix for target tables.
+        layer_names: Optional explicit target table names (aligned with layers).
+        scope: If True, spatially mask reads to the configured envelope.
+
+    Raises:
+        KeyError: If EPSG is missing in DB parameters.
     """
-    Run a shell command and stream stdout lines to logger.
-    Useful for diagnosing external tool calls.
-    """
-    log.info(f"Executing command: {cmd}")
-    process = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
-    )
-    if process.stdout:
-        for line in process.stdout:
-            log.info(line.rstrip())
-    rc = process.wait()
-    if rc == 0:
-        log.info("Command completed successfully.")
-    else:
-        log.error(f"Command failed with return code {rc}")
+    gdf_scope = get_envelop() if scope else None
+    epsg = (_cfg.get_db_parameters("postgres") or {}).get(EPSG_FALLBACK_KEY)
+    if epsg is None:
+        raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
+    engine = get_db_engine(_cfg, db_name="postgres")
+
+    # Desired target table names
+    target_names = list(layer_names) if layer_names is not None else list(layers)
+    if prefix:
+        target_names = [f"{prefix}_{name}" for name in target_names]
+
+    # Detect if source is multi-layer
+    ext = Path(input_file).suffix.lower()
+    is_multilayer = ext in {GPKG_EXT, ".gdb", ".sqlite"}  # extend if needed
+
+    if not is_multilayer:
+        # Single-layer sources: read once and write under first target name (or fallback)
+        target_name = target_names[0] if target_names else (prefix or Path(input_file).stem)
+        log.info("Importing single-layer source into %s.%s", schema, target_name)
+        gdf = gpd.read_file(input_file, mask=gdf_scope)
+        gdf.to_crs(epsg=epsg, inplace=True)
+        gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
+        gdf.to_postgis(target_name, engine, if_exists="replace", schema=schema, index=False)
+        return
+
+    # Multi-layer path
+    for layer, layer_name in zip(layers, target_names):
+        log.info("Importing layer: %s into %s.%s", layer, schema, layer_name)
+        gdf = gpd.read_file(input_file, layer=layer, mask=gdf_scope)
+        gdf.to_crs(epsg=epsg, inplace=True)
+        gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
+        gdf.to_postgis(layer_name, engine, if_exists="replace", schema=schema, index=False)
 
 
-def get_db_parameters(service_name: str):
-    """
-    Read DB/service parameters from config.
-    If an 'infdb' section exists, overlay loader values.
-    """
-    parameters_loader = config.get_value(["loader", "hosts", service_name])
-
-    dict_config = config.get_config()
-    if "services" in dict_config:
-        parameters = config.get_value(["services", service_name])
-        log.debug(f"Using infdb configuration for: {service_name}")
-
-        # Override with loader entries if present
-        for key in parameters_loader.keys():
-            if key == "host":
-                parameters[key] = "host.docker.internal"  # default to local
-            if parameters_loader[key] != "None":
-                parameters[key] = parameters_loader[key]
-                log.debug(f"Key overridden: key = {parameters_loader[key]}")
-    else:
-        parameters = parameters_loader
-        log.debug(f"Using loader configuration for: {service_name}")
-
-    for key in parameters.keys():
-        if parameters[key] is None:
-            log.error(f"Service '{service_name}' not found in configuration.")
-
-    return parameters
+def get_envelop():
+    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
+    scope = _cfg.get_value([CONFIG_TOOL_NAME, "scope"])
+    if isinstance(scope, str):
+        scope = [scope]
+    ags_path = _cfg.get_path([CONFIG_TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
+    log.debug("Envelop Path (unzipped): %s", ags_path)
+    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT)
+    log.debug("Envelop Path (file): %s", path)
+    gdf = gpd.read_file(path, layer="vg5000_gem")
+    return gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
 
 
-def get_db_engine(service_name: str):
-    """Return a SQLAlchemy engine for the given service."""
-    p = get_db_parameters(service_name)
-    db_url = f"postgresql://{p['user']}:{p['password']}@{p['host']}:{p['exposed_port']}/{p['db']}"
-    return sqlalchemy.create_engine(db_url)
+# ============================== file helpers ==============================
+
+def get_all_files(folder_path: str, ending: str) -> list[str]:
+    """Recursively collect all files under `folder_path` with the given ending."""
+    files: list[str] = []
+    for dirpath, _, filenames in os.walk(folder_path):
+        for filename in filenames:
+            if filename.lower().endswith(ending):
+                files.append(os.path.join(dirpath, filename))
+    files.sort()
+    return files
 
 
-# -----------------------------------------------------------------------------
-# File/encoding helpers (kept)
-# -----------------------------------------------------------------------------
+def get_file(folder_path: str, filename: str, ending: str) -> Optional[str]:
+    """Return the newest file path in `folder_path` containing `filename` and ending with `ending`."""
+    files = get_all_files(folder_path, ending)
+    matching = [f for f in files if filename.lower() in f.lower()]
+    if not matching:
+        log.error("No files found containing '%s' with ending '%s' in %s", filename, ending, folder_path)
+        return None
+    newest = max(matching, key=os.path.getmtime)
+    return newest
+
+
+def get_website_links(url: str) -> list[str]:
+    """Return all .zip links found on the given page (absolute or relative hrefs)."""
+    soup = _fetch_html(url)
+    links = [a["href"] for a in soup.find_all("a", href=True) if a["href"].endswith(ZIP_EXT)]
+    for link in links:
+        log.debug(link)
+    return links
+
+
+def get_file_from_url(url: str):
+    """Split a URL into (filename, stem, extension) triple."""
+    path = urlparse(url).path
+    filename = os.path.basename(path)
+    name, extension = os.path.splitext(filename)
+    return filename, name, extension
+
+
+# ======================= encoding / processes =======================
 
 def ensure_utf8_encoding(filepath: str) -> str:
-    """
-    Return a UTF-8 path: either the original (if already UTF-8) or a new *_utf8.csv
-    created with a safe transcode. Keeps old behavior.
-    """
+    """Detect file encoding; if not UTF-8, re-encode to a temp UTF-8 CSV and return its path."""
     with open(filepath, "rb") as f:
-        raw_data = f.read()
-        result = chardet.detect(raw_data)
+        raw = f.read()
+        result = chardet.detect(raw)
         source_encoding = result["encoding"]
 
     if source_encoding is None:
         raise ValueError(f"Could not detect encoding of file: {filepath}")
 
     if source_encoding.lower() != "utf-8":
-        log.info(f"Re-encoding file from {source_encoding} to UTF-8: {filepath}")
+        log.info("Re-encoding file from %s to UTF-8: %s", source_encoding, filepath)
         temp_path = filepath + "_utf8.csv"
         with open(filepath, "r", encoding=source_encoding, errors="replace") as src, \
              open(temp_path, "w", encoding="utf-8") as dst:
@@ -346,6 +394,8 @@ def ensure_utf8_encoding(filepath: str) -> str:
     return filepath
 
 
+def get_number_processes() -> int:
+    """Determine worker process count based on CPU count and config max_cores."""
 def get_all_files(folder_path, ending):
     """Recursively collect all files whose names end with `ending`."""
     out = []
@@ -628,10 +678,8 @@ def get_number_processes():
     Returns at least 1.
     """
     number_processes = 1
-    max_processes = config.get_value(["loader", "multiproccesing", "max_cores"])
-
-    if config.get_value(["loader", "multiproccesing", "status"]) == "active":
+    max_processes = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "max_cores"]) or 1
+    if _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"]) == "active":
         number_processes = min(multiprocessing.cpu_count(), max_processes)
-
-    log.debug(f"Max processes: {max_processes}, Number of processes: {number_processes}")
+    log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes

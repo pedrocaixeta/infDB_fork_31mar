@@ -19,7 +19,11 @@ ENV PATH="/root/.local/bin/:$PATH"
 # COPY requiremets into the container
 COPY pyproject.toml /app/pyproject.toml
 
-RUN uv sync
+## Install infdb package in editable mode
+# COPY ../../src/infdb_package /app/mnt/infdb_package
+# RUN uv pip install -e /app/mnt/infdb_package
+
+# RUN uv sync
 
 # Run main.py with uv and environment defined in pyproject.toml
 CMD ["uv", "run", "python", "main.py"]

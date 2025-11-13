@@ -7,7 +7,7 @@ services:
             - ${CONFIG_INFDB_PATH}:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
             - ./configs:/app/configs #:ro # for configs
             - .:/app/ #:ro # for source code # for development only
-            - ../../src/infdb-package:/app/mnt/infdb-package
+            - ../../src/infdb_package:/app/mnt/infdb_package
             - /app/.venv # Exclude .venv from volume mount
         extra_hosts:
             - "host.docker.internal:host-gateway"
