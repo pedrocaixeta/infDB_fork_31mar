@@ -138,7 +138,8 @@ def download_files(urls, base_path: str) -> list[str]:
         else:
             log.info("File %s downloading ...", target_path)
             obj.start(blocking=False)
-            objs.append(obj)
+        
+        objs.append(obj)
 
     files: list[str] = []
     for obj in objs:
