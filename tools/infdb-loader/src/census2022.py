@@ -8,6 +8,7 @@ import geopandas as gpd
 from charset_normalizer import from_path
 
 from infdb import InfdbClient, InfdbConfig, InfdbLogger
+from infdb import InfDB
 from . import utils
 
 
@@ -41,7 +42,7 @@ def _init_logger_for_process(cfg: InfdbConfig) -> logging.Logger:
     return infdb_logger.setup_worker_logger()
 
 
-def load(log_queue: mp.Queue) -> None:
+def load(infdb: InfDB) -> None:
     """Entry point to download, validate, and process Zensus 2022 datasets.
 
     Behavior preserved:
@@ -89,7 +90,6 @@ def load(log_queue: mp.Queue) -> None:
     unzip_path = cfg.get_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
     os.makedirs(unzip_path, exist_ok=True)
 
-    # Parallelize like before (no change)
     number_processes = utils.get_number_processes()
     with mp.Pool(
         processes=number_processes,
@@ -109,6 +109,9 @@ def process_dataset(dataset: Dict[str, Any]) -> bool:
         True on success or skip; False when an exception is encountered (logged).
     """
     try:
+        infdb = InfDB(tool_name=TOOL_NAME)
+        log = infdb.get_worker_logger()
+
         log.info("Working on %s", dataset["name"])
 
         # status gate
@@ -119,27 +122,27 @@ def process_dataset(dataset: Dict[str, Any]) -> bool:
         # fresh cfg (per-process)
         cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
 
-        years: Iterable[int] = cfg.get_value([TOOL_NAME, "sources", "zensus_2022", "years"])
+        years: Iterable[int] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "years"])
         if dataset["year"] not in years:
             log.info("%s skips, not in years list", dataset["name"])
             return True
 
         # Download INTO the zip directory and use the returned file path
-        zip_dir = cfg.get_path([TOOL_NAME, "sources", "zensus_2022", "path", "zip"], type="loader")
+        zip_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "zip"], type="loader")
         link = dataset["url"]
-        downloaded = utils.download_files(link, zip_dir)  # returns [<zip_file_path>]
+        downloaded = utils.download_files(link, zip_dir, max_concurrent=1 )  # returns [<zip_file_path>]
         zip_file = downloaded[0]
 
         # Unzip using the real file path
-        unzip_dir = cfg.get_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
+        unzip_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
         folder_path = os.path.join(unzip_dir, dataset["table_name"])
         utils.unzip(zip_file, folder_path)
 
         # Export to PostGIS for each configured resolution
-        resolutions = config.get_value(["loader", "sources", "zensus_2022", "resolutions"])
-        prefix = config.get_value(["loader", "sources", "zensus_2022", "prefix"])
-        schema = config.get_value(["loader", "sources", "zensus_2022", "schema"])
-        epsg = utils.get_db_parameters("postgres")["epsg"]  # target DB SRID
+        resolutions : List[str] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "resolutions"])
+        prefix = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "prefix"])
+        schema = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "schema"])
+        epsg = cfg.get_db_parameters("postgres")["epsg"]  # target DB SRID
 
         for resolution in resolutions:
             log.info("Processing %s with %s ...", dataset["name"], resolution)
@@ -173,29 +176,10 @@ def process_dataset(dataset: Dict[str, Any]) -> bool:
                 create_spatial_index=True,     # gives you good query perf right away
             )  # NEW: main speed-up
 
-            # -------------------------
-            # OPTIONAL local save (kept, simplified)
-            # Since we now stream directly to DB, there is no GeoDataFrame in memory.
-            # If you still want a local artifact, we can copy the source CSV to a processed folder.
-            # -------------------------
-            save_local = config.get_value(["loader", "sources", "zensus_2022", "save_local"])
-            if save_local == "active":
-                out_dir = cfg.get_path([TOOL_NAME, "sources", "zensus_2022", "path", "processed"], type="loader")
-                os.makedirs(out_dir, exist_ok=True)
-                gdf_clipped.to_file(
-                    os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
-                    layer=table_name,
-                    driver=GPKG_DRIVER,
-                )
-                gdf_clipped.to_csv(
-                    os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}_{table_name}.csv"),
-                    index=False,
-                )
-
-            log.info("Processed sucessfully %s", file)
+            log.info(f"Processed successfully {csv_path}")
 
     except Exception as err:
-        log.exception("An error occurred while processing file: %s %s", dataset.get("name"), str(err))
+        log.exception(f"An error occurred while processing file: {dataset['name']} {str(err)}")
         return False
 
     return True

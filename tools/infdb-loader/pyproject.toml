@@ -20,7 +20,7 @@ dependencies = [
     "numpy",
     "wetterdienst==0.87.0",
     "duckdb>=1.0.0",
+    "marshmallow>=3.13,<4",
     "charset-normalizer",
-    "marshmallow>=3.13,<4",   # ensure environs compatibility
-    "infdb @ file:/app/mnt/infdb-package",
+    "infdb @ file:/app/mnt/infdb_package",
 ]

@@ -6,6 +6,9 @@ import csv
 import time
 import random
 import logging
+import subprocess
+import sqlalchemy
+import psycopg2
 from pathlib import Path
 from typing import Iterable, List, Optional
 
@@ -44,8 +47,6 @@ log = logging.getLogger(LOGGER_NAME)
 # Single shared config object per process
 _cfg = InfdbConfig(tool_name=CONFIG_TOOL_NAME, config_path=CONFIG_DIR)
 
-# Single shared config object per process
-_cfg = InfdbConfig(tool_name="loader", config_path="configs")
 
 # ============================== Internal helpers ==============================
 
@@ -98,10 +99,6 @@ def any_element_in_string(target_string: str, elements: Iterable[str]) -> bool:
     return any(element in target_string for element in elements)
 
 
-# -----------------------------------------------------------------------------
-# HTML helpers (kept)
-# -----------------------------------------------------------------------------
-
 # ======================== downloading / scraping ========================
 
 def get_links(url: str, ending: str, flt: str) -> list[str]:
@@ -127,13 +124,6 @@ def get_links(url: str, ending: str, flt: str) -> list[str]:
     return links
 
 
-def get_file_from_url(url):
-    """Return (filename, name_without_ext, extension) from a URL."""
-    path = urlparse(url).path
-    filename = os.path.basename(path)
-    name, extension = os.path.splitext(filename)
-    return filename, name, extension
-
 
 # -----------------------------------------------------------------------------
 # Downloader (new: throttled, retried, atomic)
@@ -147,10 +137,7 @@ def download_files(urls, base_path, max_concurrent=3, max_retries=4, backoff_bas
     - Saves atomically (write to .part then os.replace).
     - If `urls` is a single string, it is treated as list [urls].
     - Returns a list of absolute local file paths.
-
-    Backward compatible with previous usage:
-      old: download_files(url, base_path_dir)
-      now: same signature; you can also pass multiple URLs.
+    - Can also pass multiple URLs.
     """
     if isinstance(urls, str):
         urls = [urls]
@@ -229,10 +216,6 @@ def download_files(urls, base_path, max_concurrent=3, max_retries=4, backoff_bas
     return results
 
 
-# -----------------------------------------------------------------------------
-# ZIP handling (kept, with small safety)
-# -----------------------------------------------------------------------------
-
 def unzip(zip_files, unzip_dir: str) -> None:
     """Extract one or more zip files into `unzip_dir`, skipping if already extracted.
 
@@ -257,64 +240,6 @@ def unzip(zip_files, unzip_dir: str) -> None:
 
 # =================== geospatial / DB import helpers ===================
 
-def import_layers(
-    input_file: str,
-    layers: List[str],
-    schema: str,
-    prefix: str = "",
-    layer_names: Optional[List[str]] = None,
-    scope: bool = True,
-) -> None:
-    """Import vector data into PostGIS.
-
-    If the source supports multiple named layers (e.g., .gpkg/.gdb/.sqlite),
-    import each requested layer. Otherwise, import the file once with no
-    'layer' argument and store it under the target name.
-
-    Args:
-        input_file: Path/URL to a vector dataset.
-        layers: Source layer names to import (for multi-layer files).
-        schema: Target DB schema.
-        prefix: Optional prefix for target tables.
-        layer_names: Optional explicit target table names (aligned with layers).
-        scope: If True, spatially mask reads to the configured envelope.
-
-    Raises:
-        KeyError: If EPSG is missing in DB parameters.
-    """
-    gdf_scope = get_envelop() if scope else None
-    epsg = (_cfg.get_db_parameters("postgres") or {}).get(EPSG_FALLBACK_KEY)
-    if epsg is None:
-        raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
-    engine = get_db_engine(_cfg, db_name="postgres")
-
-    # Desired target table names
-    target_names = list(layer_names) if layer_names is not None else list(layers)
-    if prefix:
-        target_names = [f"{prefix}_{name}" for name in target_names]
-
-    # Detect if source is multi-layer
-    ext = Path(input_file).suffix.lower()
-    is_multilayer = ext in {GPKG_EXT, ".gdb", ".sqlite"}  # extend if needed
-
-    if not is_multilayer:
-        # Single-layer sources: read once and write under first target name (or fallback)
-        target_name = target_names[0] if target_names else (prefix or Path(input_file).stem)
-        log.info("Importing single-layer source into %s.%s", schema, target_name)
-        gdf = gpd.read_file(input_file, mask=gdf_scope)
-        gdf.to_crs(epsg=epsg, inplace=True)
-        gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
-        gdf.to_postgis(target_name, engine, if_exists="replace", schema=schema, index=False)
-        return
-
-    # Multi-layer path
-    for layer, layer_name in zip(layers, target_names):
-        log.info("Importing layer: %s into %s.%s", layer, schema, layer_name)
-        gdf = gpd.read_file(input_file, layer=layer, mask=gdf_scope)
-        gdf.to_crs(epsg=epsg, inplace=True)
-        gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
-        gdf.to_postgis(layer_name, engine, if_exists="replace", schema=schema, index=False)
-
 
 def get_envelop():
     """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
@@ -327,6 +252,22 @@ def get_envelop():
     log.debug("Envelop Path (file): %s", path)
     gdf = gpd.read_file(path, layer="vg5000_gem")
     return gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
+
+def get_all_envelops():
+    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
+    scope = _cfg.get_value([CONFIG_TOOL_NAME, "scope"])
+    if isinstance(scope, str):
+        scope = [scope]
+    ags_path = _cfg.get_path([CONFIG_TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
+    log.debug("Envelop Path (unzipped): %s", ags_path)
+    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT)
+    log.debug("Envelop Path (file): %s", path)
+    gdf = gpd.read_file(path, layer="vg5000_gem")
+    envelop = []
+    for s in scope:
+        envelop.append(gdf[gdf["AGS"].str.startswith(s)])
+    return envelop
+
 
 
 # ============================== file helpers ==============================
@@ -393,50 +334,15 @@ def ensure_utf8_encoding(filepath: str) -> str:
 
     return filepath
 
-
 def get_number_processes() -> int:
     """Determine worker process count based on CPU count and config max_cores."""
-def get_all_files(folder_path, ending):
-    """Recursively collect all files whose names end with `ending`."""
-    out = []
-    for dirpath, _, filenames in os.walk(folder_path):
-        for filename in filenames:
-            if filename.lower().endswith(ending):
-                out.append(os.path.join(dirpath, filename))
-    out.sort()
-    return out
+    number_processes = 1
+    max_processes = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "max_cores"]) or 1
+    if _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"]) == "active":
+        number_processes = min(multiprocessing.cpu_count(), max_processes)
+    log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
+    return number_processes
 
-
-def get_file(folder_path, filename, ending):
-    """
-    Find the newest file under `folder_path` that contains `filename` and ends with `ending`.
-    Returns a single path or None.
-    """
-    files = get_all_files(folder_path, ending)
-    matching = [f for f in files if filename.lower() in f.lower()]
-    if not matching:
-        log.error(f"No files found containing '{filename}' with ending '{ending}' in {folder_path}")
-        return None
-    newest = max(matching, key=os.path.getmtime)
-    log.debug(f"Selected file: {newest}")
-    return newest
-
-
-# -----------------------------------------------------------------------------
-# Scope / envelope (kept)
-# -----------------------------------------------------------------------------
-
-def get_envelop():
-    """
-    Build a GeoDataFrame for the configured scope (list of AGS prefixes).
-    Reads `vg5000_gem` from the GPKG found under the BKG unzip path.
-    """
-    scope = config.get_list(["loader", "scope"])
-    ags_path = config.get_path(["loader", "sources", "bkg", "path", "unzip"])
-    path = get_file(ags_path, filename="vg5000", ending=".gpkg")
-    gdf = gpd.read_file(path, layer="vg5000_gem")
-    gdf_scope = gdf[gdf["AGS"].str.startswith(tuple(scope))]
-    return gdf_scope
 
 
 # -----------------------------------------------------------------------------
@@ -448,7 +354,7 @@ def _pg_connstring_for_gdal():
     Build a GDAL/OGR PostgreSQL connection string.
     ogr2ogr expects 'dbname', not 'db'.
     """
-    p = get_db_parameters("postgres")
+    p = _cfg.get_db_parameters("postgres")
     return f"PG:host={p['host']} port={p['exposed_port']} dbname={p['db']} user={p['user']} password={p['password']}"
 
 
@@ -517,7 +423,7 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope
     This keeps the same function name so existing callers continue to work,
     but the internals are now much faster and simpler to maintain.
     """
-    epsg = get_db_parameters("postgres")["epsg"]
+    epsg = _cfg.get_db_parameters("postgres")["epsg"]
     dst = _pg_connstring_for_gdal()
 
     # Destination names
@@ -599,7 +505,7 @@ def fast_copy_points_csv(
       drop_existing: drop destination table if it exists
       create_spatial_index: create GiST index on geom
     """
-    params = get_db_parameters("postgres")
+    params = _cfg.get_db_parameters("postgres")
     srid_dst = srid_dst or params["epsg"]
 
     # Peek CSV header to build a generic TEXT staging table (robust to weird types) read first line (column names)
@@ -667,19 +573,3 @@ def fast_copy_points_csv(
     conn.close()
     log.info(f'Loaded {csv_path} -> {schema}.{table_name} via COPY + server-side geometry.')
 
-
-# -----------------------------------------------------------------------------
-# CPU count helper (kept)
-# -----------------------------------------------------------------------------
-
-def get_number_processes():
-    """
-    Get the maximum number of processes to use based on the configuration.
-    Returns at least 1.
-    """
-    number_processes = 1
-    max_processes = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "max_cores"]) or 1
-    if _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"]) == "active":
-        number_processes = min(multiprocessing.cpu_count(), max_processes)
-    log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
-    return number_processes

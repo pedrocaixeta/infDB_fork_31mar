@@ -62,15 +62,15 @@ def main() -> None:
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
-    processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
-    processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
-    processes.append(mp.Process(target=lod2.load,       args=(infdb,), name="lod2"))
-    processes.append(mp.Process(target=plz.load,        args=(infdb,), name="plz"))
-    processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
-    processes.append(mp.Process(target=census2022.load, args=(log_queue,), name="census2022"))
-    processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
+    #processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
+    # processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
+    # processes.append(mp.Process(target=lod2.load,       args=(infdb,), name="lod2"))
+    # processes.append(mp.Process(target=plz.load,        args=(infdb,), name="plz"))
+    # processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
+    processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
+    #processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
     # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
-    processes.append(mp.Process(target=opendata_bavaria.load, args=(log_queue,), name="opendata_bavaria"))
+    #processes.append(mp.Process(target=opendata_bavaria.load, args=(log_queue,), name="opendata_bavaria"))
 
     for process in processes:
         process.start()
