@@ -32,6 +32,14 @@ def load(infdb: InfDB) -> bool:
 
         url: str = infdb.get_config_value([TOOL_NAME, "sources", "plz", "url"])
         log.debug("url=%s", url)
+
+        # NEW: pick up auth (optional) without using `default=` kwarg
+        try:
+            auth_cfg = infdb.get_config_value([TOOL_NAME, "sources", "plz", "auth"])
+        except Exception:
+            auth_cfg = None
+
+        auth = utils.resolve_webdav_auth(auth_cfg)
         filename, *_ = utils.get_file_from_url(url)
 
         file_path = os.path.join(base_path, filename)
@@ -41,7 +49,7 @@ def load(infdb: InfDB) -> bool:
             log.info("File %s already exists.", file_path)
         else:
             log.info("File %s will be downloaded from %s", file_path, url)
-            utils.download_files(url, base_path)
+            utils.download_files(url, base_path, auth=auth)
 
         schema: str = infdb.get_config_value([TOOL_NAME, "sources", "plz", "schema"])
 
