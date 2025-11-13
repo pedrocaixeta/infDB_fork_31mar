@@ -172,12 +172,14 @@ def write_pg_service_conf(output_path: str) -> None:
     print(f"pg_service.conf written to {pg_service_path}")
 
 
-# def create_postgres_volume() -> None:
-#     """Create the PostgreSQL data volume directory if it does not exist."""
-#     base_path = cfg.get_value(["services", "postgres", "path", "base"])
-#     os.makedirs(base_path, exist_ok=True)
-#     print(f"PostgreSQL data volume directory ensured at {base_path}")
-# # Problem: Path to data volume is needed in compose.yml before this can run
+def create_postgres_volume() -> None:
+    """Create the PostgreSQL data volume directory if it does not exist."""
+    # base_path = cfg.get_value(["services", "postgres", "path", "base"])
+    name = cfg.get_value(["base", "name"])
+    base_path = os.path.join("mnt/infdb-data", name, "postgres")
+    os.makedirs(base_path, exist_ok=True)
+    print(f"PostgreSQL data volume directory ensured at {base_path}")
+# Problem: Path to data volume is needed in compose.yml before this can run
 
 # ============================== Script Entry ===========================
 
@@ -189,5 +191,6 @@ if __name__ == "__main__":
     setup_pgadmin_servers(PGADMIN_SERVERS_OUT)
     # write_pg_service_conf("mnt/infdb-root/.generated/")
     write_pg_service_conf(PG_SERVICE_CONF_OUT)
+    create_postgres_volume()
 
     print("Setup completed successfully. Configuration files generated.")

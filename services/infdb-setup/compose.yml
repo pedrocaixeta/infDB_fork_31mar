@@ -14,5 +14,6 @@ services:
             - ../../configs/config-infdb.yml:/app/configs/config-infdb.yml:ro # for infdb configs
             - ../../src/infdb_package:/app/mnt/infdb_package
             - ../../:/app/mnt/infdb-root
+            - ../../../data/:/app/mnt/infdb-data
 
             - /app/.venv
