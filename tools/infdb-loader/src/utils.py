@@ -125,8 +125,11 @@ def download_files(urls, base_path: str) -> list[str]:
     Returns:
         List of destination file paths (in the same order as started).
     """
-    if not os.path.isfile(base_path) and not os.path.exists(base_path):
-        os.makedirs(base_path, exist_ok=True)
+    # Create base path if base_path is supposed to be a directory
+    filename, name, extension = get_file_from_url(base_path)
+    if extension:
+        base_path = os.path.dirname(base_path)
+    os.makedirs(base_path, exist_ok=True)
     
     url_list = _ensure_list(urls)
     objs: list[SmartDL] = []

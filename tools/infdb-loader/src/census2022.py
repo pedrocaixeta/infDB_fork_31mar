@@ -54,7 +54,6 @@ def load(infdb: InfDB) -> None:
     # # package config + logger
     # cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
 
-    global log
     #log = _init_logger_for_process(cfg)
     log = infdb.get_worker_logger()
 
