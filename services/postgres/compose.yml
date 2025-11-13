@@ -15,8 +15,8 @@ services:
         ports:
             - ${SERVICES_POSTGRES_EXPOSED_PORT}:5432
         volumes:
-            # - ${SERVICES_POSTGRES_PATH_BASE}:/home/postgres/pgdata/data
-            - postgres-data:/home/postgres/pgdata/data
+            - ${SERVICES_POSTGRES_PATH_BASE}:/home/postgres/pgdata/data
+            # - postgres-data:/home/postgres/pgdata/data
         networks:
             - ${BASE_NETWORK_NAME}
         healthcheck:
@@ -29,8 +29,15 @@ services:
             timeout: 5s
             retries: 5
 
-volumes:
-    postgres-data:
+# volumes:
+#     postgres-data:
+#         driver: local
+#         driver_opts:
+#             type: none
+#             o: bind
+#             device: ${SERVICES_POSTGRES_PATH_BASE}
+
+
 
 include:
     - ../infdb-init/compose.yml
