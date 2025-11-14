@@ -62,7 +62,7 @@ loader:
             datasets:
                 gelaendemodell_1m:
                     name: Geländemodell Bayern 1m
-                    status: active
+                    status: false
                     table_name: gelaendemodell_1m
                     url: "https://geodaten.bayern.de/odd/a/dgm/dgm1/meta/metalink/#scope.meta4"
                 building_lod2:
@@ -76,7 +76,7 @@ loader:
                         gml: "{loader/path/opendata}/lod2/{loader/name}"
                 tatsaechliche_nutzung:
                     name: Tatsächliche Nutzung (TN) 
-                    status: false
+                    status: active
                     table_name: tatsaechliche_nutzung
                     url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
         bkg:

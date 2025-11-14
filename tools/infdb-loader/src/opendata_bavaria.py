@@ -1,443 +1,373 @@
-# opendata_bavaria.py
+"""
+OpenData Bavaria loader: DGM1 (terrain model), LoD2 buildings, and land use (TN).
+
+Optimizations:
+  - Uses InfDB package for config and logging
+  - Reuses shared clipping logic from utils
+  - Cleaner structure with consistent patterns
+  - Removed redundant code
+"""
 import os
 import logging
 import subprocess
 import json
 import re
+import shutil
 from pathlib import Path
+from sqlalchemy import text
 
-from . import config, utils, logger
-from infdb import InfDB
+from infdb import InfdbConfig, InfDB, InfdbClient
+from . import utils
 
-# optional: reuse existing LoD2 loader if enabled
+# Optional: reuse existing LoD2 loader if enabled
 try:
     from . import lod2 as lod2_loader
-except Exception:
+except ImportError:
     lod2_loader = None
 
+# Module logger
 log = logging.getLogger(__name__)
 
-# ---------- helpers ----------
+TOOL_NAME = "loader"
+CONFIG_DIR: str = "configs"
+DB_NAME: str = "postgres"
 
-def _gpkg_has_layer(gpkg: Path, layer_name: str) -> bool:
-    """Return True if gpkg contains layer_name (case-sensitive check)."""
-    try:
-        out = subprocess.check_output(["ogrinfo", "-ro", "-q", "-json", str(gpkg)], text=True)
-        data = json.loads(out)
-        layers = [lyr.get("name") for lyr in data.get("layers", []) if "name" in lyr]
-    except Exception:
-        # fallback to text parsing
-        out = subprocess.check_output(["ogrinfo", "-ro", "-q", str(gpkg)], text=True, stderr=subprocess.STDOUT)
-        layers = []
-        for line in out.splitlines():
-            line = line.strip()
-            if ":" in line and "(" in line:
-                name_part = line.split(":", 1)[1].strip()
-                name = name_part.split("(")[0].strip()
-                if name:
-                    layers.append(name)
-    return layer_name in layers
 
-def _gpkg_first_layer(gpkg: Path) -> str:
-    """Return the first layer name found in the GPKG, raise if none."""
-    try:
-        out = subprocess.check_output(["ogrinfo", "-ro", "-q", "-json", str(gpkg)], text=True)
-        data = json.loads(out)
-        layers = [lyr.get("name") for lyr in data.get("layers", []) if "name" in lyr]
-    except Exception:
-        out = subprocess.check_output(["ogrinfo", "-ro", "-q", str(gpkg)], text=True, stderr=subprocess.STDOUT)
-        layers = []
-        for line in out.splitlines():
-            line = line.strip()
-            if ":" in line and "(" in line:
-                name_part = line.split(":", 1)[1].strip()
-                name = name_part.split("(")[0].strip()
-                if name:
-                    layers.append(name)
-    if not layers:
-        raise RuntimeError(f"No layers found in {gpkg}")
-    return layers[0]
+# ==================== Helpers ====================
 
-def _gpkg_layers(gpkg: Path):
+def _gpkg_layers(gpkg: Path) -> list[str]:
     """List layer names in a GPKG."""
     try:
         out = subprocess.check_output(["ogrinfo", "-ro", "-q", "-json", str(gpkg)], text=True)
         data = json.loads(out)
         return [lyr.get("name") for lyr in data.get("layers", []) if "name" in lyr]
     except Exception:
+        # Fallback to text parsing
         out = subprocess.check_output(["ogrinfo", "-ro", "-q", str(gpkg)], text=True, stderr=subprocess.STDOUT)
-        names = []
-        for line in out.splitlines():
-            line = line.strip()
-            if ":" in line and "(" in line:
-                name_part = line.split(":", 1)[1].strip()
-                name = name_part.split("(")[0].strip()
-                if name:
-                    names.append(name)
-        return names
+        return [
+            line.split(":", 1)[1].split("(")[0].strip()
+            for line in out.splitlines()
+            if ":" in line and "(" in line
+        ]
 
-def _gpkg_fields(gpkg: Path, layer: str):
-    """List field names for a layer in a GPKG (simple parse of ogrinfo -so)."""
-    out = subprocess.check_output(["ogrinfo", "-so", "-ro", "-q", str(gpkg), layer], text=True)
-    fields = []
-    for ln in out.splitlines():
-        ln = ln.strip()
-        # lines look like: "AGS: String (0.0)"
-        if ":" in ln and "(" in ln and ")" in ln:
-            fname = ln.split(":", 1)[0].strip()
-            fields.append(fname)
-    return fields
 
-def _gpkg_layer_extent_epsg(gpkg: Path, layer: str):
-    """
-    Return (epsg:int|None, (minx,miny,maxx,maxy)) parsed from 'ogrinfo -so'.
-    """
+def _gpkg_layer_extent_epsg(gpkg: Path, layer: str) -> tuple[int | None, tuple[float, ...] | None]:
+    """Return (epsg, bbox) tuple parsed from ogrinfo."""
     out = subprocess.check_output(["ogrinfo", "-so", "-ro", "-q", str(gpkg), layer], text=True)
+    
+    # Parse EPSG
     epsg = None
-    m = re.search(r"EPSG:(\d+)", out)
-    if m:
+    if m := re.search(r"EPSG:(\d+)", out):
         epsg = int(m.group(1))
-    # Extent: (654000.000, 5395000.000) - (669000.000, 5407000.000)
-    bb = None
-    m2 = re.search(r"Extent:\s*\(([-\d\.]+),\s*([-\d\.]+)\)\s*-\s*\(([-\d\.]+),\s*([-\d\.]+)\)", out)
-    if m2:
-        bb = (float(m2.group(1)), float(m2.group(2)), float(m2.group(3)), float(m2.group(4)))
-    return epsg, bb
+    
+    # Parse extent
+    bbox = None
+    if m := re.search(r"Extent:\s*\(([-\d.]+),\s*([-\d.]+)\)\s*-\s*\(([-\d.]+),\s*([-\d.]+)\)", out):
+        bbox = tuple(map(float, m.groups()))
+    
+    return epsg, bbox
 
-def _bbox_intersects(a, b):
-    if not a or not b: return False
-    ax1, ay1, ax2, ay2 = a; bx1, by1, bx2, by2 = b
-    return not (ax2 < bx1 or bx2 < ax1 or ay2 < by1 or by2 < ay1)
 
-# ---------- main ----------
+def _distance_2d(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Euclidean distance between two 2D points."""
+    return ((a[0] - b[0])**2 + (a[1] - b[1])**2) ** 0.5
 
-def load(log_queue):
-    logger.setup_worker_logger(log_queue)
 
-    if not utils.if_active("opendata_bavaria"):
+# ==================== Main Loader ====================
+
+def load(infdb: InfDB) -> bool:
+    """Load OpenData Bavaria datasets: DGM1, LoD2, and TN.
+    
+    Args:
+        infdb: InfDB instance for config and logging
+        
+    Returns:
+        True on success, False on failure
+    """
+    try:
+        global log
+        log = infdb.get_worker_logger()
+
+        if not utils.if_active("opendata_bavaria"):
+            return True
+
+        # Enable PostGIS raster extension in public schema (required!)
+        try:
+            with infdb.connect() as db:
+                db.execute_query("CREATE EXTENSION IF NOT EXISTS postgis_raster SCHEMA public CASCADE;")
+                log.info("PostGIS raster extension enabled")
+        except Exception as ext_err:
+            log.warning(f"Could not enable PostGIS raster extension: {ext_err}")
+            log.info("Continuing without raster support (will only create COG files)")
+
+        # Get base path
+        base_path = Path(infdb.get_config_path([TOOL_NAME, "path", "opendata"], type="loader"))
+        base_path.mkdir(parents=True, exist_ok=True)
+
+        datasets = infdb.get_config_value([TOOL_NAME, "sources", "opendata_bavaria", "datasets"]) or {}
+        cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
+
+        # Database connection parameters
+        db_params = cfg.get_db_parameters("postgres")
+        pgurl = f'postgresql://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}:{db_params["exposed_port"]}/{db_params["db"]}'
+        target_epsg = db_params["epsg"]
+
+        # DGM1 (Terrain Model)
+        dgm1_cfg = datasets.get("gelaendemodell_1m", {})
+        if dgm1_cfg.get("status") == "active":
+            _load_dgm1(infdb, dgm1_cfg, base_path, pgurl, target_epsg)
+
+        # LoD2 Buildings
+        lod2_cfg = datasets.get("building_lod2", {})
+        if lod2_cfg.get("status") == "active":
+            if lod2_loader is None:
+                log.warning("LoD2: loader not available; skipping.")
+            else:
+                log.info("LoD2: delegating to existing loader")
+                lod2_loader.load(infdb)
+
+        # Land Use (Tatsächliche Nutzung)
+        tn_cfg = datasets.get("tatsaechliche_nutzung", {})
+        if tn_cfg.get("status") == "active":
+            _load_tatsaechliche_nutzung(infdb, tn_cfg, base_path, pgurl, target_epsg)
+
+        log.info("OpenData Bavaria: complete.")
+        return True
+
+    except Exception as err:
+        log.exception(f"An error occurred in OpenData Bavaria loader: {str(err)}")
+        return False
+
+
+# ==================== DGM1 Loader ====================
+
+def _load_dgm1(infdb: InfDB, cfg: dict, base_path: Path, pgurl: str, target_epsg: int):
+    """Load DGM1 terrain rasters into PostGIS."""
+
+    url_template = cfg["url"]
+    schema = cfg.get("schema", "opendata")
+    table = cfg.get("table_name", "gelaendemodell_1m")
+    import_mode = cfg.get("import-mode", "delete")
+    srid = int(cfg.get("srid", 25832))
+
+    dgm1_dir = base_path / "gelaendemodell_1m"
+    dgm1_dir.mkdir(parents=True, exist_ok=True)
+
+    # Ensure schema exists
+    with infdb.connect() as db:
+        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+
+    # Get clipping bbox using shared utils
+    bbox = None
+    clip_wkt, clip_method, _ = utils.get_clip_geometry(target_crs=srid, method='bbox')
+    if clip_wkt:
+        # Extract bbox from WKT POLYGON
+        coords = re.findall(r"([-\d.]+)\s+([-\d.]+)", clip_wkt)
+        if len(coords) >= 4:
+            xs = [float(c[0]) for c in coords]
+            ys = [float(c[1]) for c in coords]
+            bbox = (min(xs), min(ys), max(xs), max(ys))
+            log.info(f"DGM1: clipping to bbox {bbox}")
+
+    # Get scope codes (5-digit Landkreis)
+    scope_list = infdb.get_config_value([TOOL_NAME, "scope"]) or []
+    if isinstance(scope_list, str):
+        scope_list = [scope_list]
+    kreis5_list = sorted({str(a)[:5] for a in scope_list if str(a)})
+    
+    if not kreis5_list:
+        log.warning("DGM1: no scope codes; skipping.")
         return
 
-    # keep everything under the same tree as other sources
-    base_path = config.get_path(["loader", "path", "opendata"])
-    os.makedirs(base_path, exist_ok=True)
+    # Check if raster2pgsql is available
+    can_import = bool(shutil.which("raster2pgsql"))
+    if not can_import:
+        log.warning("DGM1: 'raster2pgsql' not found; will only create COG files.")
 
-    ags_list = config.get_list(["loader", "scope"]) or []
-    datasets = (config.get_value(["loader", "sources", "opendata_bavaria", "datasets"]) or {})
+    # Drop table if delete mode
+    _psql_quiet = f'psql --no-psqlrc -q -v ON_ERROR_STOP=1 -X "{pgurl}"'
+    if import_mode == "delete" and can_import:
+        os.system(f'{_psql_quiet} -c "DROP TABLE IF EXISTS {schema}.{table} CASCADE;" > /dev/null 2>&1')
 
-    # ==========================================================
-    # 1) Geländemodell Bayern 1m (DGM1) -> VRT -> gdalwarp crop -> COG -> PostGIS
-    # ==========================================================
-    dgm1_cfg = datasets.get("gelaendemodell_1m", {})
-    if dgm1_cfg.get("status") == "active":
-        import shutil, subprocess
+    created_any = False
 
-        dgm1_url_tpl = dgm1_cfg["url"]  # .../dgm1/meta/metalink/#scope.meta4
-        dgm1_root = Path(base_path) / "gelaendemodell_1m"
-        dgm1_root.mkdir(parents=True, exist_ok=True)
+    for kreis5 in kreis5_list:
+        log.info(f"DGM1: processing Landkreis {kreis5}")
+        
+        k_dir = dgm1_dir / kreis5
+        k_dir.mkdir(parents=True, exist_ok=True)
 
-        schema = dgm1_cfg.get("schema", "opendata")
-        table = dgm1_cfg.get("table_name", "gelaendemodell_1m")
-        fqtn = f"{schema}.{table}"
-        import_mode = dgm1_cfg.get("import-mode", "delete")
-        srid = int(dgm1_cfg.get("srid", 25832))
+        # Download metalink
+        meta_url = url_template.replace("#scope", kreis5)
+        utils.do_cmd(
+            f'aria2c -c --allow-overwrite=false --auto-file-renaming=false '
+            f'--summary-interval=60 --console-log-level=warn '
+            f'"{meta_url}" -d "{k_dir}"'
+        )
 
-        params = utils.get_db_parameters("postgres")
-        pgurl = f'postgresql://{params["user"]}:{params["password"]}@{params["host"]}:{params["exposed_port"]}/{params["db"]}'
+        # Unzip archives
+        utils.do_cmd(f'find "{k_dir}" -iname "*.zip" -exec unzip -n {{}} -d "{k_dir}" \\;')
 
-        # ---------- quiet psql wrapper ----------
-        _PSQL = f'psql --no-psqlrc -q -v ON_ERROR_STOP=1 -X "{pgurl}"'
-        def _pg_ok(sql: str) -> bool:
-            # return True if command succeeded (and keep logs quiet)
-            rc = os.system(f'{_PSQL} -c "{sql}" > /dev/null')
-            return rc == 0
+        # Find raster tiles
+        srcs = subprocess.check_output(
+            ["find", str(k_dir), "-type", "f", "(", "-iname", "*.tif", "-o", "-iname", "*.asc", ")", "-print"],
+            text=True
+        ).strip()
 
-        # Ensure schema exists (idempotent)
-        _pg_ok(f'CREATE SCHEMA IF NOT EXISTS {schema};')
+        if not srcs:
+            log.warning(f"DGM1: no rasters found in {k_dir}; skipping.")
+            continue
 
+        # Build VRT
+        vrt = k_dir / f"dgm1_{kreis5}.vrt"
+        listfile = k_dir / "inputs.txt"
+        listfile.write_text(srcs.replace(" ", "\n"), encoding="utf-8")
+        utils.do_cmd(f'gdalbuildvrt -resolution highest -r bilinear -input_file_list "{listfile}" "{vrt}"')
 
-        # ---------- scope bbox ----------
-        bbox = None
+        # Create COG (Cloud-Optimized GeoTIFF)
+        cog_name = f"dgm1_{kreis5}_crop.tif" if bbox else f"dgm1_{kreis5}.tif"
+        final_cog = k_dir / cog_name
+        tmp_cog = k_dir / f"{cog_name}.tmp"
+
+        gdalwarp_opts = (
+            f'-of GTiff -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 '
+            f'-co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 '
+            f'-r bilinear -t_srs EPSG:{srid} -overwrite'
+        )
+
+        if bbox:
+            xmin, ymin, xmax, ymax = bbox
+            utils.do_cmd(f'gdalwarp {gdalwarp_opts} -te {xmin} {ymin} {xmax} {ymax} "{vrt}" "{tmp_cog}"')
+        else:
+            utils.do_cmd(f'gdalwarp {gdalwarp_opts} "{vrt}" "{tmp_cog}"')
+
+        # Validate and publish
         try:
-            gdf_scope = utils.get_envelop()
-            if gdf_scope is not None and not gdf_scope.empty:
-                bb = gdf_scope.to_crs(epsg=srid).total_bounds
-                bbox = (bb[0], bb[1], bb[2], bb[3])
-                log.info(f"DGM1: crop bbox EPSG:{srid} = {bb[0]:.2f},{bb[1]:.2f} — {bb[2]:.2f},{bb[3]:.2f}")
-            else:
-                log.warning("DGM1: scope envelope is empty; importing full Landkreis tiles.")
-        except Exception as e:
-            log.warning(f"DGM1: could not compute scope bbox; importing full Landkreis tiles. Reason: {e}")
+            utils.do_cmd(f'gdalinfo "{tmp_cog}" -stats -nomd')
+            tmp_cog.replace(final_cog)
+            log.info(f"DGM1: created {final_cog}")
+        except Exception:
+            log.error(f"DGM1: invalid COG for {kreis5}; skipping.")
+            continue
 
-        # ---------- derive Landkreis (5-digit) list ----------
-        ags_list = config.get_list(["loader", "scope"]) or []
-        kreis5_list = sorted({str(a)[:5] for a in ags_list if str(a)})
-        if not kreis5_list:
-            log.warning("DGM1: no scope codes given; using raw AGS list as fallback.")
-            kreis5_list = [str(a) for a in ags_list]
-
-        # ---------- DROP TABLE in delete-mode ----------
-        if import_mode == "delete" and can_import_to_db:
-            utils.do_cmd(f'{_PSQL} -c "DROP TABLE IF EXISTS {fqtn} CASCADE;"')
-
-        # Make sure raster2pgsql exists if we plan to import
-        raster2pgsql_path = shutil.which("raster2pgsql")
-        if can_import_to_db and not raster2pgsql_path:
-            log.warning("DGM1: 'raster2pgsql' not found in PATH; will skip DB import and only build COG(s).")
-            can_import_to_db = False
-
-        created_any = False
-
-        for kreis5 in kreis5_list:
-            k_dir = dgm1_root / kreis5
-            k_dir.mkdir(parents=True, exist_ok=True)
-
-            meta_url = dgm1_url_tpl.replace("#scope", kreis5)
-            log.info("DGM1: downloading Landkreis %s from %s", kreis5, meta_url)
-            utils.do_cmd(
-                f'aria2c -c --allow-overwrite=false --auto-file-renaming=false '
-                f'--summary-interval=60 --console-log-level=warn '
-                f'"{meta_url}" -d "{k_dir}"'
+        # Import to PostGIS
+        if can_import:
+            append_flag = "-a" if created_any or import_mode == "append" else ""
+            pipe = (
+                f'raster2pgsql -q -s {srid} -I -C -M -t 256x256 "{final_cog}" {schema}.{table} {append_flag} | '
+                f'{_psql_quiet}'
             )
-
-            utils.do_cmd(f'find "{k_dir}" -iname "*.zip" -print0 | xargs -0 -I{{}} unzip -n "{{}}" -d "{k_dir}"')
-
-            # Gather source rasters
-            src_list_cmd = f'find "{k_dir}" -type f \\( -iname "*.tif" -o -iname "*.asc" \\) -printf "%p "'
             try:
-                srcs = subprocess.check_output(["bash", "-lc", src_list_cmd], text=True).strip()
-            except Exception:
-                srcs = ""
-
-            if not srcs:
-                log.warning("DGM1: no raster tiles found under %s (Landkreis %s). Skipping.", k_dir, kreis5)
-                continue
-
-            # --- Build VRT from a list file (safer than long argv) ---
-            vrt = k_dir / f"dgm1_{kreis5}.vrt"
-            listfile = k_dir / f"dgm1_{kreis5}_inputs.txt"
-            try:
-                with open(listfile, "w", encoding="utf-8") as f:
-                    for p in srcs.split():
-                        f.write(p + "\n")
-            except Exception as e:
-                log.error("DGM1: failed to write listfile %s: %s", listfile, e)
-                continue
-
-            utils.do_cmd(f'gdalbuildvrt -resolution highest -r bilinear -input_file_list "{listfile}" "{vrt}"')
-
-            # --- Crop/reproject to COG using a TEMP file, validate, then publish ---
-            final_cog = k_dir / (f"dgm1_{kreis5}_crop.tif" if bbox else f"dgm1_{kreis5}.tif")
-            tmp_cog   = k_dir / (final_cog.name + ".tmp")
-            if tmp_cog.exists():
-                try: tmp_cog.unlink()
-                except: pass
-
-            gdalwarp_common = (
-                f'-of GTiff -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 '
-                f'-co BIGTIFF=IF_SAFER -co COPY_SRC_OVERVIEWS=YES '
-                f'-co BLOCKXSIZE=512 -co BLOCKYSIZE=512 '
-                f'-r bilinear -t_srs EPSG:{srid} -overwrite '
-            )
-
-            if bbox:
-                xmin, ymin, xmax, ymax = bbox
-                utils.do_cmd(f'gdalwarp {gdalwarp_common} -te {xmin} {ymin} {xmax} {ymax} "{vrt}" "{tmp_cog}"')
-            else:
-                utils.do_cmd(f'gdalwarp {gdalwarp_common} "{vrt}" "{tmp_cog}"')
-
-            # Validate the temp output before publishing
-            try:
-                utils.do_cmd(f'gdalinfo "{tmp_cog}" -stats -nomd')
-            except Exception:
-                if tmp_cog.exists():
-                    try: tmp_cog.unlink()
-                    except: pass
-                log.error("DGM1: gdalwarp produced an invalid file for Landkreis %s; skipping this tile.", kreis5)
-                continue
-
-            # publish atomically
-            if final_cog.exists():
-                try: final_cog.unlink()
-                except: pass
-            tmp_cog.rename(final_cog)
-            log.info("DGM1: created COG %s", final_cog)
-
-            # Import into PostGIS only if extensions & tool are available
-            if can_import_to_db:
-                append_flag = "-a" if created_any or import_mode == "append" else ""
-                pipe = (
-                    f'{raster2pgsql_path} -q -s {srid} -I -C -M -t 256x256 "{final_cog}" {fqtn} {append_flag} | '
-                    f'{_PSQL}'
-                )
                 utils.do_cmd(pipe)
                 created_any = True
+                log.info(f"DGM1: imported {kreis5}")
+            except Exception as e:
+                log.error(f"DGM1: import failed for {kreis5}: {e}")
 
-        # Final report
-        if can_import_to_db:
-            exists = os.popen(f'{_PSQL} -tAc "SELECT to_regclass(\'{fqtn}\')"').read().strip()
-            if exists:
-                utils.do_cmd(f'{_PSQL} -c "SELECT COUNT(*) AS tiles FROM {fqtn};"')
-                # Optional raster table helper index + analyze
-                utils.do_cmd(f'{_PSQL} -c "CREATE INDEX IF NOT EXISTS {table}_rast_gix ON {fqtn} USING GIST (ST_ConvexHull(rast));"')
-                utils.do_cmd(f'{_PSQL} -c "ANALYZE {fqtn};"')
-                log.info("DGM1: imported rasters into %s", fqtn)
-            else:
-                log.warning("DGM1: no rasters imported; table %s does not exist.", fqtn)
-        else:
-            log.warning("DGM1: skipped PostGIS import (missing privileges/extensions or raster2pgsql). COG files are available on disk.")
-
-
-
-
-    # ==========================================================
-    # 2) Building LoD2 (optional) -> delegate to existing loader
-    # ==========================================================
-    lod2_cfg = datasets.get("building_lod2", {})
-    if lod2_cfg.get("status") == "active":
-        if lod2_loader is None:
-            log.warning("building_lod2 is active but lod2 loader not importable; skipping.")
-        else:
-            log.info("LoD2: delegating to existing lod2 loader")
-            lod2_loader.load(log_queue)  # uses your current sources.lod2 config
-
-    # ==========================================================
-    # 3) Tatsächliche Nutzung (TN) -> GPKG to PostGIS (scoped, robust)
-    # ==========================================================
-    tn_cfg = datasets.get("tatsaechliche_nutzung", {})
-    if tn_cfg.get("status") == "active":
-
-        def _gpkg_layers(gpkg: Path):
-            """List layer names in a GPKG (OGR JSON first, then text)."""
-            try:
-                out = subprocess.check_output(["ogrinfo", "-ro", "-q", "-json", str(gpkg)], text=True)
-                data = json.loads(out)
-                return [lyr.get("name") for lyr in data.get("layers", []) if "name" in lyr]
-            except Exception:
-                out = subprocess.check_output(["ogrinfo", "-ro", "-q", str(gpkg)], text=True, stderr=subprocess.STDOUT)
-                names = []
-                for line in out.splitlines():
-                    line = line.strip()
-                    if ":" in line and "(" in line:
-                        name_part = line.split(":", 1)[1].strip()
-                        name = name_part.split("(")[0].strip()
-                        if name:
-                            names.append(name)
-                return names
-
-        def _gpkg_layer_extent_epsg(gpkg: Path, layer: str):
-            """Return (epsg:int|None, (minx,miny,maxx,maxy)) parsed from 'ogrinfo -so'."""
-            out = subprocess.check_output(["ogrinfo", "-so", "-ro", "-q", str(gpkg), layer], text=True)
-            epsg = None
-            m = re.search(r"EPSG:(\d+)", out)
-            if m:
-                epsg = int(m.group(1))
-            bb = None
-            m2 = re.search(r"Extent:\s*\(([-\d\.]+),\s*([-\d\.]+)\)\s*-\s*\(([-\d\.]+),\s*([-\d\.]+)\)", out)
-            if m2:
-                bb = (float(m2.group(1)), float(m2.group(2)), float(m2.group(3)), float(m2.group(4)))
-            return epsg, bb
-
-        def _dist(a, b):
-            return ((a[0]-b[0])**2 + (a[1]-b[1])**2) ** 0.5
-
-        url = tn_cfg["url"]
-        table = tn_cfg.get("table_name", "tatsaechliche_nutzung")
-        schema = tn_cfg.get("schema", "opendata")
-        import_mode = tn_cfg.get("import-mode", "delete")
-        overwrite = (import_mode != "append")
-
-        base_path = config.get_path(["loader", "path", "opendata"])
-        tn_dir = Path(base_path) / "tatsaechliche_nutzung"
-        tn_dir.mkdir(parents=True, exist_ok=True)
-        gpkg_path = tn_dir / "Nutzung_kreis.gpkg"
-
-        # Skip download if already present
-        if gpkg_path.exists() and gpkg_path.stat().st_size > 1_000_000_000:
-            log.info("TN: local GPKG present (%.1f GB). Skipping download.", gpkg_path.stat().st_size/1e9)
-        else:
-            utils.do_cmd(
-                f'aria2c -c -x4 -s4 --summary-interval=60 --console-log-level=warn '
-                f'-d "{tn_dir}" -o "Nutzung_kreis.gpkg" "{url}"'
-            )
-
-        # Ensure schema exists + get EPSG/PG URL
-        params = utils.get_db_parameters("postgres")
-        pgurl = f'postgresql://{params["user"]}:{params["password"]}@{params["host"]}:{params["exposed_port"]}/{params["db"]}'
-        epsg = params["epsg"]
-        utils.do_cmd(f'psql "{pgurl}" -c "CREATE SCHEMA IF NOT EXISTS {schema};"')
-        fqtn = f"{schema}.{table}"
-
-        # Figure out all layers
-        layers = _gpkg_layers(gpkg_path)
-        if not layers:
-            raise RuntimeError(f"TN: no layers found in {gpkg_path}")
-        log.info("TN: found %d layers.", len(layers))
-
-        # ----- order layers by proximity to scope centroid (EPSG from DB) -----
-        scope_centroid = None
+    # Final indexing
+    if can_import and created_any:
         try:
-            gdf_scope = utils.get_envelop()
-            if gdf_scope is not None and not gdf_scope.empty:
-                g_scope = gdf_scope.to_crs(epsg=epsg).unary_union
-                scope_centroid = (g_scope.centroid.x, g_scope.centroid.y)
+            utils.do_cmd(f'{_psql_quiet} -c "CREATE INDEX IF NOT EXISTS {table}_rast_gix ON {schema}.{table} USING GIST(ST_ConvexHull(rast));"')
+            utils.do_cmd(f'{_psql_quiet} -c "ANALYZE {schema}.{table};"')
+            log.info(f"DGM1: indexed {schema}.{table}")
         except Exception as e:
-            log.warning("TN: could not compute scope centroid: %s", e)
+            log.warning(f"DGM1: indexing failed: {e}")
 
-        near, fallback = [], []
-        for lyr in layers:
-            lyr_epsg, bb = _gpkg_layer_extent_epsg(gpkg_path, lyr)
-            if scope_centroid and bb and (lyr_epsg == epsg or lyr_epsg in (None, 0)):
-                cx = (bb[0] + bb[2]) / 2.0
-                cy = (bb[1] + bb[3]) / 2.0
-                near.append((lyr, _dist(scope_centroid, (cx, cy))))
-            else:
-                fallback.append(lyr)
 
-        near.sort(key=lambda x: x[1])
-        ordered_layers = [lyr for (lyr, _) in near] + [l for l in fallback if l not in [lyr for (lyr, _) in near]]
-        log.info("TN: trying %d layers (nearest first). First 10: %s%s",
-                 len(ordered_layers),
-                 ", ".join(ordered_layers[:10]),
-                 " ..." if len(ordered_layers) > 10 else "")
+# ==================== Land Use Loader ====================
 
-        # ----- import: overwrite once, then append; stop at first rows>0 -----
-        first = True
-        for lyr in ordered_layers:
-            try:
-                utils.import_layers(
-                    input_file=str(gpkg_path),
-                    layers=[lyr],
-                    schema=schema,
-                    prefix="",
-                    layer_names=[table],
-                    scope=True,                      # clip to scope bbox
-                    overwrite=(overwrite and first)  # first layer overwrite; then append
-                )
-                first = False
+def _load_tatsaechliche_nutzung(infdb: InfDB, cfg: dict, base_path: Path, pgurl: str, target_epsg: int):
+    """Load land use (TN) GPKG into PostGIS."""
+    url = cfg["url"]
+    schema = cfg.get("schema", "opendata")
+    table = cfg.get("table_name", "tatsaechliche_nutzung")
+    import_mode = cfg.get("import-mode", "delete")
 
-                # FAST existence check
-                has_rows = os.popen(
-                    f'psql "{pgurl}" -tAc "SELECT EXISTS (SELECT 1 FROM {fqtn} LIMIT 1)"'
-                ).read().strip().lower()
-                if has_rows in ("t", "true"):
-                    rows = os.popen(f'psql "{pgurl}" -tAc "SELECT COUNT(*) FROM {fqtn}"').read().strip()
-                    log.info("TN: imported %s rows from layer '%s'; stopping further layer attempts.", rows or "some", lyr)
+    tn_dir = base_path / "tatsaechliche_nutzung"
+    tn_dir.mkdir(parents=True, exist_ok=True)
+    gpkg_path = tn_dir / "Nutzung_kreis.gpkg"
+
+    # Download if needed (skip if already 1GB+)
+    if gpkg_path.exists() and gpkg_path.stat().st_size > 1_000_000_000:
+        log.info(f"TN: using existing {gpkg_path.stat().st_size / 1e9:.1f} GB file")
+    else:
+        log.info(f"TN: downloading from {url}")
+        utils.do_cmd(
+            f'aria2c -c -x4 -s4 --summary-interval=60 --console-log-level=warn '
+            f'-d "{tn_dir}" -o "Nutzung_kreis.gpkg" "{url}"'
+        )
+
+    # Ensure schema exists
+    conf = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
+    client = InfdbClient(conf, log, db_name=DB_NAME)
+    engine = client.get_db_engine()
+    with engine.connect() as conn:
+        conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema};"))
+        conn.commit()
+
+    # Get all layers
+    layers = _gpkg_layers(gpkg_path)
+    if not layers:
+        raise RuntimeError(f"TN: no layers in {gpkg_path}")
+
+    log.info(f"TN: found {len(layers)} layers")
+
+    # Order layers by proximity to scope centroid
+    scope_centroid = None
+    clip_wkt, _, _ = utils.get_clip_geometry(target_crs=target_epsg, method='exact')
+    if clip_wkt:
+        from shapely import wkt as shapely_wkt
+        geom = shapely_wkt.loads(clip_wkt)
+        scope_centroid = (geom.centroid.x, geom.centroid.y)
+
+    # Sort layers by distance to centroid
+    layer_distances = []
+    for lyr in layers:
+        lyr_epsg, bbox = _gpkg_layer_extent_epsg(gpkg_path, lyr)
+        if scope_centroid and bbox and (lyr_epsg == target_epsg or lyr_epsg in (None, 0)):
+            cx = (bbox[0] + bbox[2]) / 2.0
+            cy = (bbox[1] + bbox[3]) / 2.0
+            dist = _distance_2d(scope_centroid, (cx, cy))
+            layer_distances.append((lyr, dist))
+
+    layer_distances.sort(key=lambda x: x[1])
+    ordered_layers = [lyr for lyr, _ in layer_distances]
+    ordered_layers.extend([lyr for lyr in layers if lyr not in ordered_layers])
+
+    log.info(f"TN: trying {len(ordered_layers)} layers (nearest first)")
+
+    # Import layers
+    first = True
+    for lyr in ordered_layers:
+        try:
+            utils.import_layers(
+                input_file=str(gpkg_path),
+                layers=[lyr],
+                schema=schema,
+                layer_names=[table],
+                scope=True,
+                overwrite=(import_mode != "append" and first)
+            )
+            first = False
+
+            # Check if we got data
+            with engine.connect() as conn:
+                result = conn.execute(text(f"SELECT EXISTS(SELECT 1 FROM {schema}.{table} LIMIT 1)"))
+                has_rows = result.scalar()
+                
+                if has_rows:
+                    result = conn.execute(text(f"SELECT COUNT(*) FROM {schema}.{table}"))
+                    row_count = result.scalar()
+                    log.info(f"TN: imported {row_count:,} rows from '{lyr}'; done.")
                     break
 
-            except Exception as e:
-                log.warning("TN: layer '%s' import error: %s (continuing).", lyr, e)
+        except Exception as e:
+            log.warning(f"TN: layer '{lyr}' failed: {e}")
+            continue
 
-        # Final check and index
-        has_rows_final = os.popen(
-            f'psql "{pgurl}" -tAc "SELECT EXISTS (SELECT 1 FROM {fqtn} LIMIT 1)"'
-        ).read().strip().lower()
-        if has_rows_final not in ("t", "true"):
-            preview = ", ".join(ordered_layers[:10]) + (" ..." if len(ordered_layers) > 10 else "")
-            log.error("TN: zero rows imported into %s after trying layers (nearest first). Tried: %s", fqtn, preview)
-            raise RuntimeError(f"TN import produced empty table {fqtn}")
-
-        utils.do_cmd(f'psql "{pgurl}" -c "CREATE INDEX IF NOT EXISTS {table}_geom_gix ON {fqtn} USING GIST(geom);"')
-        log.info("TN: index ensured on %s.geom", fqtn)
-
-
-    log.info("Opendata Bavaria: done.")
+    # Create index
+    with engine.connect() as conn:
+        conn.execute(text(f"CREATE INDEX IF NOT EXISTS {table}_geom_gix ON {schema}.{table} USING GIST(geom);"))
+        conn.commit()
+    
+    log.info(f"TN: indexed {schema}.{table}")
