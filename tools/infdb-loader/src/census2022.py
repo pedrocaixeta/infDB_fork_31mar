@@ -1,11 +1,7 @@
 import logging
 import multiprocessing as mp
 import os
-from typing import Any, Dict, List
-import chardet
-import pandas as pd
-import geopandas as gpd
-from charset_normalizer import from_path
+from typing import Any, Dict, List , Iterable
 
 from infdb import InfdbClient, InfdbConfig, InfdbLogger
 from infdb import InfDB
@@ -174,6 +170,7 @@ def process_dataset(dataset: Dict[str, Any]) -> bool:
                 srid_dst=epsg,                 # target SRID from DB config
                 drop_existing=True,            # matches old 'replace' behavior
                 create_spatial_index=True,     # gives you good query perf right away
+                clip_to_scope=True,  # NEW: Explicit clipping (default anyway)
             )  # NEW: main speed-up
 
             log.info(f"Processed successfully {csv_path}")

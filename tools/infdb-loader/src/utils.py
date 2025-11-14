@@ -1,15 +1,12 @@
 import logging
 import multiprocessing
 import os
-import io
 import csv
 import time
 import random
 import logging
 import subprocess
-import sqlalchemy
 import psycopg2
-from pathlib import Path
 from typing import Iterable, List, Optional
 
 import geopandas as gpd
@@ -18,7 +15,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from bs4 import BeautifulSoup
-from pySmartDL import SmartDL
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
 
@@ -403,69 +399,78 @@ def _ogr2ogr(cmd_args, env_extra=None):
     log.info("ogr2ogr completed successfully.")
 
 
-def import_layers(input_file, layers, schema, prefix="", layer_names=None, scope=True, overwrite=True):
+def import_layers(input_file, layers, schema, prefix="", layer_names=None, 
+                  scope=True, overwrite=True):
     """
-    High-performance replacement for the old GeoPandas-based import:
-      - Uses GDAL/ogr2ogr to load layers directly into PostGIS.
-      - Reprojects on the fly to target DB EPSG.
-      - Optionally clips to the configured scope (if available).
-      - Uses COPY internally (PG_USE_COPY=YES) for fast ingest.
-
+    High-performance GPKG/Shapefile → PostGIS import using ogr2ogr.
+    
+    Features:
+      - COPY-based ingest (very fast)
+      - On-the-fly reprojection to target EPSG
+      - Optional clipping to configured scope
+      - Automatic geometry validation
+    
     Parameters:
-      input_file : path to GPKG / any OGR-readable vector dataset
-      layers     : list of source layer names in `input_file`
-      schema     : destination Postgres schema
-      prefix     : optional prefix for destination table names
-      layer_names: optional override for destination table names (same length as layers)
-      scope      : if True, clip to configured envelope (from get_envelop())
-      overwrite  : if True, replace tables; else append
-
-    This keeps the same function name so existing callers continue to work,
-    but the internals are now much faster and simpler to maintain.
+        input_file: Path to GPKG/Shapefile/any OGR-readable format
+        layers: List of layer names to import
+        schema: Destination PostgreSQL schema
+        prefix: Optional prefix for destination table names
+        layer_names: Override destination names (default: use source layer names)
+        scope: If True, clip to configured envelope
+        overwrite: If True, replace existing tables; else append
     """
     epsg = _cfg.get_db_parameters("postgres")["epsg"]
     dst = _pg_connstring_for_gdal()
 
-    # Destination names
+    # Prepare destination table names
     if layer_names is None:
         layer_names = layers
     if prefix:
         layer_names = [f"{prefix}_{name}" for name in layer_names]
 
-    # Prepare a temporary GPKG for clip source if scope=True and envelope is present.
+    # Get clipping geometry if requested
     clipsrc_opt = []
     tmp_gpkg = None
+    
     if scope:
-        gdf_scope = get_envelop()
-        if gdf_scope is not None and not gdf_scope.empty:
-            # Save scope to a temp gpkg in target CRS (avoid double reprojection inside pipeline)
-            tmp_gpkg = os.path.splitext(os.path.abspath(input_file))[0] + "_clip_scope_tmp.gpkg"
+        clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, method='exact')
+        
+        if clip_wkt:
+            # Save clip geometry to temp GPKG for ogr2ogr
+            tmp_gpkg = os.path.splitext(os.path.abspath(input_file))[0] + "_clip_tmp.gpkg"
             try:
-                gdf_scope.to_crs(epsg=epsg).to_file(tmp_gpkg, layer="clip_scope", driver="GPKG")
-                clipsrc_opt = ["-clipsrc", tmp_gpkg, "-clipsrclayer", "clip_scope"]
+                # Reconstruct GeoDataFrame from WKT for saving
+                from shapely import wkt as shapely_wkt
+                clip_geom = shapely_wkt.loads(clip_wkt)
+                clip_gdf = gpd.GeoDataFrame([{'geom': clip_geom}], geometry='geom', crs=f"EPSG:{epsg}")
+                clip_gdf.to_file(tmp_gpkg, layer="clip_boundary", driver="GPKG")
+                clipsrc_opt = ["-clipsrc", tmp_gpkg, "-clipsrclayer", "clip_boundary"]
+                log.info(f"Clipping enabled: {clip_method} method")
             except Exception as e:
-                log.warning(f"Clip scope could not be prepared; proceeding without clip. Reason: {e}")
+                log.warning(f"Could not prepare clip geometry; proceeding without clip. Error: {e}")
                 clipsrc_opt = []
-        else:
-            log.info("Scope is empty; skipping clip.")
 
+    # Import each layer
     for src_layer, dst_name in zip(layers, layer_names):
-        log.info(f"Importing layer '{src_layer}' -> {schema}.{dst_name}")
+        log.info(f"Importing '{src_layer}' → {schema}.{dst_name}")
+        
         args = [
             "ogr2ogr",
             "-progress",
             "-f", "PostgreSQL", dst,
             input_file,
-            "-nln", f"{schema}.{dst_name}",         # destination schema.table
-            "-nlt", "PROMOTE_TO_MULTI",             # robust geometry typing
-            "-lco", "GEOMETRY_NAME=geom",           # standardize geom column name
-            "-t_srs", f"EPSG:{epsg}",               # on-the-fly reprojection
-            "-makevalid",                           # cheap geometry fixups
+            "-nln", f"{schema}.{dst_name}",
+            "-nlt", "PROMOTE_TO_MULTI",
+            "-lco", "GEOMETRY_NAME=geom",
+            "-t_srs", f"EPSG:{epsg}",
+            "-makevalid",
         ] + (["-overwrite"] if overwrite else ["-append"]) \
           + clipsrc_opt \
-          + ["-where", "1=1", src_layer]           # '-where 1=1' keeps full layer, but keeps the shape of call
+          + [src_layer]
+        
         _ogr2ogr(args)
 
+    # Cleanup temp file
     if tmp_gpkg and os.path.exists(tmp_gpkg):
         try:
             os.remove(tmp_gpkg)
@@ -483,42 +488,40 @@ def fast_copy_points_csv(
     srid_dst: int = None,
     drop_existing: bool = True,
     create_spatial_index: bool = True,
+    clip_to_scope: bool = True,
 ):
     """
-    Super-fast CSV -> PostGIS path for point datasets (e.g., Zensus):
-      1) COPY raw CSV into an UNLOGGED staging table with text columns
-      2) Create final table with typed columns + geometry built server-side
-      3) Reproject in PostGIS (ST_Transform) and add a GiST index
-      4) ANALYZE for fresh planner stats
-
-    Why it's fast:
-      - COPY is orders of magnitude faster than row-by-row inserts
-      - Geometry & reprojection are done in C inside PostGIS (not Python)
-
+    Ultra-fast CSV → PostGIS import for point datasets (e.g., Zensus).
+    
+    Performance optimizations:
+      - PostgreSQL COPY (10-100x faster than pandas)
+      - Server-side geometry creation (C code, not Python)
+      - Server-side clipping (SQL, not geopandas)
+      - UNLOGGED staging table (no WAL overhead)
+    
     Parameters:
-      csv_path  : path to the semicolon-separated CSV file
-      schema    : destination schema
-      table_name: destination table name (without schema)
-      x_col,y_col: column names for source X and Y (e.g., x_mp_100m / y_mp_100m)
-      srid_src  : SRID of the raw X/Y values (Zensus uses EPSG:3035)
-      srid_dst  : target SRID (defaults to DB EPSG from config)
-      drop_existing: drop destination table if it exists
-      create_spatial_index: create GiST index on geom
+        csv_path: Path to semicolon-separated CSV
+        schema: Destination schema
+        table_name: Destination table name
+        x_col, y_col: Column names for coordinates (e.g., 'x_mp_100m')
+        srid_src: Source SRID (Zensus uses EPSG:3035)
+        srid_dst: Target SRID (default: from DB config)
+        drop_existing: Drop table if exists
+        create_spatial_index: Create GiST index on geom
+        clip_to_scope: Clip to configured envelope
     """
     params = _cfg.get_db_parameters("postgres")
     srid_dst = srid_dst or params["epsg"]
 
-    # Peek CSV header to build a generic TEXT staging table (robust to weird types) read first line (column names)
+    # Read CSV header
     with open(csv_path, "r", encoding="utf-8", errors="replace", newline="") as f:
         reader = csv.reader(f, delimiter=";")
-        header = next(reader)
-    header_l = [h.strip().lower() for h in header]
+        header = [h.strip().lower() for h in next(reader)]
 
-    if x_col.lower() not in header_l or y_col.lower() not in header_l:
-        raise ValueError(f"Missing {x_col}/{y_col} in CSV header.")
+    if x_col.lower() not in header or y_col.lower() not in header:
+        raise ValueError(f"Missing coordinate columns: {x_col}, {y_col}")
 
-    staging = f"{table_name}__staging"
-
+    # Connect to database
     conn = psycopg2.connect(
         dbname=params["db"], user=params["user"], password=params["password"],
         host=params["host"], port=params["exposed_port"]
@@ -526,50 +529,115 @@ def fast_copy_points_csv(
     conn.autocommit = True
     cur = conn.cursor()
 
-    # Clean destination & staging if requested
-    if drop_existing:
-        cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{table_name}" CASCADE;')
-    cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{staging}" CASCADE;')
+    staging = f"{table_name}__staging"
 
-    # Create UNLOGGED staging table (faster, fine for transient step)
-    cols_sql = ", ".join(f'"{c}" text' for c in header_l)
-    cur.execute(f'CREATE UNLOGGED TABLE "{schema}"."{staging}" ({cols_sql});')
+    try:
+        # Step 1: Drop existing tables
+        if drop_existing:
+            cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{table_name}" CASCADE;')
+        cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{staging}" CASCADE;')
 
-    # COPY directly from file (semicolon-delimited; honor header)
-    with open(csv_path, "r", encoding="utf-8", errors="replace") as f:
-        cur.copy_expert(
-            f'COPY "{schema}"."{staging}" ({", ".join(f"""\"{c}\"""" for c in header_l)}) '
-            f"FROM STDIN WITH (FORMAT csv, DELIMITER ';', HEADER true, QUOTE '\"', ESCAPE '\"');",
-            f
+        # Step 2: Create UNLOGGED staging table (all TEXT columns)
+        cols_sql = ", ".join(f'"{c}" text' for c in header)
+        cur.execute(f'CREATE UNLOGGED TABLE "{schema}"."{staging}" ({cols_sql});')
+
+        # Step 3: COPY data from CSV
+        log.info(f"Importing {csv_path} → staging table...")
+        with open(csv_path, "r", encoding="utf-8", errors="replace") as f:
+            cur.copy_expert(
+                f'COPY "{schema}"."{staging}" ({", ".join(f"""\"{c}\"""" for c in header)}) '
+                f"FROM STDIN WITH (FORMAT csv, DELIMITER ';', HEADER true);",
+                f
+            )
+
+        # Step 4: Build SELECT with type casts
+        select_cols = ", ".join(
+            f'"{c}"::double precision' if c in (x_col.lower(), y_col.lower()) else f'"{c}"'
+            for c in header
         )
 
-    # Build final table with geometry in one SQL
-    casts = []
-    for c in header_l:
-        if c in (x_col.lower(), y_col.lower()):
-            casts.append(f'"{c}"::double precision as "{c}"')
-        else:
-            # Keep other columns as-is (text); extend here if you want typed casts
-            casts.append(f'"{c}"')
+        # Step 5: Get clipping WHERE clause
+        where_clause = ""
+        if clip_to_scope:
+            clip_wkt, clip_method, _ = get_clip_geometry(target_crs=srid_dst, method='exact')
+            
+            if clip_wkt:
+                where_clause = f"""
+                    WHERE ST_Intersects(
+                        ST_Transform(
+                            ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
+                            {srid_dst}
+                        ),
+                        ST_GeomFromText('{clip_wkt}', {srid_dst})
+                    )
+                """
+                log.info(f"Clipping enabled: {clip_method} method")
 
-    select_cols = ", ".join(casts)
-    cur.execute(f'''
-        CREATE TABLE "{schema}"."{table_name}" AS
-        SELECT
-            {select_cols},
-            ST_Transform(ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}), {srid_dst})::geometry(Point,{srid_dst}) AS geom
-        FROM "{schema}"."{staging}";
-    ''')
+        # Step 6: Create final table with geometry + clipping in one SQL
+        log.info(f"Creating final table{' with clipping' if where_clause else ''}...")
+        cur.execute(f"""
+            CREATE TABLE "{schema}"."{table_name}" AS
+            SELECT
+                {select_cols},
+                ST_Transform(
+                    ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
+                    {srid_dst}
+                )::geometry(Point, {srid_dst}) AS geom
+            FROM "{schema}"."{staging}"
+            {where_clause};
+        """)
 
-    # Optional GiST index + ANALYZE for better query performance
-    if create_spatial_index:
-        cur.execute(f'CREATE INDEX "{table_name}_geom_gix" ON "{schema}"."{table_name}" USING GIST (geom);')
-    cur.execute(f'ANALYZE "{schema}"."{table_name}";')
+        # Step 8: Create spatial index
+        if create_spatial_index:
+            log.info("Creating spatial index...")
+            cur.execute(f'CREATE INDEX "{table_name}_geom_gix" ON "{schema}"."{table_name}" USING GIST (geom);')
 
-    # Drop staging now that the final table exists
-    cur.execute(f'DROP TABLE "{schema}"."{staging}";')
+    finally:
+        # Cleanup: Drop staging table
+        cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{staging}" CASCADE;')
+        cur.close()
+        conn.close()
 
-    cur.close()
-    conn.close()
-    log.info(f'Loaded {csv_path} -> {schema}.{table_name} via COPY + server-side geometry.')
+
+def get_clip_geometry(target_crs: int, method: str = 'exact'):
+    """
+    Get clipping geometry for the configured scope.
+    
+    This is the single source of truth for spatial clipping used by both
+    import_layers() and fast_copy_points_csv().
+    
+    Parameters:
+        target_crs: Target EPSG code (e.g., 25832 for UTM32N)
+        method: 'exact' = use actual boundaries (accurate)
+                'bbox' = use bounding box only (faster, less accurate)
+    
+    Returns:
+        tuple: (geometry_wkt, method_used, row_count_estimate) or (None, None, None) if no clipping
+    """
+    gdf_envelope = get_envelop()
+    
+    if gdf_envelope is None or gdf_envelope.empty:
+        log.info("Scope envelope is empty; no clipping applied.")
+        return None, None, None
+    
+    # Transform to target CRS
+    gdf_transformed = gdf_envelope.to_crs(epsg=target_crs)
+    
+    if method == 'bbox':
+        # Use bounding box (matches old pandas behavior)
+        minx, miny, maxx, maxy = gdf_transformed.total_bounds
+        bbox_wkt = f"POLYGON(({minx} {miny},{maxx} {miny},{maxx} {maxy},{minx} {maxy},{minx} {miny}))"
+        log.info(f"Using bounding box clip: ({minx:.0f}, {miny:.0f}, {maxx:.0f}, {maxy:.0f})")
+        return bbox_wkt, 'bbox', None
+    
+    elif method == 'exact':
+        # Use actual boundary polygons (most accurate)
+        clip_geom = gdf_transformed.unary_union
+        clip_wkt = clip_geom.wkt
+        area_km2 = clip_geom.area / 1_000_000
+        log.info(f"Using exact geometry clip: {len(gdf_transformed)} polygons, {area_km2:.1f} km²")
+        return clip_wkt, 'exact', len(gdf_transformed)
+    
+    else:
+        raise ValueError(f"Unknown clip method: {method}. Use 'exact' or 'bbox'.")
 
