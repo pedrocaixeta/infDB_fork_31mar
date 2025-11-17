@@ -60,6 +60,60 @@ def _fetch_html(url: str) -> BeautifulSoup:
     resp.raise_for_status()
     return BeautifulSoup(resp.content, "html.parser")
 
+def _pg_connstring_for_gdal():
+    """
+    Build a GDAL/OGR PostgreSQL connection string.
+    ogr2ogr expects 'dbname', not 'db'.
+    """
+    p = _cfg.get_db_parameters("postgres")
+    return f"PG:host={p['host']} port={p['exposed_port']} dbname={p['db']} user={p['user']} password={p['password']}"
+
+
+def _ogr2ogr(cmd_args, env_extra=None):
+    """
+    Execute ogr2ogr with environment tuned for speed:
+      - PG_USE_COPY=YES : streams via COPY (very fast)
+      - OGR_ENABLE_PARTIAL_REPROJECTION=TRUE : small perf boost
+    Handles spaces in arguments safely (no shell) and logs output line by line.
+    Raises RuntimeError if ogr2ogr exits with non-zero code.
+    """
+    import shlex
+
+    # Normalize input to a proper list of strings
+    if isinstance(cmd_args, str):
+        cmd_args = shlex.split(cmd_args)
+    elif not isinstance(cmd_args, (list, tuple)) or not cmd_args:
+        raise ValueError("ogr2ogr expects a non-empty list or command string")
+
+    # Build environment
+    env = os.environ.copy()
+    env["PG_USE_COPY"] = "YES"
+    env["OGR_ENABLE_PARTIAL_REPROJECTION"] = "TRUE"
+    if env_extra:
+        env.update(env_extra)
+
+    # Log the command for debugging (shell-escaped for readability only)
+    import shlex as _shlex
+    log.info("Executing ogr2ogr: %s", _shlex.join(map(str, cmd_args)))
+
+    # Run safely (no shell), capture stdout/stderr merged
+    proc = subprocess.Popen(
+        list(map(str, cmd_args)),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env=env,
+    )
+
+    for line in proc.stdout or []:
+        log.info(line.rstrip())
+
+    rc = proc.wait()
+    if rc != 0:
+        raise RuntimeError(f"ogr2ogr failed with code {rc}")
+    log.info("ogr2ogr completed successfully.")
+
+
 
 # ======================== toggles & config helpers ========================
 
@@ -120,11 +174,6 @@ def get_links(url: str, ending: str, flt: str) -> list[str]:
     log.debug(links)
     return links
 
-
-
-# -----------------------------------------------------------------------------
-# Downloader (new: throttled, retried, atomic)
-# -----------------------------------------------------------------------------
 
 def download_files(urls, base_path, max_concurrent=3, max_retries=4, backoff_base=1.8, timeout=60):
     """
@@ -342,84 +391,11 @@ def get_number_processes() -> int:
 
 
 
-# -----------------------------------------------------------------------------
-# Faster imports
-# -----------------------------------------------------------------------------
-
-def _pg_connstring_for_gdal():
-    """
-    Build a GDAL/OGR PostgreSQL connection string.
-    ogr2ogr expects 'dbname', not 'db'.
-    """
-    p = _cfg.get_db_parameters("postgres")
-    return f"PG:host={p['host']} port={p['exposed_port']} dbname={p['db']} user={p['user']} password={p['password']}"
-
-
-def _ogr2ogr(cmd_args, env_extra=None):
-    """
-    Execute ogr2ogr with environment tuned for speed:
-      - PG_USE_COPY=YES : streams via COPY (very fast)
-      - OGR_ENABLE_PARTIAL_REPROJECTION=TRUE : small perf boost
-    Handles spaces in arguments safely (no shell) and logs output line by line.
-    Raises RuntimeError if ogr2ogr exits with non-zero code.
-    """
-    import shlex
-
-    # Normalize input to a proper list of strings
-    if isinstance(cmd_args, str):
-        cmd_args = shlex.split(cmd_args)
-    elif not isinstance(cmd_args, (list, tuple)) or not cmd_args:
-        raise ValueError("ogr2ogr expects a non-empty list or command string")
-
-    # Build environment
-    env = os.environ.copy()
-    env["PG_USE_COPY"] = "YES"
-    env["OGR_ENABLE_PARTIAL_REPROJECTION"] = "TRUE"
-    if env_extra:
-        env.update(env_extra)
-
-    # Log the command for debugging (shell-escaped for readability only)
-    import shlex as _shlex
-    log.info("Executing ogr2ogr: %s", _shlex.join(map(str, cmd_args)))
-
-    # Run safely (no shell), capture stdout/stderr merged
-    proc = subprocess.Popen(
-        list(map(str, cmd_args)),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        env=env,
-    )
-
-    for line in proc.stdout or []:
-        log.info(line.rstrip())
-
-    rc = proc.wait()
-    if rc != 0:
-        raise RuntimeError(f"ogr2ogr failed with code {rc}")
-    log.info("ogr2ogr completed successfully.")
-
+# ======================= import / export to postgis =======================-----------------------------------------------------------------------------
 
 def import_layers(input_file, layers, schema, prefix="", layer_names=None, 
                   scope=True, overwrite=True):
-    """
-    High-performance GPKG/Shapefile → PostGIS import using ogr2ogr.
     
-    Features:
-      - COPY-based ingest (very fast)
-      - On-the-fly reprojection to target EPSG
-      - Optional clipping to configured scope
-      - Automatic geometry validation
-    
-    Parameters:
-        input_file: Path to GPKG/Shapefile/any OGR-readable format
-        layers: List of layer names to import
-        schema: Destination PostgreSQL schema
-        prefix: Optional prefix for destination table names
-        layer_names: Override destination names (default: use source layer names)
-        scope: If True, clip to configured envelope
-        overwrite: If True, replace existing tables; else append
-    """
     epsg = _cfg.get_db_parameters("postgres")["epsg"]
     dst = _pg_connstring_for_gdal()
 
@@ -491,26 +467,7 @@ def fast_copy_points_csv(
     create_spatial_index: bool = True,
     clip_to_scope: bool = True,
 ):
-    """
-    Ultra-fast CSV → PostGIS import for point datasets (e.g., Zensus).
     
-    Performance optimizations:
-      - PostgreSQL COPY (10-100x faster than pandas)
-      - Server-side geometry creation (C code, not Python)
-      - Server-side clipping (SQL, not geopandas)
-      - UNLOGGED staging table (no WAL overhead)
-    
-    Parameters:
-        csv_path: Path to semicolon-separated CSV
-        schema: Destination schema
-        table_name: Destination table name
-        x_col, y_col: Column names for coordinates (e.g., 'x_mp_100m')
-        srid_src: Source SRID (Zensus uses EPSG:3035)
-        srid_dst: Target SRID (default: from DB config)
-        drop_existing: Drop table if exists
-        create_spatial_index: Create GiST index on geom
-        clip_to_scope: Clip to configured envelope
-    """
     params = _cfg.get_db_parameters("postgres")
     srid_dst = srid_dst or params["epsg"]
 

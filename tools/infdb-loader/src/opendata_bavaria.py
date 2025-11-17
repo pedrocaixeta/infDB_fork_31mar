@@ -1,12 +1,3 @@
-"""
-OpenData Bavaria loader: DGM1 (terrain model), LoD2 buildings, and land use (TN).
-
-Optimizations:
-  - Uses InfDB package for config and logging
-  - Reuses shared clipping logic from utils
-  - Cleaner structure with consistent patterns
-  - Removed redundant code
-"""
 import os
 import logging
 import subprocess
@@ -86,13 +77,10 @@ def load(infdb: InfDB) -> bool:
             return True
 
         # Enable PostGIS raster extension in public schema (required!)
-        try:
-            with infdb.connect() as db:
-                db.execute_query("CREATE EXTENSION IF NOT EXISTS postgis_raster SCHEMA public CASCADE;")
-                log.info("PostGIS raster extension enabled")
-        except Exception as ext_err:
-            log.warning(f"Could not enable PostGIS raster extension: {ext_err}")
-            log.info("Continuing without raster support (will only create COG files)")
+        with infdb.connect() as db:
+            # Explicitly create in public schema where PostGIS lives
+            db.execute_query("CREATE EXTENSION IF NOT EXISTS postgis_raster SCHEMA public CASCADE;")
+            log.info("PostGIS raster extension enabled")
 
         # Get base path
         base_path = Path(infdb.get_config_path([TOOL_NAME, "path", "opendata"], type="loader"))

@@ -53,7 +53,7 @@ loader:
             datasets:
                 gelaendemodell_1m:
                     name: Geländemodell Bayern 1m
-                    status: false
+                    status: active
                     table_name: gelaendemodell_1m
                     target_resolution: 10.0
                     url: "https://geodaten.bayern.de/odd/a/dgm/dgm1/meta/metalink/#scope.meta4"
