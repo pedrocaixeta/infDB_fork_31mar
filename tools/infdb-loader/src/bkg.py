@@ -45,13 +45,6 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_
     schema = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "schema"])
     table_name = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "geogitter", "table_name"])
 
-    envelope = utils.get_envelop()
-    wkt = envelope.to_crs(3035).unary_union.wkt
-
-    # Ensure list
-    if isinstance(resolutions, str):
-        resolutions = [resolutions]
-
     # Build base table
     with infdb.connect() as db:
         if clear_existing:
@@ -68,68 +61,79 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_
                 geom GEOMETRY
             );
             CREATE INDEX IF NOT EXISTS {table_name}_geom_idx
-              ON {schema}.{table_name} USING GIST (geom);
+            ON {schema}.{table_name} USING GIST (geom);
         """
         db.execute_query(ddl)
+    
+        all_envelops = utils.get_all_envelops()
+        for envelop in all_envelops:
+            log.debug("Envelop: %s", envelop)
+            
+            wkt = envelop.to_crs(3035).unary_union.wkt
 
-        # Insert per resolution, skipping existing ids
-        for resolution in resolutions or []:
-            if resolution.endswith("km"):
-                resolution_meters = int(resolution[:-2]) * 1000
-            elif resolution.endswith("m"):
-                resolution_meters = int(resolution[:-1])
-            else:
-                log.warning("Skipping resolution with unknown unit: %s", resolution)
-                continue
+            # Ensure list
+            if isinstance(resolutions, str):
+                resolutions = [resolutions]
 
-            log.info("Generating grid cells for resolution %s", resolution)
+            # Insert per resolution, skipping existing ids
+            for resolution in resolutions or []:
+                if resolution.endswith("km"):
+                    resolution_meters = int(resolution[:-2]) * 1000
+                elif resolution.endswith("m"):
+                    resolution_meters = int(resolution[:-1])
+                else:
+                    log.warning("Skipping resolution with unknown unit: %s", resolution)
+                    continue
 
-            generate_grid_cells_sql = f"""
-                WITH params AS (
-                    SELECT {resolution_meters}::int AS cell_size
-                ),
-                boundary AS (
-                    SELECT ST_GeomFromText('{wkt}', 3035) AS geom
-                ),
-                envelope AS (
-                    SELECT
-                        FLOOR(ST_XMin(b.geom) / p.cell_size) * p.cell_size AS x_min,
-                        FLOOR(ST_YMin(b.geom) / p.cell_size) * p.cell_size AS y_min,
-                        CEIL(ST_XMax(b.geom) / p.cell_size) * p.cell_size AS x_max,
-                        CEIL(ST_YMax(b.geom) / p.cell_size) * p.cell_size AS y_max,
-                        p.cell_size
-                    FROM boundary b, params p
-                ),
-                grid_raw AS (
-                    SELECT (ST_SquareGrid(
-                            e.cell_size,
-                            ST_MakeEnvelope(e.x_min, e.y_min, e.x_max, e.y_max, 3035)
-                            )).*
-                    FROM envelope e
-                ),
-                grid AS (
-                    SELECT
-                        ST_Transform(geom, {epsg}) AS geom,
-                        ST_XMin(geom) AS x,
-                        ST_YMin(geom) AS y
-                    FROM grid_raw
-                ),
-                id_named AS (
-                    SELECT
-                        FORMAT('%sN%sE%s', '{resolution}', g.y::int::text, g.x::int::text) AS id,
-                        (g.x + (p.cell_size / 2.0))::int AS x_mp,
-                        (g.y + (p.cell_size / 2.0))::int AS y_mp,
-                        'DE_Grid_ETRS89_LAEA_{resolution}'::text AS name,
-                        p.cell_size::int AS resolution_meters,
-                        g.geom
-                    FROM grid g, params p
-                )
-                SELECT * FROM id_named
-                WHERE id NOT IN (SELECT id FROM {schema}.{table_name});
-            """
+                log.info("Generating grid cells for %s with resolution %s", "add_AGS", resolution_meters)
+                # todo: add_AGS parameter to identify the area from envelop
 
-            insert_sql = f"INSERT INTO {schema}.{table_name} {generate_grid_cells_sql};"
-            db.execute_query(insert_sql)
+                generate_grid_cells_sql = f"""
+                    WITH params AS (
+                        SELECT {resolution_meters}::int AS cell_size
+                    ),
+                    boundary AS (
+                        SELECT ST_GeomFromText('{wkt}', 3035) AS geom
+                    ),
+                    envelope AS (
+                        SELECT
+                            FLOOR(ST_XMin(b.geom) / p.cell_size) * p.cell_size AS x_min,
+                            FLOOR(ST_YMin(b.geom) / p.cell_size) * p.cell_size AS y_min,
+                            CEIL(ST_XMax(b.geom) / p.cell_size) * p.cell_size AS x_max,
+                            CEIL(ST_YMax(b.geom) / p.cell_size) * p.cell_size AS y_max,
+                            p.cell_size
+                        FROM boundary b, params p
+                    ),
+                    grid_raw AS (
+                        SELECT (ST_SquareGrid(
+                                e.cell_size,
+                                ST_MakeEnvelope(e.x_min, e.y_min, e.x_max, e.y_max, 3035)
+                                )).*
+                        FROM envelope e
+                    ),
+                    grid AS (
+                        SELECT
+                            ST_Transform(geom, {epsg}) AS geom,
+                            ST_XMin(geom) AS x,
+                            ST_YMin(geom) AS y
+                        FROM grid_raw
+                    ),
+                    id_named AS (
+                        SELECT
+                            FORMAT('%sN%sE%s', '{resolution}', g.y::int::text, g.x::int::text) AS id,
+                            (g.x + (p.cell_size / 2.0))::int AS x_mp,
+                            (g.y + (p.cell_size / 2.0))::int AS y_mp,
+                            'DE_Grid_ETRS89_LAEA_{resolution}'::text AS name,
+                            p.cell_size::int AS resolution_meters,
+                            g.geom
+                        FROM grid g, params p
+                    )
+                    SELECT * FROM id_named
+                    WHERE id NOT IN (SELECT id FROM {schema}.{table_name});
+                """
+
+                insert_sql = f"INSERT INTO {schema}.{table_name} {generate_grid_cells_sql};"
+                db.execute_query(insert_sql)
 
 
 def load(infdb: InfDB) -> None:

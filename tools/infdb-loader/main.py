@@ -69,6 +69,7 @@ def main() -> None:
     processes.append(mp.Process(target=plz.load,        args=(infdb,), name="plz"))
     processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
     processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
+    processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
     processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
     # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
     processes.append(mp.Process(target=opendata_bavaria.load, args=(infdb,), name="opendata_bavaria"))

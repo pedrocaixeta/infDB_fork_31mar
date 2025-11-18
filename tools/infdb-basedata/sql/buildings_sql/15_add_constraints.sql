@@ -6,15 +6,15 @@ ALTER TABLE {output_schema}.buildings ADD CONSTRAINT building_use_check CHECK (b
 
 ALTER TABLE {output_schema}.buildings ALTER COLUMN building_use_id SET NOT NULL;
 
-ALTER TABLE {output_schema}.buildings ALTER COLUMN height SET NOT NULL;
-ALTER TABLE {output_schema}.buildings ADD CONSTRAINT height_check CHECK (height > 0);
+-- ALTER TABLE {output_schema}.buildings ALTER COLUMN height SET NOT NULL;
+-- ALTER TABLE {output_schema}.buildings ADD CONSTRAINT height_check CHECK (height > 0);
 
-ALTER TABLE {output_schema}.buildings ALTER COLUMN geom SET NOT NULL;
-ALTER TABLE {output_schema}.buildings ALTER COLUMN floor_area SET NOT NULL;
-ALTER TABLE {output_schema}.buildings ADD CONSTRAINT floor_area_check CHECK (floor_area > 0);
+-- ALTER TABLE {output_schema}.buildings ALTER COLUMN geom SET NOT NULL;
+-- ALTER TABLE {output_schema}.buildings ALTER COLUMN floor_area SET NOT NULL;
+-- ALTER TABLE {output_schema}.buildings ADD CONSTRAINT floor_area_check CHECK (floor_area > 0);
 
-ALTER TABLE {output_schema}.buildings ALTER COLUMN floor_number SET NOT NULL;
-ALTER TABLE {output_schema}.buildings ADD CONSTRAINT floor_number_check CHECK (floor_number > 0);
+-- ALTER TABLE {output_schema}.buildings ALTER COLUMN floor_number SET NOT NULL;
+-- ALTER TABLE {output_schema}.buildings ADD CONSTRAINT floor_number_check CHECK (floor_number > 0);
 
 ALTER TABLE {output_schema}.buildings ADD CONSTRAINT occupants_check CHECK (occupants >= 0);
 

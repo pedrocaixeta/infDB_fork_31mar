@@ -5,22 +5,22 @@ from typing import List, Sequence, Optional
 from infdb import InfDB
 from . import utils
 
-def _wait_for_file(path: str, *, min_size: int = 5_000, timeout: float = 90.0, step: float = 2.0) -> bool:
-    """Poll for a file that is being downloaded asynchronously (e.g. pySmartDL).
+# def _wait_for_file(path: str, *, min_size: int = 5_000, timeout: float = 90.0, step: float = 2.0) -> bool:
+#     """Poll for a file that is being downloaded asynchronously (e.g. pySmartDL).
 
-    Returns True as soon as the file exists **and** is bigger than `min_size`.
-    Returns False if `timeout` expires.
-    """
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        if os.path.exists(path):
-            try:
-                if os.path.getsize(path) >= min_size:
-                    return True
-            except OSError:
-                pass
-        time.sleep(step)
-    return False
+#     Returns True as soon as the file exists **and** is bigger than `min_size`.
+#     Returns False if `timeout` expires.
+#     """
+#     deadline = time.time() + timeout
+#     while time.time() < deadline:
+#         if os.path.exists(path):
+#             try:
+#                 if os.path.getsize(path) >= min_size:
+#                     return True
+#             except OSError:
+#                 pass
+#         time.sleep(step)
+#     return False
 
 
 def load(infdb: InfDB) -> None:
@@ -42,6 +42,7 @@ def load(infdb: InfDB) -> None:
 
     # make sure schema exists
     with infdb.connect() as db:
+        # db.execute_query(f"DROP SCHEMA IF EXISTS {schema} CASCADE;") # done in main.py
         db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
     for flt in filters:
@@ -49,44 +50,47 @@ def load(infdb: InfDB) -> None:
         if len(urls) != 1:
             log.warning("Basemap: filter '%s' produced %d links → %s (skipping)", flt, len(urls), urls)
             continue
-        url = urls[0]
+        else:
+            url = urls[0]
         log.info("Basemap: selected %s for filter '%s'", url, flt)
 
         filename, name, extension = utils.get_file_from_url(url)
         name_no_day = name.rsplit("-", 1)[0]
         expected_monthly_path = os.path.join(base_path, name_no_day + extension)
 
-        downloaded_paths: List[str] = utils.download_files(url, base_path)
+        log.info("Basemap: downloading to path %s", expected_monthly_path)
+        utils.download_files(url, expected_monthly_path)
 
-        input_file: Optional[str] = None
+        # input_file: Optional[str] = None
 
-        # wait for the file to appear
-        if downloaded_paths:
-            candidate = downloaded_paths[0]
+        # # wait for the file to appear
+        # if downloaded_paths:
+        #     candidate = downloaded_paths[0]
 
-            if _wait_for_file(candidate, min_size=5_000, timeout=120.0):
-                input_file = candidate
-            else:
-                log.error(
-                    "Basemap: downloaded file not found on disk (%s) → skipping to fallback",
-                    candidate,
-                )
+        #     if _wait_for_file(candidate, min_size=5_000, timeout=120.0):
+        #         input_file = candidate
+        #     else:
+        #         log.error(
+        #             "Basemap: downloaded file not found on disk (%s) → skipping to fallback",
+        #             candidate,
+        #         )
 
-        # skip if no file found
-        if input_file is None:
-            log.error(
-                "Basemap: no usable .gpkg for filter '%s' (download not ready and no fallback). Skipping.",
-                flt,
-            )
-            continue
+        # # skip if no file found
+        # if input_file is None:
+        #     log.error(
+        #         "Basemap: no usable .gpkg for filter '%s' (download not ready and no fallback). Skipping.",
+        #         flt,
+        #     )
+        #     continue
+        download_file = utils.get_file(base_path, flt, ".gpkg")
 
-        log.info("Basemap: importing %s into schema %s", input_file, schema)
+        log.info("Basemap: importing %s into schema %s", download_file, schema)
         layers = [layer + "_bdlm" for layer in layer_names]
 
         try:
-            utils.import_layers(input_file, layers, schema, prefix=prefix, layer_names=layer_names)
+            utils.import_layers(download_file, layers, schema, prefix=prefix, layer_names=layer_names, if_exists="append")
         except Exception as exc:
-            log.error("Basemap: import of %s failed → %s", input_file, exc)
+            log.error("Basemap: import of %s failed → %s", download_file, exc)
             continue
 
     log.info("Basemap data loaded successfully")

@@ -1,0 +1,73 @@
+import os
+from typing import Dict, List, Optional
+
+from infdb import InfDB
+from . import utils
+from pySmartDL import SmartDL
+
+
+# ============================== Constants ==============================
+
+TOOL_NAME: str = "loader"
+ARIA2C_BASE_CMD: str = (
+    "aria2c --continue=true --allow-overwrite=false --auto-file-renaming=false"
+)
+
+
+def load(infdb: InfDB)  -> bool:
+    """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL.
+
+    Behavior preserved:
+    - Returns True when inactive (matching original early-exit).
+    - Uses aria2c for downloads and `citydb import citygml` for loading.
+    - Builds URL by replacing `#scope` token with each AGS value.
+    - Executes a post-import SQL file with format params.
+    """
+    log = infdb.get_worker_logger()
+
+    if not utils.if_active("lod2-nrw"):
+        return True
+
+
+    base_path = infdb.get_config_path([TOOL_NAME, "sources", "lod2-nrw", "path", "lod2"], type="loader")
+    os.makedirs(base_path, exist_ok=True)
+
+    gml_path = infdb.get_config_path([TOOL_NAME, "sources", "lod2-nrw", "path", "gml"], type="loader")
+    os.makedirs(gml_path, exist_ok=True)
+
+    scope = infdb.get_config_value([TOOL_NAME, "scope"])
+    if isinstance(scope, str):
+        scope = [scope]
+
+    # Download NRW LOD2 data
+    url_cfg = infdb.get_config_value([TOOL_NAME, "sources", "lod2-nrw", "url"])
+    filename = "3d-gm_lod2_kacheln.zip"
+    full_path = os.path.join(base_path, filename)
+    utils.download_files(url_cfg, full_path)
+
+    # Unzip the downloaded file
+    utils.unzip(full_path, gml_path)
+    log.info(f"Unzipped LOD2-NRW data to {gml_path}")
+
+    # Import CityGML into PostGIS via citydb CLI
+    params: Dict[str, str] = infdb.get_db_parameters_dict()
+    import_mode: Optional[str] = infdb.get_config_value([TOOL_NAME, "sources", "lod2-nrw", "import-mode"])
+    cmd_parts: List[str] = [
+        "citydb import citygml",
+        "-H", params["host"],
+        "-d", params["db"],
+        "-u", params["user"],
+        "-p", params["password"],
+        "-P", str(params["exposed_port"]),
+        f"--import-mode={import_mode}",
+        str(gml_path),
+    ]
+    utils.do_cmd(" ".join(str(a) for a in cmd_parts))
+
+    # Post-import SQL (e.g., create LOD2 building table/view)
+    format_params = {"output_schema": "opendata"}
+    with infdb.connect() as db:
+        db.execute_sql_file("sql/buildings_lod2.sql", format_params)
+
+    log.info("LOD2-NRW data loaded successfully")
+    return True
