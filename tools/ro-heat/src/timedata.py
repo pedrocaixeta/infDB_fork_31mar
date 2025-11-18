@@ -38,10 +38,11 @@ def get_distinct_building_ids(database_connection):
     df = pd.read_sql(sql=query, con=database_connection)
     return df['objectid'].tolist()
 
-def get_all_timeseries_data(database_connection):
+def get_all_timeseries_data(database_connection, start, end):
     query = f"""
         SELECT *
         FROM opendata.openmeteo_ts_data
+        WHERE time >= '{start}' AND time < '{end}'
     """
     df = pd.read_sql(sql=query, con=database_connection)
     df.set_index('time', inplace=True)
