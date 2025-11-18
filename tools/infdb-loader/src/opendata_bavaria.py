@@ -12,18 +12,12 @@ import logging
 import subprocess
 import json
 import re
-import shutil
 from pathlib import Path
 from sqlalchemy import text
+from typing import Dict, List, Optional
 
 from infdb import InfdbConfig, InfDB, InfdbClient
 from . import utils
-
-# Optional: reuse existing LoD2 loader if enabled
-try:
-    from . import lod2 as lod2_loader
-except ImportError:
-    lod2_loader = None
 
 # Module logger
 log = logging.getLogger(__name__)
@@ -120,11 +114,11 @@ def load(infdb: InfDB) -> bool:
         # LoD2 Buildings
         lod2_cfg = datasets.get("building_lod2", {})
         if lod2_cfg.get("status") == "active":
-            if lod2_loader is None:
+            if _load_lod2 is None:
                 log.warning("LoD2: loader not available; skipping.")
             else:
                 log.info("LoD2: delegating to existing loader")
-                lod2_loader.load(infdb)
+                _load_lod2(infdb)
 
         # Land Use (Tatsächliche Nutzung)
         tn_cfg = datasets.get("tatsaechliche_nutzung", {})
@@ -149,6 +143,9 @@ def _load_dgm1(infdb: InfDB, cfg: dict, base_path: Path, pgurl: str, target_epsg
     table = cfg.get("table_name", "gelaendemodell_1m")
     import_mode = cfg.get("import-mode", "delete")
     srid = int(cfg.get("srid", 25832))
+
+    # Get target resolution from config (default 10m for speed)
+    target_resolution = float(cfg.get("target_resolution", 10.0))
 
     dgm1_dir = base_path / "gelaendemodell_1m"
     dgm1_dir.mkdir(parents=True, exist_ok=True)
@@ -179,15 +176,7 @@ def _load_dgm1(infdb: InfDB, cfg: dict, base_path: Path, pgurl: str, target_epsg
         log.warning("DGM1: no scope codes; skipping.")
         return
 
-    # Check if raster2pgsql is available
-    can_import = bool(shutil.which("raster2pgsql"))
-    if not can_import:
-        log.warning("DGM1: 'raster2pgsql' not found; will only create COG files.")
-
-    # Drop table if delete mode
     _psql_quiet = f'psql --no-psqlrc -q -v ON_ERROR_STOP=1 -X "{pgurl}"'
-    if import_mode == "delete" and can_import:
-        os.system(f'{_psql_quiet} -c "DROP TABLE IF EXISTS {schema}.{table} CASCADE;" > /dev/null 2>&1')
 
     created_any = False
 
@@ -224,19 +213,31 @@ def _load_dgm1(infdb: InfDB, cfg: dict, base_path: Path, pgurl: str, target_epsg
         listfile.write_text(srcs.replace(" ", "\n"), encoding="utf-8")
         utils.do_cmd(f'gdalbuildvrt -resolution highest -r bilinear -input_file_list "{listfile}" "{vrt}"')
 
-        # Create COG (Cloud-Optimized GeoTIFF)
-        cog_name = f"dgm1_{kreis5}_crop.tif" if bbox else f"dgm1_{kreis5}.tif"
+        # Create COG with target resolution
+        cog_name = f"dgm1_{kreis5}_crop_{target_resolution}m.tif" if bbox else f"dgm1_{kreis5}_{target_resolution}m.tif"
         final_cog = k_dir / cog_name
         tmp_cog = k_dir / f"{cog_name}.tmp"
 
+        #Add -tr flag for resolution control
         gdalwarp_opts = (
             f'-of GTiff -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 '
             f'-co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 '
-            f'-r bilinear -t_srs EPSG:{srid} -overwrite'
+            f'-co NUM_THREADS=ALL_CPUS '  # Use all CPU cores
+            f'-r bilinear -t_srs EPSG:{srid} -overwrite '
+            f'-tr {target_resolution} {target_resolution} '  # Resolution control
+            f'-multi -wo NUM_THREADS=ALL_CPUS'  # Multi-threaded warping
         )
 
         if bbox:
             xmin, ymin, xmax, ymax = bbox
+            # Calculate expected output size
+            expected_width = int((xmax - xmin) / target_resolution)
+            expected_height = int((ymax - ymin) / target_resolution)
+            expected_pixels = expected_width * expected_height
+            log.info(
+                f"DGM1: creating {target_resolution}m raster "
+                f"({expected_width}×{expected_height} = {expected_pixels/1e6:.1f}M pixels)..."
+            )
             utils.do_cmd(f'gdalwarp {gdalwarp_opts} -te {xmin} {ymin} {xmax} {ymax} "{vrt}" "{tmp_cog}"')
         else:
             utils.do_cmd(f'gdalwarp {gdalwarp_opts} "{vrt}" "{tmp_cog}"')
@@ -245,33 +246,26 @@ def _load_dgm1(infdb: InfDB, cfg: dict, base_path: Path, pgurl: str, target_epsg
         try:
             utils.do_cmd(f'gdalinfo "{tmp_cog}" -stats -nomd')
             tmp_cog.replace(final_cog)
-            log.info(f"DGM1: created {final_cog}")
-        except Exception:
-            log.error(f"DGM1: invalid COG for {kreis5}; skipping.")
+            file_size_mb = final_cog.stat().st_size / 1_000_000
+            log.info(f"DGM1: created {final_cog.name} ({file_size_mb:.1f} MB)")
+        except Exception as e:
+            log.error(f"DGM1: invalid COG for {kreis5}: {e}")
             continue
 
         # Import to PostGIS
-        if can_import:
-            append_flag = "-a" if created_any or import_mode == "append" else ""
-            pipe = (
-                f'raster2pgsql -q -s {srid} -I -C -M -t 256x256 "{final_cog}" {schema}.{table} {append_flag} | '
-                f'{_psql_quiet}'
-            )
-            try:
-                utils.do_cmd(pipe)
-                created_any = True
-                log.info(f"DGM1: imported {kreis5}")
-            except Exception as e:
-                log.error(f"DGM1: import failed for {kreis5}: {e}")
+        append_flag = "-a" if created_any or import_mode == "append" else ""
+        pipe = (
+            f'raster2pgsql -q -s {srid} -I -C -M -t 256x256 "{final_cog}" {schema}.{table} {append_flag} | '
+            f'{_psql_quiet}'
+        )
+        utils.do_cmd(pipe)
+        created_any = True
 
     # Final indexing
-    if can_import and created_any:
-        try:
-            utils.do_cmd(f'{_psql_quiet} -c "CREATE INDEX IF NOT EXISTS {table}_rast_gix ON {schema}.{table} USING GIST(ST_ConvexHull(rast));"')
-            utils.do_cmd(f'{_psql_quiet} -c "ANALYZE {schema}.{table};"')
-            log.info(f"DGM1: indexed {schema}.{table}")
-        except Exception as e:
-            log.warning(f"DGM1: indexing failed: {e}")
+    if  created_any:
+        utils.do_cmd(f'{_psql_quiet} -c "CREATE INDEX IF NOT EXISTS {table}_rast_gix ON {schema}.{table} USING GIST(ST_ConvexHull(rast));"')
+        utils.do_cmd(f'{_psql_quiet} -c "ANALYZE {schema}.{table};"')
+        log.info(f"DGM1: imported into {schema}.{table}")
 
 
 # ==================== Land Use Loader ====================
@@ -371,3 +365,67 @@ def _load_tatsaechliche_nutzung(infdb: InfDB, cfg: dict, base_path: Path, pgurl:
         conn.commit()
     
     log.info(f"TN: indexed {schema}.{table}")
+
+# ==================== load lod2 ====================
+def _load_lod2(infdb: InfDB)  -> bool:
+    """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL.
+
+    Behavior preserved:
+    - Returns True when inactive (matching original early-exit).
+    - Uses aria2c for downloads and `citydb import citygml` for loading.
+    - Builds URL by replacing `#scope` token with each AGS value.
+    - Executes a post-import SQL file with format params.
+    """
+    log = infdb.get_worker_logger()
+
+    if not utils.if_active("lod2"):
+        return True
+
+
+    base_path = infdb.get_config_path([TOOL_NAME, "sources", "lod2", "path", "lod2"], type="loader")
+    os.makedirs(base_path, exist_ok=True)
+
+    gml_path = infdb.get_config_path([TOOL_NAME, "sources", "lod2", "path", "gml"], type="loader")
+    os.makedirs(gml_path, exist_ok=True)
+
+    scope = infdb.get_config_value([TOOL_NAME, "scope"])
+    if isinstance(scope, str):
+        scope = [scope]
+
+    # Download per administrative code (AGS)
+    url_cfg = infdb.get_config_value([TOOL_NAME, "sources", "lod2", "url"])
+    for ags in scope or []:
+        url: str
+        if isinstance(url_cfg, list):
+            url = " ".join(url_cfg)
+        else:
+            url = str(url_cfg)
+
+        url = url.replace("#scope", ags)
+
+        log.info("*.gml import target directory: %s", gml_path)
+        cmd = f"{"aria2c --continue=true --allow-overwrite=false --auto-file-renaming=false"} {url} -d {gml_path}"
+        utils.do_cmd(cmd)
+
+    # Import CityGML into PostGIS via citydb CLI
+    params: Dict[str, str] = infdb.get_db_parameters_dict()
+    import_mode: Optional[str] = infdb.get_config_value([TOOL_NAME, "sources", "lod2", "import-mode"])
+    cmd_parts: List[str] = [
+        "citydb import citygml",
+        "-H", params["host"],
+        "-d", params["db"],
+        "-u", params["user"],
+        "-p", params["password"],
+        "-P", str(params["exposed_port"]),
+        f"--import-mode={import_mode}",
+        str(gml_path),
+    ]
+    utils.do_cmd(" ".join(str(a) for a in cmd_parts))
+
+    # Post-import SQL (e.g., create LOD2 building table/view)
+    format_params = {"output_schema": "opendata"}
+    with infdb.connect() as db:
+        db.execute_sql_file("sql/buildings_lod2.sql", format_params)
+
+    log.info("LOD2 data loaded successfully")
+    return True

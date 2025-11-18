@@ -44,15 +44,6 @@ loader:
             schema_input: need
             path_dump: "{loader/path/opendata}/need/"
 
-        # todo: move to opendata_bavaria (merging)
-        lod2:
-            status: active
-            import-mode: skip # delete
-            url:
-                - "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4"    #scope placeholder for AGS
-            path:
-                lod2: "{loader/path/opendata}/lod2/"
-                gml: "{loader/path/opendata}/lod2/{loader/name}"
         opendata_bavaria:
             status: active
             schema: opendata
@@ -64,21 +55,27 @@ loader:
                     name: Geländemodell Bayern 1m
                     status: false
                     table_name: gelaendemodell_1m
+                    target_resolution: 10.0
                     url: "https://geodaten.bayern.de/odd/a/dgm/dgm1/meta/metalink/#scope.meta4"
                 building_lod2:
                     name: 3D-Gebäudemodelle (LoD2)
-                    status: false
+                    status: active
                     table_name: building_lod2
                     url: "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4" 
-                    import-mode: skip # delete
-                    path:
-                        lod2: "{loader/path/opendata}/lod2/"
-                        gml: "{loader/path/opendata}/lod2/{loader/name}"
                 tatsaechliche_nutzung:
                     name: Tatsächliche Nutzung (TN) 
                     status: active
                     table_name: tatsaechliche_nutzung
                     url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
+        lod2-nrw:
+            status: active
+            import-mode: skip # delete
+            url:
+                - "http://ds1.need.energy:8123/3d-gm_lod2_kacheln.zip"    #scope placeholder for AGS
+            path:
+                lod2: "{loader/path/opendata}/lod2-nrw/"
+                gml: "{loader/path/opendata}/lod2-nrw/{loader/name}"
+
         bkg:
             status: active
             path:

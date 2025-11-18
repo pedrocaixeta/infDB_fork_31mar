@@ -8,6 +8,7 @@ import logging
 import subprocess
 import psycopg2
 from typing import Iterable, List, Optional
+from pathlib import Path
 
 import geopandas as gpd
 import threading
