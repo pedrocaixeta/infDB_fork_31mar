@@ -8,9 +8,17 @@ ro-heat:
             user: None
             password: None
             db: None
-            host: None
+            host: ds1.need.energy
             exposed_port: None
             epsg: None # 3035 (Europe)
     data:
         input_schema: basedata
         output_schema: ro_heat
+    upload:
+        workers: 1
+        concurrent: true          # Phase 0: keep simple path by default
+        chunk_rows: 3000000        # Phase 1: larger chunks (1M rows)
+        use_staging: false          # Phase 1: UNLOGGED staging + merge
+        drop_indexes_on_load: true # Phase 1: build index after load
+        sync_commit_off: true      # Phase 1: SET LOCAL synchronous_commit=off
+        copy_commit_every: 2       # Commit frequency in chunks (1 = every chunk)
