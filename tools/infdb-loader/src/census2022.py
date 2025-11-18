@@ -3,7 +3,7 @@ import multiprocessing as mp
 import os
 from typing import Any, Dict, List , Iterable
 
-from infdb import InfdbConfig
+from infdb import InfdbConfig, InfdbClient, InfdbLogger
 from infdb import InfDB
 from . import utils
 
