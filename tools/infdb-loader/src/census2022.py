@@ -39,7 +39,6 @@ CLIPPED_PREFIX: str = "zensus-2022"
 
 
 def load(infdb: InfDB) -> None:
-def load(infdb: InfDB) -> None:
     """Entry point to download, validate, and process Zensus 2022 datasets.
 
     Behavior preserved:
@@ -117,7 +116,7 @@ def process_dataset(dataset: Dict[str, Any]) -> bool:
             return True
 
         # fresh cfg (per-process)
-        # cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
+        cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
 
         years: Iterable[int] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "years"])
         years: Iterable[int] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "years"])
@@ -174,8 +173,8 @@ def process_dataset(dataset: Dict[str, Any]) -> bool:
                 srid_dst=epsg,                 # target SRID from DB config
                 drop_existing=True,            # matches old 'replace' behavior
                 create_spatial_index=True,     # gives you good query perf right away
-                clip_to_scope=True,  # NEW: Explicit clipping (default anyway)
-            )  # NEW: main speed-up
+                clip_to_scope=True,  # Explicit clipping (default anyway)
+            )  
 
             log.info(f"Processed successfully {csv_path}")
 
