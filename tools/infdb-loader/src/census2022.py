@@ -119,20 +119,17 @@ def process_dataset(dataset: Dict[str, Any]) -> bool:
         cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
 
         years: Iterable[int] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "years"])
-        years: Iterable[int] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "years"])
         if dataset["year"] not in years:
             log.info("%s skips, not in years list", dataset["name"])
             return True
 
         # Download INTO the zip directory and use the returned file path
         zip_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "zip"], type="loader")
-        zip_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "zip"], type="loader")
         link = dataset["url"]
         downloaded = utils.download_files(link, zip_dir, max_concurrent=1 )  # returns [<zip_file_path>]
         zip_file = downloaded[0]
 
         # Unzip using the real file path
-        unzip_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
         unzip_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
         folder_path = os.path.join(unzip_dir, dataset["table_name"])
         utils.unzip(zip_file, folder_path)
