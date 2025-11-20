@@ -133,7 +133,6 @@ def process_dataset(dataset: Dict[str, Any]) -> bool:
         unzip_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
         folder_path = os.path.join(unzip_dir, dataset["table_name"])
         utils.unzip(zip_file, folder_path)
-
         # Export to PostGIS for each configured resolution
         resolutions : List[str] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "resolutions"])
         prefix = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "prefix"])

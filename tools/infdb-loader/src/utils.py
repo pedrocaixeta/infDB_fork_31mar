@@ -69,6 +69,14 @@ def _pg_connstring_for_gdal():
     return f"PG:host={p['host']} port={p['exposed_port']} dbname={p['db']} user={p['user']} password={p['password']}"
 
 
+def _pg_connstring_for_psql():
+    """
+    Build a PostgreSQL connection string for psql/libpq tools (URI format).
+    Used by: psql, raster2pgsql, pg_dump, pg_restore, etc.
+    """
+    p = _cfg.get_db_parameters("postgres")
+    return f"postgresql://{p['user']}:{p['password']}@{p['host']}:{p['exposed_port']}/{p['db']}"
+
 def _ogr2ogr(cmd_args, env_extra=None):
     """
     Execute ogr2ogr with environment tuned for speed:
@@ -282,6 +290,62 @@ def unzip(zip_files, unzip_dir: str) -> None:
                 zf.extractall(unzip_dir)
         except BadZipFile as e:
             log.error("Error unzipping %s: %s", zip_file, e)
+
+def download_aria2c(
+    url: str,
+    output_dir: str | Path,
+    output_filename: str = None,
+    connections: int = 4,
+    max_connection_per_server: int = 4,
+    continue_download: bool = True,
+    allow_overwrite: bool = False,
+    auto_file_renaming: bool = False,
+    quiet: bool = True
+) -> None:
+    """
+    Download files using aria2c with configurable options."""
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Build command
+    cmd_parts = ["aria2c"]
+    
+    # Connection settings
+    if continue_download:
+        cmd_parts.append("-c")
+    
+    if connections > 1:
+        cmd_parts.extend(["-x", str(connections)])
+    
+    if max_connection_per_server > 1:
+        cmd_parts.extend(["-s", str(max_connection_per_server)])
+    
+    # Overwrite behavior
+    if not allow_overwrite:
+        cmd_parts.append("--allow-overwrite=false")
+    
+    if not auto_file_renaming:
+        cmd_parts.append("--auto-file-renaming=false")
+    
+    # Logging
+    if quiet:
+        cmd_parts.extend(["--summary-interval=60", "--console-log-level=warn"])
+    
+    # Output location
+    cmd_parts.extend(["-d", str(output_dir)])
+    
+    if output_filename:
+        cmd_parts.extend(["-o", output_filename])
+    
+    # URL (last argument)
+    cmd_parts.append(f'"{url}"')
+    
+    # Execute
+    cmd = " ".join(cmd_parts)
+    do_cmd(cmd)
+
+
 
 
 # =================== geospatial / DB import helpers ===================
@@ -598,4 +662,5 @@ def get_clip_geometry(target_crs: int, method: str = 'exact'):
     
     else:
         raise ValueError(f"Unknown clip method: {method}. Use 'exact' or 'bbox'.")
+
 
