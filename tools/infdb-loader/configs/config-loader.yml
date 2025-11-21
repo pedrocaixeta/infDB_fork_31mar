@@ -6,7 +6,7 @@ loader:
         # - "09780116"  # Bolsterlang
         # - "09162000" # M
         #- "09474126" # FO
-        - "09261000" # LA
+        #- "09261000" # LA
         #- "05119000" # Oberhausen (NRW)
         - "09185149" # Neuburg a.d. Donau (BY)
     multiproccesing: 
@@ -56,6 +56,9 @@ loader:
                     name: Geländemodell Bayern 1m
                     status: active
                     table_name: gelaendemodell_1m
+                    # - Lower values (1-5m): High detail, large files, slower queries
+                    # - Medium values (10-20m): Good balance for most applications
+                    # - Higher values (50-100m): Coarse terrain, small files, fast queries
                     target_resolution: 10.0
                     url: "https://geodaten.bayern.de/odd/a/dgm/dgm1/meta/metalink/#scope.meta4"
                 building_lod2:

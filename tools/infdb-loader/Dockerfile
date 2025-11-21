@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdal-bin \
  && rm -rf /var/lib/apt/lists/*
 
-# PostgreSQL client (PGDG) + PostGIS client tools (for raster2pgsql / shp2pgsql)
+# PostgreSQL client (PGDG) + PostGIS necessary for shp2pgsql / raster2pgsql
 RUN install -d /usr/share/postgresql-common/pgdg && \
     curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
     . /etc/os-release && \
@@ -19,7 +19,7 @@ RUN install -d /usr/share/postgresql-common/pgdg && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
       postgresql-client-17 \
-      postgis \
+      postgis \ 
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv (Python package manager)
