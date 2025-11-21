@@ -5,7 +5,7 @@ loader:
         #- "09780139"  # Sonthofen
         # - "09780116"  # Bolsterlang
         # - "09162000" # M
-        - "09474126" # FO
+        #- "09474126" # FO
         - "09261000" # LA
         #- "05119000" # Oberhausen (NRW)
         - "09185149" # Neuburg a.d. Donau (BY)
@@ -50,7 +50,7 @@ loader:
             schema: opendata
             prefix: bavaria
             path: 
-                base: "{loader/path/base}/opendata_bavaria/"
+                base: "{loader/path/opendata}/opendata_bavaria/"
             datasets:
                 gelaendemodell_1m:
                     name: Geländemodell Bayern 1m
@@ -62,6 +62,7 @@ loader:
                     name: 3D-Gebäudemodelle (LoD2)
                     status: active
                     table_name: building_lod2
+                    import-mode: delete
                     url: "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4" 
                 tatsaechliche_nutzung:
                     name: Tatsächliche Nutzung (TN) 
