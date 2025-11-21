@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from sqlalchemy import text
 from typing import Dict, List, Optional
+from osgeo import gdal
 
 from infdb import InfdbConfig, InfDB, InfdbClient
 from . import utils
@@ -117,20 +118,8 @@ def load(infdb: InfDB) -> bool:
         return False
 
 
-# ==================== DGM1 Loader ====================
-
 def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
-    """Load DGM1 (Digital Elevation Model 1m resolution) into PostGIS.
-
-    Behaviour:
-        * For each configured AGS scope, derive the 5-digit Landkreis code.
-        * For each Landkreis:
-            - download DGM1 tiles (via metalink),
-            - build a VRT,
-            - warp to target resolution, clipped to the scope bbox,
-            - import into ONE PostGIS table.
-        * On each run, the target table is recreated from scratch.
-    """
+    """Load DGM1 clipped exactly to the configured scope polygon."""
 
     # ---------------------- Configuration -------------------------
     config_base = [TOOL_NAME, "sources", "opendata_bavaria", "datasets", "gelaendemodell_1m"]
@@ -138,70 +127,85 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
     url_template = infdb.get_config_value(config_base + ["url"])
     schema = infdb.get_config_value(config_base + ["schema"]) or "opendata"
     table = infdb.get_config_value(config_base + ["table_name"]) or "gelaendemodell_1m"
+    raw_table = f"{table}_raw"
     source_srid = int(infdb.get_config_value(config_base + ["srid"]) or 25832)
-    target_resolution_meters = float(
-        infdb.get_config_value(config_base + ["target_resolution"]) or 10.0
-    )
+    target_resolution_meters = float(infdb.get_config_value(config_base + ["target_resolution"]) or 10.0)
 
+    # Output directory
     dgm1_base_dir = base_path / "gelaendemodell_1m"
     dgm1_base_dir.mkdir(parents=True, exist_ok=True)
 
-    # Drop final table so each run starts clean
+    # Clean tables for new run
     with infdb.connect() as db:
         db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
         db.execute_query(f"DROP TABLE IF EXISTS {schema}.{table};")
+        db.execute_query(f"DROP TABLE IF EXISTS {schema}.{raw_table};")
 
     # ---------------------- SCOPE HANDLING -------------------------
     configured_scope_values = infdb.get_config_value([TOOL_NAME, "scope"]) or []
     if isinstance(configured_scope_values, str):
         configured_scope_values = [configured_scope_values]
 
-    ags_municipality_codes: list[str] = []
-    for raw_scope_value in configured_scope_values:
-        ags_raw = str(raw_scope_value).strip()
-        if not ags_raw:
-            continue
-        if len(ags_raw) < 8:
-            ags = ags_raw.zfill(8)
-        else:
-            ags = ags_raw[:8]
-        ags_municipality_codes.append(ags)
+    ags_municipality_codes = []
+    for raw in configured_scope_values:
+        v = str(raw).strip()
+        if v:
+            ags_municipality_codes.append(v.zfill(8)[:8])
 
     if not ags_municipality_codes:
         log.warning("DGM1: No valid AGS municipality codes configured; skipping loader.")
         return
 
-    ags_municipality_codes = sorted(set(ags_municipality_codes))
     landkreis_download_codes = sorted({ags[:5] for ags in ags_municipality_codes})
-
     log.info("DGM1: Landkreise: " + ", ".join(landkreis_download_codes))
 
-    # ---------------------- CLIP ENVELOPE via get_clip_geometry -------------------------
-    # Use exact scope geometry, get its bbox, and use that with gdalwarp -te
+    # ---------------------- CLIP GEOMETRY (EXACT) -------------------------
+    # Get exact scope geometry in source_srid
     clip_wkt, clip_method, _ = utils.get_clip_geometry(source_srid, method="exact")
 
     clip_extent_args = ""
+    cutline_args = ""
+    scope_geojson_path = None
+
     if clip_wkt:
         try:
-            from shapely import wkt as shapely_wkt  # shapely is already used in get_clip_geometry
+            from shapely import wkt as shapely_wkt
+            from shapely.geometry import mapping
+            import json
+
             geom = shapely_wkt.loads(clip_wkt)
             minx, miny, maxx, maxy = geom.bounds
+            clip_extent_args = f"-te {minx} {miny} {maxx} {maxy} -te_srs EPSG:{source_srid}"
+            log.info(f"DGM1: Using exact-geometry bbox: {minx},{miny},{maxx},{maxy}")
 
-            clip_extent_args = (
-                f"-te {minx} {miny} {maxx} {maxy} "
-                f"-te_srs EPSG:{source_srid}"
-            )
-            log.info(
-                f"DGM1: Using bbox of exact scope geometry (method={clip_method}): "
-                f"{minx}, {miny}, {maxx}, {maxy}"
+            # Write scope polygon once as GeoJSON for gdalwarp cutline
+            scope_geojson_path = dgm1_base_dir / "dgm1_scope_clip.geojson"
+            fc = {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "properties": {},
+                        "geometry": mapping(geom)
+                    }
+                ]
+            }
+            scope_geojson_path.write_text(json.dumps(fc))
+            # -crop_to_cutline trims to bbox of polygon, and -dstnodata
+            # makes the outside area NoData (= transparent in QGIS)
+            cutline_args = (
+                f'-cutline "{scope_geojson_path}" '
+                f'-cutline_srs EPSG:{source_srid} '
+                "-crop_to_cutline "
+                "-dstnodata 0 "
             )
         except Exception as e:
-            log.error(f"DGM1: Failed to parse clip geometry WKT → {e}. Proceeding without clipping.")
+            log.error(f"DGM1: Failed to prepare exact clip geometry → {e}")
             clip_extent_args = ""
-    else:
-        log.warning("DGM1: get_clip_geometry returned no geometry → no clipping will be applied.")
+            cutline_args = ""
+            scope_geojson_path = None
 
-    # ---------------------- DB setup -------------------------
+    # ---------------------- DB connection strings -------------------------
     pgurl = utils._pg_connstring_for_psql()
     psql_command = f'psql --no-psqlrc -q -v ON_ERROR_STOP=1 -X "{pgurl}"'
 
@@ -209,147 +213,103 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
 
     # ---------------------- Main Loop -------------------------
     for landkreis_code in landkreis_download_codes:
-        log.info(f"DGM1: processing Landkreis {landkreis_code}")
 
+        log.info(f"DGM1: processing Landkreis {landkreis_code}")
         landkreis_dir = dgm1_base_dir / landkreis_code
         landkreis_dir.mkdir(parents=True, exist_ok=True)
 
-        # Step 1: Download
+        # 1) Download
         download_url = url_template.replace("#scope", landkreis_code)
-        log.info(f"DGM1: downloading DGM1 data for Landkreis {landkreis_code}...")
         utils.download_aria2c(
-            url=download_url,
-            output_dir=landkreis_dir,
+            download_url,
+            landkreis_dir,
             connections=1,
             allow_overwrite=False,
             auto_file_renaming=False,
         )
 
-        # Step 2: Extract
-        log.info(f"DGM1: extracting archives for Landkreis {landkreis_code}...")
+        # 2) Extract
         zip_files = utils.get_all_files(str(landkreis_dir), ".zip")
         if zip_files:
-            log.info(f"DGM1: found {len(zip_files)} ZIP files → extracting...")
             utils.unzip(zip_files, str(landkreis_dir))
-        else:
-            log.info(
-                f"DGM1: no ZIP files in {landkreis_dir} → assuming raw TIFF/ASC tiles are present."
-            )
 
-        # Step 3: Find TIFFs / ASC
+        # 3) Find source rasters
         raster_source_files = subprocess.check_output(
-            [
-                "find", str(landkreis_dir),
-                "-type", "f",
-                "(",
-                "-iname", "*.tif",
-                "-o", "-iname", "*.asc",
-                ")",
-                "-print",
-            ],
-            text=True,
+            ["find", str(landkreis_dir), "-type", "f",
+             "(", "-iname", "*.tif", "-o", "-iname", "*.asc", ")", "-print"],
+            text=True
         ).strip()
 
         if not raster_source_files:
-            log.warning(f"DGM1: no raster tiles found for Landkreis {landkreis_code}. Skipping.")
             continue
 
         tile_paths = raster_source_files.splitlines()
-        log.info(f"DGM1: found {len(tile_paths)} raster tiles for {landkreis_code}")
 
-        # Step 4: VRT
+        # 4) VRT
         virtual_raster_path = landkreis_dir / f"dgm1_{landkreis_code}.vrt"
         tile_list_file = landkreis_dir / "raster_tiles.txt"
-        tile_list_file.write_text("\n".join(tile_paths), encoding="utf-8")
+        tile_list_file.write_text("\n".join(tile_paths))
 
-        log.info(f"DGM1: building VRT mosaic → {virtual_raster_path}")
         utils.do_cmd(
             f'gdalbuildvrt -resolution highest -r bilinear '
             f'-input_file_list "{tile_list_file}" "{virtual_raster_path}"'
         )
 
-        # Step 5: Warp (CLIPPED to scope bbox, if available)
+        # 5) Warp + exact polygon clipping in one step
         output_filename = f"dgm1_{landkreis_code}_{target_resolution_meters}m.tif"
         output_geotiff_path = landkreis_dir / output_filename
-        temp_geotiff_path = landkreis_dir / f"{output_filename}.tmp"
 
         gdalwarp_opts = (
             "-of GTiff "
-            "-co TILED=YES "
-            "-co COMPRESS=DEFLATE "
-            "-co PREDICTOR=2 "
-            "-co BIGTIFF=IF_SAFER "
-            "-co BLOCKXSIZE=512 "
-            "-co BLOCKYSIZE=512 "
-            "-co NUM_THREADS=ALL_CPUS "
-            "-r bilinear "
+            "-co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 "
+            "-co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 "
+            "-co NUM_THREADS=ALL_CPUS -r bilinear "
             f"-t_srs EPSG:{source_srid} "
             f"-tr {target_resolution_meters} {target_resolution_meters} "
-            f"{clip_extent_args} "
-            "-overwrite "
-            "-multi "
-            "-wo NUM_THREADS=ALL_CPUS"
+            f"{clip_extent_args} {cutline_args} "
+            "-overwrite -multi -wo NUM_THREADS=ALL_CPUS"
         )
 
-        log.info(f"DGM1: running gdalwarp for Landkreis {landkreis_code}...")
         utils.do_cmd(
-            f'gdalwarp {gdalwarp_opts} "{virtual_raster_path}" "{temp_geotiff_path}"'
+            f'gdalwarp {gdalwarp_opts} "{virtual_raster_path}" "{output_geotiff_path}"'
         )
 
-        # Step 6: Validate
+        # 6) Validate
         try:
-            utils.do_cmd(f'gdalinfo "{temp_geotiff_path}" -stats -nomd')
-            temp_geotiff_path.replace(output_geotiff_path)
+            utils.do_cmd(f'gdalinfo "{output_geotiff_path}" -stats -nomd')
+            file_size_mb = output_geotiff_path.stat().st_size / 1_000_000
+            log.info(f"DGM1: Created clipped raster ({file_size_mb:.1f} MB)")
         except Exception as e:
-            log.error(f"DGM1: invalid warp output for {landkreis_code}: {e}")
+            log.error(f"DGM1: Warping/clipping failed for {landkreis_code}: {e}")
+            output_geotiff_path.unlink(missing_ok=True)
             continue
 
-        # Step 7: Import ALL Landkreise into ONE table
+        # 7) Import to PostGIS
         target_table = f"{schema}.{table}"
-
-        # First Landkreis: create table; later ones: append
-        if not any_data_imported:
-            raster2pgsql_mode = ""       # create
-        else:
-            raster2pgsql_mode = "-a"     # append
-
-        log.info(
-            f"DGM1: importing Landkreis {landkreis_code} into PostGIS "
-            f"table {target_table} (mode={'create' if not any_data_imported else 'append'})..."
-        )
+        mode = "" if not any_data_imported else "-a"
 
         import_pipeline = (
             "raster2pgsql -q "
             f"-s {source_srid} "
             "-I -M "
             "-t 256x256 "
-            f'"{output_geotiff_path}" {target_table} '
-            f"{raster2pgsql_mode} | {psql_command}"
+            f'"{output_geotiff_path}" {target_table} {mode} | {psql_command}'
         )
-
 
         utils.do_cmd(import_pipeline)
         any_data_imported = True
 
-    # ---------------------- Final: Index & ANALYZE -------------------------
+    # ---------------------- Final indexing -------------------------
     if any_data_imported:
-        # Drop filename column if it exists from older runs
-        with infdb.connect() as db:
-            db.execute_query(
-                f"ALTER TABLE {schema}.{table} "
-                f"DROP COLUMN IF EXISTS filename;"
-            )
-
         utils.do_cmd(
             f'{psql_command} -c '
             f'"CREATE INDEX IF NOT EXISTS {table}_rast_gix '
             f'ON {schema}.{table} USING GIST(ST_ConvexHull(rast));"'
         )
         utils.do_cmd(f'{psql_command} -c "ANALYZE {schema}.{table};"')
+        log.info(f"DGM1: Completed successfully → {schema}.{table}")
     else:
-        log.warning("DGM1: no data imported")
-
-
+        log.warning("DGM1: No data imported")
 
 
 
@@ -375,7 +335,6 @@ def _load_tatsaechliche_nutzung(
     url = cfg["url"]
     schema = cfg.get("schema", "opendata")
     table = cfg.get("table_name", "tatsaechliche_nutzung")
-    import_mode = cfg.get("import-mode", "delete")
 
     tn_dir = base_path / "tatsaechliche_nutzung"
     tn_dir.mkdir(parents=True, exist_ok=True)
@@ -448,7 +407,7 @@ def _load_tatsaechliche_nutzung(
                 schema=schema,
                 layer_names=[table],
                 scope=True,
-                overwrite=(is_first_import and import_mode != "append"),
+                overwrite=(is_first_import),
             )
             is_first_import = False
 
