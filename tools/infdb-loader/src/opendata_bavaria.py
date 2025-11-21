@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 from sqlalchemy import text
 from typing import Dict, List, Optional
-from osgeo import gdal
 
 from infdb import InfdbConfig, InfDB, InfdbClient
 from . import utils
