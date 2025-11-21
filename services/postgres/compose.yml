@@ -31,6 +31,13 @@ services:
 
 volumes:
     postgres-data:
+        driver: local
+        driver_opts:
+            type: none
+            o: bind
+            device: ${SERVICES_POSTGRES_PATH_BASE}
+
+
 
 include:
     - ../infdb-init/compose.yml

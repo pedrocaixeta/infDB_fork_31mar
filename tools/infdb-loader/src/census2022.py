@@ -1,171 +1,210 @@
-import os
 import logging
-import multiprocessing
-import chardet
-import pandas as pd
+import multiprocessing as mp
+import os
+from typing import Any, Dict, Iterable, List
+
 import geopandas as gpd
-from . import utils, config, logger
+import pandas as pd
 from charset_normalizer import from_path
 
-log = logging.getLogger(__name__)
+from infdb import InfdbClient, InfdbConfig, InfdbLogger
+from infdb import InfDB
+from . import utils
 
 
-def load(log_queue):
-    logger.setup_worker_logger(log_queue)
+# ============================== Constants ==============================
+
+LOGGER_NAME: str = __name__
+TOOL_NAME: str = "loader"
+CONFIG_DIR: str = "configs"
+DB_NAME: str = "postgres"
+CSV_SEPARATOR: str = ";"
+CSV_DECIMAL: str = ","
+GPKG_DRIVER: str = "GPKG"
+CLIPPED_PREFIX: str = "zensus-2022"
+
+# # Module logger
+# log = logging.getLogger(LOGGER_NAME)
+
+
+# def _init_logger_for_process(cfg: InfdbConfig) -> logging.Logger:
+#     """Initialize and return a worker logger for this process.
+
+#     Args:
+#         cfg: Shared InfdbConfig to read log path and level.
+
+#     Returns:
+#         A process-local logger wired through InfdbLogger's QueueListener.
+#     """
+#     log_path = infdb.get_config_value([TOOL_NAME, "logging", "path"]) or "loader.log"
+#     level = infdb.get_config_value([TOOL_NAME, "logging", "level"]) or "INFO"
+#     infdb_logger = InfdbLogger(log_path=log_path, level=level, cleanup=False)
+#     return infdb_logger.setup_worker_logger()
+
+
+def load(infdb: InfDB) -> None:
+    """Entry point to download, validate, and process Zensus 2022 datasets.
+
+    Behavior preserved:
+    - Respects `utils.if_active("zensus_2022")`.
+    - Validates page links vs YAML list and logs differences.
+    - Creates schema if missing.
+    - Spawns a process pool with a per-process logger initializer.
+    """
+    # # package config + logger
+    # cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
+
+    #log = _init_logger_for_process(cfg)
+    log = infdb.get_worker_logger()
 
     if not utils.if_active("zensus_2022"):
         return
-    
-    datasets = config.get_value(["loader", "sources", "zensus_2022", "datasets"])
 
-    url = config.get_value(["loader", "sources", "zensus_2022", "url"])
-    zip_links = utils.get_website_links(url)
+    datasets: List[Dict[str, Any]] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "datasets"])
 
-    # Validate links
+    url = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "url"])
+    zip_links: List[str] = utils.get_website_links(url)
+
+    # validate links
     yaml_links = {entry["url"] for entry in datasets}
     original_set = set(zip_links)
-
     missing_in_yaml = original_set - yaml_links
     extra_in_yaml = yaml_links - original_set
     if missing_in_yaml:
         log.warning("Links in original list but NOT in YAML:")
-        for l in sorted(missing_in_yaml):
-            log.warning(f" - {l}")
-
+        for lnk in sorted(missing_in_yaml):
+            log.warning(" - %s", lnk)
     if extra_in_yaml:
         log.warning("Links in YAML but NOT in original list:")
-        for l in sorted(extra_in_yaml):
-            log.warning(f" - {l}")
+        for lnk in sorted(extra_in_yaml):
+            log.warning(" - %s", lnk)
 
-    # Create schema if it doesn't exist
-    schema = config.get_value(["loader", "sources", "zensus_2022", "schema"])
-    sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
-    utils.sql_query(sql)
-    
-    # Create folders
-    zip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
+    # create schema (via package client)
+    schema = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "schema"])
+    with infdb.connect() as db:
+        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+
+    # folders
+    zip_path = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "zip"], type="loader")
     os.makedirs(zip_path, exist_ok=True)
-    unzip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
+    unzip_path = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
     os.makedirs(unzip_path, exist_ok=True)
 
     number_processes = utils.get_number_processes()
-    with multiprocessing.Pool(
+    with mp.Pool(
         processes=number_processes,
-        initializer=logger.setup_worker_logger,
-        initargs=(log_queue,),
+        # initializer=_init_logger_for_process,
+        # initargs=(infdb,),
     ) as pool:
-        results = pool.map(process_dataset, datasets)
+        pool.starmap(process_dataset, [(dataset,) for dataset in datasets])
 
 
-def process_dataset(dataset):
+def process_dataset(dataset: Dict[str, Any]) -> bool:
+    """Download, unzip, transform, and load one dataset to PostGIS.
+
+    Args:
+        dataset: A dataset record from config (`name`, `url`, `year`, `table_name`, `status`, ...).
+
+    Returns:
+        True on success or skip; False when an exception is encountered (logged).
+    """
     try:
-        log.info(f"Working on {dataset["name"]}")
-
-        # Check for status
-        status = dataset["status"]
-        if status == "active":
-            log.info(f"Loading {dataset["name"]} ...")
-        else:
-            log.info(f"{dataset["name"]} skips, status not active")
-            return True
+        # Initialize InfDB in each worker process
+        infdb = InfDB(tool_name=TOOL_NAME)
+        log = infdb.get_worker_logger()
         
-        # Check for year 
-        years = config.get_value(["loader", "sources", "zensus_2022", "years"])
-        if dataset["year"] not in years:
-            log.info(f"{dataset["name"]} skips, not in years list")
+        log.info("Working on %s", dataset["name"])
+
+        # status gate
+        if dataset["status"] != "active":
+            log.info("%s skips, status not active", dataset["name"])
             return True
-            
-        # Download
-        zip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "zip"])
-        download_path = os.path.join(zip_path, dataset["table_name"] + ".zip")
+
+        # fresh cfg (per-process)
+        # cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
+
+        years: Iterable[int] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "years"])
+        if dataset["year"] not in years:
+            log.info("%s skips, not in years list", dataset["name"])
+            return True
+
+        # Download INTO the zip directory and use the returned file path
+        zip_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "zip"], type="loader")
         link = dataset["url"]
-        utils.download_files(link, download_path)
+        downloaded = utils.download_files(link, zip_dir)  # returns [<zip_file_path>]
+        zip_file = downloaded[0]
 
-        # Unzip
-        unzip_path = config.get_path(["loader", "sources", "zensus_2022", "path", "unzip"])
-        folder_path = os.path.join(unzip_path, dataset["table_name"])
-        utils.unzip(download_path, folder_path)
+        # Unzip using the real file path
+        unzip_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "unzip"], type="loader")
+        folder_path = os.path.join(unzip_dir, dataset["table_name"])
+        utils.unzip(zip_file, folder_path)
 
-        # Export to postgis
-        resolutions = config.get_value(["loader", "sources", "zensus_2022", "resolutions"])
+        # Export to PostGIS
+        resolutions: List[str] = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "resolutions"])
         for resolution in resolutions:
-            log.info(f"Processing {dataset["name"]} with {resolution} ...")
+            log.info("Processing %s with %s ...", dataset["name"], resolution)
 
-            # Search for corresponding file within source folder
             file = utils.get_file(folder_path, resolution, ".csv")
             if not file:
-                log.warning(f"No file for {dataset["name"]} with resolution {resolution} found")
+                log.warning("No file for %s with resolution %s found", dataset["name"], resolution)
                 continue
 
-            # Detect encoding of file
             encoding = from_path(file).best().encoding
-            log.debug(f"Detected encoding for file: {encoding}")
+            log.debug("Detected encoding for file: %s", encoding)
 
             df = pd.read_csv(
                 file,
-                sep=";",
-                decimal=",",
-                # na_values="–",
+                sep=CSV_SEPARATOR,
+                decimal=CSV_DECIMAL,
                 low_memory=True,
                 encoding=encoding,
-            )  # , encoding="latin_1"   # GeoDataFrame laden (Beispiel) nrows=10,
-
+            )
             df.fillna(0, inplace=True)
             df.columns = df.columns.str.lower()
 
             gdf = gpd.GeoDataFrame(
                 df,
-                geometry=gpd.points_from_xy(
-                    df.loc[:, "x_mp_" + resolution], df.loc[:, "y_mp_" + resolution]
-                ),
+                geometry=gpd.points_from_xy(df[f"x_mp_{resolution}"], df[f"y_mp_{resolution}"]),
                 crs="EPSG:3035",
-            )  # ETRS89 / UTM zone 32N
-            epsg = utils.get_db_parameters("postgres")["epsg"]
+            )
+
+            epsg = infdb.get_config_value(["services", "postgres", "epsg"])
+            if epsg is None:
+                raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
             gdf = gdf.to_crs(epsg=epsg)
 
-            # Create a database-data-import-container connection
-            engine = utils.get_db_engine("postgres")
+            # get engine via client (engine is independent)
+            with infdb.connect() as db:
+                engine = db.get_db_engine()
 
-            # Get user configurations
-            prefix = config.get_value(["loader", "sources", "zensus_2022", "prefix"])
-            schema = config.get_value(["loader", "sources", "zensus_2022", "schema"])
+            prefix = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "prefix"])
+            schema = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "schema"])
 
-            # Get envelope
             gdf_envelope = utils.get_envelop()
-            if not gdf_envelope.empty:
-                gdf_clipped = gpd.clip(gdf, gdf_envelope)
-            else:
-                gdf_clipped = gdf
+            gdf_clipped = gpd.clip(gdf, gdf_envelope) if not gdf_envelope.empty else gdf
 
-            table_name = dataset["table_name"]
-            table_name = prefix + "_" + str(dataset["year"]) + "_" + resolution + "_" + dataset["table_name"]
-
+            table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
             gdf_clipped = gdf_clipped.rename_geometry("geom")
-            gdf_clipped.to_postgis(table_name, engine, if_exists='replace', schema=schema, index=False)
+            gdf_clipped.to_postgis(table_name, engine, if_exists="replace", schema=schema, index=False)
 
-            # Save clipped data locally
-            save_local = config.get_value(["loader", "sources", "zensus_2022", "save_local"])
+            save_local = infdb.get_config_value([TOOL_NAME, "sources", "zensus_2022", "save_local"])
             if save_local == "active":
-                output_path = config.get_path(
-                    ["loader", "sources", "zensus_2022", "path", "processed"]
-                )
-                log.debug(f"Output path: {output_path}")
-                os.makedirs(output_path, exist_ok=True)
-
+                out_dir = infdb.get_config_path([TOOL_NAME, "sources", "zensus_2022", "path", "processed"], type="loader")
+                os.makedirs(out_dir, exist_ok=True)
                 gdf_clipped.to_file(
-                    os.path.join(output_path, f"zenus-2022_{resolution}.gpkg"),
+                    os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
                     layer=table_name,
-                    driver="GPKG",
+                    driver=GPKG_DRIVER,
                 )
                 gdf_clipped.to_csv(
-                    os.path.join(output_path, f"zenus-2022_{resolution}_{table_name}.csv"),
+                    os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}_{table_name}.csv"),
                     index=False,
                 )
 
-            log.info(f"Processed sucessfully {file}")
+            log.info("Processed sucessfully %s", file)
 
     except Exception as err:
-        log.exception(f"An error occurred while processing file: {dataset["name"]} {str(err)}")
+        log.exception("An error occurred while processing file: %s %s", dataset.get("name"), str(err))
         return False
-    
+
     return True

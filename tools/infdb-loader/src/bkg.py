@@ -1,161 +1,192 @@
-import os
-from . import config, utils
-from .logger import setup_worker_logger
+# src/bkg.py
 import logging
+import multiprocessing as mp
+import os
+from logging.handlers import QueueHandler
+from typing import List, Sequence, Union
 
-log = logging.getLogger(__name__)
+from infdb import InfDB
+from . import utils
 
-def create_geogitter(resolutions, clear_existing=False):
-    """Create a grid_cells table containing cells for all specified resolutions.
 
-    This function drops any existing table with the same name, creates a new
-    table schema, and populates it with grid cells for each requested resolution.
-    The grid cells are generated based on the provided EPSG code and the 
-    geographical envelope.
+# ============================== Constants ==============================
+
+TOOL_NAME: str = "loader"
+GPKG_EXT: str = ".gpkg"
+ZIP_EXT: str = ".zip"
+
+
+# Module logger
+
+
+def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_existing: bool = False) -> None:
+    """Create (or update) a single geogitter table by inserting grid cells per resolution.
+
+    Behavior preserved:
+    - Single target table: {schema}.{table_name}
+    - Optionally drop the table when `clear_existing=True`
+    - Create schema + spatial index if missing
+    - Insert grid cells per resolution, skipping rows whose id already exists
+
+    Args:
+        resolutions: Either a single resolution string (e.g., "1km", "500m")
+            or a sequence of such strings.
+        clear_existing: If True, drop the table before (re)creating it.
+
+    Raises:
+        KeyError: If EPSG is missing in DB parameters.
     """
-    epsg = utils.get_db_parameters("postgres")["epsg"]
-    schema = config.get_value(["loader", "sources", "bkg", "schema"])
-    table_name = config.get_value(["loader", "sources", "bkg", "geogitter", "table_name"])
-    
-    # Drop existing table if present
-    if clear_existing:
-        sql = f"DROP TABLE IF EXISTS {schema}.{table_name};"
-        utils.sql_query(sql)
+    log = infdb.get_worker_logger()
+    # DB / config
+    epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
+    if epsg is None:
+        raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
 
-    # Create table schema with proper columns
-    log.info(f"Creating {table_name} table schema...")
-    sql = f"""
-        CREATE TABLE IF NOT EXISTS {schema}.{table_name} (
-            id TEXT,
-            x_mp INTEGER,
-            y_mp INTEGER,
-            name TEXT,
-            resolution_meters INTEGER,
-            geom GEOMETRY
-        );
-        CREATE INDEX IF NOT EXISTS {table_name}_geom_idx ON {schema}.{table_name} USING GIST (geom);
-    """
-    utils.sql_query(sql)
+    schema = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "schema"])
+    table_name = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "geogitter", "table_name"])
 
-    envelop = utils.get_envelop()
-    wkt = envelop.to_crs(3035).union_all().wkt  # ETRS89 is used by BKG for geogitter
+    # Build base table
+    with infdb.connect() as db:
+        if clear_existing:
+            db.execute_query(f"DROP TABLE IF EXISTS {schema}.{table_name};")
 
-    # Ensure resolutions is a list
-    if isinstance(resolutions, str):
-        resolutions = [resolutions]
-    
-    for resolution in resolutions:
-        if resolution.endswith("km"):
-            resolution_meters = int(resolution[:-2]) * 1000
-        elif resolution.endswith("m"):
-            resolution_meters = int(resolution[:-1])
-        else:
-            # skip unknown formats
-            log.warning("Skipping resolution with unknown unit: %s", resolution)
-            continue
-
-        # Generate grid cells for one resolution, only insert if id does not already exist
-        generate_grid_cells_sql = f"""
-            WITH params AS (
-                SELECT {resolution_meters}::int AS cell_size
-            ),
-            boundary AS (
-                SELECT ST_GeomFromText('{wkt}', 3035) AS geom
-            ),
-            envelope AS (
-                SELECT
-                    FLOOR(ST_XMin(b.geom) / p.cell_size) * p.cell_size AS x_min,
-                    FLOOR(ST_YMin(b.geom) / p.cell_size) * p.cell_size AS y_min,
-                    CEIL(ST_XMax(b.geom) / p.cell_size) * p.cell_size AS x_max,
-                    CEIL(ST_YMax(b.geom) / p.cell_size) * p.cell_size AS y_max,
-                    p.cell_size
-                FROM boundary b, params p
-            ),
-            grid_raw AS (
-                SELECT (ST_SquareGrid(
-                        e.cell_size,
-                        ST_MakeEnvelope(e.x_min, e.y_min, e.x_max, e.y_max, 3035)
-                        )).* 
-                FROM envelope e
-            ),
-            grid AS (
-                SELECT
-                    ST_Transform(geom, {epsg}) AS geom,
-                    ST_XMin(geom) AS x,
-                    ST_YMin(geom) AS y
-                FROM grid_raw
-            ),
-            id_named AS (
-                SELECT
-                    FORMAT('%sN%sE%s', '{resolution}', g.y::int::text, g.x::int::text) AS id,
-                    (g.x + (p.cell_size / 2.0))::int AS x_mp,
-                    (g.y + (p.cell_size / 2.0))::int AS y_mp,
-                    'DE_Grid_ETRS89_LAEA_{resolution}'::text AS name,
-                    p.cell_size::int AS resolution_meters,
-                    g.geom
-                FROM grid g, params p
-            )
-            SELECT * FROM id_named
-            WHERE id NOT IN (SELECT id FROM {schema}.{table_name});
+        log.info("Creating %s table schema if needed...", table_name)
+        ddl = f"""
+            CREATE TABLE IF NOT EXISTS {schema}.{table_name} (
+                id TEXT,
+                x_mp INTEGER,
+                y_mp INTEGER,
+                name TEXT,
+                resolution_meters INTEGER,
+                geom GEOMETRY
+            );
+            CREATE INDEX IF NOT EXISTS {table_name}_geom_idx
+            ON {schema}.{table_name} USING GIST (geom);
         """
+        db.execute_query(ddl)
+    
+        all_envelops = utils.get_all_envelops()
+        for envelop in all_envelops:
+            log.debug("Envelop: %s", envelop)
+            
+            wkt = envelop.to_crs(3035).unary_union.wkt
 
-        # Insert subsequent resolutions' cells, only if id does not exist
-        sql = f"INSERT INTO {schema}.{table_name} {generate_grid_cells_sql};"
-        utils.sql_query(sql)
+            # Ensure list
+            if isinstance(resolutions, str):
+                resolutions = [resolutions]
+
+            # Insert per resolution, skipping existing ids
+            for resolution in resolutions or []:
+                if resolution.endswith("km"):
+                    resolution_meters = int(resolution[:-2]) * 1000
+                elif resolution.endswith("m"):
+                    resolution_meters = int(resolution[:-1])
+                else:
+                    log.warning("Skipping resolution with unknown unit: %s", resolution)
+                    continue
+
+                log.info("Generating grid cells for %s with resolution %s", "add_AGS", resolution_meters)
+                # todo: add_AGS parameter to identify the area from envelop
+
+                generate_grid_cells_sql = f"""
+                    WITH params AS (
+                        SELECT {resolution_meters}::int AS cell_size
+                    ),
+                    boundary AS (
+                        SELECT ST_GeomFromText('{wkt}', 3035) AS geom
+                    ),
+                    envelope AS (
+                        SELECT
+                            FLOOR(ST_XMin(b.geom) / p.cell_size) * p.cell_size AS x_min,
+                            FLOOR(ST_YMin(b.geom) / p.cell_size) * p.cell_size AS y_min,
+                            CEIL(ST_XMax(b.geom) / p.cell_size) * p.cell_size AS x_max,
+                            CEIL(ST_YMax(b.geom) / p.cell_size) * p.cell_size AS y_max,
+                            p.cell_size
+                        FROM boundary b, params p
+                    ),
+                    grid_raw AS (
+                        SELECT (ST_SquareGrid(
+                                e.cell_size,
+                                ST_MakeEnvelope(e.x_min, e.y_min, e.x_max, e.y_max, 3035)
+                                )).*
+                        FROM envelope e
+                    ),
+                    grid AS (
+                        SELECT
+                            ST_Transform(geom, {epsg}) AS geom,
+                            ST_XMin(geom) AS x,
+                            ST_YMin(geom) AS y
+                        FROM grid_raw
+                    ),
+                    id_named AS (
+                        SELECT
+                            FORMAT('%sN%sE%s', '{resolution}', g.y::int::text, g.x::int::text) AS id,
+                            (g.x + (p.cell_size / 2.0))::int AS x_mp,
+                            (g.y + (p.cell_size / 2.0))::int AS y_mp,
+                            'DE_Grid_ETRS89_LAEA_{resolution}'::text AS name,
+                            p.cell_size::int AS resolution_meters,
+                            g.geom
+                        FROM grid g, params p
+                    )
+                    SELECT * FROM id_named
+                    WHERE id NOT IN (SELECT id FROM {schema}.{table_name});
+                """
+
+                insert_sql = f"INSERT INTO {schema}.{table_name} {generate_grid_cells_sql};"
+                db.execute_query(insert_sql)
 
 
-def load(log_queue):
-    setup_worker_logger(log_queue)
+def load(infdb: InfDB) -> None:
+    """Download BKG sources, import layers, and generate geogitter grid.
 
-    # # Todo: Load data for scope selection seperately, think about how to define scope  
+    Behavior preserved:
+    - (Optional) feature guard for BKG: left commented as in original.
+    - Download/unzip/import NUTS and VG5000 with scope=False.
+    - Create schema if missing; then generate geogitter with configured resolutions.
+    """
+    log = infdb.get_worker_logger()
+
     # if not utils.if_active("bkg"):
     #     return
 
-    # Check if the required directories exist, if not create them
-    # Base path for zip files
-    zip_path = config.get_path(["loader", "sources", "bkg", "path", "zip"])
+    # Paths
+    zip_path = infdb.get_config_path([TOOL_NAME, "sources", "bkg", "path", "zip"], type="loader")
     os.makedirs(zip_path, exist_ok=True)
-
-    # Base path for unzipped files
-    unzip_path = config.get_path(["loader", "sources", "bkg", "path", "unzip"])
+    unzip_path = infdb.get_config_path([TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
     os.makedirs(unzip_path, exist_ok=True)
 
-    ## Create schema in database
-    schema = config.get_value(["loader", "sources", "bkg", "schema"])
+    schema = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "schema"])
+    prefix = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "prefix"])
 
-    # Prefix for table names
-    prefix = config.get_value(["loader", "sources", "bkg", "prefix"])
+    # Ensure schema exists via InfdbClient
+    with infdb.connect() as db:
+        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
-    sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
-    utils.sql_query(sql)
-
-    # NUTS-Gebiete
+    # --- NUTS (download+unzip+import) ---
     log.info("Downloading and unzipping NUTS")
-    url = config.get_value(["loader", "sources", "bkg", "nuts", "url"])
-    utils.download_files(url, zip_path)
-    files = utils.get_file(zip_path, filename="nuts250", ending=".zip")
-    utils.unzip(files, unzip_path)
-    
-    nuts_layers = config.get_value(["loader", "sources", "bkg", "nuts", "layer"])
-    file = utils.get_file(unzip_path, filename="nuts250", ending=".gpkg")
-    utils.import_layers(file, nuts_layers, schema, prefix, scope=False)
+    nuts_url = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "nuts", "url"])
+    utils.download_files(nuts_url, zip_path)
+    nuts_zip = utils.get_file(zip_path, filename="nuts250", ending=ZIP_EXT)
+    utils.unzip(nuts_zip, unzip_path)
 
-    # Verwaltungsgebiete
+    nuts_layers = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "nuts", "layer"])
+    nuts_gpkg = utils.get_file(unzip_path, filename="nuts250", ending=GPKG_EXT)
+    utils.import_layers(nuts_gpkg, nuts_layers, schema, prefix, scope=False)
+
+    # --- VG5000 (download+unzip+import) ---
     log.info("Downloading and unzipping VG5000")
-    url = config.get_value(["loader", "sources", "bkg", "vg5000", "url"])
-    utils.download_files(url, zip_path)
-    files = utils.get_file(zip_path, filename="vg5000", ending=".zip")
-    utils.unzip(files, unzip_path)
+    vg_url = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "vg5000", "url"])
+    utils.download_files(vg_url, zip_path)
+    vg_zip = utils.get_file(zip_path, filename="vg5000", ending=ZIP_EXT)
+    utils.unzip(vg_zip, unzip_path)
 
-    vg_layers = config.get_value(["loader", "sources", "bkg", "vg5000", "layer"])
-    file = utils.get_file(unzip_path, filename="vg5000", ending=".gpkg")
-    utils.import_layers(file, vg_layers, schema, prefix, scope=False)
+    vg_layers = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "vg5000", "layer"])
+    vg_gpkg = utils.get_file(unzip_path, filename="vg5000", ending=GPKG_EXT)
+    utils.import_layers(vg_gpkg, vg_layers, schema, prefix, scope=False)
 
-    # Geogitter
-    resolutions = config.get_value(
-        ["loader", "sources", "bkg", "geogitter", "resolutions"]
-    )
+    # --- Geogitter ---
+    resolutions = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "geogitter", "resolutions"])
     log.info("Creating Geogitter layers resolutions %s", resolutions)
-    create_geogitter(resolutions, clear_existing=True)
+    create_geogitter(resolutions, infdb, clear_existing=True)
 
     log.info("BKG data loaded successfully")

@@ -5,9 +5,10 @@ loader:
         # - "09780139"  # Sonthofen
         # - "09780116"  # Bolsterlang
         # - "09162000" # M
-        - "09185149" # ND
         # - "09474126" # FO
         # - "09261000" # LA
+        - "05119000" # Oberhausen (NRW)
+        - "09185149" # Neuburg a.d. Donau (BY)
     multiproccesing: 
         status: not-active
         max_cores: 2    # max cores since of memory limitations to 2
@@ -52,6 +53,14 @@ loader:
             path:
                 lod2: "{loader/path/opendata}/lod2/"
                 gml: "{loader/path/opendata}/lod2/{loader/name}"
+        lod2-nrw:
+            status: active
+            import-mode: skip # delete
+            url:
+                - "http://ds1.need.energy:8123/3d-gm_lod2_kacheln.zip"    #scope placeholder for AGS
+            path:
+                lod2: "{loader/path/opendata}/lod2-nrw/"
+                gml: "{loader/path/opendata}/lod2-nrw/{loader/name}"
 
         bkg:
             status: active
@@ -90,7 +99,8 @@ loader:
             url: "https://basemap.de/dienste/opendata/basisviews/"
             ending: ".gpkg"
             filter:
-                - by
+                - by # Bavaria
+                - nw # North Rhine-Westphalia
             path:
                 base: "{loader/path/opendata}/basemap/"
                 processed: "{loader/path/processed}/basemap/"
@@ -130,7 +140,7 @@ loader:
                 - weitere_nutzung_flaeche
         plz:
             status: active
-            url: "https://downloads.suche-postleitzahl.org/v2/public/plz-5stellig.geojson"
+            url: "http://ds1.need.energy:8123/opendata/plz/plz-5stellig.geojson"
             path:
                 base: "{loader/path/opendata}/plz/"
                 processed: "{loader/path/processed}/plz/"

@@ -1,56 +1,64 @@
 import os
+from typing import Any, Dict
+
 from infdb import InfDB
 
-def main():
 
-    # Load InfDB handler
-    infdbhandler = InfDB(tool_name="infdb-basedata")
+# ============================== Constants ==============================
 
-    # Database connection
-    infdbclient_citydb = infdbhandler.connect()
+TOOL_NAME: str = "infdb-basedata"
+CONFIG_DIR: str = "configs"
+WAYS_SQL_DIR: str = os.path.join("sql", "ways_sql")
+BUILDINGS_SQL_DIR: str = os.path.join("sql", "buildings_sql")
+CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
 
-    # Logger setup
-    infdblog = infdbhandler.get_log()
 
-    # Start message
-    infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
+def main() -> None:
+    """Run base-data SQL pipelines (WAYS, BUILDINGS, CONNECTIONS) against Postgres.
 
-    # Get configuration values
-    input_schema = infdbhandler.get_config_value(["data", "input_schema"], insert_toolname=True)
-    output_schema = infdbhandler.get_config_value(["data", "output_schema"], insert_toolname=True)
-    epsg = infdbhandler.get_config_value(["services", "postgres", "epsg"])
+    Loads configuration and logging via `InfDB`, prepares format parameters, drops
+    the output schema (if present), and executes the SQL directories in sequence.
+    """
+    # Load InfDB facade (config + logging)
+    infdb = InfDB(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
 
-    # Schema configuration
-    format_params = {
-        'input_schema': input_schema,
-        'output_schema': output_schema,
-        'list_gemeindeschluessel': "todo",
-        'EPSG': epsg
+    # Logger
+    log = infdb.get_log()
+    log.info("Starting %s tool", infdb.get_toolname())
+
+    # Config
+    input_schema = infdb.get_config_value(["data", "input_schema"], insert_toolname=True)
+    output_schema = infdb.get_config_value(["data", "output_schema"], insert_toolname=True)
+    epsg = infdb.get_config_value(["services", "postgres", "epsg"])
+
+    format_params: Dict[str, Any] = {
+        "input_schema": input_schema,
+        "output_schema": output_schema,
+        "list_gemeindeschluessel": "todo",
+        "EPSG": epsg,
     }
-    infdblog.info(f"Input schema: {input_schema}")
-    infdblog.info(f"Output schema: {output_schema}")
 
-    # Drop output schema if exists for development purposes
-    infdblog.info(f"Dropping output schema '{output_schema}' if it exists")
-    infdbclient_citydb.execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
+    log.info("Input schema: %s", input_schema)
+    log.info("Output schema: %s", output_schema)
 
-    # Execute WAYS scripts
-    infdblog.info("Running WAYS SQL scripts")
-    WAYS_SQL_DIR = os.path.join("sql", "ways_sql")
-    infdbclient_citydb.execute_sql_files(WAYS_SQL_DIR, format_params=format_params)
+    # Database work (context-managed)
+    with infdb.connect() as db:
+        # Drop output schema if exists (dev convenience)
+        db.execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
 
-    # Execute BUILDINGS scripts
-    infdblog.info("Running BUILDINGS SQL scripts")
-    BUILDINGS_SQL_DIR = os.path.join("sql", "buildings_sql")
-    infdbclient_citydb.execute_sql_files(BUILDINGS_SQL_DIR, format_params=format_params)
+        # Execute WAYS scripts
+        log.info("Running WAYS SQL scripts")
+        db.execute_sql_files(WAYS_SQL_DIR, format_params=format_params)
 
-    # Execute Connections scripts
-    infdblog.info("Execute connections SQL scripts")
-    CONNECTIONS_SQL_DIR = os.path.join("sql", "connections")
-    infdbclient_citydb.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
+        # Execute BUILDINGS scripts
+        log.info("Running BUILDINGS SQL scripts")
+        db.execute_sql_files(BUILDINGS_SQL_DIR, format_params=format_params)
 
-    # End message
-    infdblog.info(f"Successfully finished {infdbhandler.get_toolname()} tool")
+        # Execute CONNECTIONS scripts
+        log.info("Executing connections SQL scripts")
+        db.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
+
+    log.info("Successfully finished %s tool", infdb.get_toolname())
 
 
 if __name__ == "__main__":

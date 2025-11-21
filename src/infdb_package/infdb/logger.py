@@ -1,0 +1,84 @@
+import logging
+import multiprocessing
+import os
+import sys
+from logging.handlers import QueueHandler, QueueListener
+from typing import Optional
+
+
+# ============================== Constants ==============================
+
+LOGGER_NAME: str = "infdb"
+WORKER_LOGGER_NAME: str = "infdb.worker"
+LOG_FORMAT: str = "%(asctime)s | %(processName)s | %(levelname)s: %(message)s"
+FILE_ENCODING: str = "utf-8"
+
+
+class InfdbLogger:
+    """Console + file logging with a multiprocessing-safe queue listener."""
+
+    def __init__(self, log_path: str, level: str = "INFO", cleanup: bool = False) -> None:
+        """Initialize root logger, handlers, and a QueueListener.
+
+        Args:
+            log_path: Path to the log file to write.
+            level: Logging level name (e.g., 'INFO', 'DEBUG').
+            cleanup: If True, remove any existing log file at `log_path` before starting.
+        """
+        self.formatter = logging.Formatter(LOG_FORMAT)
+
+        # Console handler
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(self.formatter)
+
+        # Ensure log directory exists
+        log_dir = os.path.dirname(log_path)
+        if log_dir:  # non-empty (i.e. path has a directory component)
+            os.makedirs(log_dir, exist_ok=True)
+
+        # Optional cleanup of existing log file
+        if cleanup:
+            try:
+                if os.path.exists(log_path):
+                    os.remove(log_path)
+            except Exception:
+                # Preserve original permissive behavior: ignore cleanup errors
+                pass
+
+        # File handler
+        file_handler = logging.FileHandler(log_path, encoding=FILE_ENCODING)
+        file_handler.setFormatter(self.formatter)
+
+        # Root logger
+        self.root_logger = logging.getLogger(LOGGER_NAME)
+        self.root_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
+        self.root_logger.handlers.clear()
+        self.root_logger.addHandler(console_handler)
+        self.root_logger.addHandler(file_handler)
+
+        # Queue + listener for worker process logs
+        self.log_queue: multiprocessing.Queue = multiprocessing.Queue()
+        self.listener = QueueListener(self.log_queue, console_handler, file_handler)
+        self.listener.start()
+
+    def __del__(self) -> None:
+        """Best-effort shutdown of the queue listener on GC."""
+        try:
+            if getattr(self, "listener", None):
+                self.listener.stop()
+        except Exception:
+            # Ignore shutdown-time errors to match prior behavior
+            pass
+
+    def setup_worker_logger(self) -> logging.Logger:
+        """Create a logger for worker processes that forwards to the queue.
+
+        Returns:
+            A logger configured with a QueueHandler that sends records to the root listener.
+        """
+        logger = logging.getLogger(WORKER_LOGGER_NAME)
+        logger.setLevel(self.root_logger.level)
+        logger.handlers.clear()
+        logger.addHandler(QueueHandler(self.log_queue))
+        logger.propagate = False
+        return logger
