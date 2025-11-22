@@ -114,19 +114,7 @@ def get_links(url: str, ending: str, flt: str) -> list[str]:
     log.debug(links)
     return links
 
-def resolve_webdav_auth(auth_cfg: dict | None):
-    """Return (username, password) or None."""
-    if not auth_cfg:
-        return None
-    typ = (auth_cfg.get("type") or "").lower()
-    if typ == "spaces":
-        return (auth_cfg.get("username"), auth_cfg.get("password"))
-    if typ == "public":
-        # public WebDAV expects (share-token, share-password or "")
-        return (auth_cfg.get("share_token"), auth_cfg.get("share_password", ""))
-    return None
-
-def _requests_download(url: str, dest_dir: str, auth: tuple[str, str] | None,
+def _requests_download(url: str, dest_dir: str, username: str, access_token: str,
                        timeout=60, max_retries=5, backoff_base=1.5, chunk=1024*1024) -> str:
     """HEAD (size if available) → streamed GET with retries/backoff."""
     os.makedirs(dest_dir, exist_ok=True)
@@ -134,6 +122,8 @@ def _requests_download(url: str, dest_dir: str, auth: tuple[str, str] | None,
     # filename from URL path
     filename = os.path.basename(urlparse(url).path) or "download"
     dest = os.path.join(dest_dir, filename)
+
+    auth = (username, access_token)
 
     # HEAD: get size if available
     size = None
@@ -176,19 +166,21 @@ def _requests_download(url: str, dest_dir: str, auth: tuple[str, str] | None,
             log.warning("Retry %d/%d for %s in %.1fs", attempt + 1, max_retries, url, sleep_s)
             time.sleep(sleep_s)
 
-def download_files(urls, base_path: str, auth: tuple[str, str] | None = None) -> list[str]:
+def download_files(urls, base_path: str, webdav: bool = False, username: str = None, access_token: str = None) -> list[str]:
     """
-    If `auth` provided → use requests (supports WebDAV basic auth).
+    If `webdav` provided → use requests (supports WebDAV basic auth).
     Else → use SmartDL (your current async flow).
     """
     os.makedirs(base_path, exist_ok=True)
     url_list = _ensure_list(urls)
 
     # Auth path (WebDAV or protected HTTP)
-    if auth:
+    if webdav:
+        if not username or not access_token:
+            raise ValueError("Username and access_token required when webdav=True")
         results = []
         for url in url_list:
-            results.append(_requests_download(url, base_path, auth=auth))
+            results.append(_requests_download(url, base_path, username=username, access_token=access_token))
         return results
 
     # Original SmartDL path (no auth)

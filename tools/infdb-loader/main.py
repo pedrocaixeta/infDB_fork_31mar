@@ -1,6 +1,7 @@
 import logging
 import multiprocessing as mp
-from typing import List
+import os
+from typing import Any, Dict, List
 
 from infdb import InfDB
 from src import utils
@@ -49,26 +50,26 @@ def main() -> None:
     log.info("-------------------------------------------------------------")
 
     # Download opendata package for development directly (original guard)
-    if utils.if_active("package"):
-        package.load(infdb)
+    # if utils.if_active("package"):
+    #     package.load(infdb)
 
     # Drop schema "opendata" for clean development runs
     with infdb.connect() as db:  # InfdbClient context
         db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
 
     # Ensure that administrative areas are loaded for scope
-    bkg.load(infdb)
+    #bkg.load(infdb)
 
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
-    processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
-    processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
-    processes.append(mp.Process(target=lod2.load,       args=(infdb,), name="lod2"))
+    # processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
+    # processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
+    # processes.append(mp.Process(target=lod2.load,       args=(infdb,), name="lod2"))
     processes.append(mp.Process(target=plz.load,        args=(infdb,), name="plz"))
-    processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
-    processes.append(mp.Process(target=census2022.load, args=(log_queue,), name="census2022"))
-    processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
+    # processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
+    # processes.append(mp.Process(target=census2022.load, args=(log_queue,), name="census2022"))
+    # processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
     # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
 
     for process in processes:

@@ -33,13 +33,19 @@ def load(infdb: InfDB) -> bool:
         url: str = infdb.get_config_value([TOOL_NAME, "sources", "plz", "url"])
         log.debug("url=%s", url)
 
-        # NEW: pick up auth (optional) without using `default=` kwarg
+        # Get auth flag (defaults to False if not present)
         try:
-            auth_cfg = infdb.get_config_value([TOOL_NAME, "sources", "plz", "auth"])
+            webdav = infdb.get_config_value([TOOL_NAME, "sources", "plz", "webdav"])
         except Exception:
-            auth_cfg = None
+            webdav = False
 
-        auth = utils.resolve_webdav_auth(auth_cfg)
+        # Get credentials if auth is enabled
+        username = None
+        access_token = None
+        if webdav:
+            username = infdb.get_config_value([TOOL_NAME, "sources", "plz", "username"])
+            access_token = infdb.get_config_value([TOOL_NAME, "sources", "plz", "access_token"])
+
         filename, *_ = utils.get_file_from_url(url)
 
         file_path = os.path.join(base_path, filename)
@@ -49,7 +55,7 @@ def load(infdb: InfDB) -> bool:
             log.info("File %s already exists.", file_path)
         else:
             log.info("File %s will be downloaded from %s", file_path, url)
-            utils.download_files(url, base_path, auth=auth)
+            utils.download_files(url, base_path, webdav=webdav, username=username, access_token=access_token)
 
         schema: str = infdb.get_config_value([TOOL_NAME, "sources", "plz", "schema"])
 
