@@ -3,20 +3,11 @@ import logging
 import multiprocessing as mp
 import os
 from logging.handlers import QueueHandler
+import sys
 from typing import List, Sequence, Union
 
 from infdb import InfDB
 from . import utils
-
-
-# ============================== Constants ==============================
-
-TOOL_NAME: str = "loader"
-GPKG_EXT: str = ".gpkg"
-ZIP_EXT: str = ".zip"
-
-
-# Module logger
 
 
 def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_existing: bool = False) -> None:
@@ -41,9 +32,8 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_
     epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
     if epsg is None:
         raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
-
-    schema = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "schema"])
-    table_name = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "geogitter", "table_name"])
+    schema = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "schema"])
+    table_name = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "geogitter", "table_name"])
 
     # Build base table
     with infdb.connect() as db:
@@ -65,7 +55,7 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_
         """
         db.execute_query(ddl)
     
-        all_envelops = utils.get_all_envelops()
+        all_envelops = utils.get_all_envelops(infdb)
         for envelop in all_envelops:
             log.debug("Envelop: %s", envelop)
             
@@ -136,7 +126,7 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_
                 db.execute_query(insert_sql)
 
 
-def load(infdb: InfDB) -> None:
+def load(infdb: InfDB) -> bool:
     """Download BKG sources, import layers, and generate geogitter grid.
 
     Behavior preserved:
@@ -146,47 +136,50 @@ def load(infdb: InfDB) -> None:
     """
     log = infdb.get_worker_logger()
 
-    # if not utils.if_active("bkg"):
+    # if not utils.if_active("bkg", infdb):
     #     return
 
     # Paths
-    zip_path = infdb.get_config_path([TOOL_NAME, "sources", "bkg", "path", "zip"], type="loader")
-    os.makedirs(zip_path, exist_ok=True)
-    unzip_path = infdb.get_config_path([TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
-    os.makedirs(unzip_path, exist_ok=True)
+    try:
+        zip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "zip"], type="loader")
+        os.makedirs(zip_path, exist_ok=True)
+        unzip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
+        os.makedirs(unzip_path, exist_ok=True)
 
-    schema = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "schema"])
-    prefix = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "prefix"])
+        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "schema"])
+        prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "prefix"])
 
-    # Ensure schema exists via InfdbClient
-    with infdb.connect() as db:
-        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+        # Ensure schema exists via InfdbClient
+        with infdb.connect() as db:
+            db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
-    # --- NUTS (download+unzip+import) ---
-    log.info("Downloading and unzipping NUTS")
-    nuts_url = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "nuts", "url"])
-    utils.download_files(nuts_url, zip_path)
-    nuts_zip = utils.get_file(zip_path, filename="nuts250", ending=ZIP_EXT)
-    utils.unzip(nuts_zip, unzip_path)
+        # --- NUTS (download+unzip+import) ---
+        log.info("Downloading and unzipping NUTS")
+        nuts_url = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "nuts", "url"])
+        utils.download_files(nuts_url, zip_path, infdb)
+        nuts_zip = utils.get_file(zip_path, filename="nuts250", ending=".zip", infdb=infdb)
+        utils.unzip(nuts_zip, unzip_path, infdb)
 
-    nuts_layers = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "nuts", "layer"])
-    nuts_gpkg = utils.get_file(unzip_path, filename="nuts250", ending=GPKG_EXT)
-    utils.import_layers(nuts_gpkg, nuts_layers, schema, prefix, scope=False)
+        nuts_layers = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "nuts", "layer"])
+        nuts_gpkg = utils.get_file(unzip_path, filename="nuts250", ending=".gpkg", infdb=infdb)
+        utils.import_layers(nuts_gpkg, nuts_layers, schema, infdb, prefix, scope=False)
 
-    # --- VG5000 (download+unzip+import) ---
-    log.info("Downloading and unzipping VG5000")
-    vg_url = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "vg5000", "url"])
-    utils.download_files(vg_url, zip_path)
-    vg_zip = utils.get_file(zip_path, filename="vg5000", ending=ZIP_EXT)
-    utils.unzip(vg_zip, unzip_path)
+        # --- VG5000 (download+unzip+import) ---
+        log.info("Downloading and unzipping VG5000")
+        vg_url = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "vg5000", "url"])
+        utils.download_files(vg_url, zip_path, infdb)
+        vg_zip = utils.get_file(zip_path, filename="vg5000", ending=".zip", infdb=infdb)
+        utils.unzip(vg_zip, unzip_path, infdb)
 
-    vg_layers = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "vg5000", "layer"])
-    vg_gpkg = utils.get_file(unzip_path, filename="vg5000", ending=GPKG_EXT)
-    utils.import_layers(vg_gpkg, vg_layers, schema, prefix, scope=False)
+        vg_layers = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "vg5000", "layer"])
+        vg_gpkg = utils.get_file(unzip_path, filename="vg5000", ending=".gpkg", infdb=infdb)
+        utils.import_layers(vg_gpkg, vg_layers, schema, infdb, prefix, scope=False)
 
-    # --- Geogitter ---
-    resolutions = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "geogitter", "resolutions"])
-    log.info("Creating Geogitter layers resolutions %s", resolutions)
-    create_geogitter(resolutions, infdb, clear_existing=True)
+        # --- Geogitter ---
+        resolutions = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "geogitter", "resolutions"])
+        log.info("Creating Geogitter layers resolutions %s", resolutions)
+        create_geogitter(resolutions, infdb, clear_existing=True)
 
-    log.info("BKG data loaded successfully")
+        log.info("BKG data loaded successfully")
+    except Exception as err:
+        log.exception("An error occurred while processing BKG data: %s", str(err))

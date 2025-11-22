@@ -27,10 +27,10 @@ services:
             compose_file: "services/pgadmin/compose.yml"
 
     api:
-        status: not-active
+        status: active
         port: 8000
         path:
-            compose_file: "services/api/fastapi/api.yml"
+            compose_file: "services/api/fastapi/fastapi.yml"
 
     pygeoapi:
         status: active
@@ -40,13 +40,13 @@ services:
             compose_file: "services/api/pygeoapi/pygeoapi.yml"
 
     postgrest:
-        status: not-active
+        status: active
         port: 8002
         path:
             compose_file: "services/api/postgrest/postgrest.yml"
 
     jupyter:
-        status: not-active
+        status: active
         exposed_port: 8888
         enable_lab: yes
         token: infdb
@@ -55,9 +55,10 @@ services:
             compose_file: "services/jupyter/compose.yml"
 
     qwc:
-        status: not-active
+        status: active
         exposed_port_gui: 80
         exposed_port_db: 5434
         postgres_password: infdb
         path:
             compose_file: "services/qgis_webclient/docker-compose.yml"
+

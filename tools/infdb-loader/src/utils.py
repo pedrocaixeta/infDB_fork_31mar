@@ -13,31 +13,16 @@ from zipfile import BadZipFile, ZipFile
 
 import chardet
 
-from infdb import InfdbConfig
-from infdb.utils import do_cmd, get_db_engine
+from infdb import InfDB
+from infdb.utils import do_cmd
 
 # ============================== Constants ==============================
-
-LOGGER_NAME: str = __name__
-CONFIG_TOOL_NAME: str = "loader"
-CONFIG_DIR: str = "configs"
-
 HTTP_TIMEOUT_SECONDS: int = 60
 WGET_PROGRESS_BAR: bool = True  # preserve SmartDL progress bar behavior
 
-ZIP_EXT: str = ".zip"
 GPKG_EXT: str = ".gpkg"
 SQL_SCHEMA_GEOMETRY_COL: str = "geom"
-EPSG_FALLBACK_KEY: str = "epsg"
 
-# Module logger
-log = logging.getLogger(LOGGER_NAME)
-
-# Single shared config object per process
-_cfg = InfdbConfig(tool_name=CONFIG_TOOL_NAME, config_path=CONFIG_DIR)
-
-# Single shared config object per process
-_cfg = InfdbConfig(tool_name="loader", config_path="configs")
 
 # ============================== Internal helpers ==============================
 
@@ -57,18 +42,12 @@ def _fetch_html(url: str) -> BeautifulSoup:
 
 # ======================== toggles & config helpers ========================
 
-def if_multiproccesing() -> bool:
+def if_multiprocesing(infdb:InfDB) -> bool:
     """Return True if multiprocessing is enabled via config (original spelling/API)."""
-    status = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"])
+    status = infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "status"])
     return status == "active"
 
-
-def if_multiprocessing() -> bool:
-    """Correctly spelled alias for `if_multiproccesing()`; preserves public API."""
-    return if_multiproccesing()
-
-
-def if_active(service: str) -> bool:
+def if_active(service: str, infdb:InfDB) -> bool:
     """Tell whether a given source service is active; logs decision.
 
     Args:
@@ -77,7 +56,8 @@ def if_active(service: str) -> bool:
     Returns:
         True if active; False otherwise (with informational log).
     """
-    status = _cfg.get_value([CONFIG_TOOL_NAME, "sources", service, "status"])
+    status =  infdb.get_config_value([infdb.get_toolname(), "sources", service, "status"])
+    log = infdb.get_worker_logger()
     if status == "active":
         log.info("Loading %s data...", service)
         return True
@@ -92,7 +72,7 @@ def any_element_in_string(target_string: str, elements: Iterable[str]) -> bool:
 
 # ======================== downloading / scraping ========================
 
-def get_links(url: str, ending: str, flt: str) -> list[str]:
+def get_links(url: str, ending: str, flt: str, infdb:InfDB) -> list[str]:
     """Scrape links from a page matching an ending and substring filter.
 
     Args:
@@ -103,6 +83,7 @@ def get_links(url: str, ending: str, flt: str) -> list[str]:
     Returns:
         List of absolute link URLs, de-duplicated.
     """
+    log = infdb.get_worker_logger()
     soup = _fetch_html(url)
     links: list[str] = []
     for a in soup.find_all("a", href=True):
@@ -173,6 +154,7 @@ def download_files(urls, base_path: str, webdav: bool = False, username: str = N
     """
     # Create base path if base_path is supposed to be a directory
     filename, name, extension = get_file_from_url(base_path)
+    log = infdb.get_worker_logger()
     if extension:
         base_path = os.path.dirname(base_path)
     os.makedirs(base_path, exist_ok=True)
@@ -209,13 +191,14 @@ def download_files(urls, base_path: str, webdav: bool = False, username: str = N
     return files
 
 
-def unzip(zip_files, unzip_dir: str) -> None:
+def unzip(zip_files, unzip_dir: str, infdb: InfDB) -> None:
     """Extract one or more zip files into `unzip_dir`, skipping if already extracted.
 
     Args:
         zip_files: A single .zip path or list of .zip paths.
         unzip_dir: Destination directory for extracted files.
     """
+    log = infdb.get_worker_logger()
     os.makedirs(unzip_dir, exist_ok=True)
     for zip_file in _ensure_list(zip_files):
         try:
@@ -237,6 +220,7 @@ def import_layers(
     input_file: str,
     layers: List[str],
     schema: str,
+    infdb: InfDB,
     prefix: str = "",
     layer_names: Optional[List[str]] = None,
     scope: bool = True,
@@ -259,11 +243,12 @@ def import_layers(
     Raises:
         KeyError: If EPSG is missing in DB parameters.
     """
-    gdf_scope = get_envelop() if scope else None
-    epsg = (_cfg.get_db_parameters("postgres") or {}).get(EPSG_FALLBACK_KEY)
+    log = infdb.get_worker_logger()
+    gdf_scope = get_envelop(infdb) if scope else None
+    epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
     if epsg is None:
         raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
-    engine = get_db_engine(_cfg, db_name="postgres")
+    engine = infdb.get_db_engine()
 
     # Desired target table names
     target_names = list(layer_names) if layer_names is not None else list(layers)
@@ -293,27 +278,29 @@ def import_layers(
         gdf.to_postgis(layer_name, engine, if_exists=if_exists, schema=schema, index=False)
 
 
-def get_envelop():
+def get_envelop(infdb: InfDB):
     """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = _cfg.get_value([CONFIG_TOOL_NAME, "scope"])
+    scope =  infdb.get_config_value([infdb.get_toolname(), "scope"])
+    log = infdb.get_worker_logger()
     if isinstance(scope, str):
         scope = [scope]
-    ags_path = _cfg.get_path([CONFIG_TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
+    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
     log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT)
+    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
     log.debug("Envelop Path (file): %s", path)
     gdf = gpd.read_file(path, layer="vg5000_gem")
     return gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
 
 
-def get_all_envelops():
+def get_all_envelops(infdb: InfDB):
     """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = _cfg.get_value([CONFIG_TOOL_NAME, "scope"])
+    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
+    log = infdb.get_worker_logger()
     if isinstance(scope, str):
         scope = [scope]
-    ags_path = _cfg.get_path([CONFIG_TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
+    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
     log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT)
+    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
     log.debug("Envelop Path (file): %s", path)
     gdf = gpd.read_file(path, layer="vg5000_gem")
     envelop = []
@@ -334,9 +321,10 @@ def get_all_files(folder_path: str, ending: str) -> list[str]:
     return files
 
 
-def get_file(folder_path: str, filename: str, ending: str) -> Optional[str]:
+def get_file(folder_path: str, filename: str, ending: str, infdb: InfDB) -> Optional[str]:
     """Return the newest file path in `folder_path` containing `filename` and ending with `ending`."""
     files = get_all_files(folder_path, ending)
+    log = infdb.get_worker_logger()
     matching = [f for f in files if filename.lower() in Path(f).stem.lower()]
     if not matching:
         log.error("No files found containing '%s' with ending '%s' in %s", filename, ending, folder_path)
@@ -345,10 +333,11 @@ def get_file(folder_path: str, filename: str, ending: str) -> Optional[str]:
     return newest
 
 
-def get_website_links(url: str) -> list[str]:
+def get_website_links(url: str, infdb: InfDB) -> list[str]:
     """Return all .zip links found on the given page (absolute or relative hrefs)."""
     soup = _fetch_html(url)
-    links = [a["href"] for a in soup.find_all("a", href=True) if a["href"].endswith(ZIP_EXT)]
+    log = infdb.get_worker_logger()
+    links = [a["href"] for a in soup.find_all("a", href=True) if a["href"].endswith(".zip")]
     for link in links:
         log.debug(link)
     return links
@@ -364,8 +353,9 @@ def get_file_from_url(url: str):
 
 # ======================= encoding / processes =======================
 
-def ensure_utf8_encoding(filepath: str) -> str:
+def ensure_utf8_encoding(filepath: str, infdb: InfDB) -> str:
     """Detect file encoding; if not UTF-8, re-encode to a temp UTF-8 CSV and return its path."""
+    log = infdb.get_worker_logger()
     with open(filepath, "rb") as f:
         raw = f.read()
         result = chardet.detect(raw)
@@ -386,11 +376,12 @@ def ensure_utf8_encoding(filepath: str) -> str:
     return filepath
 
 
-def get_number_processes() -> int:
+def get_number_processes(infdb: InfDB) -> int:
     """Determine worker process count based on CPU count and config max_cores."""
+    log = infdb.get_worker_logger()
     number_processes = 1
-    max_processes = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "max_cores"]) or 1
-    if _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"]) == "active":
+    max_processes =  infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "max_cores"]) or 1
+    if  infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "status"]) == "active":
         number_processes = min(multiprocessing.cpu_count(), max_processes)
     log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes

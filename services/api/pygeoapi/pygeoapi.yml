@@ -1,20 +1,14 @@
 services:
   pygeowatch:
     image: python:3.12-slim
-    working_dir: /work
+    working_dir: /app
     volumes:
-      - ./:/work
+      - ./:/app
       - ../../../src/infdb_package:/app/mnt/infdb_package
+      - ../../../configs/:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
+      - ./configs:/app/configs #:ro # for configs
     environment:
       PYTHONUNBUFFERED: "1"
-      SERVICES_POSTGRES_USER: ${SERVICES_POSTGRES_USER}
-      SERVICES_POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
-      SERVICES_POSTGRES_DB: ${SERVICES_POSTGRES_DB}
-      SERVICES_POSTGRES_HOST: ${SERVICES_POSTGRES_HOST}
-      SERVICES_POSTGRES_EXPOSED_PORT: 5432
-      SERVICES_POSTGRES_EPSG: ${SERVICES_POSTGRES_EPSG}
-      SERVICES_PYGEOAPI_PORT: ${SERVICES_PYGEOAPI_PORT}
-      SERVICES_PYGEOAPI_BASE_HOST: ${SERVICES_PYGEOAPI_BASE_HOST}
     command:
       - /bin/sh
       - -lc
@@ -24,9 +18,9 @@ services:
         pyyaml
         psycopg[binary]
         && echo "[entrypoint] starting watcher"
-        && exec python -u /work/watch_and_generate_pygeoapi_config.py
+        && exec python -u /app/watch_and_generate_pygeoapi_config.py
     healthcheck:
-      test: ["CMD-SHELL", "test -s /work/pygeoapi-config.yml"]
+      test: ["CMD-SHELL", "test -s /app/pygeoapi-config.yml"]
       interval: 2s
       timeout: 2s
       retries: 120

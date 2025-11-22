@@ -12,13 +12,14 @@ from psycopg import sql
 from psycopg.rows import dict_row
 import yaml
 
+from infdb import InfDB
 from infdb.utils import read_env, build_dsn_from_env, atomic_write_yaml
 
 
 # =========================
 # ===== Module Constants ===
 # =========================
-
+infdb = InfDB(tool_name="infdb-pygeoapi", config_path="configs")
 OUTPUT_CONFIG_PATH: pathlib.Path = pathlib.Path("pygeoapi-config.yml")
 LOGGER_NAME: str = "pygeoapi_config_gen"
 
@@ -45,22 +46,21 @@ def _setup_logging() -> logging.Logger:
     return logging.getLogger(LOGGER_NAME)
 
 
-log = _setup_logging()
+log = infdb.get_worker_logger()
 
 
 # ---------- derived configuration constants (centralized env reads) ----------
+PYGEOAPI_PORT: int = int(infdb.get_config_value(["services", "pygeoapi", "port"]))
+PYGEOAPI_HOST: Optional[str] = infdb.get_config_value(["services", "pygeoapi", "base_host"])
 
-PYGEOAPI_PORT: int = int(read_env("SERVICES_PYGEOAPI_PORT", "5000") or "5000")
-PYGEOAPI_HOST: Optional[str] = read_env("SERVICES_PYGEOAPI_BASE_HOST")
+POSTGRES_USER: str = infdb.get_config_value(["services", "postgres", "user"]) #read_env("SERVICES_POSTGRES_USER", required=True) or ""
+POSTGRES_PASSWORD: str = infdb.get_config_value(["services", "postgres", "password"])#read_env("SERVICES_POSTGRES_PASSWORD", required=True) or ""
+POSTGRES_DB: str = infdb.get_config_value(["services", "postgres", "db"])#read_env("SERVICES_POSTGRES_DB", required=True) or ""
+POSTGRES_HOST: str = "postgres"
+POSTGRES_PORT: int = 5432
 
-POSTGRES_USER: str = read_env("SERVICES_POSTGRES_USER", required=True) or ""
-POSTGRES_PASSWORD: str = read_env("SERVICES_POSTGRES_PASSWORD", required=True) or ""
-POSTGRES_DB: str = read_env("SERVICES_POSTGRES_DB", required=True) or ""
-POSTGRES_HOST: str = read_env("SERVICES_POSTGRES_HOST", "postgres") or "postgres"
-POSTGRES_PORT: int = int(read_env("SERVICES_POSTGRES_EXPOSED_PORT", "5432") or "5432")
-
-TARGET_EPSG: int = int(read_env("SERVICES_POSTGRES_EPSG", "25832") or "25832")
-FALLBACK_EPSG: int = int(read_env("SERVICES_POSTGRES_EPSG", "25832") or "25832")
+TARGET_EPSG: int = int(infdb.get_config_value(["services", "postgres", "epsg"]))
+FALLBACK_EPSG: int = 25832
 
 FORCE_CRS84_ONLY: bool = (str(read_env("FORCE_CRS84_ONLY", "false")).lower() in ("1", "true", "yes", "y"))
 
@@ -85,13 +85,11 @@ def make_epsg_uri(epsg: int) -> str:
 
 # Build DSN using shared package helper (keeps behavior but centralizes env parsing)
 DB_DSN: str = build_dsn_from_env(
-    user_var="SERVICES_POSTGRES_USER",
-    pwd_var="SERVICES_POSTGRES_PASSWORD",
-    db_var="SERVICES_POSTGRES_DB",
-    host_var="SERVICES_POSTGRES_HOST",
-    port_var="SERVICES_POSTGRES_EXPOSED_PORT",
-    default_host="postgres",
-    default_port="5432",
+    user_var=POSTGRES_USER,
+    pwd_var=POSTGRES_PASSWORD,
+    db_var=POSTGRES_DB,
+    host_var=POSTGRES_HOST,
+    port_var=POSTGRES_PORT,
 )
 
 
