@@ -11,7 +11,7 @@ services:
             # - ./sql:/tools/processor/sql:ro # for source code
             # Only for development, for production: uncomment above and comment below
             - .:/app
-            - ../../configs/config-infdb.yml:/app/configs/config-infdb.yml:ro # for infdb configs
+            - ../../configs/config-infdb.yml:/app/configs/config-infdb-setup.yml:ro # for infdb configs
             - ../../src/infdb_package:/app/mnt/infdb_package
             - ../../:/app/mnt/infdb-root
             - ../../../data/:/app/mnt/infdb-data

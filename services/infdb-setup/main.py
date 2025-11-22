@@ -9,13 +9,6 @@ from infdb.utils import write_yaml
 
 # ============================== Constants ==============================
 
-DEFAULT_TOOL_NAME: str = "infdb"
-DEFAULT_CONFIG_DIR: str = "configs"
-DEFAULT_ENV_OUT: str = "mnt/infdb-root/.env"
-DEFAULT_COMPOSE_OUT: str = "mnt/infdb-root/compose.yml"
-GENERATED_DIR: str = "mnt/infdb-root/.generated/"
-PGADMIN_SERVERS_OUT: str = GENERATED_DIR
-PG_SERVICE_CONF_OUT: str = "mnt/infdb-root/services/qgis_webclient/"
 PGADMIN_GROUP_NAME: str = "infDB"
 PGADMIN_HOST: str = "postgres"
 PGADMIN_PORT: int = 5432
@@ -24,7 +17,7 @@ ENV_KEY_SEP: str = "_"
 
 
 # One shared config object (adjust tool_name if your file is named differently)
-cfg = infdb.InfdbConfig(tool_name=DEFAULT_TOOL_NAME, config_path=DEFAULT_CONFIG_DIR)
+cfg = infdb.InfdbConfig(tool_name="infdb-setup", config_path="configs")
 
 
 # ============================== Helpers ================================
@@ -184,13 +177,12 @@ def create_postgres_volume() -> None:
 # ============================== Script Entry ===========================
 
 if __name__ == "__main__":
-    write_env_file(DEFAULT_ENV_OUT)
-    write_compose_file(DEFAULT_COMPOSE_OUT)
+    write_env_file("mnt/infdb-root/.env")
+    write_compose_file("mnt/infdb-root/compose.yml")
 
-    os.makedirs(GENERATED_DIR, exist_ok=True)
-    setup_pgadmin_servers(PGADMIN_SERVERS_OUT)
-    # write_pg_service_conf("mnt/infdb-root/.generated/")
-    write_pg_service_conf(PG_SERVICE_CONF_OUT)
+    os.makedirs("mnt/infdb-root/.generated/", exist_ok=True)
+    setup_pgadmin_servers("mnt/infdb-root/.generated/")
+    # write_pg_service_conf("infdb-root/.generated/")
+    write_pg_service_conf("mnt/infdb-root/services/qgis_webclient/")
     create_postgres_volume()
-
     print("Setup completed successfully. Configuration files generated.")

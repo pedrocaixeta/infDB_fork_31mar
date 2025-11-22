@@ -4,15 +4,6 @@ from typing import Any, Dict
 from infdb import InfDB
 
 
-# ============================== Constants ==============================
-
-TOOL_NAME: str = "infdb-basedata"
-CONFIG_DIR: str = "configs"
-WAYS_SQL_DIR: str = os.path.join("sql", "ways_sql")
-BUILDINGS_SQL_DIR: str = os.path.join("sql", "buildings_sql")
-CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
-
-
 def main() -> None:
     """Run base-data SQL pipelines (WAYS, BUILDINGS, CONNECTIONS) against Postgres.
 
@@ -20,15 +11,17 @@ def main() -> None:
     the output schema (if present), and executes the SQL directories in sequence.
     """
     # Load InfDB facade (config + logging)
-    infdb = InfDB(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
-
+    infdb = InfDB(tool_name="infdb-basedata", config_path="configs")
+    
+    
+    
     # Logger
     log = infdb.get_log()
     log.info("Starting %s tool", infdb.get_toolname())
 
     # Config
-    input_schema = infdb.get_config_value(["data", "input_schema"], insert_toolname=True)
-    output_schema = infdb.get_config_value(["data", "output_schema"], insert_toolname=True)
+    input_schema = infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"])
+    output_schema = infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"])
     epsg = infdb.get_config_value(["services", "postgres", "epsg"])
 
     format_params: Dict[str, Any] = {
@@ -40,7 +33,9 @@ def main() -> None:
 
     log.info("Input schema: %s", input_schema)
     log.info("Output schema: %s", output_schema)
-
+    WAYS_SQL_DIR: str = os.path.join("sql", "ways_sql")
+    BUILDINGS_SQL_DIR: str = os.path.join("sql", "buildings_sql")
+    CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
     # Database work (context-managed)
     with infdb.connect() as db:
         # Drop output schema if exists (dev convenience)

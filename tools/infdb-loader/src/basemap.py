@@ -1,96 +1,57 @@
 import os
 import time
 from typing import List, Sequence, Optional
-
+import sys
 from infdb import InfDB
 from . import utils
-
-# def _wait_for_file(path: str, *, min_size: int = 5_000, timeout: float = 90.0, step: float = 2.0) -> bool:
-#     """Poll for a file that is being downloaded asynchronously (e.g. pySmartDL).
-
-#     Returns True as soon as the file exists **and** is bigger than `min_size`.
-#     Returns False if `timeout` expires.
-#     """
-#     deadline = time.time() + timeout
-#     while time.time() < deadline:
-#         if os.path.exists(path):
-#             try:
-#                 if os.path.getsize(path) >= min_size:
-#                     return True
-#             except OSError:
-#                 pass
-#         time.sleep(step)
-#     return False
 
 
 def load(infdb: InfDB) -> None:
     log = infdb.get_worker_logger()
-    if not utils.if_active("basemap"):
-        log.info("Basemap loader inactive → skipping.")
-        return
+    try:
+        if not utils.if_active("basemap", infdb):
+            log.info("Basemap loader inactive → skipping.")
+            return
+        base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "basemap", "path", "base"], type="loader")
+        os.makedirs(base_path, exist_ok=True)
 
-    base_path = infdb.get_config_path(["loader", "sources", "basemap", "path", "base"], type="loader")
-    os.makedirs(base_path, exist_ok=True)
+        site_url = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "url"])
+        ending = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "ending"])
+        filters: Sequence[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "filter"]) or []
 
-    site_url = infdb.get_config_value(["loader", "sources", "basemap", "url"])
-    ending = infdb.get_config_value(["loader", "sources", "basemap", "ending"])
-    filters: Sequence[str] = infdb.get_config_value(["loader", "sources", "basemap", "filter"]) or []
+        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "schema"])
+        prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "prefix"])
+        layer_names: Sequence[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "layer"]) or []
 
-    schema = infdb.get_config_value(["loader", "sources", "basemap", "schema"])
-    prefix = infdb.get_config_value(["loader", "sources", "basemap", "prefix"])
-    layer_names: Sequence[str] = infdb.get_config_value(["loader", "sources", "basemap", "layer"]) or []
+        # make sure schema exists
+        with infdb.connect() as db:
+            # db.execute_query(f"DROP SCHEMA IF EXISTS {schema} CASCADE;") # done in main.py
+            db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
-    # make sure schema exists
-    with infdb.connect() as db:
-        # db.execute_query(f"DROP SCHEMA IF EXISTS {schema} CASCADE;") # done in main.py
-        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+        for flt in filters:
+            urls: List[str] = utils.get_links(site_url, ending, flt, infdb)
+            if len(urls) != 1:
+                log.warning("Basemap: filter '%s' produced %d links → %s (skipping)", flt, len(urls), urls)
+                continue
+            else:
+                url = urls[0]
+            log.info("Basemap: selected %s for filter '%s'", url, flt)
 
-    for flt in filters:
-        urls: List[str] = utils.get_links(site_url, ending, flt)
-        if len(urls) != 1:
-            log.warning("Basemap: filter '%s' produced %d links → %s (skipping)", flt, len(urls), urls)
-            continue
-        else:
-            url = urls[0]
-        log.info("Basemap: selected %s for filter '%s'", url, flt)
+            filename, name, extension = utils.get_file_from_url(url)
+            name_no_day = name.rsplit("-", 1)[0]
+            expected_monthly_path = os.path.join(base_path, name_no_day + extension)
 
-        filename, name, extension = utils.get_file_from_url(url)
-        name_no_day = name.rsplit("-", 1)[0]
-        expected_monthly_path = os.path.join(base_path, name_no_day + extension)
+            log.info("Basemap: downloading to path %s", expected_monthly_path)
+            utils.download_files(url, expected_monthly_path, infdb)
 
-        log.info("Basemap: downloading to path %s", expected_monthly_path)
-        utils.download_files(url, expected_monthly_path)
+            download_file = utils.get_file(base_path, flt, ".gpkg", infdb)
 
-        # input_file: Optional[str] = None
+            log.info("Basemap: importing %s into schema %s", download_file, schema)
+            layers = [layer + "_bdlm" for layer in layer_names]
+            utils.import_layers(download_file, layers, schema, infdb, prefix=prefix, layer_names=layer_names, if_exists="append")
 
-        # # wait for the file to appear
-        # if downloaded_paths:
-        #     candidate = downloaded_paths[0]
-
-        #     if _wait_for_file(candidate, min_size=5_000, timeout=120.0):
-        #         input_file = candidate
-        #     else:
-        #         log.error(
-        #             "Basemap: downloaded file not found on disk (%s) → skipping to fallback",
-        #             candidate,
-        #         )
-
-        # # skip if no file found
-        # if input_file is None:
-        #     log.error(
-        #         "Basemap: no usable .gpkg for filter '%s' (download not ready and no fallback). Skipping.",
-        #         flt,
-        #     )
-        #     continue
-        download_file = utils.get_file(base_path, flt, ".gpkg")
-
-        log.info("Basemap: importing %s into schema %s", download_file, schema)
-        layers = [layer + "_bdlm" for layer in layer_names]
-
-        try:
-            utils.import_layers(download_file, layers, schema, prefix=prefix, layer_names=layer_names, if_exists="append")
-        except Exception as exc:
-            log.error("Basemap: import of %s failed → %s", download_file, exc)
-            continue
-
-    log.info("Basemap data loaded successfully")
+        log.info("Basemap data loaded successfully")
+        sys.exit(0)
+    except Exception as err:
+        log.exception("An error occurred while processing BASEMAP data: %s", str(err))
+        sys.exit(1)

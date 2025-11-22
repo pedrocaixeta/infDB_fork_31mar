@@ -176,10 +176,8 @@ def main():
     # DB client and engine (both via the facade)
     infdbclient_citydb = infdbhandler.connect()
     engine = infdbhandler.get_db_engine()
-
-    # Config (use insert_toolname=True to scope under tool)
-    input_schema = infdbhandler.get_config_value(["data", "input_schema"], insert_toolname=True)
-    output_schema = infdbhandler.get_config_value(["data", "output_schema"], insert_toolname=True)
+    input_schema = infdbhandler.get_config_value([infdbhandler.get_toolname(), "data", "input_schema"])
+    output_schema = infdbhandler.get_config_value([infdbhandler.get_toolname(), "data", "output_schema"])
 
     try:
         sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"

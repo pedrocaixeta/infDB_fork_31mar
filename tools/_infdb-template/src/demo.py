@@ -27,8 +27,8 @@ def sql_demo(infdb):
     """
     # Schema configuration
     format_params = {
-        'input_schema': infdb.get_config_value(["data", "input_schema"], insert_toolname=True),
-        'output_schema': infdb.get_config_value(["data", "output_schema"], insert_toolname=True),
+        'input_schema': infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"]),
+        'output_schema': infdb.get_config_value([infdb.get_toolname(),"data", "output_schema"]),
     }
 
     # Drop output schema if exists for development purposes
