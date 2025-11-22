@@ -1,17 +1,13 @@
 import os
+import sys
 from typing import Dict
 
 from infdb import InfDB
 from . import utils
 
 
-# ============================== Constants ==============================
 
-TOOL_NAME: str = "loader"
-DUMP_FILENAME: str = "need.dump"
-
-
-def load(infdb: InfDB) -> bool:
+def load(infdb: InfDB) -> None:
     """Dump schema from a source DB and restore it into the target Postgres.
 
     Behavior preserved:
@@ -19,13 +15,14 @@ def load(infdb: InfDB) -> bool:
     - Skip dump step if the dump file already exists.
     - Use pg_dump for export and pg_restore for import with the original flags.
     """
+    log = infdb.get_worker_logger()
     try:
-        log = infdb.get_worker_logger()
 
-        if not utils.if_active("need"):
+        if not utils.if_active("need", infdb):
             return True
 
         # Dump input schema from source database
+        TOOL_NAME= infdb.get_toolname()
         source_host = infdb.get_config_value([TOOL_NAME, "sources", "need", "host"])
         source_port = infdb.get_config_value([TOOL_NAME, "sources", "need", "port"])
         source_db = infdb.get_config_value([TOOL_NAME, "sources", "need", "database"])
@@ -35,7 +32,7 @@ def load(infdb: InfDB) -> bool:
 
         # Create dump file path
         path_dump = infdb.get_config_path([TOOL_NAME, "sources", "need", "path_dump"], type="loader")
-        file_dump = os.path.join(path_dump, DUMP_FILENAME)
+        file_dump = os.path.join(path_dump, "need.dump")
         os.makedirs(os.path.dirname(file_dump), exist_ok=True)
 
         # Dump schema from source database (skip if already present)
@@ -66,8 +63,8 @@ def load(infdb: InfDB) -> bool:
         utils.do_cmd(restore_cmd)
 
         log.info("Need data loaded successfully")
-        return True
+        sys.exit(0)
 
     except Exception as err:
-        log.exception("An error occurred while processing need data: %s", str(err))
-        return False
+        log.exception("An error occurred while processing NEED data: %s", str(err))
+        sys.exit(1)

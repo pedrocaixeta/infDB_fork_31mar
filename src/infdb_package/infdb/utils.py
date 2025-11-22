@@ -39,18 +39,11 @@ def build_dsn_from_env(
     db_var: str,
     host_var: str,
     port_var: str,
-    default_host: str,
-    default_port: str,
 ) -> str:
     """
     Build a PostgreSQL DSN string from common environment variables.
     """
-    user = read_env(user_var, required=True) or ""
-    pwd = read_env(pwd_var, required=True) or ""
-    db = read_env(db_var, required=True) or ""
-    host = read_env(host_var, default_host) or default_host
-    port = read_env(port_var, default_port) or default_port
-    return f"postgresql://{user}:{pwd}@{host}:{port}/{db}"
+    return f"postgresql://{user_var}:{pwd_var}@{host_var}:{port_var}/{db_var}"
 
 
 # ============================== Filesystem helpers ==============================
