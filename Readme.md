@@ -262,7 +262,7 @@ venv\Scripts\activate
 ```bash
 # linux and macos
 git fetch origin
-git reset --hard origin/develop
+git reset --hard
 git clean -fdx
 ```
 
