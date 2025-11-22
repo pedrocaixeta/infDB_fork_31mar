@@ -51,15 +51,15 @@ def main() -> None:
     log.info("-------------------------------------------------------------")
 
     # Download opendata package for development directly (original guard)
-    # if utils.if_active("package"):
-    #     package.load(infdb)
+    if utils.if_active("package"):
+        package.load(infdb)
 
     # Drop schema "opendata" for clean development runs
     with infdb.connect() as db:  # InfdbClient context
         db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
 
     # Ensure that administrative areas are loaded for scope
-    #bkg.load(infdb)
+    bkg.load(infdb)
 
     # Launch data loading in parallel
     mp.freeze_support()
