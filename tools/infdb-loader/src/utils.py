@@ -95,7 +95,7 @@ def get_links(url: str, ending: str, flt: str, infdb:InfDB) -> list[str]:
     log.debug(links)
     return links
 
-def _requests_download(url: str, dest_dir: str, username: str, access_token: str,
+def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, access_token: str,
                        timeout=60, max_retries=5, backoff_base=1.5, chunk=1024*1024) -> str:
     """HEAD (size if available) → streamed GET with retries/backoff."""
     os.makedirs(dest_dir, exist_ok=True)
@@ -103,6 +103,7 @@ def _requests_download(url: str, dest_dir: str, username: str, access_token: str
     # filename from URL path
     filename = os.path.basename(urlparse(url).path) or "download"
     dest = os.path.join(dest_dir, filename)
+    log = infdb.get_worker_logger()
 
     auth = (username, access_token)
 
@@ -147,7 +148,7 @@ def _requests_download(url: str, dest_dir: str, username: str, access_token: str
             log.warning("Retry %d/%d for %s in %.1fs", attempt + 1, max_retries, url, sleep_s)
             time.sleep(sleep_s)
 
-def download_files(urls, base_path: str, webdav: bool = False, username: str = None, access_token: str = None) -> list[str]:
+def download_files(urls, base_path: str, infdb: InfDB, webdav: bool = False, username: str = None, access_token: str = None) -> list[str]:
     """
     If `webdav` provided → use requests (supports WebDAV basic auth).
     Else → use SmartDL (your current async flow).
@@ -167,7 +168,7 @@ def download_files(urls, base_path: str, webdav: bool = False, username: str = N
             raise ValueError("Username and access_token required when webdav=True")
         results = []
         for url in url_list:
-            results.append(_requests_download(url, base_path, username=username, access_token=access_token))
+            results.append(_requests_download(url, base_path, infdb, username=username, access_token=access_token))
         return results
 
     # Original SmartDL path (no auth)

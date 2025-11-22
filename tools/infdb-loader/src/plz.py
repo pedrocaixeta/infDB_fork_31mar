@@ -52,7 +52,7 @@ def load(infdb: InfDB) -> bool:
             log.info("File %s already exists.", file_path)
         else:
             log.info("File %s will be downloaded from %s", file_path, url)
-            utils.download_files(url, base_path, webdav=webdav, username=username, access_token=access_token)
+            utils.download_files(url, base_path, infdb, webdav=webdav, username=username, access_token=access_token)
 
         schema: str = infdb.get_config_value([TOOL_NAME, "sources", "plz", "schema"])
 
