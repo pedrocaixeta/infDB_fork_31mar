@@ -171,7 +171,12 @@ def download_files(urls, base_path: str, webdav: bool = False, username: str = N
     If `webdav` provided → use requests (supports WebDAV basic auth).
     Else → use SmartDL (your current async flow).
     """
+    # Create base path if base_path is supposed to be a directory
+    filename, name, extension = get_file_from_url(base_path)
+    if extension:
+        base_path = os.path.dirname(base_path)
     os.makedirs(base_path, exist_ok=True)
+    
     url_list = _ensure_list(urls)
 
     # Auth path (WebDAV or protected HTTP)
@@ -194,7 +199,10 @@ def download_files(urls, base_path: str, webdav: bool = False, username: str = N
         else:
             log.info("File %s downloading ...", target_path)
             obj.start(blocking=False)
-            objs.append(obj)
+        
+        objs.append(obj)
+
+    files: list[str] = []
     for obj in objs:
         obj.wait()
         files.append(obj.get_dest())
@@ -232,6 +240,7 @@ def import_layers(
     prefix: str = "",
     layer_names: Optional[List[str]] = None,
     scope: bool = True,
+    if_exists: str = "replace"
 ) -> None:
     """Import vector data into PostGIS.
 
@@ -272,7 +281,7 @@ def import_layers(
         gdf = gpd.read_file(input_file, mask=gdf_scope)
         gdf.to_crs(epsg=epsg, inplace=True)
         gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
-        gdf.to_postgis(target_name, engine, if_exists="replace", schema=schema, index=False)
+        gdf.to_postgis(target_name, engine, if_exists=if_exists, schema=schema, index=False)
         return
 
     # Multi-layer path
@@ -281,7 +290,7 @@ def import_layers(
         gdf = gpd.read_file(input_file, layer=layer, mask=gdf_scope)
         gdf.to_crs(epsg=epsg, inplace=True)
         gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
-        gdf.to_postgis(layer_name, engine, if_exists="replace", schema=schema, index=False)
+        gdf.to_postgis(layer_name, engine, if_exists=if_exists, schema=schema, index=False)
 
 
 def get_envelop():
@@ -296,6 +305,21 @@ def get_envelop():
     gdf = gpd.read_file(path, layer="vg5000_gem")
     return gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
 
+
+def get_all_envelops():
+    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
+    scope = _cfg.get_value([CONFIG_TOOL_NAME, "scope"])
+    if isinstance(scope, str):
+        scope = [scope]
+    ags_path = _cfg.get_path([CONFIG_TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
+    log.debug("Envelop Path (unzipped): %s", ags_path)
+    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT)
+    log.debug("Envelop Path (file): %s", path)
+    gdf = gpd.read_file(path, layer="vg5000_gem")
+    envelop = []
+    for s in scope:
+        envelop.append(gdf[gdf["AGS"].str.startswith(s)])
+    return envelop
 
 # ============================== file helpers ==============================
 
@@ -313,7 +337,7 @@ def get_all_files(folder_path: str, ending: str) -> list[str]:
 def get_file(folder_path: str, filename: str, ending: str) -> Optional[str]:
     """Return the newest file path in `folder_path` containing `filename` and ending with `ending`."""
     files = get_all_files(folder_path, ending)
-    matching = [f for f in files if filename.lower() in f.lower()]
+    matching = [f for f in files if filename.lower() in Path(f).stem.lower()]
     if not matching:
         log.error("No files found containing '%s' with ending '%s' in %s", filename, ending, folder_path)
         return None

@@ -371,7 +371,7 @@ def main():
         ).drop(columns=["bld_objectid"])
 
         # For testing purposes, limit to one building
-        entise_input = entise_input.iloc[:1, :]
+        # entise_input = entise_input.iloc[:1, :]
 
         # Initialize the generator
         gen = TimeSeriesGenerator()
@@ -392,97 +392,97 @@ def main():
         )
         infdblog.info(summary.head())
 
-        # Time Series
-        infdblog.debug("Writing EnTiSe output time series to database")
+        # # Time Series
+        # infdblog.debug("Writing EnTiSe output time series to database")
 
-        # Create metadata table if not exists
-        metadata_sql = f"""
-        CREATE TABLE IF NOT EXISTS {output_schema}.entise_ts_metadata (
-            id SERIAL PRIMARY KEY,
-            name text,
-            decription text,
-            grid_id text,
-            type text,
-            unit text,
-            changelog integer,
-            objectid text,
-            source text
-        );
-        """
-        try:
-            infdbclient_citydb.execute_query(metadata_sql)
-        except Exception as e:
-            infdblog.error("Failed to create metadata table: %s", e)
+        # # Create metadata table if not exists
+        # metadata_sql = f"""
+        # CREATE TABLE IF NOT EXISTS {output_schema}.entise_ts_metadata (
+        #     id SERIAL PRIMARY KEY,
+        #     name text,
+        #     decription text,
+        #     grid_id text,
+        #     type text,
+        #     unit text,
+        #     changelog integer,
+        #     objectid text,
+        #     source text
+        # );
+        # """
+        # try:
+        #     infdbclient_citydb.execute_query(metadata_sql)
+        # except Exception as e:
+        #     infdblog.error("Failed to create metadata table: %s", e)
 
-        # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
-        table_name = 'entise_ts_data'
-        create_sql = f"""
-        CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
-            ts_metadata_id integer,
-            time timestamptz,
-            value double precision
-        )
-        WITH (
-            timescaledb.hypertable,
-            timescaledb.partition_column='time',
-            timescaledb.segmentby='ts_metadata_id'
-        );
-        """
-        try:
-            infdbclient_citydb.execute_query(create_sql)
-        except Exception as e:
-            infdblog.error("Failed to create timeseries table: %s", e)
+        # # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
+        # table_name = 'entise_ts_data'
+        # create_sql = f"""
+        # CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
+        #     ts_metadata_id integer,
+        #     time timestamptz,
+        #     value double precision
+        # )
+        # WITH (
+        #     timescaledb.hypertable,
+        #     timescaledb.partition_column='time',
+        #     timescaledb.segmentby='ts_metadata_id'
+        # );
+        # """
+        # try:
+        #     infdbclient_citydb.execute_query(create_sql)
+        # except Exception as e:
+        #     infdblog.error("Failed to create timeseries table: %s", e)
 
-        for objectid, row in dict_df.items():
-            infdblog.debug(f"Processing building {objectid}")
+        # for objectid, row in dict_df.items():
+        #     infdblog.debug(f"Processing building {objectid}")
 
-            # Insert indoor temperature
-            insert_metadata_sql = f"""
-                    INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-                    VALUES ('ro_heat_indoor_temperature',
-                        'Indoor temperature for building',
-                        'synthetic',
-                        '°C',
-                        0,
-                        '{objectid}',
-                        'ro-heat'
-                        )
-                    ON CONFLICT (id) DO NOTHING
-                    RETURNING id;
-                    """
-            add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'indoor_temperature[C]')
+        #     # Insert indoor temperature
+        #     insert_metadata_sql = f"""
+        #             INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
+        #             VALUES ('ro_heat_indoor_temperature',
+        #                 'Indoor temperature for building',
+        #                 'synthetic',
+        #                 '°C',
+        #                 0,
+        #                 '{objectid}',
+        #                 'ro-heat'
+        #                 )
+        #             ON CONFLICT (id) DO NOTHING
+        #             RETURNING id;
+        #             """
+        #     add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'indoor_temperature[C]')
 
-            # Insert heating load
-            insert_metadata_sql = f"""
-                    INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-                    VALUES ('ro_heat_heating_load',
-                        'Heating load for building',
-                        'synthetic',
-                        'W',
-                        0,
-                        '{objectid}',
-                        'ro-heat'
-                        )
-                    ON CONFLICT (id) DO NOTHING
-                    RETURNING id;
-                    """
-            add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'heating:load[W]')
+        #     # Insert heating load
+        #     insert_metadata_sql = f"""
+        #             INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
+        #             VALUES ('ro_heat_heating_load',
+        #                 'Heating load for building',
+        #                 'synthetic',
+        #                 'W',
+        #                 0,
+        #                 '{objectid}',
+        #                 'ro-heat'
+        #                 )
+        #             ON CONFLICT (id) DO NOTHING
+        #             RETURNING id;
+        #             """
+        #     add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'heating:load[W]')
 
-            # Insert cooling load
-            insert_metadata_sql = f"""
-                    INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-                    VALUES ('ro_heat_cooling_load',
-                        'Cooling load for building',
-                        'synthetic',
-                        'W',
-                        0,
-                        '{objectid}',
-                        'ro-heat'
-                        )
-                    ON CONFLICT (id) DO NOTHING
-                    RETURNING id;
-                    """
-            add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'cooling:load[W]')
+        #     # Insert cooling load
+        #     insert_metadata_sql = f"""
+        #             INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
+        #             VALUES ('ro_heat_cooling_load',
+        #                 'Cooling load for building',
+        #                 'synthetic',
+        #                 'W',
+        #                 0,
+        #                 '{objectid}',
+        #                 'ro-heat'
+        #                 )
+        #             ON CONFLICT (id) DO NOTHING
+        #             RETURNING id;
+        #             """
+        #     add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'cooling:load[W]')
 
         infdblog.info("Ro-heat sucessfully completed")
 

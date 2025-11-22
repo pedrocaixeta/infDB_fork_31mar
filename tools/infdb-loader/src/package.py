@@ -28,11 +28,11 @@ def load(infdb: InfDB) -> None:
     url = infdb.get_config_value([TOOL_NAME, "sources", "package", "url"])
     log.info("Download opendata package from %s to %s", url, archive_path)
     utils.download_files(url, archive_path)
-    file_path = utils.get_file(archive_path, filename=PACKAGE_NAME, ending=PACKAGE_EXT)
 
     # Unzip opendata package
+    file_path = utils.get_file(archive_path, filename=PACKAGE_NAME, ending=PACKAGE_EXT)
     opendata_path = infdb.get_config_path([TOOL_NAME, "sources", "package", "path", "processed"], type="loader")
-    log.info("Unzip opendata package to %s", opendata_path)
+    log.info("Unzip opendata package from %s to %s", file_path, opendata_path)
     utils.unzip(file_path, opendata_path)
 
     log.info("package done!")

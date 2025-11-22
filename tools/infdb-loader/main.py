@@ -9,6 +9,7 @@ from src import (
     bkg,
     basemap,
     lod2,
+    lod2_nrw,
     census2022,
     plz,
     tabula,
@@ -63,13 +64,14 @@ def main() -> None:
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
-    # processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
-    # processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
-    # processes.append(mp.Process(target=lod2.load,       args=(infdb,), name="lod2"))
+    processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
+    processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
+    processes.append(mp.Process(target=lod2.load,       args=(infdb,), name="lod2"))
+    processes.append(mp.Process(target=lod2_nrw.load,   args=(infdb,), name="lod2-nrw"))
     processes.append(mp.Process(target=plz.load,        args=(infdb,), name="plz"))
-    # processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
-    # processes.append(mp.Process(target=census2022.load, args=(log_queue,), name="census2022"))
-    # processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
+    processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
+    processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
+    processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
     # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
 
     for process in processes:
