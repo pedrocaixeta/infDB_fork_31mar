@@ -7,7 +7,6 @@ from infdb import InfDB
 from . import utils
 
 
-
 def load(infdb: InfDB) -> bool:
     """Download PLZ dataset (if active), ensure schema, and import configured layers.
 
@@ -18,36 +17,31 @@ def load(infdb: InfDB) -> bool:
     """
     file_path: str | None = None  # for safe logging if errors occur before assignment
     try:
-        TOOL_NAME= infdb.get_toolname()
         log = infdb.get_worker_logger()
         if not utils.if_active("plz", infdb):
             return True
 
-        base_path = infdb.get_config_path([TOOL_NAME, "sources", "plz", "path", "base"], type="loader")
+        base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "plz", "path", "base"], type="loader")
         log.debug("base_path=%s", base_path)
         os.makedirs(base_path, exist_ok=True)
 
-        url: str = infdb.get_config_value([TOOL_NAME, "sources", "plz", "url"])
+        url: str = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "url"])
         log.debug("url=%s", url)
         filename, *_ = utils.get_file_from_url(url)
 
         file_path = os.path.join(base_path, filename)
         log.debug("Downloading PLZ data from %s to %s", url, file_path)
 
-        if os.path.exists(file_path):
-            log.info("File %s already exists.", file_path)
-        else:
-            log.info("File %s will be downloaded from %s", file_path, url)
-            utils.download_files(url, base_path, infdb)
+        utils.download_files(url, file_path, infdb)
 
-        schema: str = infdb.get_config_value([TOOL_NAME, "sources", "plz", "schema"])
+        schema: str = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "schema"])
 
         # Ensure schema exists using InfdbClient
         with infdb.connect() as db:
             db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
-        prefix: str = infdb.get_config_value([TOOL_NAME, "sources", "plz", "prefix"])
-        layers: Sequence[str] = infdb.get_config_value([TOOL_NAME, "sources", "plz", "layer"])
+        prefix: str = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "prefix"])
+        layers: Sequence[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "layer"])
 
         log.info("Loading PLZ data from %s to %s", url, file_path)
         utils.import_layers(file_path, layers, schema, infdb, prefix=prefix)

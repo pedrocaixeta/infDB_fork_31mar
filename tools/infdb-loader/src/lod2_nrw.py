@@ -7,14 +7,6 @@ from . import utils
 from pySmartDL import SmartDL
 
 
-# ============================== Constants ==============================
-
-
-ARIA2C_BASE_CMD: str = (
-    "aria2c --continue=true --allow-overwrite=false --auto-file-renaming=false"
-)
-
-
 def load(infdb: InfDB)  -> bool:
     """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL.
 
