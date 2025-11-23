@@ -32,14 +32,14 @@ def load(infdb: InfDB) -> bool:
 
         # Get auth flag (defaults to False if not present)
         try:
-            webdav = infdb.get_config_value([TOOL_NAME, "sources", "plz", "webdav"])
+            protocol = infdb.get_config_value([TOOL_NAME, "sources", "plz", "protocol"])
         except Exception:
-            webdav = False
+            protocol = "http"
 
         # Get credentials if auth is enabled
         username = None
         access_token = None
-        if webdav:
+        if protocol == "webdav":
             username = infdb.get_config_value([TOOL_NAME, "sources", "plz", "username"])
             access_token = infdb.get_config_value([TOOL_NAME, "sources", "plz", "access_token"])
 
@@ -52,8 +52,8 @@ def load(infdb: InfDB) -> bool:
             log.info("File %s already exists.", file_path)
         else:
             log.info("File %s will be downloaded from %s", file_path, url)
-            utils.download_files(url, base_path, infdb, webdav=webdav, username=username, access_token=access_token)
-
+            utils.download_files(url, base_path, infdb, protocol, username=username, access_token=access_token)
+    
         schema: str = infdb.get_config_value([TOOL_NAME, "sources", "plz", "schema"])
 
         # Ensure schema exists using InfdbClient
