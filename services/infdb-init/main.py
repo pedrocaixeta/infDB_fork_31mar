@@ -7,9 +7,6 @@ from infdb import InfDB
 
 # ============================== Constants ==============================
 
-TOOL_NAME: str = "infdb-init"
-CONFIG_DIR: str = "configs"
-CITYDB_CREATE_SCRIPT: str = "/tmp/3dcitydb/postgresql/shell-scripts/unix/create-db.sh"
 PGBIN_PATH: str = "/var/lib/postgresql/17/bin"
 
 
@@ -42,7 +39,7 @@ def build_citydb_env(params: Dict[str, Any]) -> Dict[str, str]:
 def main() -> None:
     """Initialize InfDB, assemble env, and run the 3DCityDB create script."""
     # Initialize InfDB (config + logging)
-    inf = InfDB(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
+    inf = InfDB(tool_name="infdb-init", config_path="configs")
     log = inf.get_log()
 
     log.info("Starting %s tool", inf.get_toolname())
@@ -57,7 +54,7 @@ def main() -> None:
     # Install 3DCityDB extension
     log.info("Installing 3DcityDB extension")
     subprocess.run(
-        ["bash", CITYDB_CREATE_SCRIPT],
+        ["bash", "/tmp/3dcitydb/postgresql/shell-scripts/unix/create-db.sh"],
         env=env,
         check=True,
     )

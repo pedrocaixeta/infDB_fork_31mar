@@ -7,6 +7,7 @@ import random
 import logging
 import subprocess
 import psycopg2
+import shlex
 from typing import Iterable, List, Optional
 from pathlib import Path
 
@@ -21,29 +22,18 @@ from zipfile import BadZipFile, ZipFile
 
 import chardet
 
-from infdb import InfdbConfig
-from infdb.utils import do_cmd, get_db_engine
+from infdb import InfDB, InfdbConfig
+from infdb.utils import do_cmd
 
 # ============================== Constants ==============================
-
-LOGGER_NAME: str = __name__
-CONFIG_TOOL_NAME: str = "loader"
-CONFIG_DIR: str = "configs"
-
 HTTP_TIMEOUT_SECONDS: int = 60
 WGET_PROGRESS_BAR: bool = True  # preserve SmartDL progress bar behavior
 
-ZIP_EXT: str = ".zip"
 GPKG_EXT: str = ".gpkg"
 SQL_SCHEMA_GEOMETRY_COL: str = "geom"
-EPSG_FALLBACK_KEY: str = "epsg"
-
-# Module logger
-log = logging.getLogger(LOGGER_NAME)
-
-# Single shared config object per process
+CONFIG_TOOL_NAME: str = "loader"
+CONFIG_DIR: str = "configs"
 _cfg = InfdbConfig(tool_name=CONFIG_TOOL_NAME, config_path=CONFIG_DIR)
-
 
 # ============================== Internal helpers ==============================
 
@@ -60,7 +50,7 @@ def _fetch_html(url: str) -> BeautifulSoup:
     resp.raise_for_status()
     return BeautifulSoup(resp.content, "html.parser")
 
-def _pg_connstring_for_gdal():
+def _pg_connstring_for_gdal(infdb):
     """
     Build a GDAL/OGR PostgreSQL connection string.
     ogr2ogr expects 'dbname', not 'db'.
@@ -77,7 +67,7 @@ def _pg_connstring_for_psql():
     p = _cfg.get_db_parameters("postgres")
     return f"postgresql://{p['user']}:{p['password']}@{p['host']}:{p['exposed_port']}/{p['db']}"
 
-def _ogr2ogr(cmd_args, env_extra=None):
+def _ogr2ogr(cmd_args, infdb, env_extra=None):
     """
     Execute ogr2ogr with environment tuned for speed:
       - PG_USE_COPY=YES : streams via COPY (very fast)
@@ -85,7 +75,7 @@ def _ogr2ogr(cmd_args, env_extra=None):
     Handles spaces in arguments safely (no shell) and logs output line by line.
     Raises RuntimeError if ogr2ogr exits with non-zero code.
     """
-    import shlex
+    log = infdb.get_worker_logger()
 
     # Normalize input to a proper list of strings
     if isinstance(cmd_args, str):
@@ -101,8 +91,7 @@ def _ogr2ogr(cmd_args, env_extra=None):
         env.update(env_extra)
 
     # Log the command for debugging (shell-escaped for readability only)
-    import shlex as _shlex
-    log.info("Executing ogr2ogr: %s", _shlex.join(map(str, cmd_args)))
+    log.info("Executing ogr2ogr: %s", shlex.join(map(str, cmd_args)))
 
     # Run safely (no shell), capture stdout/stderr merged
     proc = subprocess.Popen(
@@ -125,18 +114,12 @@ def _ogr2ogr(cmd_args, env_extra=None):
 
 # ======================== toggles & config helpers ========================
 
-def if_multiproccesing() -> bool:
+def if_multiprocesing(infdb:InfDB) -> bool:
     """Return True if multiprocessing is enabled via config (original spelling/API)."""
-    status = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"])
+    status = infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "status"])
     return status == "active"
 
-
-def if_multiprocessing() -> bool:
-    """Correctly spelled alias for `if_multiproccesing()`; preserves public API."""
-    return if_multiproccesing()
-
-
-def if_active(service: str) -> bool:
+def if_active(service: str, infdb:InfDB) -> bool:
     """Tell whether a given source service is active; logs decision.
 
     Args:
@@ -145,7 +128,8 @@ def if_active(service: str) -> bool:
     Returns:
         True if active; False otherwise (with informational log).
     """
-    status = _cfg.get_value([CONFIG_TOOL_NAME, "sources", service, "status"])
+    status =  infdb.get_config_value([infdb.get_toolname(), "sources", service, "status"])
+    log = infdb.get_worker_logger()
     if status == "active":
         log.info("Loading %s data...", service)
         return True
@@ -160,7 +144,7 @@ def any_element_in_string(target_string: str, elements: Iterable[str]) -> bool:
 
 # ======================== downloading / scraping ========================
 
-def get_links(url: str, ending: str, flt: str) -> list[str]:
+def get_links(url: str, ending: str, flt: str, infdb:InfDB) -> list[str]:
     """Scrape links from a page matching an ending and substring filter.
 
     Args:
@@ -171,6 +155,7 @@ def get_links(url: str, ending: str, flt: str) -> list[str]:
     Returns:
         List of absolute link URLs, de-duplicated.
     """
+    log = infdb.get_worker_logger()
     soup = _fetch_html(url)
     links: list[str] = []
     for a in soup.find_all("a", href=True):
@@ -183,7 +168,7 @@ def get_links(url: str, ending: str, flt: str) -> list[str]:
     return links
 
 
-def download_files(urls, base_path, max_concurrent=3, max_retries=4, backoff_base=1.8, timeout=60):
+def download_files(urls, base_path, infdb, max_concurrent=3, max_retries=4, backoff_base=1.8, timeout=60):
     """
     Polite, robust downloader that won't get throttled.
     - Limits parallelism with ThreadPoolExecutor (default 3).
@@ -193,6 +178,7 @@ def download_files(urls, base_path, max_concurrent=3, max_retries=4, backoff_bas
     - Returns a list of absolute local file paths.
     - Can also pass multiple URLs.
     """
+    log = infdb.get_worker_logger()
     if isinstance(urls, str):
         urls = [urls]
 
@@ -270,13 +256,14 @@ def download_files(urls, base_path, max_concurrent=3, max_retries=4, backoff_bas
     return results
 
 
-def unzip(zip_files, unzip_dir: str) -> None:
+def unzip(zip_files, unzip_dir: str, infdb: InfDB) -> None:
     """Extract one or more zip files into `unzip_dir`, skipping if already extracted.
 
     Args:
         zip_files: A single .zip path or list of .zip paths.
         unzip_dir: Destination directory for extracted files.
     """
+    log = infdb.get_worker_logger()
     os.makedirs(unzip_dir, exist_ok=True)
     for zip_file in _ensure_list(zip_files):
         try:
@@ -351,26 +338,29 @@ def download_aria2c(
 # =================== geospatial / DB import helpers ===================
 
 
-def get_envelop():
+def get_envelop(infdb: InfDB):
     """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = _cfg.get_value([CONFIG_TOOL_NAME, "scope"])
+    scope =  infdb.get_config_value([infdb.get_toolname(), "scope"])
+    log = infdb.get_worker_logger()
     if isinstance(scope, str):
         scope = [scope]
-    ags_path = _cfg.get_path([CONFIG_TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
+    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
     log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT)
+    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
     log.debug("Envelop Path (file): %s", path)
     gdf = gpd.read_file(path, layer="vg5000_gem")
     return gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
 
-def get_all_envelops():
+
+def get_all_envelops(infdb: InfDB):
     """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = _cfg.get_value([CONFIG_TOOL_NAME, "scope"])
+    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
+    log = infdb.get_worker_logger()
     if isinstance(scope, str):
         scope = [scope]
-    ags_path = _cfg.get_path([CONFIG_TOOL_NAME, "sources", "bkg", "path", "unzip"], type="loader")
+    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
     log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT)
+    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
     log.debug("Envelop Path (file): %s", path)
     gdf = gpd.read_file(path, layer="vg5000_gem")
     envelop = []
@@ -393,9 +383,10 @@ def get_all_files(folder_path: str, ending: str) -> list[str]:
     return files
 
 
-def get_file(folder_path: str, filename: str, ending: str) -> Optional[str]:
+def get_file(folder_path: str, filename: str, ending: str, infdb: InfDB) -> Optional[str]:
     """Return the newest file path in `folder_path` containing `filename` and ending with `ending`."""
     files = get_all_files(folder_path, ending)
+    log = infdb.get_worker_logger()
     matching = [f for f in files if filename.lower() in Path(f).stem.lower()]
     if not matching:
         log.error("No files found containing '%s' with ending '%s' in %s", filename, ending, folder_path)
@@ -404,10 +395,11 @@ def get_file(folder_path: str, filename: str, ending: str) -> Optional[str]:
     return newest
 
 
-def get_website_links(url: str) -> list[str]:
+def get_website_links(url: str, infdb: InfDB) -> list[str]:
     """Return all .zip links found on the given page (absolute or relative hrefs)."""
     soup = _fetch_html(url)
-    links = [a["href"] for a in soup.find_all("a", href=True) if a["href"].endswith(ZIP_EXT)]
+    log = infdb.get_worker_logger()
+    links = [a["href"] for a in soup.find_all("a", href=True) if a["href"].endswith(".zip")]
     for link in links:
         log.debug(link)
     return links
@@ -423,8 +415,9 @@ def get_file_from_url(url: str):
 
 # ======================= encoding / processes =======================
 
-def ensure_utf8_encoding(filepath: str) -> str:
+def ensure_utf8_encoding(filepath: str, infdb: InfDB) -> str:
     """Detect file encoding; if not UTF-8, re-encode to a temp UTF-8 CSV and return its path."""
+    log = infdb.get_worker_logger()
     with open(filepath, "rb") as f:
         raw = f.read()
         result = chardet.detect(raw)
@@ -444,11 +437,13 @@ def ensure_utf8_encoding(filepath: str) -> str:
 
     return filepath
 
-def get_number_processes() -> int:
+
+def get_number_processes(infdb: InfDB) -> int:
     """Determine worker process count based on CPU count and config max_cores."""
+    log = infdb.get_worker_logger()
     number_processes = 1
-    max_processes = _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "max_cores"]) or 1
-    if _cfg.get_value([CONFIG_TOOL_NAME, "multiproccesing", "status"]) == "active":
+    max_processes =  infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "max_cores"]) or 1
+    if  infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "status"]) == "active":
         number_processes = min(multiprocessing.cpu_count(), max_processes)
     log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes

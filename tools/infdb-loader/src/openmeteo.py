@@ -3,6 +3,7 @@ import logging
 import multiprocessing as mp
 import os
 from logging.handlers import QueueHandler
+import sys
 from typing import Any, Dict, List
 
 import openmeteo_requests
@@ -18,20 +19,12 @@ from . import utils
 
 # ============================== Constants ==============================
 
-LOGGER_NAME: str = __name__
-TOOL_NAME: str = "loader"
-CONFIG_DIR: str = "configs"
-DB_NAME: str = "postgres"
 
-OPENMETEO_ARCHIVE_URL: str = "https://archive-api.open-meteo.com/v1/archive"
-CACHE_DIR: str = ".cache"
 CACHE_EXPIRE_SECONDS: int = -1  # never expire
 RETRY_ATTEMPTS: int = 5
 RETRY_BACKOFF: float = 0.2
 
-TS_DATA_TABLE: str = "openmeteo_ts_data"
 TS_METADATA_SUFFIX: str = "_ts_metadata"
-HOURLY_VARIABLE_NAME: str = "temperature_2m"
 HOURLY_RESOLUTION_TEXT: str = "1 hour"
 HOURLY_UNIT_TEXT: str = "°C"
 GEO_SRID_WGS84: int = 4326
@@ -48,14 +41,14 @@ def temperature_2m(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB) -> Non
     """
     log = infdb.get_worker_logger()
     # Setup the Open-Meteo API client with cache and retry on error
-    cache_session = requests_cache.CachedSession(CACHE_DIR, expire_after=CACHE_EXPIRE_SECONDS)
+    cache_session = requests_cache.CachedSession(".cache", expire_after=CACHE_EXPIRE_SECONDS)
     retry_session = retry(cache_session, retries=RETRY_ATTEMPTS, backoff_factor=RETRY_BACKOFF)
     openmeteo = openmeteo_requests.Client(session=retry_session)
 
     # Target DB schema/tables
-    db_schema = infdb.get_config_value([TOOL_NAME, "sources", "openmeteo", "schema"])
-    db_prefix = infdb.get_config_value([TOOL_NAME, "sources", "openmeteo", "prefix"])
-    table_name = TS_DATA_TABLE
+    db_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "schema"])
+    db_prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "prefix"])
+    table_name = "openmeteo_ts_data"
 
     # Drop & create metadata table
     try:
@@ -104,8 +97,8 @@ def temperature_2m(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB) -> Non
     log.info("Open-Meteo: processing %d grid locations", len(pd_dataframe))
 
     # Time window
-    start_date = infdb.get_config_value([TOOL_NAME, "sources", "openmeteo", "timing", "start_time"])
-    end_date = infdb.get_config_value([TOOL_NAME, "sources", "openmeteo", "timing", "end_time"])
+    start_date = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "timing", "start_time"])
+    end_date = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "timing", "end_time"])
 
     # Process in batches of 100 locations (API limit)
     for batch in range(0, len(pd_dataframe), 100):
@@ -118,10 +111,10 @@ def temperature_2m(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB) -> Non
             "longitude": lon_str,
             "start_date": start_date,
             "end_date": end_date,
-            "hourly": HOURLY_VARIABLE_NAME,
+            "hourly": "temperature_2m",
         }
 
-        responses = openmeteo.weather_api(OPENMETEO_ARCHIVE_URL, params=params)
+        responses = openmeteo.weather_api("https://archive-api.open-meteo.com/v1/archive", params=params)
 
         # Process multiple locations
         for i, response in enumerate(responses):
@@ -220,36 +213,37 @@ def load(infdb: InfDB) -> bool:
     - Creates/ensures 10km BKG grid (delegates to bkg.create_geogitter).
     """
     log = infdb.get_worker_logger()
+    try:
+        if not utils.if_active("openmeteo", infdb):
+            return True
+        # Create base directory for Openmeteo data
+        base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "openmeteo", "path", "base"], type="loader")
+        os.makedirs(base_path, exist_ok=True)
 
+        # Ensure BKG 10km grid exists
+        bkg_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "schema"])
+        bkg.create_geogitter("10km", infdb) 
 
-    if not utils.if_active("openmeteo"):
-        return True
+        # DB engine via package
+        engine = infdb.get_db_engine()
 
-    # Create base directory for Openmeteo data
-    base_path = infdb.get_config_path([TOOL_NAME, "sources", "openmeteo", "path", "base"], type="loader")
-    os.makedirs(base_path, exist_ok=True)
+        # Read centroid geometry and lat/lon for 10km grid
+        table_name = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "geogitter", "table_name"])
+        sql = f"""
+            SELECT id,
+                ST_Y(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS latitude,
+                ST_X(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS longitude
+            FROM {bkg_schema}.{table_name}
+            WHERE name='DE_Grid_ETRS89_LAEA_10km';
+        """
+        pd_dataframe = pd.read_sql(sql=sql, con=engine)
+        log.debug("Grid preview:\n%s", pd_dataframe.head())
+        log.info("Total grid cells: %d", len(pd_dataframe))
 
-    # Ensure BKG 10km grid exists
-    bkg_schema = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "schema"])
-    bkg.create_geogitter("10km", infdb) 
+        temperature_2m(pd_dataframe, engine, infdb)
 
-    # DB engine via package
-    engine = infdb.get_db_engine()
-
-    # Read centroid geometry and lat/lon for 10km grid
-    table_name = infdb.get_config_value([TOOL_NAME, "sources", "bkg", "geogitter", "table_name"])
-    sql = f"""
-        SELECT id,
-               ST_Y(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS latitude,
-               ST_X(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS longitude
-        FROM {bkg_schema}.{table_name}
-        WHERE name='DE_Grid_ETRS89_LAEA_10km';
-    """
-    pd_dataframe = pd.read_sql(sql=sql, con=engine)
-    log.debug("Grid preview:\n%s", pd_dataframe.head())
-    log.info("Total grid cells: %d", len(pd_dataframe))
-
-    temperature_2m(pd_dataframe, engine, infdb)
-
-    log.info("Open-Meteo data loaded successfully")
-    return True
+        log.info("Open-Meteo data loaded successfully")
+        sys.exit(0)
+    except Exception as err:
+        log.exception("An error occurred while processing OPENMETEO data: %s", str(err))
+        sys.exit(1)

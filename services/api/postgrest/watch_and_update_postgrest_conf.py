@@ -11,6 +11,7 @@ from typing import Iterable, Optional
 import psycopg
 from psycopg import Connection
 from psycopg.rows import dict_row
+from infdb import InfDB
 
 from infdb.utils import (
     read_env,
@@ -20,9 +21,10 @@ from infdb.utils import (
     compute_signature as utils_compute_signature,
 )
 
-# ============================== Logging ==============================
 
-log = logging.getLogger(__name__)
+infdb = InfDB(tool_name="infdb-postgrest", config_path="configs")
+# ============================== Logging ==============================
+log = infdb.get_worker_logger()
 if not log.handlers:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
@@ -33,36 +35,35 @@ DEFAULT_WATCH_INTERVAL_SECONDS: float = 1.0
 DEFAULT_MIN_RELOAD_GAP_SECONDS: float = 3.0
 DEFAULT_CHANNEL: str = "pgrst"
 DEFAULT_EXCLUDE_SCHEMAS_CSV: str = "pg_*,information_schema,postgrest"
-DEFAULT_CONF_PATH: str = "/conf/postgrest.conf"
+DEFAULT_CONF_PATH: str = "/app/postgrest.conf"
 
 CONF_LINE_RE = re.compile(r'^\s*db-schemas\s*=\s*"(?:[^"\\]|\\.)*"\s*$', re.MULTILINE)
 
 
 # ============================== Runtime config (cached once) ==============================
 
-DB_USER: str = str(read_env("SERVICES_POSTGRES_USER", required=True))
-DB_PASSWORD: str = str(read_env("SERVICES_POSTGRES_PASSWORD", required=True))
-DB_NAME: str = str(read_env("SERVICES_POSTGRES_DB", required=True))
-DB_HOST: str = read_env("SERVICES_POSTGRES_HOST", "postgres") or "postgres"
-DB_PORT: int = int(read_env("SERVICES_POSTGRES_EXPOSED_PORT", default="5432") or "5432")
+DB_USER: str = infdb.get_config_value(["services", "postgres", "user"])
+DB_PASSWORD: str = infdb.get_config_value(["services", "postgres", "password"])
+DB_NAME: str = infdb.get_config_value(["services", "postgres", "db"])
+DB_HOST: str = "postgres"
+DB_PORT: int = 5432
 
+POSTGREST_PORT: int = int(infdb.get_config_value(["services", "postgrest", "port"]))
 DSN: str = build_dsn_from_env(
-    user_var="SERVICES_POSTGRES_USER",
-    pwd_var="SERVICES_POSTGRES_PASSWORD",
-    db_var="SERVICES_POSTGRES_DB",
-    host_var="SERVICES_POSTGRES_HOST",
-    port_var="SERVICES_POSTGRES_EXPOSED_PORT",
-    default_host="postgres",
-    default_port="5432",
+    user_var=DB_USER,
+    pwd_var=DB_PASSWORD,
+    db_var=DB_NAME,
+    host_var=DB_HOST,
+    port_var=DB_PORT
 )
 
-CHANNEL: str = str(read_env("POSTGREST_DB_CHANNEL", default=DEFAULT_CHANNEL))
-POLL_INTERVAL_SECONDS: float = float(read_env("POSTGREST_WATCH_INTERVAL_SEC", default=str(DEFAULT_WATCH_INTERVAL_SECONDS)))
-MIN_REBUILD_GAP_SECONDS: float = float(read_env("POSTGREST_MIN_RELOAD_GAP_SEC", default=str(DEFAULT_MIN_RELOAD_GAP_SECONDS)))
+CHANNEL: str = DEFAULT_CHANNEL
+POLL_INTERVAL_SECONDS: float = DEFAULT_WATCH_INTERVAL_SECONDS
+MIN_REBUILD_GAP_SECONDS: float = DEFAULT_MIN_RELOAD_GAP_SECONDS
 
 EXCLUDE_SCHEMAS: list[str] = [
     s.strip()
-    for s in str(read_env("POSTGREST_EXCLUDE_SCHEMAS", default=DEFAULT_EXCLUDE_SCHEMAS_CSV)).split(",")
+    for s in DEFAULT_EXCLUDE_SCHEMAS_CSV.split(",")
     if s.strip()
 ]
 
@@ -73,7 +74,7 @@ CONF_DIR_MODE_STR: str = str(read_env("POSTGREST_CONF_DIR_MODE", default="0755")
 
 def resolve_conf_path() -> tuple[pathlib.Path, pathlib.Path]:
     """Resolve the config file path and its directory."""
-    conf_path_env = str(read_env("POSTGREST_CONF_PATH", default=DEFAULT_CONF_PATH))
+    conf_path_env = DEFAULT_CONF_PATH
     conf_path = pathlib.Path(conf_path_env)
     if conf_path.is_dir():
         conf_dir = conf_path
@@ -132,18 +133,9 @@ def ensure_conf_exists(conf_path: pathlib.Path, conf_dir: pathlib.Path) -> None:
     conf_dir.mkdir(parents=True, exist_ok=True)
 
     # Build defaults (prefer explicit URIs if set; otherwise use globals)
-    db_uri = (
-        read_env("PGRST_DB_URI")
-        or read_env("DB_URI")
-        or f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
-    anon_role = (
-        read_env("PGRST_DB_ANON_ROLE")
-        or read_env("POSTGREST_DB_ANON_ROLE")
-        or DB_USER
-        or "anon"
-    )
-    port = read_env("PGRST_SERVER_PORT") or read_env("SERVICES_POSTGREST_PORT") or "3000"
+    db_uri = DSN
+    anon_role =  DB_USER
+    port = POSTGREST_PORT
 
     default_conf = (
         f'db-uri = "{db_uri}"\n'
