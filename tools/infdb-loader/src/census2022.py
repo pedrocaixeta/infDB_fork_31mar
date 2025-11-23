@@ -27,50 +27,57 @@ def load(infdb: InfDB) -> None:
     - Spawns a process pool with a per-process logger initializer.
     """
 
+    try:
+        log = infdb.get_worker_logger()
 
-    log = infdb.get_worker_logger()
+        if not utils.if_active("zensus_2022", infdb):
+            return
 
-    if not utils.if_active("zensus_2022", infdb):
-        return
+        datasets: List[Dict[str, Any]] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "datasets"])
 
-    datasets: List[Dict[str, Any]] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "datasets"])
+        url = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "url"])
+        zip_links: List[str] = utils.get_website_links(url, infdb)
 
-    url = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "url"])
-    zip_links: List[str] = utils.get_website_links(url, infdb)
+        # validate links
+        yaml_links = {entry["url"] for entry in datasets}
+        original_set = set(zip_links)
+        missing_in_yaml = original_set - yaml_links
+        extra_in_yaml = yaml_links - original_set
+        if missing_in_yaml:
+            log.warning("Links in original list but NOT in YAML:")
+            for lnk in sorted(missing_in_yaml):
+                log.warning(" - %s", lnk)
+        if extra_in_yaml:
+            log.warning("Links in YAML but NOT in original list:")
+            for lnk in sorted(extra_in_yaml):
+                log.warning(" - %s", lnk)
 
-    # validate links
-    yaml_links = {entry["url"] for entry in datasets}
-    original_set = set(zip_links)
-    missing_in_yaml = original_set - yaml_links
-    extra_in_yaml = yaml_links - original_set
-    if missing_in_yaml:
-        log.warning("Links in original list but NOT in YAML:")
-        for lnk in sorted(missing_in_yaml):
-            log.warning(" - %s", lnk)
-    if extra_in_yaml:
-        log.warning("Links in YAML but NOT in original list:")
-        for lnk in sorted(extra_in_yaml):
-            log.warning(" - %s", lnk)
+        # create schema (via package client)
+        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "schema"])
+        with infdb.connect() as db:
+            db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
-    # create schema (via package client)
-    schema = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "schema"])
-    with infdb.connect() as db:
-        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+        # folders
+        zip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "zip"], type="loader")
+        os.makedirs(zip_path, exist_ok=True)
+        unzip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader")
+        os.makedirs(unzip_path, exist_ok=True)
 
-    # folders
-    zip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "zip"], type="loader")
-    os.makedirs(zip_path, exist_ok=True)
-    unzip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader")
-    os.makedirs(unzip_path, exist_ok=True)
-
-    number_processes = utils.get_number_processes(infdb)
-    with mp.Pool(
-        processes=number_processes,
-        # initializer=_init_logger_for_process,
-        # initargs=(infdb,),
-    ) as pool:
-        pool.starmap(process_dataset, [(dataset, infdb.get_toolname(),) for dataset in datasets])
-
+        number_processes = utils.get_number_processes(infdb)
+        with mp.Pool(
+            processes=number_processes,
+            # initializer=_init_logger_for_process,
+            # initargs=(infdb,),
+        ) as pool:
+            results = pool.starmap(process_dataset, [(dataset, infdb.get_toolname(),) for dataset in datasets])
+        
+        if not all(results):
+            raise RuntimeError("Some datasets failed to process")
+        else:
+            sys.exit(0)
+    except Exception as err:
+        log.exception("An error occurred while processing Census: %s", str(err))
+        sys.exit(1)
 
 def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
     """Download, unzip, transform, and load one dataset to PostGIS.
@@ -174,9 +181,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
                 )
 
             log.info("Processed sucessfully %s", file)
-
+        return True
     except Exception as err:
         log.exception("An error occurred while processing file: %s %s", dataset.get("name"), str(err))
-        sys.exit(1)
-
-    sys.exit(0)
+        return False

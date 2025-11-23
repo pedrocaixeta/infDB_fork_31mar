@@ -303,6 +303,8 @@ def main():
         infdblog.debug("Starting construction of building elements")
         elements = elements[elements["element_name"] != "Window"]
 
+        
+        infdblog.debug("Starting material object creation")
         elements["materials"] = elements.apply(
             lambda x: eureca_code.Material(
                 x["name"], x["thickness"], x["thermal_conduc"], x["heat_capac"], x["density"]
@@ -310,6 +312,7 @@ def main():
             axis=1,
         )
 
+        infdblog.debug("Starting construction grouping")
         constructions = (
             elements.groupby(["building_objectid", "element_name", "area"])["materials"]
             .apply(list)
@@ -323,6 +326,7 @@ def main():
             "Rooftop": "Roof",
         }
 
+        infdblog.debug("Starting construction object creation")
         constructions["construction_obj"] = constructions.apply(
             lambda row: eureca_code.Construction(
                 name=f"B{row['building_objectid']}_{row['element_name']}",
@@ -332,21 +336,26 @@ def main():
             axis=1,
         )
 
+        infdblog.debug("Starting resistance calculation")
         constructions["resistance"] = constructions.apply(
             lambda row: 1 / ((1 / row["construction_obj"].thermal_resistance) * row["area"]),
             axis=1,
         )
 
+        infdblog.debug("Starting capacitance calculation")
         constructions["capacitance"] = constructions.apply(
             lambda row: row["construction_obj"].k_int * row["area"], axis=1
         )
 
+        infdblog.debug("Starting resistance and capacitance aggregation")
         rc_values = (
             constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values("building_objectid")
         )
-
+        
+        infdblog.debug("Starting temperature time series data retrieval")
         bld2ts = timedata.get_bld2ts(database_connection=engine)
 
+        infdblog.debug("Getting all time series data")
         all_ts_df = timedata.get_all_timeseries_data(database_connection=engine)
         all_ts_df.index.name = 'datetime'
         all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
@@ -354,6 +363,7 @@ def main():
         data = {x: y.sort_index() for x, y in all_ts_df.groupby('ts_metadata_id')}
 
         # Preparation for EnTiSe
+        infdblog.debug("Preparing EnTiSe input data")
         entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
         entise_input = entise_input.rename(columns={'resistance': 'resistance[K W-1]', 'capacitance': 'capacitance[J K-1]'}, errors=True)
         entise_input["hvac"] = "1R1C"
@@ -369,13 +379,15 @@ def main():
         ).drop(columns=["bld_objectid"])
 
         # For testing purposes, limit to one building
-        # entise_input = entise_input.iloc[:1, :]
+        entise_input = entise_input.iloc[:100, :]
 
         # Initialize the generator
+        infdblog.debug("Initializing time series generator")
         gen = TimeSeriesGenerator()
         gen.add_objects(entise_input)
 
         # Generate time series and summary
+        infdblog.debug("Starting EnTiSe time series generation")
         summary, dict_df = gen.generate(data, workers=os.cpu_count())
 
         # Summary

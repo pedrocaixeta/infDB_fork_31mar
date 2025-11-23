@@ -2,7 +2,7 @@ infdb-loader:
     name: "{base/name}"
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich
-        # - "09780139"  # Sonthofen
+        - "09780139"  # Sonthofen
         # - "09780116"  # Bolsterlang
         # - "09162000" # M
         # - "09474126" # FO
@@ -39,7 +39,7 @@ infdb-loader:
                 base: "{infdb-loader/path/base}"
                 processed: "{infdb-loader/path/opendata}"
         need:
-            status: active
+            status: not-active
             host: "ds1.need.energy"
             database: need
             port: 5431

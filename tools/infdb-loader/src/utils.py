@@ -154,10 +154,12 @@ def download_files(urls, base_path: str, infdb: InfDB, protocol: str = "http", u
     Else → use SmartDL (your current async flow).
     """
     # Create base path if base_path is supposed to be a directory
-    filename, name, extension = get_file_from_url(base_path)
+    filename, name, extension = get_file_from_url(file_path)
     log = infdb.get_worker_logger()
     if extension:
-        base_path = os.path.dirname(base_path)
+        base_path = os.path.dirname(file_path)
+    else:
+        base_path = file_path
     os.makedirs(base_path, exist_ok=True)
     
     url_list = _ensure_list(urls)
@@ -175,7 +177,7 @@ def download_files(urls, base_path: str, infdb: InfDB, protocol: str = "http", u
     objs = []
     files = []
     for url in url_list:
-        obj = SmartDL(url, base_path, progress_bar=WGET_PROGRESS_BAR)
+        obj = SmartDL(url, file_path, progress_bar=WGET_PROGRESS_BAR)
         target_path = obj.get_dest()
         if os.path.exists(target_path):
             log.info("File %s already exists.", target_path)
@@ -281,7 +283,7 @@ def import_layers(
 
 def get_envelop(infdb: InfDB):
     """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope =  infdb.get_config_value([infdb.get_toolname(), "scope"])
+    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
     log = infdb.get_worker_logger()
     if isinstance(scope, str):
         scope = [scope]
@@ -290,7 +292,9 @@ def get_envelop(infdb: InfDB):
     path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
     log.debug("Envelop Path (file): %s", path)
     gdf = gpd.read_file(path, layer="vg5000_gem")
-    return gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
+    gdf_scope = gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
+    gdf_scope.to_postgis("scope", infdb.get_db_engine(), if_exists="replace", schema="opendata", index=False)
+    return gdf_scope
 
 
 def get_all_envelops(infdb: InfDB):
