@@ -65,7 +65,7 @@ infdb-loader:
                     status: active
                     name: 3D-Gebäudemodelle (LoD2)
                     table_name: building_lod2
-                    import-mode: delete
+                    import-mode: skip
                     url: "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4" 
                 tatsaechliche_nutzung:
                     status: active
