@@ -46,7 +46,6 @@ def _get_gpkg_layers(gpkg: Path) -> list[str]:
 def load(infdb: InfDB) -> bool:
     """Main entry point for loading OpenData Bavaria datasets."""
     try:
-        global log
         log = infdb.get_worker_logger()
 
         # Early exit if this module is disabled

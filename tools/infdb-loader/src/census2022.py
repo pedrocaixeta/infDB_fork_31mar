@@ -26,8 +26,6 @@ def load(infdb: InfDB) -> None:
     - Creates schema if missing.
     - Spawns a process pool with a per-process logger initializer.
     """
-
-
     log = infdb.get_worker_logger()
 
     if not utils.if_active("zensus_2022", infdb):
@@ -66,8 +64,6 @@ def load(infdb: InfDB) -> None:
     number_processes = utils.get_number_processes(infdb)
     with mp.Pool(
         processes=number_processes,
-        # initializer=_init_logger_for_process,
-        # initargs=(infdb,),
     ) as pool:
         pool.starmap(process_dataset, [(dataset, infdb.get_toolname(),) for dataset in datasets])
 
@@ -92,9 +88,6 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         if dataset["status"] != "active":
             log.info("%s skips, status not active", dataset["name"])
             return True
-
-        # fresh cfg (per-process)
-        #cfg = InfdbConfig(tool_name=tool_name, config_path="configs")
 
         years: Iterable[int] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "years"])
         if dataset["year"] not in years:
