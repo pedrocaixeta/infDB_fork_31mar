@@ -8,7 +8,6 @@ import geopandas as gpd
 import pandas as pd
 from charset_normalizer import from_path
 
-from infdb import InfdbConfig, InfdbClient, InfdbLogger
 from infdb import InfDB
 from . import utils
 
@@ -95,7 +94,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
             return True
 
         # fresh cfg (per-process)
-        cfg = InfdbConfig(tool_name=tool_name, config_path="configs")
+        #cfg = InfdbConfig(tool_name=tool_name, config_path="configs")
 
         years: Iterable[int] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "years"])
         if dataset["year"] not in years:
@@ -113,10 +112,10 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         folder_path = os.path.join(unzip_dir, dataset["table_name"])
         utils.unzip(zip_file, folder_path, infdb)
         # Export to PostGIS for each configured resolution
-        resolutions : List[str] = infdb.get_config_value([tool_name, "sources", "zensus_2022", "resolutions"])
-        prefix = infdb.get_config_value([tool_name, "sources", "zensus_2022", "prefix"])
-        schema = infdb.get_config_value([tool_name, "sources", "zensus_2022", "schema"])
-        epsg = cfg.get_db_parameters("postgres")["epsg"]  # target DB SRID
+        resolutions : List[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "resolutions"])
+        prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "prefix"])
+        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "schema"])
+        epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")  # target DB SRID
 
         # Export to PostGIS
         resolutions: List[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "resolutions"])
@@ -148,7 +147,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
                 x_col=x_col,
                 y_col=y_col,
                 srid_src=3035,                 # source X/Y are in EPSG:3035 in the Zensus CSV
-                srid_dst=epsg,                 # target SRID from DB config
+                epsg=epsg,                 # target SRID from DB config
                 drop_existing=True,            # matches old 'replace' behavior
                 create_spatial_index=True,     # gives you good query perf right away
                 clip_to_scope=True,  # Explicit clipping (default anyway)
@@ -157,7 +156,15 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
             log.info(f"Processed successfully {csv_path}")
 
     except Exception as err:
-        log.exception("An error occurred while processing file: %s %s", dataset.get("name"), str(err))
-        sys.exit(1)
-
-    sys.exit(0)
+        # if logger creation also fails, at least print
+        try:
+            log  # type: ignore[name-defined]
+        except NameError:
+            print(f"Error in process_dataset({dataset.get('name')}): {err}")
+        else:
+            log.exception(
+                "An error occurred while processing file: %s %s",
+                dataset.get("name"),
+                str(err),
+            )
+        return False

@@ -8,15 +8,11 @@ from typing import Dict, List, Optional
 from shapely import wkt as shapely_wkt
 from shapely.geometry import mapping
 
-from infdb import InfdbConfig, InfDB, InfdbClient
+from infdb import InfDB 
 from . import utils
 
 # Module logger
 log = logging.getLogger(__name__)
-
-TOOL_NAME = "loader"
-CONFIG_DIR: str = "configs"
-DB_NAME: str = "postgres"
 
 
 # ====================================================================================
@@ -54,7 +50,7 @@ def load(infdb: InfDB) -> bool:
         log = infdb.get_worker_logger()
 
         # Early exit if this module is disabled
-        if not utils.if_active("opendata_bavaria"):
+        if not utils.if_active("opendata_bavaria", infdb):
             return True
 
         # -------------------- Enable PostGIS Extensions --------------------
@@ -66,17 +62,16 @@ def load(infdb: InfDB) -> bool:
         # -------------------- Configuration Setup --------------------
         # Get base directory for downloaded/processed files
         base_path = Path(infdb.get_config_path(
-            [TOOL_NAME, "sources", "opendata_bavaria", "path", "base"], 
+            [infdb.get_toolname(), "sources", "opendata_bavaria", "path", "base"], 
             type="loader"
         ))
         base_path.mkdir(parents=True, exist_ok=True)
 
         # Read dataset configurations
-        datasets = infdb.get_config_value([TOOL_NAME, "sources", "opendata_bavaria", "datasets"]) or {}
-        cfg = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
+        datasets = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "datasets"]) or {}
 
         # -------------------- Database Connection Parameters --------------------
-        db_params = cfg.get_db_parameters("postgres")
+        db_params = infdb.get_db_parameters_dict()
         pgurl = f'postgresql://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}:{db_params["exposed_port"]}/{db_params["db"]}'
         target_epsg = db_params["epsg"]
 
@@ -115,7 +110,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
     """Load DGM1 clipped exactly to the configured scope polygon."""
 
     # ---------------------- Configuration -------------------------
-    config_base = [TOOL_NAME, "sources", "opendata_bavaria", "datasets", "gelaendemodell_1m"]
+    config_base = [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "gelaendemodell_1m"]
 
     # Read loader configuration
     url_template = infdb.get_config_value(config_base + ["url"])  # URL with #scope placeholder
@@ -137,7 +132,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
 
     # ==================== 2. SCOPE DETERMINATION ====================
     # Get municipality codes (AGS - Amtlicher Gemeindeschlüssel)
-    configured_scope_values = infdb.get_config_value([TOOL_NAME, "scope"]) or []
+    configured_scope_values = infdb.get_config_value([infdb.get_toolname(), "scope"]) or []
     if isinstance(configured_scope_values, str):
         configured_scope_values = [configured_scope_values]
 
@@ -158,7 +153,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
 
     # ==================== 3. EXACT CLIPPING PREPARATION ====================
     # Get precise scope geometry (union of all municipalities)
-    clip_wkt, clip_method, _ = utils.get_clip_geometry(source_srid, method="exact")
+    clip_wkt, clip_method, _ = utils.get_clip_geometry(source_srid, infdb=infdb, method="exact")
 
     clip_extent_args = ""  # For gdalwarp bounding box
     cutline_args = ""       # For gdalwarp polygon clipping
@@ -200,7 +195,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
             scope_geojson_path = None
 
     # ==================== 4. DATABASE CONNECTION SETUP ====================
-    pgurl = utils._pg_connstring_for_psql()
+    pgurl = utils._pg_connstring_for_psql(infdb)
     psql_command = f'psql --no-psqlrc -q -v ON_ERROR_STOP=1 -X "{pgurl}"'
 
     any_data_imported = False
@@ -227,7 +222,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
         # Unzip downloaded archives
         zip_files = utils.get_all_files(str(landkreis_dir), ".zip")
         if zip_files:
-            utils.unzip(zip_files, str(landkreis_dir))
+            utils.unzip(zip_files, str(landkreis_dir), infdb=infdb)
 
         # ---------- 5c. FIND SOURCE RASTERS ----------
         # Locate all .tif and .asc files recursively
@@ -352,9 +347,7 @@ def _load_tatsaechliche_nutzung(
 
     # ==================== 3. SCHEMA SETUP ====================
     # Ensure target schema exists in database
-    conf = InfdbConfig(tool_name=TOOL_NAME, config_path=CONFIG_DIR)
-    client = InfdbClient(conf, log, db_name=DB_NAME)
-    engine = client.get_db_engine()
+    engine = infdb.get_db_engine()
 
     with engine.connect() as conn:
         conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema};"))
@@ -362,7 +355,7 @@ def _load_tatsaechliche_nutzung(
 
     # ==================== 4. SCOPE GEOMETRY CHECK ====================
     # Verify we have a scope polygon for spatial filtering
-    clip_wkt, _, _ = utils.get_clip_geometry(target_crs=target_epsg, method="exact")
+    clip_wkt, _, _ = utils.get_clip_geometry(target_crs=target_epsg, infdb=infdb, method="exact")
     if not clip_wkt:
         log.warning("TN: No scope geometry found; skipping TN import.")
         return
@@ -406,6 +399,7 @@ def _load_tatsaechliche_nutzung(
                 input_file=str(gpkg_path),
                 layers=[layer_name],
                 schema=schema,
+                infdb=infdb,
                 layer_names=[table],
                 scope=True,  # Enable spatial filtering
                 overwrite=(is_first_import),  # First layer creates, rest append
@@ -468,25 +462,25 @@ def _load_lod2(infdb: InfDB)  -> bool:
     """
     log = infdb.get_worker_logger()
 
-    if not utils.if_active("lod2"):
+    if not utils.if_active("lod2", infdb):
         return True
 
 
-    base_path = infdb.get_config_path([TOOL_NAME, "sources", "lod2", "path", "lod2"], type="loader")
+    base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "lod2", "path", "lod2"], type="loader")
     os.makedirs(base_path, exist_ok=True)
 
     # Directory for extracted GML files
-    gml_path = infdb.get_config_path([TOOL_NAME, "sources", "lod2", "path", "gml"], type="loader")
+    gml_path = infdb.get_config_path([infdb.get_toolname(), "sources", "lod2", "path", "gml"], type="loader")
     os.makedirs(gml_path, exist_ok=True)
 
     # ==================== 3. SCOPE PROCESSING ====================
     # Get list of administrative codes (AGS) defining spatial scope
-    scope = infdb.get_config_value([TOOL_NAME, "scope"])
+    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
     if isinstance(scope, str):
         scope = [scope]
 
     # Download CityGML files for each administrative region
-    url_cfg = infdb.get_config_value([TOOL_NAME, "sources", "lod2", "url"])
+    url_cfg = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2", "url"])
     for ags in scope or []:
         # Construct download URL by replacing placeholder with AGS code
         url: str
@@ -508,8 +502,8 @@ def _load_lod2(infdb: InfDB)  -> bool:
     # ==================== 4. CITYDB IMPORT ====================
     # Import CityGML into PostGIS using 3D City Database (3DCityDB) CLI tool
     params: Dict[str, str] = infdb.get_db_parameters_dict()
-    import_mode: Optional[str] = infdb.get_config_value([TOOL_NAME, "sources", "lod2", "import-mode"])
-    
+    import_mode: Optional[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2", "import-mode"])
+
     # Build citydb import command with database connection parameters
     cmd_parts: List[str] = [
         "citydb import citygml",

@@ -7,7 +7,7 @@ infdb-loader:
         # - "09162000" # M
         # - "09474126" # FO
         # - "09261000" # LA
-        - "05119000" # Oberhausen (NRW)
+        #- "05119000" # Oberhausen (NRW)
         - "09185149" # Neuburg a.d. Donau (BY)
     multiproccesing: 
         status: not-active
@@ -45,14 +45,33 @@ infdb-loader:
             schema_input: need
             path_dump: "{infdb-loader/path/opendata}/need/"
 
-        lod2:
+        opendata_bavaria:
             status: active
-            import-mode: skip # delete
-            url:
-                - "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4"    #scope placeholder for AGS
-            path:
-                lod2: "{infdb-loader/path/opendata}/lod2/"
-                gml: "{infdb-loader/path/opendata}/lod2/{infdb-loader/name}"
+            schema: opendata
+            prefix: bavaria
+            path: 
+                base: "{infdb-loader/path/opendata}/opendata_bavaria/"
+            datasets:
+                gelaendemodell_1m:
+                    name: Geländemodell Bayern 1m
+                    status: active
+                    table_name: gelaendemodell_1m
+                    # - Lower values (1-5m): High detail, large files, slower queries
+                    # - Medium values (10-20m): Good balance for most applications
+                    # - Higher values (50-100m): Coarse terrain, small files, fast queries
+                    target_resolution: 10.0
+                    url: "https://geodaten.bayern.de/odd/a/dgm/dgm1/meta/metalink/#scope.meta4"
+                building_lod2:
+                    name: 3D-Gebäudemodelle (LoD2)
+                    status: active
+                    table_name: building_lod2
+                    import-mode: delete
+                    url: "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4" 
+                tatsaechliche_nutzung:
+                    name: Tatsächliche Nutzung (TN) 
+                    status: active
+                    table_name: tatsaechliche_nutzung
+                    url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
         lod2-nrw:
             status: active
             import-mode: skip # delete

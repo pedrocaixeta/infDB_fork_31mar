@@ -31,9 +31,7 @@ WGET_PROGRESS_BAR: bool = True  # preserve SmartDL progress bar behavior
 
 GPKG_EXT: str = ".gpkg"
 SQL_SCHEMA_GEOMETRY_COL: str = "geom"
-CONFIG_TOOL_NAME: str = "loader"
-CONFIG_DIR: str = "configs"
-_cfg = InfdbConfig(tool_name=CONFIG_TOOL_NAME, config_path=CONFIG_DIR)
+
 
 # ============================== Internal helpers ==============================
 
@@ -50,22 +48,32 @@ def _fetch_html(url: str) -> BeautifulSoup:
     resp.raise_for_status()
     return BeautifulSoup(resp.content, "html.parser")
 
-def _pg_connstring_for_gdal(infdb):
+def _pg_connstring_for_gdal(infdb: InfDB) -> str:
     """
     Build a GDAL/OGR PostgreSQL connection string.
     ogr2ogr expects 'dbname', not 'db'.
     """
-    p = _cfg.get_db_parameters("postgres")
-    return f"PG:host={p['host']} port={p['exposed_port']} dbname={p['db']} user={p['user']} password={p['password']}"
+    # use InfDB helper that returns merged DB params
+    params = infdb.get_db_parameters_dict()
+    return (
+        f"PG:host={params['host']} "
+        f"port={params['exposed_port']} "
+        f"dbname={params['db']} "
+        f"user={params['user']} "
+        f"password={params['password']}"
+    )
 
 
-def _pg_connstring_for_psql():
+def _pg_connstring_for_psql(infdb: InfDB) -> str:
     """
     Build a PostgreSQL connection string for psql/libpq tools (URI format).
     Used by: psql, raster2pgsql, pg_dump, pg_restore, etc.
     """
-    p = _cfg.get_db_parameters("postgres")
-    return f"postgresql://{p['user']}:{p['password']}@{p['host']}:{p['exposed_port']}/{p['db']}"
+    params = infdb.get_db_parameters_dict()
+    return (
+        f"postgresql://{params['user']}:{params['password']}"
+        f"@{params['host']}:{params['exposed_port']}/{params['db']}"
+    )
 
 def _ogr2ogr(cmd_args, infdb, env_extra=None):
     """
@@ -452,11 +460,12 @@ def get_number_processes(infdb: InfDB) -> int:
 
 # ======================= import / export to postgis =======================-----------------------------------------------------------------------------
 
-def import_layers(input_file, layers, schema, prefix="", layer_names=None, 
+def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_names=None,
                   scope=True, overwrite=True):
     
-    epsg = _cfg.get_db_parameters("postgres")["epsg"]
-    dst = _pg_connstring_for_gdal()
+    epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
+    dst = _pg_connstring_for_gdal(infdb)
+    log = infdb.get_worker_logger()
 
     # Prepare destination table names
     if layer_names is None:
@@ -469,8 +478,8 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None,
     tmp_gpkg = None
     
     if scope:
-        clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, method='exact')
-        
+        clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb, method='exact')
+
         if clip_wkt:
             # Save clip geometry to temp GPKG for ogr2ogr
             tmp_gpkg = os.path.splitext(os.path.abspath(input_file))[0] + "_clip_tmp.gpkg"
@@ -504,7 +513,7 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None,
           + clipsrc_opt \
           + [src_layer]
         
-        _ogr2ogr(args)
+        _ogr2ogr(args,infdb)
 
     # Cleanup temp file
     if tmp_gpkg and os.path.exists(tmp_gpkg):
@@ -515,20 +524,21 @@ def import_layers(input_file, layers, schema, prefix="", layer_names=None,
 
 
 def fast_copy_points_csv(
+    infdb: InfDB,
     csv_path: str,
     schema: str,
     table_name: str,
     x_col: str,
     y_col: str,
     srid_src: int = 3035,
-    srid_dst: int = None,
+    epsg: int = None,
     drop_existing: bool = True,
     create_spatial_index: bool = True,
     clip_to_scope: bool = True,
 ):
-    
-    params = _cfg.get_db_parameters("postgres")
-    srid_dst = srid_dst or params["epsg"]
+    log = infdb.get_worker_logger()
+    params = infdb.get_db_parameters_dict()
+    epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
 
     # Read CSV header
     with open(csv_path, "r", encoding="utf-8", errors="replace", newline="") as f:
@@ -540,8 +550,11 @@ def fast_copy_points_csv(
 
     # Connect to database
     conn = psycopg2.connect(
-        dbname=params["db"], user=params["user"], password=params["password"],
-        host=params["host"], port=params["exposed_port"]
+        dbname=params["db"],
+        user=params["user"],
+        password=params["password"],
+        host=params["host"],
+        port=params["exposed_port"],
     )
     conn.autocommit = True
     cur = conn.cursor()
@@ -576,16 +589,16 @@ def fast_copy_points_csv(
         # Step 5: Get clipping WHERE clause
         where_clause = ""
         if clip_to_scope:
-            clip_wkt, clip_method, _ = get_clip_geometry(target_crs=srid_dst, method='exact')
-            
+            clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb, method='exact')
+
             if clip_wkt:
                 where_clause = f"""
                     WHERE ST_Intersects(
                         ST_Transform(
                             ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
-                            {srid_dst}
+                            {epsg}
                         ),
-                        ST_GeomFromText('{clip_wkt}', {srid_dst})
+                        ST_GeomFromText('{clip_wkt}', {epsg})
                     )
                 """
                 log.info(f"Clipping enabled: {clip_method} method")
@@ -598,8 +611,8 @@ def fast_copy_points_csv(
                 {select_cols},
                 ST_Transform(
                     ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
-                    {srid_dst}
-                )::geometry(Point, {srid_dst}) AS geom
+                    {epsg}
+                )::geometry(Point, {epsg}) AS geom
             FROM "{schema}"."{staging}"
             {where_clause};
         """)
@@ -616,7 +629,7 @@ def fast_copy_points_csv(
         conn.close()
 
 
-def get_clip_geometry(target_crs: int, method: str = 'exact'):
+def get_clip_geometry(target_crs: int, infdb: InfDB, method: str = 'exact'):
     """
     Get clipping geometry for the configured scope.
     
@@ -631,7 +644,8 @@ def get_clip_geometry(target_crs: int, method: str = 'exact'):
     Returns:
         tuple: (geometry_wkt, method_used, row_count_estimate) or (None, None, None) if no clipping
     """
-    gdf_envelope = get_envelop()
+    gdf_envelope = get_envelop(infdb)
+    log = infdb.get_worker_logger()
     
     if gdf_envelope is None or gdf_envelope.empty:
         log.info("Scope envelope is empty; no clipping applied.")
