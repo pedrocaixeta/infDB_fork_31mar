@@ -136,8 +136,8 @@ def load(infdb: InfDB) -> bool:
     """
     log = infdb.get_worker_logger()
 
-    # if not utils.if_active("bkg", infdb):
-    #     return
+    if not utils.if_active("bkg", infdb):
+        return
 
     # Paths
     try:
