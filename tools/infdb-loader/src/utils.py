@@ -148,7 +148,7 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
             log.warning("Retry %d/%d for %s in %.1fs", attempt + 1, max_retries, url, sleep_s)
             time.sleep(sleep_s)
 
-def download_files(urls, base_path: str, infdb: InfDB, protocol: str = "http", username: str = None, access_token: str = None) -> list[str]:
+def download_files(urls, file_path: str, infdb: InfDB, protocol: str = "http", username: str = None, access_token: str = None) -> list[str]:
     """
     If `webdav` provided → use requests (supports WebDAV basic auth).
     Else → use SmartDL (your current async flow).
