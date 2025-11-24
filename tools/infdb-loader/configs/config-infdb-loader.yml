@@ -520,3 +520,22 @@ infdb-loader:
               - temperature_2m
               - wind_speed_10m
               - precipitation
+        kwp-nrw:
+          status: active
+          schema: opendata
+          prefix: kwp-nrw
+          path:
+              base: "{infdb-loader/path/opendata}/kwp-nrw/"
+              zip: "{infdb-loader/sources/kwp-nrw/path/base}/zip/"
+              unzip: "{infdb-loader/sources/kwp-nrw/path/base}/unzip/"
+              processed: "{infdb-loader/path/processed}/kwp-nrw/"
+          datasets:
+              - name: Waermebedarf
+                status: active
+                table_name: waermebedarf
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Waermebedarf_EPSG25832_Geodatabase.zip
+              - name: Energietraeger-Baubloecke
+                status: active
+                table_name: energietraeger_baubloecke
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Energietraeger-Sanierung-Baubloecke-Flure-NRW_EPSG25832_Geodatabase.zip
+                

@@ -1,53 +1,157 @@
-# src/bkg.py
 import logging
 import multiprocessing as mp
 import os
-from logging.handlers import QueueHandler
 import sys
-from typing import List, Sequence, Union
+from typing import Any, Dict, Iterable, List
+
+import geopandas as gpd
+import pandas as pd
+from charset_normalizer import from_path
 
 from infdb import InfDB
 from . import utils
 
 
-def load(infdb: InfDB) -> bool:
-    """Download BKG sources, import layers, and generate geogitter grid.
+# ============================== Constants ==============================
+CLIPPED_PREFIX: str = "kwp-nrw"
+
+
+
+
+def load(infdb: InfDB) -> None:
+    """Entry point to download, validate, and process KWP NRW datasets from heat atlas NRW.
 
     Behavior preserved:
-    - (Optional) feature guard for BKG: left commented as in original.
-    - Download/unzip/import NUTS and VG5000 with scope=False.
-    - Create schema if missing; then generate geogitter with configured resolutions.
+    - Respects `utils.if_active("kwp-nrw", infdb)`.
+    - Validates page links vs YAML list and logs differences.
+    - Creates schema if missing.
+    - Spawns a process pool with a per-process logger initializer.
     """
-    log = infdb.get_worker_logger()
 
-    if not utils.if_active("bkg", infdb):
-        return
-
-    # Paths
     try:
-        zip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "zip"], type="loader")
-        os.makedirs(zip_path, exist_ok=True)
-        unzip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
-        os.makedirs(unzip_path, exist_ok=True)
+        log = infdb.get_worker_logger()
 
-        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "schema"])
-        prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "prefix"])
+        if not utils.if_active("kwp-nrw", infdb):
+            return
 
-        # Ensure schema exists via InfdbClient
+        # create schema (via package client)
+        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "schema"])
         with infdb.connect() as db:
             db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
-        # --- NUTS (download+unzip+import) ---
-        log.info("Downloading and unzipping NUTS")
-        nuts_url = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "nuts", "url"])
-        utils.download_files(nuts_url, zip_path, infdb)
-        nuts_zip = utils.get_file(zip_path, filename="nuts250", ending=".zip", infdb=infdb)
-        utils.unzip(nuts_zip, unzip_path, infdb)
+        # folders
+        zip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "kwp-nrw", "path", "zip"], type="loader")
+        os.makedirs(zip_path, exist_ok=True)
+        unzip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "kwp-nrw", "path", "unzip"], type="loader")
+        os.makedirs(unzip_path, exist_ok=True)
 
-        nuts_layers = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "nuts", "layer"])
-        nuts_gpkg = utils.get_file(unzip_path, filename="nuts250", ending=".gpkg", infdb=infdb)
-        utils.import_layers(nuts_gpkg, nuts_layers, schema, infdb, prefix, scope=False)
-
-        log.info("BKG data loaded successfully")
+        number_processes = utils.get_number_processes(infdb)
+        with mp.Pool(
+            processes=number_processes,
+            # initializer=_init_logger_for_process,
+            # initargs=(infdb,),
+        ) as pool:
+            results = pool.starmap(process_dataset, [(dataset, infdb.get_toolname(),) for dataset in datasets])
+        
+        if not all(results):
+            raise RuntimeError("Some datasets failed to process")
+        else:
+            sys.exit(0)
     except Exception as err:
-        log.exception("An error occurred while processing BKG data: %s", str(err))
+        log.exception("An error occurred while processing Census: %s", str(err))
+        sys.exit(1)
+
+def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
+    """Download, unzip, transform, and load one dataset to PostGIS.
+
+    Args:
+        dataset: A dataset record from config (`name`, `url`, `year`, `table_name`, `status`, ...).
+
+    Returns:
+        True on success or skip; False when an exception is encountered (logged).
+    """
+    try:
+        # Initialize InfDB in each worker process
+        infdb = InfDB(tool_name=tool_name)
+        log = infdb.get_worker_logger()
+        
+        log.info("Working on %s", dataset["name"])
+
+        # status gate
+        if dataset["status"] != "active":
+            log.info("%s skips, status not active", dataset["name"])
+            return True
+
+        # Download INTO the zip directory and use the returned file path
+        zip_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "kwp-nrw", "path", "zip"], type="loader")
+        link = dataset["url"]
+        downloaded = utils.download_files(link, zip_dir, infdb)  # returns [<zip_file_path>]
+        zip_file = downloaded[0]
+
+        # Unzip using the real file path
+        unzip_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "kwp-nrw", "path", "unzip"], type="loader")
+        folder_path = os.path.join(unzip_dir, dataset["table_name"])
+        utils.unzip(zip_file, folder_path, infdb)
+
+        # Export to PostGIS
+        log.info("Processing %s", dataset["name"])
+
+        file = utils.get_file(folder_path, resolution, ".csv", infdb)
+
+        encoding = from_path(file).best().encoding
+        log.debug("Detected encoding for file: %s", encoding)
+
+        df = pd.read_csv(
+            file,
+            sep=";",
+            decimal=",",
+            low_memory=True,
+            encoding=encoding,
+        )
+        df.fillna(0, inplace=True)
+        df.columns = df.columns.str.lower()
+
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df[f"x_mp_{resolution}"], df[f"y_mp_{resolution}"]),
+            crs="EPSG:3035",
+        )
+
+        epsg = infdb.get_config_value(["services", "postgres", "epsg"])
+        if epsg is None:
+            raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
+        gdf = gdf.to_crs(epsg=epsg)
+
+        # get engine via client (engine is independent)
+        with infdb.connect() as db:
+            engine = db.get_db_engine()
+
+        prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "prefix"])
+        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "schema"])
+
+        gdf_envelope = utils.get_envelop(infdb)
+        gdf_clipped = gpd.clip(gdf, gdf_envelope) if not gdf_envelope.empty else gdf
+
+        table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
+        gdf_clipped = gdf_clipped.rename_geometry("geom")
+        gdf_clipped.to_postgis(table_name, engine, if_exists="replace", schema=schema, index=False)
+
+        save_local = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "save_local"])
+        if save_local == "active":
+            out_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "processed"], type="loader")
+            os.makedirs(out_dir, exist_ok=True)
+            gdf_clipped.to_file(
+                os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
+                layer=table_name,
+                driver="GPKG",
+            )
+            gdf_clipped.to_csv(
+                os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}_{table_name}.csv"),
+                index=False,
+            )
+
+        log.info("Processed sucessfully %s", file)
+        return True
+    except Exception as err:
+        log.exception("An error occurred while processing file: %s %s", dataset.get("name"), str(err))
+        return False
