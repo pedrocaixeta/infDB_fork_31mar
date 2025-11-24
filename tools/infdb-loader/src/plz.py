@@ -27,12 +27,30 @@ def load(infdb: InfDB) -> bool:
 
         url: str = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "url"])
         log.debug("url=%s", url)
+
+        # Get auth flag (defaults to False if not present)
+        try:
+            protocol = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "protocol"])
+        except Exception:
+            protocol = "http"
+
+        # Get credentials if auth is enabled
+        username = None
+        access_token = None
+        if protocol == "webdav":
+            username = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "username"])
+            access_token = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "access_token"])
+
         filename, *_ = utils.get_file_from_url(url)
 
         file_path = os.path.join(base_path, filename)
         log.debug("Downloading PLZ data from %s to %s", url, file_path)
 
-        utils.download_files(url, file_path, infdb)
+        if os.path.exists(file_path):
+            log.info("File %s already exists.", file_path)
+        else:
+            log.info("File %s will be downloaded from %s", file_path, url)
+            utils.download_files(url, base_path, infdb, protocol, username=username, access_token=access_token)
 
         schema: str = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "schema"])
 

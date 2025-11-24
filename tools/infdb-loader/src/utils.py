@@ -1,6 +1,6 @@
 import logging
 import multiprocessing
-import os
+import os, time, random
 from pathlib import Path
 from typing import Iterable, List, Optional
 
@@ -95,16 +95,63 @@ def get_links(url: str, ending: str, flt: str, infdb:InfDB) -> list[str]:
     log.debug(links)
     return links
 
+def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, access_token: str,
+                       timeout=60, max_retries=5, backoff_base=1.5, chunk=1024*1024) -> str:
+    """HEAD (size if available) → streamed GET with retries/backoff."""
+    os.makedirs(dest_dir, exist_ok=True)
 
-def download_files(urls, file_path: str, infdb:InfDB) -> list[str]:
-    """Download one or more files to `base_path` using SmartDL (async start + wait).
+    # filename from URL path
+    filename = os.path.basename(urlparse(url).path) or "download"
+    dest = os.path.join(dest_dir, filename)
+    log = infdb.get_worker_logger()
 
-    Args:
-        urls: A single URL or list of URLs.
-        base_path: Destination directory.
+    auth = (username, access_token)
 
-    Returns:
-        List of destination file paths (in the same order as started).
+    # HEAD: get size if available
+    size = None
+    try:
+        r = requests.head(url, allow_redirects=True, timeout=timeout, auth=auth)
+        if r.ok and "content-length" in r.headers:
+            size = int(r.headers["content-length"])
+    except Exception:
+        pass  # server may not support HEAD properly
+
+    # short-circuit if already present with same size
+    if size and os.path.exists(dest) and os.path.getsize(dest) == size:
+        log.info("File %s already exists (size match).", dest)
+        return dest
+    if os.path.exists(dest):
+        log.info("File %s already exists (size unknown); skipping re-download.", dest)
+        return dest
+
+    # GET with retries
+    for attempt in range(max_retries + 1):
+        try:
+            with requests.get(url, stream=True, timeout=timeout, auth=auth) as resp:
+                resp.raise_for_status()
+                tmp = dest + ".part"
+                with open(tmp, "wb") as f:
+                    for b in resp.iter_content(chunk_size=chunk):
+                        if b:
+                            f.write(b)
+                if size and os.path.getsize(tmp) != size:
+                    raise IOError(f"Size mismatch: expected {size}, got {os.path.getsize(tmp)}")
+                os.replace(tmp, dest)
+                log.info("Downloaded %s", dest)
+                return dest
+        except Exception as e:
+            if attempt >= max_retries:
+                # don’t leak creds in logs
+                log.error("Download failed for %s: %s", url, e.__class__.__name__)
+                raise
+            sleep_s = (backoff_base ** attempt) + random.uniform(0, 0.25 * backoff_base)
+            log.warning("Retry %d/%d for %s in %.1fs", attempt + 1, max_retries, url, sleep_s)
+            time.sleep(sleep_s)
+
+def download_files(urls, file_path: str, infdb: InfDB, protocol: str = "http", username: str = None, access_token: str = None) -> list[str]:
+    """
+    If `webdav` provided → use requests (supports WebDAV basic auth).
+    Else → use SmartDL (your current async flow).
     """
     # Create base path if base_path is supposed to be a directory
     filename, name, extension = get_file_from_url(file_path)
@@ -116,7 +163,19 @@ def download_files(urls, file_path: str, infdb:InfDB) -> list[str]:
     os.makedirs(base_path, exist_ok=True)
     
     url_list = _ensure_list(urls)
-    objs: list[SmartDL] = []
+
+    # Auth path (WebDAV or protected HTTP)
+    if protocol == "webdav":
+        if not username or not access_token:
+            raise ValueError("Username and access_token required when protocol=webdav")
+        results = []
+        for url in url_list:
+            results.append(_requests_download(url, base_path, infdb, username=username, access_token=access_token))
+        return results
+
+    # Original SmartDL path (no auth)
+    objs = []
+    files = []
     for url in url_list:
         obj = SmartDL(url, file_path, progress_bar=WGET_PROGRESS_BAR)
         target_path = obj.get_dest()
