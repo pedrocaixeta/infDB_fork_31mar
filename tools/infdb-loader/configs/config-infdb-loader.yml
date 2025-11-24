@@ -19,14 +19,14 @@ infdb-loader:
         processed: "{infdb-loader/path/base}/{infdb-loader/name}"
     logging:
         path: "{infdb-loader/path/base}/infdb-loader.log"
-        level: "INFO" # ERROR, WARNING, INFO, DEBUG
+        level: "DEBUG" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
             user: None
             password: None
-            db: None
-            host: None
-            exposed_port: None
+            db: infdb-dev
+            host: need.energy
+            exposed_port: 5432
             epsg: None # 3035 (Europe)
         webdav:
             username: infdb
