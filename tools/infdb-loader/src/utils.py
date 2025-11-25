@@ -315,6 +315,11 @@ def get_all_envelops(infdb: InfDB):
 
 # ============================== file helpers ==============================
 
+def get_subdirectories_by_suffix(folder, suffix):
+    """Return all subdirectories in `folder` whose names end with `suffix`."""
+    folder = Path(folder)
+    return [str(p) for p in folder.iterdir() if p.is_dir() and p.name.endswith(suffix)]
+
 def get_all_files(folder_path: str, ending: str) -> list[str]:
     """Recursively collect all files under `folder_path` with the given ending."""
     files: list[str] = []
@@ -327,7 +332,9 @@ def get_all_files(folder_path: str, ending: str) -> list[str]:
 
 
 def get_file(folder_path: str, filename: str, ending: str, infdb: InfDB) -> Optional[str]:
-    """Return the newest file path in `folder_path` containing `filename` and ending with `ending`."""
+    """Return the newest file path in `folder_path` containing `filename` and ending with `ending`.
+    Necessary for data that was updated by provider:
+    All data is saved in files -> selects newest to save in database."""
     files = get_all_files(folder_path, ending)
     log = infdb.get_worker_logger()
     matching = [f for f in files if filename.lower() in Path(f).stem.lower()]

@@ -33,6 +33,8 @@ def load(infdb: InfDB) -> None:
 
         if not utils.if_active("kwp-nrw", infdb):
             return
+        
+        datasets: List[Dict[str, Any]] = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "datasets"])
 
         # create schema (via package client)
         schema = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "schema"])
@@ -82,7 +84,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
             log.info("%s skips, status not active", dataset["name"])
             return True
 
-        # Download INTO the zip directory and use the returned file path
+        # # Download INTO the zip directory and use the returned file path
         zip_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "kwp-nrw", "path", "zip"], type="loader")
         link = dataset["url"]
         downloaded = utils.download_files(link, zip_dir, infdb)  # returns [<zip_file_path>]
@@ -93,65 +95,70 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         folder_path = os.path.join(unzip_dir, dataset["table_name"])
         utils.unzip(zip_file, folder_path, infdb)
 
+        # layers
+        layers = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", dataset["name"], "layer"])
+
         # Export to PostGIS
         log.info("Processing %s", dataset["name"])
 
-        file = utils.get_file(folder_path, resolution, ".csv", infdb)
+        gdb = utils.get_subdirectories_by_suffix(folder_path, suffix=".gdb")[0] # we expect exactly one .gdb folder
 
-        encoding = from_path(file).best().encoding
+        encoding = from_path(gdb).best().encoding
         log.debug("Detected encoding for file: %s", encoding)
 
-        df = pd.read_csv(
-            file,
-            sep=";",
-            decimal=",",
-            low_memory=True,
-            encoding=encoding,
-        )
-        df.fillna(0, inplace=True)
-        df.columns = df.columns.str.lower()
+        utils.import_layers()
 
-        gdf = gpd.GeoDataFrame(
-            df,
-            geometry=gpd.points_from_xy(df[f"x_mp_{resolution}"], df[f"y_mp_{resolution}"]),
-            crs="EPSG:3035",
-        )
+        # df = pd.read_csv(
+        #     file,
+        #     sep=";",
+        #     decimal=",",
+        #     low_memory=True,
+        #     encoding=encoding,
+        # )
+        # df.fillna(0, inplace=True)
+        # df.columns = df.columns.str.lower()
 
-        epsg = infdb.get_config_value(["services", "postgres", "epsg"])
-        if epsg is None:
-            raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
-        gdf = gdf.to_crs(epsg=epsg)
+        # gdf = gpd.GeoDataFrame(
+        #     df,
+        #     geometry=gpd.points_from_xy(df[f"x_mp_{resolution}"], df[f"y_mp_{resolution}"]),
+        #     crs="EPSG:3035",
+        # )
 
-        # get engine via client (engine is independent)
-        with infdb.connect() as db:
-            engine = db.get_db_engine()
+        # epsg = infdb.get_config_value(["services", "postgres", "epsg"])
+        # if epsg is None:
+        #     raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
+        # gdf = gdf.to_crs(epsg=epsg)
 
-        prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "prefix"])
-        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "schema"])
+        # # get engine via client (engine is independent)
+        # with infdb.connect() as db:
+        #     engine = db.get_db_engine()
 
-        gdf_envelope = utils.get_envelop(infdb)
-        gdf_clipped = gpd.clip(gdf, gdf_envelope) if not gdf_envelope.empty else gdf
+        # prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "prefix"])
+        # schema = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "schema"])
 
-        table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
-        gdf_clipped = gdf_clipped.rename_geometry("geom")
-        gdf_clipped.to_postgis(table_name, engine, if_exists="replace", schema=schema, index=False)
+        # gdf_envelope = utils.get_envelop(infdb)
+        # gdf_clipped = gpd.clip(gdf, gdf_envelope) if not gdf_envelope.empty else gdf
 
-        save_local = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "save_local"])
-        if save_local == "active":
-            out_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "processed"], type="loader")
-            os.makedirs(out_dir, exist_ok=True)
-            gdf_clipped.to_file(
-                os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
-                layer=table_name,
-                driver="GPKG",
-            )
-            gdf_clipped.to_csv(
-                os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}_{table_name}.csv"),
-                index=False,
-            )
+        # table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
+        # gdf_clipped = gdf_clipped.rename_geometry("geom")
+        # gdf_clipped.to_postgis(table_name, engine, if_exists="replace", schema=schema, index=False)
 
-        log.info("Processed sucessfully %s", file)
+        # save_local = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "save_local"])
+        # if save_local == "active":
+        #     out_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "processed"], type="loader")
+        #     os.makedirs(out_dir, exist_ok=True)
+        #     gdf_clipped.to_file(
+        #         os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
+        #         layer=table_name,
+        #         driver="GPKG",
+        #     )
+        #     gdf_clipped.to_csv(
+        #         os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}_{table_name}.csv"),
+        #         index=False,
+        #     )
+
+        log.info("Processed sucessfully %s", gdb)
         return True
     except Exception as err:
-        log.exception("An error occurred while processing file: %s %s", dataset.get("name"), str(err))
+        log.exception("An error occurred while processing: %s %s", dataset.get("name"), str(err))
         return False

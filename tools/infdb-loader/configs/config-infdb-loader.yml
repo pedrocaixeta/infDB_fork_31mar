@@ -24,9 +24,9 @@ infdb-loader:
         postgres:
             user: None
             password: None
-            db: infdb-dev
-            host: need.energy
-            exposed_port: 5432
+            db: infdb
+            host: localhost
+            exposed_port: 54328
             epsg: None # 3035 (Europe)
         webdav:
             username: infdb
@@ -534,6 +534,12 @@ infdb-loader:
                 status: active
                 table_name: waermebedarf
                 url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Waermebedarf_EPSG25832_Geodatabase.zip
+                layer:
+                  - "Warmebedarf_NRW — Waermelinien"
+                  - "Warmebedarf_NRW — Raumwaermebedarf_ist"
+                  - "Warmebedarf_NRW — Gebaeude_Fortschreibung_moderat"
+                  - "Warmebedarf_NRW — Gebaeude_Fortschreibung_hoch"
+                  - "Warmebedarf_NRW — Gebaeude_Fortschreibung_erhoeht"
               - name: Energietraeger-Baubloecke
                 status: active
                 table_name: energietraeger_baubloecke
