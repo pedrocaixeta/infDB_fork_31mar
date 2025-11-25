@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_datetime64_any_dtype, is_datetime64tz_dtype
 from infdb import InfDB
 from entise.core.generator import TimeSeriesGenerator
 
@@ -55,10 +56,25 @@ def copy_timeseries_chunk(engine, output_schema, table_name, df, conn=None, sync
     """
     if df.empty:
         return 0
-    # Ensure correct order and timezone-aware timestamps
-    out = df[["ts_metadata_id", "time", "value"]].copy()
-    out["time"] = pd.to_datetime(out["time"], utc=True)
-    # Drop rows with NaT timestamps to avoid COPY parse errors
+
+    cols = ["ts_metadata_id", "time", "value"]
+    out = df[cols]
+
+    # Normalize time only if needed
+    time_col = out["time"]
+
+    if not is_datetime64_any_dtype(time_col):
+        # Not datetime-like at all → parse and localize to UTC
+        out = out.copy()
+        out["time"] = pd.to_datetime(time_col, utc=True)
+    else:
+        # Datetime-like: ensure it is tz-aware UTC
+        if not is_datetime64tz_dtype(time_col):
+            # naive datetime64 → localize to UTC
+            out = out.copy()
+            out["time"] = time_col.dt.tz_localize("UTC")
+        # else: already tz-aware; keep as-is
+
     out = out[out["time"].notna()]
 
     buf = io.StringIO()
@@ -90,6 +106,7 @@ def copy_timeseries_chunk(engine, output_schema, table_name, df, conn=None, sync
         if created_conn:
             conn.close()
     return len(out)
+
 
 
 def _upsert_metadata_and_get_ids(engine, infdblog, output_schema, objectids):
@@ -339,29 +356,38 @@ def batch_upload_timeseries_simple(
         pending_rows = 0
         return written
 
-    all_df = []
     for objectid, row in dict_df.items():
         hvac_df = row.get("hvac") if isinstance(row, dict) else row["hvac"]
         if hvac_df is None:
             continue
+
+        per_building_frames = []
+
         for name, col in column_map.items():
             key = (name, str(objectid), "ro-heat")
             ts_id = meta_map.get(key)
             if ts_id is None or col not in hvac_df.columns:
                 continue
+
             ts = hvac_df[col]
-            df = pd.DataFrame({
+            per_building_frames.append(pd.DataFrame({
                 "ts_metadata_id": ts_id,
                 "time": ts.index,
                 "value": ts.values,
-            })
-            frames.append(df)
-            all_df.append(df)
-            pending_rows += len(df)
+            }))
             total_series += 1
-            if pending_rows >= chunk_rows:
-                flush()
-    pd.concat(all_df, ignore_index=True).to_csv("all_uploaded_timeseries_debug.csv", index=False)
+
+        if not per_building_frames:
+            continue
+
+        building_df = pd.concat(per_building_frames, ignore_index=True)
+
+        frames.append(building_df)
+        pending_rows += len(building_df)
+
+        if pending_rows >= chunk_rows:
+            flush()
+
     flush()  # final
 
     # Finalize staging merge and cleanup
