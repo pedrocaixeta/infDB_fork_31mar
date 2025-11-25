@@ -227,7 +227,8 @@ def import_layers(
     prefix: str = "",
     layer_names: Optional[List[str]] = None,
     scope: bool = True,
-    if_exists: str = "replace"
+    if_exists: str = "replace",
+    lowercase: bool = True
 ) -> None:
     """Import vector data into PostGIS.
 
@@ -257,6 +258,10 @@ def import_layers(
     target_names = list(layer_names) if layer_names is not None else list(layers)
     if prefix:
         target_names = [f"{prefix}_{name}" for name in target_names]
+
+    # if lowercase, change all uppercase letters to lowercase letters
+    if lowercase:
+        target_names = [name.lower() for name in target_names]
 
     # Detect if source is multi-layer
     ext = Path(input_file).suffix.lower()

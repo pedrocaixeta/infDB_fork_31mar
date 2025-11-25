@@ -24,9 +24,9 @@ infdb-loader:
         postgres:
             user: None
             password: None
-            db: infdb-dev
-            host: need.energy
-            exposed_port: 5432
+            db: infdb
+            host: ds1.need.energy
+            exposed_port: 54328
             epsg: None # 3035 (Europe)
         webdav:
             username: infdb
@@ -535,13 +535,44 @@ infdb-loader:
                 table_name: waermebedarf
                 url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Waermebedarf_EPSG25832_Geodatabase.zip
                 layer:
-                  - "Warmebedarf_NRW — Waermelinien"
-                  - "Warmebedarf_NRW — Raumwaermebedarf_ist"
-                  - "Warmebedarf_NRW — Gebaeude_Fortschreibung_moderat"
-                  - "Warmebedarf_NRW — Gebaeude_Fortschreibung_hoch"
-                  - "Warmebedarf_NRW — Gebaeude_Fortschreibung_erhoeht"
-              - name: Energietraeger-Baubloecke
+                  - "Waermelinien"
+                  - "Raumwaermebedarf_ist"
+                  - "Gebaeude_Fortschreibung_moderat"
+                  - "Gebaeude_Fortschreibung_hoch"
+                  - "Gebaeude_Fortschreibung_erhoeht"
+              - name: Energietraeger
                 status: active
-                table_name: energietraeger_baubloecke
+                table_name: energietraeger
                 url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Energietraeger-Sanierung-Baubloecke-Flure-NRW_EPSG25832_Geodatabase.zip
-                
+                layer:
+                  - "Flur_Sanierung_Energietraeger_OpenData"
+                  - "Baublock_Sanierung_Energietraeger_OpenData"
+              - name: Waermelinien
+                status: active
+                table_name: waermelinien
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Waermelinien_EPSG25832_Geodatabase.zip
+                layer:
+                  - "Waermelinien"
+              - name: Tiefe Geothermie
+                status: active
+                table_name: geothermie_tief  
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Potenzial_TG_Raster_EPSG25832_Geodatabase.zip
+                layer:
+                  - "MTG_TG_Raster_NRW"
+              - name: Oberflaechennahe Geothermie
+                status: active
+                table_name: geothermie_oberflaeche  
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Potenzial_ONG_MTG_Baublock_EPSG25832_Geodatabase.zip
+                layer:
+                  - "Pot_ONG_MTG_NRW"
+              - name: Freiflaechen Solarthermie
+                status: active
+                table_name: solarthermie_freiflaeche  
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Potenzial_FF_Solarthermie_Flur_EPSG25832_Geodatabase.zip
+                layer:
+                  - "FF_Solarthermie_Flur_NRW"
+
+
+
+                  
+

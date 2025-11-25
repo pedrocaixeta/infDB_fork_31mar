@@ -11,13 +11,6 @@ from charset_normalizer import from_path
 from infdb import InfDB
 from . import utils
 
-
-# ============================== Constants ==============================
-CLIPPED_PREFIX: str = "kwp-nrw"
-
-
-
-
 def load(infdb: InfDB) -> None:
     """Entry point to download, validate, and process KWP NRW datasets from heat atlas NRW.
 
@@ -53,17 +46,17 @@ def load(infdb: InfDB) -> None:
             # initializer=_init_logger_for_process,
             # initargs=(infdb,),
         ) as pool:
-            results = pool.starmap(process_dataset, [(dataset, infdb.get_toolname(),) for dataset in datasets])
+            results = pool.starmap(process_dataset, [(dataset, infdb.get_toolname(), schema) for dataset in datasets])
         
         if not all(results):
             raise RuntimeError("Some datasets failed to process")
         else:
             sys.exit(0)
     except Exception as err:
-        log.exception("An error occurred while processing Census: %s", str(err))
+        log.exception("An error occurred while processing KWP-NRW: %s", str(err))
         sys.exit(1)
 
-def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
+def process_dataset(dataset: Dict[str, Any], tool_name: str, schema: str) -> bool:
     """Download, unzip, transform, and load one dataset to PostGIS.
 
     Args:
@@ -96,66 +89,25 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         utils.unzip(zip_file, folder_path, infdb)
 
         # layers
-        layers = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", dataset["name"], "layer"])
+        layers = dataset.get("layer", [])
+        
+        if len(layers) > 1:
+            layer_names = [
+                f'{dataset["table_name"]}_{layer}'.replace("_Energietraeger_OpenData", "")
+                for layer in layers
+            ]
+        else:
+            layer_names = [
+                f'{dataset["table_name"]}'.replace("_Energietraeger_OpenData", "")
+                for layer in layers
+            ]
 
         # Export to PostGIS
         log.info("Processing %s", dataset["name"])
 
         gdb = utils.get_subdirectories_by_suffix(folder_path, suffix=".gdb")[0] # we expect exactly one .gdb folder
-
-        encoding = from_path(gdb).best().encoding
-        log.debug("Detected encoding for file: %s", encoding)
-
-        utils.import_layers()
-
-        # df = pd.read_csv(
-        #     file,
-        #     sep=";",
-        #     decimal=",",
-        #     low_memory=True,
-        #     encoding=encoding,
-        # )
-        # df.fillna(0, inplace=True)
-        # df.columns = df.columns.str.lower()
-
-        # gdf = gpd.GeoDataFrame(
-        #     df,
-        #     geometry=gpd.points_from_xy(df[f"x_mp_{resolution}"], df[f"y_mp_{resolution}"]),
-        #     crs="EPSG:3035",
-        # )
-
-        # epsg = infdb.get_config_value(["services", "postgres", "epsg"])
-        # if epsg is None:
-        #     raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
-        # gdf = gdf.to_crs(epsg=epsg)
-
-        # # get engine via client (engine is independent)
-        # with infdb.connect() as db:
-        #     engine = db.get_db_engine()
-
-        # prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "prefix"])
-        # schema = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "schema"])
-
-        # gdf_envelope = utils.get_envelop(infdb)
-        # gdf_clipped = gpd.clip(gdf, gdf_envelope) if not gdf_envelope.empty else gdf
-
-        # table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
-        # gdf_clipped = gdf_clipped.rename_geometry("geom")
-        # gdf_clipped.to_postgis(table_name, engine, if_exists="replace", schema=schema, index=False)
-
-        # save_local = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "save_local"])
-        # if save_local == "active":
-        #     out_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "processed"], type="loader")
-        #     os.makedirs(out_dir, exist_ok=True)
-        #     gdf_clipped.to_file(
-        #         os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
-        #         layer=table_name,
-        #         driver="GPKG",
-        #     )
-        #     gdf_clipped.to_csv(
-        #         os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}_{table_name}.csv"),
-        #         index=False,
-        #     )
+        
+        utils.import_layers(gdb, layers, schema, infdb, "kwp-nrw", layer_names)
 
         log.info("Processed sucessfully %s", gdb)
         return True

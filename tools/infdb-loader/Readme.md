@@ -31,8 +31,8 @@
 
 ### Register New Data Source
 Relevant files and folders:
-- `mainy.py` is the main script to run the data loading process. If you only 
-- `src` contains scripts with load function from each data source and a corresponding load function.
+- `mainy.py` is the main script to run the data loading process.
+- `src` contains script with load function for each data source.
 - `configs/config-infdb-loader.yml` contains all configuration parameters for the infDB-loader including which data sources to load.
 
 1. Create a new script in `src` folder for your data source, e.g. `mydata.py`
