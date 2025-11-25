@@ -7,9 +7,9 @@ ro-heat:
         postgres:
             user: None
             password: None
-            db: infdb
-            host: need.energy
-            exposed_port: 5432
+            db: None
+            host: None
+            exposed_port: None
             epsg: None # 3035 (Europe)
     data:
         input_schema: basedata
