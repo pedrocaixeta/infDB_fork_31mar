@@ -214,8 +214,7 @@ def main():
                                                      end=pd.Timestamp(f"{simulation_year}-12-31"))
         all_ts_df.index.name = 'datetime'
         all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
-        all_ts_df = all_ts_df.reset_index()
-        data = {x: y.sort_index() for x, y in all_ts_df.groupby('ts_metadata_id')}
+        data = {x: y.sort_index().reset_index() for x, y in all_ts_df.groupby('ts_metadata_id')}
 
         # Preparation for EnTiSe
         entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
@@ -251,11 +250,15 @@ def main():
             schema=output_schema,
             index=True,
             method="multi",
-            # chunksize=1000,
         )
         infdblog.info(summary.head())
 
         # Time Series
+        write_timeseries = False
+        if not write_timeseries:
+            infdblog.info("Skipping EnTiSe output time series writing to database as per configuration")
+            return
+
         infdblog.debug("Writing EnTiSe output time series to database")
 
         # Create metadata table if not exists
