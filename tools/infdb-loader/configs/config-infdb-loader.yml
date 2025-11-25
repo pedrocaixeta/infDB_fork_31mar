@@ -24,9 +24,9 @@ infdb-loader:
         postgres:
             user: None
             password: None
-            db: infdb
-            host: localhost
-            exposed_port: 54328
+            db: infdb-dev
+            host: need.energy
+            exposed_port: 5432
             epsg: None # 3035 (Europe)
         webdav:
             username: infdb
