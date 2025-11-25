@@ -1,7 +1,6 @@
 import time
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_any_dtype, is_datetime64tz_dtype
 from infdb import InfDB
 from entise.core.generator import TimeSeriesGenerator
 
@@ -20,93 +19,6 @@ end_of_simulation_year = 2025
 simulation_year = 2024
 construction_year_col = "construction_year"
 schema = "ro_heat"
-
-
-def _coalesce(value, default):
-    return default if value is None else value
-
-
-def _as_bool(value):
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in ("1", "true", "yes", "y", "on")
-    if value is None:
-        return False
-    return bool(value)
-
-
-def _as_int(value, default=None):
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except Exception:
-        try:
-            return int(float(value))
-        except Exception:
-            return default
-
-
-def copy_timeseries_chunk(engine, output_schema, table_name, df, conn=None, sync_commit_off=False):
-    """COPY a DataFrame chunk into Postgres. Returns number of rows written.
-
-    If `conn` is provided, it will be reused and NOT committed here (caller manages commits).
-    If `sync_commit_off` is True, sets SET LOCAL synchronous_commit = off for the active xact.
-    """
-    if df.empty:
-        return 0
-
-    cols = ["ts_metadata_id", "time", "value"]
-    out = df[cols]
-
-    # Normalize time only if needed
-    time_col = out["time"]
-
-    if not is_datetime64_any_dtype(time_col):
-        # Not datetime-like at all → parse and localize to UTC
-        out = out.copy()
-        out["time"] = pd.to_datetime(time_col, utc=True)
-    else:
-        # Datetime-like: ensure it is tz-aware UTC
-        if not is_datetime64tz_dtype(time_col):
-            # naive datetime64 → localize to UTC
-            out = out.copy()
-            out["time"] = time_col.dt.tz_localize("UTC")
-        # else: already tz-aware; keep as-is
-
-    out = out[out["time"].notna()]
-
-    buf = io.StringIO()
-    out.to_csv(buf, index=False, header=False, date_format="%Y-%m-%dT%H:%M:%S%z")
-    buf.seek(0)
-
-    created_conn = False
-    if conn is None:
-        conn = engine.raw_connection()
-        created_conn = True
-    try:
-        cur = conn.cursor()
-        try:
-            if sync_commit_off:
-                try:
-                    cur.execute("SET LOCAL synchronous_commit = off;")
-                except Exception:
-                    # Ignore if not permitted by server/role
-                    pass
-            cur.copy_expert(
-                f"COPY {output_schema}.{table_name} (ts_metadata_id, time, value) FROM STDIN WITH (FORMAT csv)",
-                buf,
-            )
-        finally:
-            cur.close()
-        if created_conn:
-            conn.commit()
-    finally:
-        if created_conn:
-            conn.close()
-    return len(out)
-
 
 
 def _upsert_metadata_and_get_ids(engine, infdblog, output_schema, objectids):
@@ -168,261 +80,7 @@ def _upsert_metadata_and_get_ids(engine, infdblog, output_schema, objectids):
     return meta_map
 
 
-def batch_upload_timeseries_concurrent(engine, infdblog, output_schema, table_name, dict_df,
-                                       chunk_rows=1_000_000, max_workers=4, sync_commit_off=True):
-    """Batch upsert metadata, then COPY time series in chunked, concurrent uploads.
-    Robust to individual chunk failures: collects exceptions and reports at the end.
-
-    Alignment with single-threaded path:
-      - Same column_map and metadata upsert
-      - Per-chunk and overall throughput logging
-      - UTC enforcement and column order handled by copy_timeseries_chunk
-    """
-    t_start = time.perf_counter()
-    # 1) Upsert metadata and get IDs
-    objectids = [str(objid) for objid in dict_df.keys()]
-    meta_map = _upsert_metadata_and_get_ids(engine, infdblog, output_schema, objectids)
-
-    # 2) Prepare mapping from logical series name to dataframe column
-    column_map = {
-        "ro_heat_indoor_temperature": "indoor_temperature[C]",
-        "ro_heat_heating_load": "heating:load[W]",
-        "ro_heat_cooling_load": "cooling:load[W]",
-    }
-
-    # 3) Stream frames into chunked COPY tasks
-    frames = []
-    pending_rows = 0
-    submitted_rows = 0
-    futures = []
-    future_start = {}
-    total_series = 0
-    errors = []
-
-    def submit_chunk(executor, frames_list):
-        nonlocal submitted_rows
-        combined = pd.concat(frames_list, ignore_index=True)
-        submitted_rows += len(combined)
-        # wrap with timing by using executor to run copy_timeseries_chunk directly
-        fut = executor.submit(copy_timeseries_chunk, engine, output_schema, table_name, combined, None, sync_commit_off)
-        future_start[fut] = time.perf_counter()
-        return fut
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for objectid, row in dict_df.items():
-            hvac_df = row.get("hvac") if isinstance(row, dict) else row["hvac"]
-            if hvac_df is None:
-                continue
-            for name, col in column_map.items():
-                key = (name, str(objectid), "ro-heat")
-                ts_id = meta_map.get(key)
-                if ts_id is None:
-                    continue
-                if col not in hvac_df.columns:
-                    continue
-                ts = hvac_df[col]
-                df = pd.DataFrame({
-                    "ts_metadata_id": ts_id,
-                    "time": ts.index,
-                    "value": ts.values,
-                })
-                frames.append(df)
-                pending_rows += len(df)
-                total_series += 1
-
-                if pending_rows >= chunk_rows:
-                    futures.append(submit_chunk(executor, frames))
-                    frames = []
-                    pending_rows = 0
-                    # throttle: keep at most 2x workers outstanding
-                    if len(futures) >= max_workers * 2:
-                        done, not_done = wait(futures, return_when=FIRST_COMPLETED)
-                        # log completions
-                        for fut in done:
-                            try:
-                                rows = fut.result()
-                                dt = time.perf_counter() - future_start.pop(fut, t_start)
-                                rps = rows / dt if dt > 0 else rows
-                                infdblog.info(f"COPY chunk completed: {rows} rows in {dt:.2f}s ({rps:,.0f} rows/s)")
-                            except Exception as e:
-                                errors.append(e)
-                                infdblog.error(f"COPY chunk failed: {e}")
-                        futures = list(not_done)
-
-        # flush remainder
-        if frames:
-            futures.append(submit_chunk(executor, frames))
-            frames = []
-            pending_rows = 0
-
-        # wait all
-        for fut in as_completed(futures):
-            try:
-                rows = fut.result()
-                dt = time.perf_counter() - future_start.pop(fut, t_start)
-                rps = rows / dt if dt > 0 else rows
-                infdblog.info(f"COPY chunk completed: {rows} rows in {dt:.2f}s ({rps:,.0f} rows/s)")
-            except Exception as e:
-                errors.append(e)
-                infdblog.error(f"COPY chunk failed: {e}")
-
-    if errors:
-        infdblog.error(f"{len(errors)} COPY chunk(s) failed; first error: {errors[0]}")
-        raise RuntimeError("One or more COPY chunks failed; see logs for details")
-
-    total_dt = time.perf_counter() - t_start
-    overall_rps = submitted_rows / total_dt if total_dt > 0 else submitted_rows
-    infdblog.info(f"Uploaded {submitted_rows} rows across {total_series} series using up to {max_workers} workers in chunks of {chunk_rows}; overall throughput: {overall_rps:,.0f} rows/s")
-
-
-def batch_upload_timeseries_simple(
-    engine,
-    infdblog,
-    output_schema,
-    table_name,
-    dict_df,
-    chunk_rows=1_000_000,
-    use_staging=True,
-    sync_commit_off=True,
-    copy_commit_every=1,
-):
-    """Simplified, single-threaded uploader: upsert metadata, then COPY rows in large chunks.
-
-    Phase 1 optimizations:
-      - Larger chunk size by default (1M rows)
-      - Reuse a single DB connection/cursor across COPY calls
-      - Optionally SET LOCAL synchronous_commit=off for faster WAL
-      - Optional UNLOGGED staging table with final server-side merge
-      - Per-chunk timing logs and overall throughput
-    """
-    column_map = {
-        "ro_heat_indoor_temperature": "indoor_temperature[C]",
-        "ro_heat_heating_load": "heating:load[W]",
-        "ro_heat_cooling_load": "cooling:load[W]",
-    }
-
-    # 1) Upsert metadata and get IDs
-    meta_start = time.perf_counter()
-    objectids = [str(objid) for objid in dict_df.keys()]
-    meta_map = _upsert_metadata_and_get_ids(engine, infdblog, output_schema, objectids)
-    meta_dur = time.perf_counter() - meta_start
-    infdblog.info(f"Metadata upsert completed in {meta_dur:.2f}s for {len(meta_map)} series IDs")
-
-    # 2) Prepare connection and (optional) staging
-    conn = engine.raw_connection()
-    cur = conn.cursor()
-    target_table = table_name
-    if use_staging:
-        staging_table = f"{table_name}_staging"
-        # Create UNLOGGED staging (no index)
-        cur.execute(
-            f"CREATE UNLOGGED TABLE IF NOT EXISTS {output_schema}.{staging_table} ("
-            f"ts_metadata_id integer, time timestamptz, value double precision);"
-        )
-        # Truncate old content to avoid duplicates
-        cur.execute(f"TRUNCATE {output_schema}.{staging_table};")
-        conn.commit()
-        target_table = staging_table
-
-    # 3) Accumulate frames and flush synchronously when reaching chunk_rows
-    frames = []
-    pending_rows = 0
-    total_rows = 0
-    total_series = 0
-    chunks_written = 0
-    t0 = time.perf_counter()
-
-    def flush():
-        nonlocal frames, pending_rows, total_rows, chunks_written
-        if not frames:
-            return 0
-        combined = pd.concat(frames, ignore_index=True)
-        st = time.perf_counter()
-        written = copy_timeseries_chunk(
-            engine, output_schema, target_table, combined, conn=conn, sync_commit_off=sync_commit_off
-        )
-        # Commit policy: commit after each chunk or per N chunks
-        chunks_written += 1
-        if chunks_written % max(1, int(copy_commit_every)) == 0:
-            try:
-                conn.commit()
-            except Exception:
-                pass
-        dt = time.perf_counter() - st
-        rps = written / dt if dt > 0 else written
-        infdblog.info(f"Flushed COPY chunk: {written} rows in {dt:.2f}s ({rps:,.0f} rows/s)")
-        total_rows += written
-        frames.clear()
-        pending_rows = 0
-        return written
-
-    for objectid, row in dict_df.items():
-        hvac_df = row.get("hvac") if isinstance(row, dict) else row["hvac"]
-        if hvac_df is None:
-            continue
-
-        per_building_frames = []
-
-        for name, col in column_map.items():
-            key = (name, str(objectid), "ro-heat")
-            ts_id = meta_map.get(key)
-            if ts_id is None or col not in hvac_df.columns:
-                continue
-
-            ts = hvac_df[col]
-            per_building_frames.append(pd.DataFrame({
-                "ts_metadata_id": ts_id,
-                "time": ts.index,
-                "value": ts.values,
-            }))
-            total_series += 1
-
-        if not per_building_frames:
-            continue
-
-        building_df = pd.concat(per_building_frames, ignore_index=True)
-
-        frames.append(building_df)
-        pending_rows += len(building_df)
-
-        if pending_rows >= chunk_rows:
-            flush()
-
-    flush()  # final
-
-    # Finalize staging merge and cleanup
-    if use_staging:
-        st = time.perf_counter()
-        cur.execute(
-            f"INSERT INTO {output_schema}.{table_name} (ts_metadata_id, time, value) "
-            f"SELECT ts_metadata_id, time, value FROM {output_schema}.{target_table};"
-        )
-        conn.commit()
-        merge_dt = time.perf_counter() - st
-        infdblog.info(f"Merged staging into {table_name} in {merge_dt:.2f}s")
-        # Drop staging to reclaim space
-        cur.execute(f"DROP TABLE IF EXISTS {output_schema}.{target_table};")
-        conn.commit()
-    else:
-        # Ensure any uncommitted COPY chunks are persisted when writing directly to final table
-        try:
-            conn.commit()
-        except Exception:
-            pass
-
-    cur.close()
-    conn.close()
-
-    total_dt = time.perf_counter() - t0
-    overall_rps = total_rows / total_dt if total_dt > 0 else total_rows
-    infdblog.info(
-        f"Uploaded {total_rows} rows across {total_series} series in chunks of {chunk_rows} (single-threaded); "
-        f"overall throughput: {overall_rps:,.0f} rows/s"
-    )
-
-
 def main():
-
     # Load InfDB handler
     infdbhandler = InfDB(tool_name="ro-heat")
 
@@ -552,15 +210,16 @@ def main():
 
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
         refurbed_df.to_sql(
-                "buildings_rc", engine, if_exists="replace", schema=schema, index=False
-            )
+            "buildings_rc", engine, if_exists="replace", schema=schema, index=False
+        )
         infdblog.debug("Refurbished data writing to database")
 
         infdblog.debug("Starting construction of building elements")
         # Run SQL: 02_create_layer_view
         infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
 
-        elements = pd.read_sql("""SELECT * FROM v_element_layer_data""", engine)
+        elements = pd.read_sql("""SELECT *
+                                  FROM v_element_layer_data""", engine)
 
         # TODO: sort by layer_index according to EUReCA specification
         # TODO: Handling of windows
@@ -606,12 +265,15 @@ def main():
         )
 
         rc_values = (
-            constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values("building_objectid")
+            constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values(
+                "building_objectid")
         )
 
         bld2ts = timedata.get_bld2ts(database_connection=engine)
 
-        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine, start=pd.Timestamp(f"{simulation_year}-01-01"), end=pd.Timestamp(f"{simulation_year}-12-31"))
+        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine,
+                                                     start=pd.Timestamp(f"{simulation_year}-01-01"),
+                                                     end=pd.Timestamp(f"{simulation_year}-12-31"))
         all_ts_df.index.name = 'datetime'
         all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
         all_ts_df = all_ts_df.reset_index()
@@ -619,12 +281,12 @@ def main():
 
         # Preparation for EnTiSe
         entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
-        entise_input = entise_input.rename(columns={'resistance': 'resistance[K W-1]', 'capacitance': 'capacitance[J K-1]'}, errors=True)
+        entise_input = entise_input.rename(
+            columns={'resistance': 'resistance[K W-1]', 'capacitance': 'capacitance[J K-1]'}, errors=True)
         entise_input["hvac"] = "1R1C"
         entise_input["min_temperature[C]"] = 20.0
         entise_input["max_temperature[C]"] = 24.0
         entise_input["gains_solar"] = 0.0
-        
 
         entise_input = entise_input.merge(
             bld2ts[['bld_objectid', 'ts_metadata_id']].rename(columns={"ts_metadata_id": "weather"}),
@@ -632,7 +294,7 @@ def main():
             right_on="bld_objectid",
             how="left",
         ).drop(columns=["bld_objectid"])
-        
+
         entise_input = entise_input.iloc[:500, :]
 
         # Initialize the generator
@@ -676,7 +338,7 @@ def main():
             infdbclient_citydb.execute_query(metadata_sql)
         except Exception as e:
             infdblog.error("Failed to create metadata table: %s", e)
-            
+
         # Ensure unique constraint for metadata upserts
         try:
             unique_idx_sql = f"""
@@ -686,7 +348,7 @@ def main():
             infdbclient_citydb.execute_query(unique_idx_sql)
         except Exception as e:
             infdblog.error("Failed to create unique index on metadata: %s", e)
-            
+
         # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
 
         table_name = 'entise_ts_data'
@@ -728,106 +390,169 @@ def main():
                 infdblog.error("Failed to create plain timeseries table: %s", e2)
                 raise
 
-        # Phase 0/1: read upload config with safe defaults
-        try:
-            # Respect explicit False values; only use defaults when key is missing (None)
-            concurrent_val = _coalesce(infdbhandler.get_config_value(["ro-heat", "upload", "concurrent"]), False)
-            chunk_rows_val = _coalesce(infdbhandler.get_config_value(["ro-heat", "upload", "chunk_rows"]), 1_000_000)
-            use_staging_val = _coalesce(infdbhandler.get_config_value(["ro-heat", "upload", "use_staging"]), True)
-            drop_idx_val = _coalesce(infdbhandler.get_config_value(["ro-heat", "upload", "drop_indexes_on_load"]), True)
-            sync_commit_off_val = _coalesce(infdbhandler.get_config_value(["ro-heat", "upload", "sync_commit_off"]), True)
-            copy_commit_every_val = _coalesce(infdbhandler.get_config_value(["ro-heat", "upload", "copy_commit_every"]), 1)
-            workers_val = _coalesce(infdbhandler.get_config_value(["ro-heat", "upload", "workers"]), 4)
+        # Upload using baseline
+        upload_start = time.perf_counter()
+        upload_timeseries_baseline(
+            engine=engine,
+            output_schema=output_schema,
+            table_name=table_name,
+            dict_df=dict_df,
+            infdblog=infdblog,
+        )
+        upload_dt = time.perf_counter() - upload_start
+        infdblog.info(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
+        print(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
 
-            upload_cfg = {
-                "concurrent": _as_bool(concurrent_val),
-                "chunk_rows": _as_int(chunk_rows_val, 1_000_000),
-                "use_staging": _as_bool(use_staging_val),
-                "drop_indexes_on_load": _as_bool(drop_idx_val),
-                "sync_commit_off": _as_bool(sync_commit_off_val),
-                "copy_commit_every": _as_int(copy_commit_every_val, 1),
-                "workers": _as_int(workers_val, 4),
-            }
-        except Exception:
-            upload_cfg = {"concurrent": False, "chunk_rows": 1_000_000, "use_staging": True,
-                          "drop_indexes_on_load": True, "sync_commit_off": True, "copy_commit_every": 1,
-                          "workers": 4}
-
-        # If requested, drop non-essential index(es) before bulk load; recreate after
-        if upload_cfg["drop_indexes_on_load"]:
-            try:
-                infdbclient_citydb.execute_query(
-                    f"DROP INDEX IF EXISTS entise_ts_data_idx;"
-                )
-            except Exception:
-                # Index may be schema-qualified on some setups
-                try:
-                    infdbclient_citydb.execute_query(
-                        f"DROP INDEX IF EXISTS {output_schema}.entise_ts_data_idx;"
-                    )
-                except Exception as e:
-                    infdblog.debug(f"No existing index to drop: {e}")
-        else:
-            # Otherwise ensure index exists before load (default behavior)
-            try:
-                idx_sql = f"""
-                CREATE INDEX IF NOT EXISTS entise_ts_data_idx
-                ON {output_schema}.{table_name} (ts_metadata_id, time DESC);
-                """
-                infdbclient_citydb.execute_query(idx_sql)
-            except Exception as e:
-                infdblog.warning("Failed to create index on timeseries table: %s", e)
-
-        # Batch upload of all time series
-        start = time.perf_counter()
-        if _as_bool(upload_cfg["concurrent"]):
-            # Use existing concurrent path (Phase 0 flag-controlled); chunk size still applies
-            batch_upload_timeseries_concurrent(
-                engine=engine,
-                infdblog=infdblog,
-                output_schema=output_schema,
-                table_name=table_name,
-                dict_df=dict_df,
-                chunk_rows=int(upload_cfg["chunk_rows"]),
-                max_workers=_as_int(upload_cfg.get("workers", 4), 4),
-                sync_commit_off=_as_bool(upload_cfg.get("sync_commit_off", True)),
-            )
-        else:
-            batch_upload_timeseries_simple(
-                engine=engine,
-                infdblog=infdblog,
-                output_schema=output_schema,
-                table_name=table_name,
-                dict_df=dict_df,
-                chunk_rows=int(upload_cfg["chunk_rows"]),
-                use_staging=_as_bool(upload_cfg["use_staging"]),
-                sync_commit_off=_as_bool(upload_cfg["sync_commit_off"]),
-                copy_commit_every=_as_int(upload_cfg["copy_commit_every"], 1),
-            )
-        end = time.perf_counter()
-        infdblog.info(f"Batch upload completed in {end - start:.2f} seconds")
-        print(f"Batch upload completed in {end - start:.2f} seconds")
-
-        # Recreate performance index and ANALYZE after the load if it was dropped
-        if upload_cfg["drop_indexes_on_load"]:
-            try:
-                idx_sql = f"""
-                CREATE INDEX IF NOT EXISTS entise_ts_data_idx
-                ON {output_schema}.{table_name} (ts_metadata_id, time DESC);
-                """
-                infdbclient_citydb.execute_query(idx_sql)
-            except Exception as e:
-                infdblog.warning("Failed to create index on timeseries table: %s", e)
-            try:
-                infdbclient_citydb.execute_query(f"ANALYZE {output_schema}.{table_name};")
-            except Exception as e:
-                infdblog.debug(f"ANALYZE failed: {e}")
-
-        infdblog.info("Ro-heat sucessfully completed")
+        infdblog.info("Ro-heat successfully completed")
 
     except Exception as e:
         infdblog.error(f"Something went wrong: {str(e)}")
         raise e
+
+
+def build_timeseries_df(dict_df, meta_map, infdblog):
+    """Build a single DataFrame with all time series rows.
+
+    Columns: ts_metadata_id, time, value
+    """
+    column_map = {
+        "ro_heat_indoor_temperature": "indoor_temperature[C]",
+        "ro_heat_heating_load": "heating:load[W]",
+        "ro_heat_cooling_load": "cooling:load[W]",
+    }
+
+    frames = []
+    total_series = 0
+
+    for objectid, row in dict_df.items():
+        hvac_df = row.get("hvac") if isinstance(row, dict) else row["hvac"]
+        if hvac_df is None or hvac_df.empty:
+            continue
+
+        # assume hvac_df.index already datetime-like (as EnTiSe usually provides)
+        idx = hvac_df.index
+
+        for name, col in column_map.items():
+            key = (name, str(objectid), "ro-heat")
+            ts_id = meta_map.get(key)
+
+            if ts_id is None or col not in hvac_df.columns:
+                continue
+
+            values = hvac_df[col].values
+            if len(values) == 0:
+                continue
+
+            df_part = pd.DataFrame(
+                {
+                    "ts_metadata_id": ts_id,
+                    "time": idx,
+                    "value": values,
+                }
+            )
+            frames.append(df_part)
+            total_series += 1
+
+    if not frames:
+        infdblog.info("No time series rows to upload (frames list empty).")
+        return pd.DataFrame(columns=["ts_metadata_id", "time", "value"]), 0
+
+    ts_df = pd.concat(frames, ignore_index=True)
+
+    # Ensure time is datetime with UTC tz; keep it simple for baseline
+    ts_df["time"] = pd.to_datetime(ts_df["time"], utc=True, errors="coerce")
+    ts_df = ts_df[ts_df["time"].notna()]
+
+    infdblog.info(
+        f"Built timeseries DataFrame with {len(ts_df)} rows across {total_series} series."
+    )
+    return ts_df, total_series
+
+
+def upload_timeseries_baseline(engine, output_schema, table_name, dict_df, infdblog):
+    """Baseline uploader:
+       - upsert metadata
+       - build a single DataFrame with all rows
+       - single COPY into final table
+       No staging, no chunking, no concurrency.
+    """
+    # 1) Upsert metadata
+    objectids = [str(objid) for objid in dict_df.keys()]
+    meta_start = time.perf_counter()
+    meta_map = _upsert_metadata_and_get_ids(engine, infdblog, output_schema, objectids)
+    meta_dt = time.perf_counter() - meta_start
+    infdblog.info(f"Metadata upsert completed in {meta_dt:.2f}s for {len(meta_map)} series IDs")
+
+    # 2) Build full DataFrame
+    build_start = time.perf_counter()
+    ts_df, total_series = build_timeseries_df(dict_df, meta_map, infdblog)
+    build_dt = time.perf_counter() - build_start
+    infdblog.info(
+        f"Built full timeseries DataFrame in {build_dt:.2f}s "
+        f"({len(ts_df):,} rows across {total_series} series)."
+    )
+
+    if ts_df.empty:
+        infdblog.info("Timeseries DataFrame is empty; nothing to upload.")
+        return
+
+    # 3) Drop index on target table (if any)
+    conn = engine.raw_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(f"DROP INDEX IF EXISTS entise_ts_data_idx;")
+        conn.commit()
+    except Exception as e:
+        infdblog.debug(f"Could not drop entise_ts_data_idx: {e}")
+        conn.rollback()
+
+    # 4) Single COPY using CSV
+    copy_start = time.perf_counter()
+    buf = io.StringIO()
+    ts_df.to_csv(buf, index=False, header=False, date_format="%Y-%m-%dT%H:%M:%S%z")
+    buf.seek(0)
+
+    try:
+        # Optional: faster at the cost of weaker durability during this transaction
+        try:
+            cur.execute("SET LOCAL synchronous_commit = off;")
+        except Exception:
+            pass
+
+        copy_sql = (
+            f"COPY {output_schema}.{table_name} "
+            f"(ts_metadata_id, time, value) FROM STDIN WITH (FORMAT csv)"
+        )
+        cur.copy_expert(copy_sql, buf)
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+    copy_dt = time.perf_counter() - copy_start
+    rows = len(ts_df)
+    rps = rows / copy_dt if copy_dt > 0 else rows
+    infdblog.info(
+        f"Baseline COPY: {rows:,} rows inserted in {copy_dt:.2f}s "
+        f"({rps:,.0f} rows/s)"
+    )
+
+    # 5) Recreate index and ANALYZE
+    conn = engine.raw_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            f"CREATE INDEX IF NOT EXISTS entise_ts_data_idx "
+            f"ON {output_schema}.{table_name} (ts_metadata_id, time DESC);"
+        )
+        cur.execute(f"ANALYZE {output_schema}.{table_name};")
+        conn.commit()
+    except Exception as e:
+        infdblog.warning(f"Failed to recreate index or ANALYZE: {e}")
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
 
 
 if __name__ == "__main__":
