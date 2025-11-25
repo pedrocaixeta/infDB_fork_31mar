@@ -34,8 +34,8 @@ def main():
         # ===========================================================
         infdb.log.info("Running SQL scripts ...")
         format_params = {
-            'input_schema': infdb.get_config_value(["data", "input_schema"], insert_toolname=True),
-            'output_schema': infdb.get_config_value(["data", "output_schema"], insert_toolname=True),
+            'input_schema': infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"]),
+            'output_schema': infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"]),
         }
         SQL_DIR = os.path.join("sql")   # add subfolders here if needed ("sql/subfolder")
         infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
