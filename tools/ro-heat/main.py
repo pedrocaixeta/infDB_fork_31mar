@@ -1,185 +1,45 @@
+import os
+import time
+
+from entise.core.generator import TimeSeriesGenerator
+from infdb import InfDB
 import numpy as np
 import pandas as pd
-from infdb import InfDB
-from entise.core.generator import TimeSeriesGenerator
 
 from src import basic_refurbishment
 from src import eureca_code
 from src import timedata
-import os
-import io
-import asyncio
-from functools import partial
 
 # Parameters
 rng = np.random.default_rng(seed=42)
 end_of_simulation_year = 2025
+simulation_year = 2024
 construction_year_col = "construction_year"
 schema = "ro_heat"
 
 
-def post_time_series(engine, infdblog, output_schema, table_name, hourly_dataframe):
-    # Insert time series data using auto generated ts_metadata_id
-    try:
-        # write CSV to an in-memory buffer without header/index
-        buf = io.StringIO()
-        hourly_dataframe[['ts_metadata_id', 'time', 'value']].to_csv(buf, index=False, header=False)
-        buf.seek(0)
-
-        conn = engine.raw_connection()
-        cur = conn.cursor()
-        copy_sql = f"COPY {output_schema}.{table_name} (ts_metadata_id, time, value) FROM STDIN WITH (FORMAT csv)"
-        cur.copy_expert(copy_sql, buf)
-        conn.commit()
-        cur.close()
-        conn.close()
-
-    except Exception as e:
-        try:
-            conn.rollback()
-            conn.close()
-        except Exception:
-            pass
-        infdblog.error("Failed to COPY hourly data to Postgres: %s", e)
-
-
-def add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, column: str):
-    ts_metadata_id = None
-    try:
-        with engine.begin() as conn:
-            result = pd.read_sql(insert_metadata_sql, con=conn)
-            if not result.empty:
-                ts_metadata_id = result['id'].iloc[0]
-                infdblog.info("Created metadata record with id=%s", ts_metadata_id)
-    except Exception as e:
-        infdblog.error("Failed to insert/retrieve metadata record: %s", e)
-
-    indoor_temp = row['hvac'].loc[:, 'indoor_temperature[C]']
-    hourly_dataframe = pd.DataFrame({
-        'ts_metadata_id': ts_metadata_id,
-        'time': indoor_temp.index,
-        'value': indoor_temp.values,
-    })
-
-    post_time_series(engine, infdblog, output_schema, table_name, hourly_dataframe)
-
-
-async def add_metadata_and_ts_async(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, column: str):
-    """Async version of add_metadata_and_ts"""
-    ts_metadata_id = None
-    try:
-        # Run database operation in thread pool to avoid blocking
-        loop = asyncio.get_event_loop()
-        with engine.begin() as conn:
-            result = await loop.run_in_executor(
-                None,
-                partial(pd.read_sql, insert_metadata_sql, con=conn)
-            )
-            if not result.empty:
-                ts_metadata_id = result['id'].iloc[0]
-                infdblog.info("Created metadata record with id=%s", ts_metadata_id)
-    except Exception as e:
-        infdblog.error("Failed to insert/retrieve metadata record: %s", e)
-        return
-
-    # Extract time series data based on column name
-    if column in row['hvac'].columns:
-        ts_data = row['hvac'].loc[:, column]
-    else:
-        infdblog.warning(f"Column {column} not found for objectid, skipping")
-        return
-
-    hourly_dataframe = pd.DataFrame({
-        'ts_metadata_id': ts_metadata_id,
-        'time': ts_data.index,
-        'value': ts_data.values,
-    })
-
-    # Run post_time_series in thread pool
-    await loop.run_in_executor(
-        None,
-        partial(post_time_series, engine, infdblog, output_schema, table_name, hourly_dataframe)
-    )
-
-
-async def process_building(engine, infdblog, output_schema, table_name, objectid, row):
-    """Process a single building with all its time series"""
-    infdblog.debug(f"Processing building {objectid}")
-
-    # Define all time series to insert
-    time_series_configs = [
-        {
-            'name': 'ro_heat_indoor_temperature',
-            'description': 'Indoor temperature for building',
-            'unit': '°C',
-            'column': 'indoor_temperature[C]'
-        },
-        {
-            'name': 'ro_heat_heating_load',
-            'description': 'Heating load for building',
-            'unit': 'W',
-            'column': 'heating:load[W]'
-        },
-        {
-            'name': 'ro_heat_cooling_load',
-            'description': 'Cooling load for building',
-            'unit': 'W',
-            'column': 'cooling:load[W]'
-        }
-    ]
-
-    # Process all time series for this building concurrently
-    tasks = []
-    for config in time_series_configs:
-        insert_metadata_sql = f"""
-            INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-            VALUES ('{config['name']}',
-                '{config['description']}',
-                'synthetic',
-                '{config['unit']}',
-                0,
-                '{objectid}',
-                'ro-heat'
-            )
-            ON CONFLICT (id) DO NOTHING
-            RETURNING id;
-        """
-        task = add_metadata_and_ts_async(
-            engine, infdblog, output_schema, table_name,
-            insert_metadata_sql, row, config['column']
-        )
-        tasks.append(task)
-
-    await asyncio.gather(*tasks)
-
-
-async def process_all_buildings(engine, infdblog, output_schema, table_name, dict_df, max_concurrent=10):
-    """Process all buildings with controlled concurrency"""
-    semaphore = asyncio.Semaphore(max_concurrent)
-
-    async def bounded_process(objectid, row):
-        async with semaphore:
-            await process_building(engine, infdblog, output_schema, table_name, objectid, row)
-
-    tasks = [bounded_process(objectid, row) for objectid, row in dict_df.items()]
-    await asyncio.gather(*tasks)
-
-
 def main():
-    # Instantiate new InfDB facade (single entry point)
+    # Load InfDB handler
     infdbhandler = InfDB(tool_name="ro-heat")
 
-    # Logger
+    # Database connection
+    infdbclient_citydb = infdbhandler.connect()
+
+    # Logger setup
     infdblog = infdbhandler.get_log()
+
+    # Start message
     infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
 
-    # DB client and engine (both via the facade)
-    infdbclient_citydb = infdbhandler.connect()
-    engine = infdbhandler.get_db_engine()
-    input_schema = infdbhandler.get_config_value([infdbhandler.get_toolname(), "data", "input_schema"])
-    output_schema = infdbhandler.get_config_value([infdbhandler.get_toolname(), "data", "output_schema"])
+    # Setup database engine
+    engine = infdbclient_citydb.get_db_engine()
+
+    # Get configuration values
+    input_schema = infdbhandler.get_config_value(["ro-heat", "data", "input_schema"])
+    output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output_schema"])
 
     try:
+
         sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
         infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
@@ -296,15 +156,14 @@ def main():
         # Run SQL: 02_create_layer_view
         infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
 
-        elements = pd.read_sql("""SELECT * FROM v_element_layer_data""", engine)
+        elements = pd.read_sql("""SELECT *
+                                  FROM v_element_layer_data""", engine)
 
         # TODO: sort by layer_index according to EUReCA specification
         # TODO: Handling of windows
         infdblog.debug("Starting construction of building elements")
         elements = elements[elements["element_name"] != "Window"]
 
-        
-        infdblog.debug("Starting material object creation")
         elements["materials"] = elements.apply(
             lambda x: eureca_code.Material(
                 x["name"], x["thickness"], x["thermal_conduc"], x["heat_capac"], x["density"]
@@ -312,7 +171,6 @@ def main():
             axis=1,
         )
 
-        infdblog.debug("Starting construction grouping")
         constructions = (
             elements.groupby(["building_objectid", "element_name", "area"])["materials"]
             .apply(list)
@@ -326,7 +184,6 @@ def main():
             "Rooftop": "Roof",
         }
 
-        infdblog.debug("Starting construction object creation")
         constructions["construction_obj"] = constructions.apply(
             lambda row: eureca_code.Construction(
                 name=f"B{row['building_objectid']}_{row['element_name']}",
@@ -336,36 +193,33 @@ def main():
             axis=1,
         )
 
-        infdblog.debug("Starting resistance calculation")
         constructions["resistance"] = constructions.apply(
             lambda row: 1 / ((1 / row["construction_obj"].thermal_resistance) * row["area"]),
             axis=1,
         )
 
-        infdblog.debug("Starting capacitance calculation")
         constructions["capacitance"] = constructions.apply(
             lambda row: row["construction_obj"].k_int * row["area"], axis=1
         )
 
-        infdblog.debug("Starting resistance and capacitance aggregation")
         rc_values = (
-            constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values("building_objectid")
+            constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values(
+                "building_objectid")
         )
-        
-        infdblog.debug("Starting temperature time series data retrieval")
+
         bld2ts = timedata.get_bld2ts(database_connection=engine)
 
-        infdblog.debug("Getting all time series data")
-        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine)
+        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine,
+                                                     start=pd.Timestamp(f"{simulation_year}-01-01"),
+                                                     end=pd.Timestamp(f"{simulation_year}-12-31"))
         all_ts_df.index.name = 'datetime'
         all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
-        all_ts_df = all_ts_df.reset_index()
-        data = {x: y.sort_index() for x, y in all_ts_df.groupby('ts_metadata_id')}
+        data = {x: y.sort_index().reset_index() for x, y in all_ts_df.groupby('ts_metadata_id')}
 
         # Preparation for EnTiSe
-        infdblog.debug("Preparing EnTiSe input data")
         entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
-        entise_input = entise_input.rename(columns={'resistance': 'resistance[K W-1]', 'capacitance': 'capacitance[J K-1]'}, errors=True)
+        entise_input = entise_input.rename(
+            columns={'resistance': 'resistance[K W-1]', 'capacitance': 'capacitance[J K-1]'}, errors=True)
         entise_input["hvac"] = "1R1C"
         entise_input["min_temperature[C]"] = 20.0
         entise_input["max_temperature[C]"] = 24.0
@@ -378,16 +232,13 @@ def main():
             how="left",
         ).drop(columns=["bld_objectid"])
 
-        # For testing purposes, limit to one building
-        entise_input = entise_input.iloc[:100, :]
+        entise_input = entise_input.iloc[:500, :]
 
         # Initialize the generator
-        infdblog.debug("Initializing time series generator")
         gen = TimeSeriesGenerator()
         gen.add_objects(entise_input)
 
         # Generate time series and summary
-        infdblog.debug("Starting EnTiSe time series generation")
         summary, dict_df = gen.generate(data, workers=os.cpu_count())
 
         # Summary
@@ -402,99 +253,98 @@ def main():
         )
         infdblog.info(summary.head())
 
-        # # Time Series
-        # infdblog.debug("Writing EnTiSe output time series to database")
+        # Time Series
+        write_timeseries = False
+        if not write_timeseries:
+            infdblog.info("Skipping EnTiSe output time series writing to database as per configuration")
+            return
 
-        # # Create metadata table if not exists
-        # metadata_sql = f"""
-        # CREATE TABLE IF NOT EXISTS {output_schema}.entise_ts_metadata (
-        #     id SERIAL PRIMARY KEY,
-        #     name text,
-        #     decription text,
-        #     grid_id text,
-        #     type text,
-        #     unit text,
-        #     changelog integer,
-        #     objectid text,
-        #     source text
-        # );
-        # """
-        # try:
-        #     infdbclient_citydb.execute_query(metadata_sql)
-        # except Exception as e:
-        #     infdblog.error("Failed to create metadata table: %s", e)
+        infdblog.debug("Writing EnTiSe output time series to database")
 
-        # # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
-        # table_name = 'entise_ts_data'
-        # create_sql = f"""
-        # CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
-        #     ts_metadata_id integer,
-        #     time timestamptz,
-        #     value double precision
-        # )
-        # WITH (
-        #     timescaledb.hypertable,
-        #     timescaledb.partition_column='time',
-        #     timescaledb.segmentby='ts_metadata_id'
-        # );
-        # """
-        # try:
-        #     infdbclient_citydb.execute_query(create_sql)
-        # except Exception as e:
-        #     infdblog.error("Failed to create timeseries table: %s", e)
+        # Create metadata table if not exists
+        metadata_sql = f"""
+        CREATE TABLE IF NOT EXISTS {output_schema}.entise_ts_metadata (
+            id SERIAL PRIMARY KEY,
+            name text,
+            description text,
+            grid_id text,
+            type text,
+            unit text,
+            changelog integer,
+            objectid text,
+            source text
+        );
+        """
+        try:
+            infdbclient_citydb.execute_query(metadata_sql)
+        except Exception as e:
+            infdblog.error("Failed to create metadata table: %s", e)
 
-        # for objectid, row in dict_df.items():
-        #     infdblog.debug(f"Processing building {objectid}")
+        # Ensure unique constraint for metadata upserts
+        try:
+            unique_idx_sql = f"""
+            CREATE UNIQUE INDEX IF NOT EXISTS entise_ts_metadata_uniq
+            ON {output_schema}.entise_ts_metadata (name, objectid, source);
+            """
+            infdbclient_citydb.execute_query(unique_idx_sql)
+        except Exception as e:
+            infdblog.error("Failed to create unique index on metadata: %s", e)
 
-        #     # Insert indoor temperature
-        #     insert_metadata_sql = f"""
-        #             INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-        #             VALUES ('ro_heat_indoor_temperature',
-        #                 'Indoor temperature for building',
-        #                 'synthetic',
-        #                 '°C',
-        #                 0,
-        #                 '{objectid}',
-        #                 'ro-heat'
-        #                 )
-        #             ON CONFLICT (id) DO NOTHING
-        #             RETURNING id;
-        #             """
-        #     add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'indoor_temperature[C]')
+        # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
 
-        #     # Insert heating load
-        #     insert_metadata_sql = f"""
-        #             INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-        #             VALUES ('ro_heat_heating_load',
-        #                 'Heating load for building',
-        #                 'synthetic',
-        #                 'W',
-        #                 0,
-        #                 '{objectid}',
-        #                 'ro-heat'
-        #                 )
-        #             ON CONFLICT (id) DO NOTHING
-        #             RETURNING id;
-        #             """
-        #     add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'heating:load[W]')
+        table_name = 'entise_ts_data'
 
-        #     # Insert cooling load
-        #     insert_metadata_sql = f"""
-        #             INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-        #             VALUES ('ro_heat_cooling_load',
-        #                 'Cooling load for building',
-        #                 'synthetic',
-        #                 'W',
-        #                 0,
-        #                 '{objectid}',
-        #                 'ro-heat'
-        #                 )
-        #             ON CONFLICT (id) DO NOTHING
-        #             RETURNING id;
-        #             """
-        #     add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row, 'cooling:load[W]')
+        # Try to ensure TimescaleDB extension is available (best-effort)
+        try:
+            infdbclient_citydb.execute_query("CREATE EXTENSION IF NOT EXISTS timescaledb;")
+        except Exception as e:
+            infdblog.warning("Could not ensure timescaledb extension (continuing): %s", e)
 
-        infdblog.info("Ro-heat sucessfully completed")
+        create_sql = f"""
+        CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
+            ts_metadata_id integer,
+            time timestamptz,
+            value double precision
+        )
+        WITH (
+            timescaledb.hypertable,
+            timescaledb.partition_column='time',
+            timescaledb.segmentby='ts_metadata_id'
+        );
+        """
+        try:
+            infdbclient_citydb.execute_query(create_sql)
+        except Exception as e:
+            infdblog.error("Failed to create timeseries table with Timescale hypertable syntax: %s", e)
+            # Fallback: create as a plain Postgres table
+            try:
+                create_sql_plain = f"""
+                CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
+                    ts_metadata_id integer,
+                    time timestamptz,
+                    value double precision
+                );
+                """
+                infdbclient_citydb.execute_query(create_sql_plain)
+                infdblog.info("Created plain Postgres timeseries table as fallback (no TimescaleDB features).")
+            except Exception as e2:
+                infdblog.error("Failed to create plain timeseries table: %s", e2)
+                raise
+
+        # Upload using baseline
+        upload_start = time.perf_counter()
+        timedata.upload_timeseries_baseline(
+            engine=engine,
+            output_schema=output_schema,
+            table_name=table_name,
+            dict_df=dict_df,
+            infdblog=infdblog,
+        )
+        upload_dt = time.perf_counter() - upload_start
+        infdblog.info(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
+        print(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
+
+        infdblog.info("Ro-heat successfully completed")
 
     except Exception as e:
         infdblog.error(f"Something went wrong: {str(e)}")
