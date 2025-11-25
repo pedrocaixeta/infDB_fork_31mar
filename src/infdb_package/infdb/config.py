@@ -175,10 +175,12 @@ class InfdbConfig:
         if "services" in dict_config:
             parameters: Dict[str, Any] = dict(self.get_value(["services", service_name]) or {})
             for key, loader_val in (parameters_loader or {}).items():
-                if key == "host":
+                if loader_val != "None":
+                        parameters[key] = loader_val
+                
+                # Special case: default host to host.docker.internal
+                if loader_val == "None" and key == "host":
                     parameters[key] = "host.docker.internal"
-                elif loader_val not in (None, "None"):
-                    parameters[key] = loader_val
         else:
             parameters = parameters_loader
 
