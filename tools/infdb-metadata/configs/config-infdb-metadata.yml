@@ -18,10 +18,12 @@ infdb-metadata:
         postgres:
             user: None
             password: None
-            db: None
-            host: None
-            exposed_port: None
+            db: infdb-dev
+            host: need.energy
+            exposed_port: 5432
             epsg: None
     data:
         input_schema: basedata
-        output_schema: infdb_metadata   # needs to be snake_case
+        output_schema: infdb_metadata 
+    schemas:
+        # List of specific schemas to include in metadata extraction, default is all schemas except those in exclude_schemas

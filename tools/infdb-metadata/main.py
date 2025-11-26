@@ -6,6 +6,7 @@ Handles InfDB initialization, database connection, logging, and demo execution.
 
 # Import packages
 import os
+import sys
 from infdb import InfDB
 from src import demo, infdb_metadata
 
@@ -19,7 +20,7 @@ def main():
     # Initialize InfDB handler
     infdb = InfDB(tool_name="infdb-metadata")
 
-    # Start message
+    # Start messagero
     infdb.log.info(f"Starting {infdb.get_toolname()} tool")
 
     try:
@@ -27,26 +28,25 @@ def main():
         # Start your added python code in folder "src"
         # ===========================================================
         infdb.log.info("Running python code ...")
-        infdb_metadata.example_function(variable="Hello, InfDB!")
+        infdb_metadata.run()
+        # # ===========================================================
+        # # Start your added sql scripts in folder "sql"
+        # # ===========================================================
+        # infdb.log.info("Running SQL scripts ...")
+        # format_params = {
+        #     'input_schema': infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"]),
+        #     'output_schema': infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"]),
+        # }
+        # SQL_DIR = os.path.join("sql")   # add subfolders here if needed ("sql/subfolder")
+        # infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
 
-        # ===========================================================
-        # Start your added sql scripts in folder "sql"
-        # ===========================================================
-        infdb.log.info("Running SQL scripts ...")
-        format_params = {
-            'input_schema': infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"]),
-            'output_schema': infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"]),
-        }
-        SQL_DIR = os.path.join("sql")   # add subfolders here if needed ("sql/subfolder")
-        infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
-
-        # ===========================================================
-        # Demonstrate database querying - remove or comment out if not needed
-        # ===========================================================
-        infdb.log.info("Running demo ...")
-        demo.sql_demo(infdb)
-        demo.database_demo(infdb)
-        demo.database_demo_sqlalchemy()
+        # # ===========================================================
+        # # Demonstrate database querying - remove or comment out if not needed
+        # # ===========================================================
+        # infdb.log.info("Running demo ...")
+        # demo.sql_demo(infdb)
+        # demo.database_demo(infdb)
+        # demo.database_demo_sqlalchemy()
 
     except Exception as e:
         infdb.log.error(f"Something went wrong: {str(e)}")
@@ -55,4 +55,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

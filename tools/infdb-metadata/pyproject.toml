@@ -6,4 +6,5 @@ dependencies = [
     "infdb @ file:/app/mnt/infdb_package",
     "geopandas",
     # Add your packages here
+    "linkml"
 ]

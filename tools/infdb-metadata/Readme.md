@@ -1,70 +1,58 @@
-# InfDB Dev Container Template
+# InfDB Metadata-Knowledge-Graph (MKG) Generator
 
-A reusable template for creating Docker-based development containers that interact with the InfDB infrastructure. This template provides a standardized structure for importing (eg. infdb-laoder) data,  processing tools (eg infdb-basedata), and analysis scripts (kwp) that work with the InfDB PostgreSQL/PostGIS database.
+A containerized utility that inspects a PostgreSQL/PostGIS database and exports its schemas, tables, columns, and primary keys into [LinkML](https://linkml.io/)-shaped JSON and YAML. A Metadata-Knowledge-Graph (MKG) is produced via `linkml-convert`.
+
+# Table of Contents
+- [Overview](#overview)
+- [Workflow](#workflow)
+- [Getting Started](#getting-started)
+   - [Run the tool](#run-the-tool)
+- [Project Structure](#project-structure)
+   - [Keyfiles](#key-files)
+- [Development Workflow](#development-workflow)
+- [License and Citation](#license-and-citation)
+- [Contact](#contact)
+
 
 ## Overview
 
-This template enables you to:
-- Quickly scaffold new InfDB tools with consistent structure
-- Access InfDB database connections with pre-configured clients
-- Run Python scripts with geospatial capabilities (GeoPandas, SQLAlchemy)
-- Execute SQL scripts for database operations
-- Develop with VS Code dev containers for debugging
+This tool enables you to:
+- Load DB connection details from `.env` and connect with `psycopg2`
+- Enumerate non-system schemas, tables, and columns with primary keys
+- Generate LinkML-shaped JSON/YAML plus optional TTL using `linkml-convert`
+- Select schemas interactively or via `--schemas` CLI flag
+- Run inside a VS Code dev container or Docker Compose service
 
 ## Workflow
-Each tool in the InfDB infrastructure operates in its own isolated database schema, named after the tool itself. This schema isolation ensures that multiple developers can work independently without interfering with each other's data or processes.
-
-### Schema Isolation
-
-```
-PostgreSQL Database (infdb)
-│
-├── Schema: infdb-loader          # Data import tool
-│   ├── Tables
-│   ├── Views
-│   └── Functions
-│
-├── Schema: infdb-basedata        # Base data processing
-│   ├── Tables
-│   ├── Views
-│   └── Functions
-│
-├── Schema: kwp                   # Analysis scripts
-│   ├── Tables
-│   ├── Views
-│   └── Functions
-│
-└── Schema: infdb-metadata         # Your new tool
-   ├── Tables
-   ├── Views
-   └── Functions
-```
-
-The schema name is automatically configured from your tool name and available in SQL scripts via the `{output_schema}` template variable.
+Metadata-Knowledge-Graph Generation flow:
+1. Load environment variables from `.env` next to `compose.yml`.
+2. Connect to PostgreSQL using `DB_URL` or `DB_HOST`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`.
+3. Collect schemas, tables, columns, and primary keys from `information_schema`.
+4. Wrap metadata under the `Database` class defined in `src/schema.yaml`.
+5. Write JSON/YAML to `OUTPUT_DIR` (defaults to `/app/mnt/data` in the container).
+6. Attempt TTL generation with `linkml-convert` (skipped if the CLI is absent).
 
 ## Getting Started
-### Run your tool
+### Run the tool
 
 Prerequisites:
-- [Docker Desktop](https://docs.docker.com/get-started/get-docker/) (or Docker Engine) installed
-- Follow [development workflow instructions](#development-workflow) below
-- Run commands from the repository root
+- [Docker Desktop](https://docs.docker.com/get-started/get-docker/) or Docker Engine
+- A reachable PostgreSQL instance
+- `.env` with DB credentials (see below)
 
 **Option A — Docker Compose:**
-Start tool
 ```bash
 docker compose -f tools/infdb-metadata/compose.yml up
 ```
 
 **Option B — VS Code Dev Containers:**
-1. Open created tool folder in [*Visual Studio Code*](https://code.visualstudio.com/download): File → → Open Folder... → `tools/infdb-metadata`
-2. Install the “Dev Containers” extension
-3. Press F1 → “Dev Containers: Reopen in Container”
-4. Run and debug (F5) with breakpoints in Python
+1. Open `tools/infdb-metadata` in VS Code.
+2. Install the “Dev Containers” extension.
+3. Run “Dev Containers: Reopen in Container”.
+4. Debug with F5; the container runs `main.py` which executes `src/infdb_metadata.py`.
 
-**Hint**: If there is an error on startup while building since dev container already exists by using **Option A**, then delete it before manually:
+If the container already exists and rebuilds fail:
 ```bash
-# Remove docker
 docker compose -f tools/infdb-metadata/compose.yml down
 ```
 
@@ -72,78 +60,69 @@ docker compose -f tools/infdb-metadata/compose.yml down
 
 ```
 infdb-metadata/
-├── src/                                    # Python source modules
-│   └── demo.py                             # Example database operations
-│   └── template.py                         # Template python file for your own code
-├── sql/                                    # SQL scripts (alphabetical order)
-│   └── 00_cleanup.sql                      # Schema initialization
-│   └── 01_template.sql                     # Template sql file for your own code
-├── configs/                                # Configuration files
-│   └── config-infdb-metadata.yml            # Tool-specific config
-├── main.py                                 # Entry point - starts here
-├── pyproject.toml                          # Python dependencies
-├── compose.yml                             # Docker Compose definition
-├── create_new_tool.yml                     # Creates new tool based on infdb-template
-├── Dockerfile                              # Docker image build
-├── .env                                    # Environment variables
-├── Readme_template.md                      # Readme for tool users
-└── Readme.md                               # Readme for tool developers
+├── src/                                 # Python source modules
+│   ├── infdb_metadata.py                # Metadata extraction logic
+│   └── schema.yaml                      # LinkML schema for serialization
+├── configs/                             # Configuration files
+│   └── config-infdb-metadata.yml        # Tool-specific config for InfDB wrapper
+├── main.py                              # Entry point invoking metadata export
+├── compose.yml                          # Docker Compose definition
+├── Dockerfile                           # Container image build
+├── pyproject.toml                       # Python dependencies (psycopg2, linkml)
+└── mnt/data/                            # Mounted output folder (created at runtime)
 ```
 
 ### Key Files
 
 #### `main.py`
-Entry point that:
-- Initializes InfDB client (Sets up logging, database connections, etc.)
-- Executes your business logic
+Bootstraps the InfDB helper, then runs `src/infdb_metadata.py`. 
 
-#### `src/demo.py`
-Example functions showing:
-- SQL script execution with InfDB
-- Database queries with InfDB client
-- Direct SQLAlchemy connections
-- GeoPandas spatial data integration
+#### `src/infdb_metadata.py`
+Core generator that:
+- Parses `--schemas` (or prompts interactively) to filter schemas
+- Connects with `psycopg2` using `.env` variables
+- Writes LinkML-shaped JSON/YAML to `OUTPUT_DIR` (default `/app/mnt/data`)
+- Attempts TTL generation with `linkml-convert` against `src/schema.yaml`
 
-#### `sql/*.sql`
-SQL scripts for database operations:
-- Execute in alphabetical order (use prefixes: `01_`, `02_`)
-- Support template variables like `{output_schema}`, `{input_schema}`
-- Useful for schema setup, transformations, indexes
-
-#### `pyproject.toml`
-Python project configuration:
-- Package dependencies
-- Python version requirements
-- Build system configuration
+#### `src/schema.yaml`
+LinkML model describing the `Database` class used for JSON/YAML/TTL serialization.
 
 #### `compose.yml`
-Docker Compose service definition:
-- Container configuration
-- Volume mounts
-- Network settings
-- Environment variables
+Defines the runtime container, mounts `./mnt` for outputs, and wires environment variables.
 
-### Development Workflow
+## Development Workflow
 
-1. **Define tool name:**
-   - Think of a tool name
-   - Use kebab-case naming convention as for example "infdb-metadata" 
+1. **Configure credentials**
+   - Add a `.env` next to `compose.yml` with either `DB_URL` or `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`.
+   - Optionally set `OUTPUT_DIR` to override `/app/mnt/data`.
+   - Set `IRI_BASE` if you need a different base IRI for generated identifiers.
 
-2. **Create Dev Container:**
-   ```bash
-   # Replace infdb-metadata
-   bash tools/_infdb-template/create_new_tool.sh infdb-metadata
-   ```
+2. **Install dependencies**
+   - Edit `pyproject.toml` if you add libraries, then run `uv sync` (locally) or rebuild the container.
 
-5. **Add dependencies:**
-   - Add needed package into **dependencies** in `tools/infdb-metadata/pyproject.toml`.
-   - Run `uv sync` in order to update virtual environment with new packages or (re-start) docker via `docker compose -f tools/infdb-metadata/compose.yml up`
+3. **Run MKG generation**
+   - `docker compose -f tools/infdb-metadata/compose.yml up`
+   - Pass schema filters: `python src/infdb_metadata.py --schemas schema1 schema2` inside the container or via `docker compose ... --command`.
 
-6. **Implement your code:**
-   - **Python:** Add your code to `src/`
-   - **SQL:** Add your scripts to `sql/` - We recommend adding numbers according to the execution order (executed in alphabetical order)
-   - **Execution:** Start your added python code btw. sql scripts in `main.py`. The sql files can be easily executed as shown in `src/demo.py`. This spllting ensures clarity and easy overview what is executed.
+4. **Review outputs**
+   - JSON/YAML saved under `/app/mnt/data` (mounted to `mnt/data` on the host).
+   - TTL is created when `linkml-convert` is available; otherwise the script prints how to generate it manually.
 
-7. **Document your code:**
-   - Add docstrings and comments to your code
-   - Update Readme_template.md for user of your tool
+## License and Citation
+
+This tool is licensed under the **MIT License** (MIT).  
+See [LICENSE](LICENSE) for rights and obligations.  
+See the *Cite this repository* function or [CITATION.cff](CITATION.cff) for citation.
+
+Copyright: [Institute of Energy Efficiency and Sustainable Building e3D, RWTH Aachen] | [MIT](LICENSE)
+
+## Contact
+
+[Minsheng Xu]  
+[Research Assosiate]  
+[Institute of Energy Efficiency and Sustainable Building e3D, RWTH Aachen]  
+Email: [xu@e3d.rwth-aachen.de]  
+
+---
+
+**Part of the infDB ecosystem**: [https://infdb.readthedocs.io/](https://infdb.readthedocs.io/)
