@@ -104,7 +104,7 @@ If you are happy with the preconfiguration and default passwords, then just foll
 
 **Windows users:** Please install
 - [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
-- [Ubuntu as Windows Subsystem for Linux (WSL)](https://apps.microsoft.com/detail/9nz3klhxdjp5?ocid=webpdpshare) from the Microsoft Store. 
+- [Ubuntu as Windows Subsystem for Linux (WSL)](https://documentation.ubuntu.com/wsl/stable/howto/install-ubuntu-wsl2/)
 
 After installation, launch the Linux terminal by searching for "Ubuntu" in your applications.
 
