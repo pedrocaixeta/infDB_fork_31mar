@@ -30,7 +30,7 @@ infdb-loader:
             epsg: None # 3035 (Europe)
         webdav:
             username: infdb
-            access_token: "stoop plus congenial dictation sleet shindig"
+            access_token: "letdown subscribe lily catchable landmine sphinx"
     sources:
         package:
             status: active
@@ -143,10 +143,10 @@ infdb-loader:
                 - weitere_nutzung_flaeche
         plz:
             status: active
-            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/ea73c208-4fae-4ef3-a13e-7cb01a5e657a/plz-5stellig.geojson"
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$ea73c208-4fae-4ef3-a13e-7cb01a5e657a/plz-5stellig.geojson"
             protocol: webdav
-            username: "{loader/hosts/webdav/username}"
-            access_token: "{loader/hosts/webdav/access_token}"
+            username: "infdb"
+            access_token: "letdown subscribe lily catchable landmine sphinx"
             path:
                 base: "{infdb-loader/path/opendata}/plz/"
                 processed: "{infdb-loader/path/processed}/plz/"

@@ -106,13 +106,14 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
     log = infdb.get_worker_logger()
 
     auth = (username, access_token)
+    session = requests.Session()
 
     # HEAD: get size if available
     size = None
     try:
-        r = requests.head(url, allow_redirects=True, timeout=timeout, auth=auth)
-        if r.ok and "content-length" in r.headers:
-            size = int(r.headers["content-length"])
+        with session.head(url, allow_redirects=True, timeout=timeout, auth=auth) as r:
+            if r.ok and "content-length" in r.headers:
+                size = int(r.headers["content-length"])
     except Exception:
         pass  # server may not support HEAD properly
 
@@ -127,7 +128,7 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
     # GET with retries
     for attempt in range(max_retries + 1):
         try:
-            with requests.get(url, stream=True, timeout=timeout, auth=auth) as resp:
+            with session.get(url, stream=True, timeout=timeout, auth=auth) as resp:
                 resp.raise_for_status()
                 tmp = dest + ".part"
                 with open(tmp, "wb") as f:
@@ -147,6 +148,8 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
             sleep_s = (backoff_base ** attempt) + random.uniform(0, 0.25 * backoff_base)
             log.warning("Retry %d/%d for %s in %.1fs", attempt + 1, max_retries, url, sleep_s)
             time.sleep(sleep_s)
+
+    session.close()
 
 def download_files(urls, file_path: str, infdb: InfDB, protocol: str = "http", username: str = None, access_token: str = None) -> list[str]:
     """
