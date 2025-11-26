@@ -107,11 +107,12 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
 
     auth = (username, access_token)
     session = requests.Session()
+    session.auth(auth)
 
     # HEAD: get size if available
     size = None
     try:
-        with session.head(url, allow_redirects=True, timeout=timeout, auth=auth) as r:
+        with session.head(url, allow_redirects=True, timeout=timeout) as r:
             if r.ok and "content-length" in r.headers:
                 size = int(r.headers["content-length"])
     except Exception:
@@ -128,7 +129,7 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
     # GET with retries
     for attempt in range(max_retries + 1):
         try:
-            with session.get(url, stream=True, timeout=timeout, auth=auth) as resp:
+            with session.get(url, stream=True, timeout=timeout) as resp:
                 resp.raise_for_status()
                 tmp = dest + ".part"
                 with open(tmp, "wb") as f:
