@@ -22,12 +22,12 @@ infdb-loader:
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
-            user: None
-            password: None
-            db: None
-            host: None
-            exposed_port: None
-            epsg: None # 3035 (Europe)
+            user: "{services/postgres/user}"
+            password: "{services/postgres/password}"
+            db: "{services/postgres/db}"
+            host: host.docker.internal  # change to external IP if not running on local machine
+            exposed_port: "{services/postgres/exposed_port}"
+            epsg: "{services/postgres/epsg}" # 3035 (Europe)
         webdav:
             username: infdb
             access_token: "letdown subscribe lily catchable landmine sphinx"
