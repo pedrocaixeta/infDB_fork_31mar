@@ -24,9 +24,9 @@ infdb-loader:
         postgres:
             user: None
             password: None
-            db: None
-            host: None
-            exposed_port: None
+            db: infdb
+            host: ds1.need.energy
+            exposed_port: 54328
             epsg: None # 3035 (Europe)
         webdav:
             username: infdb
@@ -573,17 +573,16 @@ infdb-loader:
                   - "FF_Solarthermie_Flur_NRW"
         gebaeude-neuburg:
             status: active
-            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d%24ea73c208-4fae-4ef3-a13e-7cb01a5e657a/plz-5stellig.geojson"
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
             protocol: webdav
-            username: "{loader/hosts/webdav/username}"
-            access_token: "{loader/hosts/webdav/access_token}"
+            username: "need"
+            access_token: "pulp ice ferocious stimulate thursday goatskin"
             path:
-                base: "{infdb-loader/path/opendata}/plz/"
-                processed: "{infdb-loader/path/processed}/plz/"
-            schema: opendata
-            prefix: plz
+                base: "{infdb-loader/path/opendata}/gebaeude-neuburg/"
+                processed: "{infdb-loader/path/processed}/gebaeude-neuburg/"
+            schema: need_intern
             layer:
-                - plz-5stellig
+                - "gebaeudedaten_neuburg"
                 
                   
 
