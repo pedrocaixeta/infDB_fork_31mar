@@ -1,10 +1,10 @@
-id: https://need.energy/kg/metadata/dataschema
+id: https://id.need.energy/dataschema
 name: dataschema
 description: A LinkML model for relational database metadata (Database → Schema → Table → Column).
 prefixes:
   schema: http://schema.org/
   linkml: https://w3id.org/linkml/
-  dataschema: https://need.energy/kg/metadata/dataschema/
+  dataschema: https://id.need.energy/dataschema/
 default_curi_maps: 
   - semweb_context
 default_prefix: dataschema

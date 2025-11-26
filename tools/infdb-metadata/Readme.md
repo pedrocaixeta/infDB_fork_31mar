@@ -1,6 +1,6 @@
-# InfDB Metadata-Knowledge-Graph (MKG) Generator
+# InfDB Dataschema-Knowledge-Graph (DKG) Generator
 
-A containerized utility that inspects a PostgreSQL/PostGIS database and exports its schemas, tables, columns, and primary keys into [LinkML](https://linkml.io/)-shaped JSON and YAML. A Metadata-Knowledge-Graph (MKG) is produced via `linkml-convert`.
+A containerized utility that inspects a PostgreSQL/PostGIS database and exports its schemas, tables, columns, and primary keys into [LinkML](https://linkml.io/)-shaped JSON and YAML. A Dataschema-Knowledge-Graph (DKG) is produced via `linkml-convert`.
 
 # Table of Contents
 - [Overview](#overview)
@@ -24,7 +24,7 @@ This tool enables you to:
 - Run inside a VS Code dev container or Docker Compose service
 
 ## Workflow
-Metadata-Knowledge-Graph Generation flow:
+DKG Generation flow:
 1. Load environment variables from `.env` next to `compose.yml`.
 2. Connect to PostgreSQL using `DB_URL` or `DB_HOST`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`.
 3. Collect schemas, tables, columns, and primary keys from `information_schema`.
@@ -100,7 +100,7 @@ Defines the runtime container, mounts `./mnt` for outputs, and wires environment
 2. **Install dependencies**
    - Edit `pyproject.toml` if you add libraries, then run `uv sync` (locally) or rebuild the container.
 
-3. **Run MKG generation**
+3. **Run DKG generation**
    - `docker compose -f tools/infdb-metadata/compose.yml up`
    - Pass schema filters: `python src/infdb_metadata.py --schemas schema1 schema2` inside the container or via `docker compose ... --command`.
 
