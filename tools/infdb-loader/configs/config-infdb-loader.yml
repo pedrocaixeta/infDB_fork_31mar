@@ -571,8 +571,19 @@ infdb-loader:
                 url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Potenzial_FF_Solarthermie_Flur_EPSG25832_Geodatabase.zip
                 layer:
                   - "FF_Solarthermie_Flur_NRW"
-
-
-
+        gebaeude-neuburg:
+            status: active
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d%24ea73c208-4fae-4ef3-a13e-7cb01a5e657a/plz-5stellig.geojson"
+            protocol: webdav
+            username: "{loader/hosts/webdav/username}"
+            access_token: "{loader/hosts/webdav/access_token}"
+            path:
+                base: "{infdb-loader/path/opendata}/plz/"
+                processed: "{infdb-loader/path/processed}/plz/"
+            schema: opendata
+            prefix: plz
+            layer:
+                - plz-5stellig
+                
                   
 
