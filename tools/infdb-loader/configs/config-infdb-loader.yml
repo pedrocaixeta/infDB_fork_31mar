@@ -583,6 +583,32 @@ infdb-loader:
             schema: need_intern
             layer:
                 - "gebaeudedaten_neuburg"
+        waermeatlas-hessen-bensheim:
+            status: active
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/BensheimWaermeatlasHessen.gpkg"
+            protocol: webdav
+            username: "need"
+            access_token: "pulp ice ferocious stimulate thursday goatskin"
+            path:
+                base: "{infdb-loader/path/opendata}/waermeatlas-hessen-bensheim/"
+                processed: "{infdb-loader/path/processed}/waermeatlas-hessen-bensheim/"
+            schema: need_intern
+            prefix: "waermeatlas_hessen_bensheim"
+            layer:
+                - "WAH_Punkte"
+                - "WAH_Strassenabschnitte"
+                - "WAH_Raster_1km"
+                - "WAH_Raster_100m"
+                - "WAH_Baubloecke"
+                - "Hausumringe"
+                - "Flurstuecke"
+
+
+
+
+
+
+                
                 
                   
 
