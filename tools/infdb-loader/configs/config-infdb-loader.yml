@@ -19,7 +19,7 @@ infdb-loader:
         processed: "{infdb-loader/path/base}/{infdb-loader/name}"
     logging:
         path: "{infdb-loader/path/base}/infdb-loader.log"
-        level: "DEBUG" # ERROR, WARNING, INFO, DEBUG
+        level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
             user: None
