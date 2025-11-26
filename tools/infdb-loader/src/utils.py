@@ -107,7 +107,7 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
 
     auth = (username, access_token)
     session = requests.Session()
-    session.auth(auth)
+    session.auth = auth
 
     # HEAD: get size if available
     size = None
