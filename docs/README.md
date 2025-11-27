@@ -15,7 +15,7 @@ To build the documentation locally:
 2. Install the required dependencies:
 
     ```bash
-    pip install -r requirements.txt
+    uv 
     ```
 
 ## Building Locally
