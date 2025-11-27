@@ -443,6 +443,8 @@ def run() -> int:
         prefix="rdf_input_", suffix=".json", dir=str(HERE))[1])
     try:
         write_metadata_file(metadata, rdf_input_path, quiet=True)
+        # with open (rdf_input_path, "r", encoding="utf-8") as fh:   
+        #     print(fh.read())
 
         rdf_output = data_path.with_suffix(".ttl")
         try:
