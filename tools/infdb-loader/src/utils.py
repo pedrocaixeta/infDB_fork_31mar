@@ -106,13 +106,15 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
     log = infdb.get_worker_logger()
 
     auth = (username, access_token)
+    session = requests.Session()
+    session.auth = auth
 
     # HEAD: get size if available
     size = None
     try:
-        r = requests.head(url, allow_redirects=True, timeout=timeout, auth=auth)
-        if r.ok and "content-length" in r.headers:
-            size = int(r.headers["content-length"])
+        with session.head(url, allow_redirects=True, timeout=timeout) as r:
+            if r.ok and "content-length" in r.headers:
+                size = int(r.headers["content-length"])
     except Exception:
         pass  # server may not support HEAD properly
 
@@ -127,7 +129,7 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
     # GET with retries
     for attempt in range(max_retries + 1):
         try:
-            with requests.get(url, stream=True, timeout=timeout, auth=auth) as resp:
+            with session.get(url, stream=True, timeout=timeout) as resp:
                 resp.raise_for_status()
                 tmp = dest + ".part"
                 with open(tmp, "wb") as f:
@@ -147,6 +149,8 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
             sleep_s = (backoff_base ** attempt) + random.uniform(0, 0.25 * backoff_base)
             log.warning("Retry %d/%d for %s in %.1fs", attempt + 1, max_retries, url, sleep_s)
             time.sleep(sleep_s)
+
+    session.close()
 
 def download_files(urls, file_path: str, infdb: InfDB, protocol: str = "http", username: str = None, access_token: str = None) -> list[str]:
     """
@@ -227,7 +231,8 @@ def import_layers(
     prefix: str = "",
     layer_names: Optional[List[str]] = None,
     scope: bool = True,
-    if_exists: str = "replace"
+    if_exists: str = "replace",
+    lowercase: bool = True
 ) -> None:
     """Import vector data into PostGIS.
 
@@ -257,6 +262,10 @@ def import_layers(
     target_names = list(layer_names) if layer_names is not None else list(layers)
     if prefix:
         target_names = [f"{prefix}_{name}" for name in target_names]
+
+    # if lowercase, change all uppercase letters to lowercase letters
+    if lowercase:
+        target_names = [name.lower() for name in target_names]
 
     # Detect if source is multi-layer
     ext = Path(input_file).suffix.lower()
@@ -315,6 +324,11 @@ def get_all_envelops(infdb: InfDB):
 
 # ============================== file helpers ==============================
 
+def get_subdirectories_by_suffix(folder, suffix):
+    """Return all subdirectories in `folder` whose names end with `suffix`."""
+    folder = Path(folder)
+    return [str(p) for p in folder.iterdir() if p.is_dir() and p.name.endswith(suffix)]
+
 def get_all_files(folder_path: str, ending: str) -> list[str]:
     """Recursively collect all files under `folder_path` with the given ending."""
     files: list[str] = []
@@ -327,7 +341,9 @@ def get_all_files(folder_path: str, ending: str) -> list[str]:
 
 
 def get_file(folder_path: str, filename: str, ending: str, infdb: InfDB) -> Optional[str]:
-    """Return the newest file path in `folder_path` containing `filename` and ending with `ending`."""
+    """Return the newest file path in `folder_path` containing `filename` and ending with `ending`.
+    Necessary for data that was updated by provider:
+    All data is saved in files -> selects newest to save in database."""
     files = get_all_files(folder_path, ending)
     log = infdb.get_worker_logger()
     matching = [f for f in files if filename.lower() in Path(f).stem.lower()]
