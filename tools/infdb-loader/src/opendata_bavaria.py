@@ -113,11 +113,11 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
 
     # Read loader configuration
     url_template = infdb.get_config_value(config_base + ["url"])  # URL with #scope placeholder
-    schema = infdb.get_config_value(config_base + ["schema"]) or "opendata"
-    table = infdb.get_config_value(config_base + ["table_name"]) or "gelaendemodell_1m"
+    schema = infdb.get_config_value(config_base + ["schema"])
+    table = infdb.get_config_value(config_base + ["table_name"])
     raw_table = f"{table}_raw"
-    source_srid = int(infdb.get_config_value(config_base + ["srid"]) or 25832)  # UTM32N
-    target_resolution_meters = float(infdb.get_config_value(config_base + ["target_resolution"]) or 10.0)
+    source_srid = int(infdb.get_config_value(config_base + ["srid"]))  # UTM32N
+    target_resolution_meters = float(infdb.get_config_value(config_base + ["target_resolution"]))
 
     # Create output directory structure
     dgm1_base_dir = base_path / "gelaendemodell_1m"
@@ -126,7 +126,6 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
     # Prepare fresh database tables
     with infdb.connect() as db:
         db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
-        db.execute_query(f"DROP TABLE IF EXISTS {schema}.{table};")
         db.execute_query(f"DROP TABLE IF EXISTS {schema}.{raw_table};")
 
     # ==================== 2. SCOPE DETERMINATION ====================
