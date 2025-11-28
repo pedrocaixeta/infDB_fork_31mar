@@ -26,12 +26,17 @@ linear-heat-density:
         input:
             buildings-to-streets:
                 schema: buildings_to_streets
-                table: linear_heat_density
+                table: buildings_to_streets
+            streets:
+                schema: need_intern
+                table: tudo_basemap_ways
+                id-column: id
+                geom-column: geom
             heat-demand:
-                schema:
-                table: 
-                id-column:  # unique identifier column, has to match buildings_to_streets building_id_column
-                heat-demand-column:  # contains heat demand values
+                schema: opendata
+                table: kwp_nrw_waermebedarf_gebaeude_fortschreibung_moderat
+                id-column:  '"Fest_ID"'
+                heat-demand-column:  '"Sum_Ist"'
         output:
             schema: linear_heat_density   # needs to be snake_case
             table: linear_heat_density
