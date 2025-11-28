@@ -1328,11 +1328,22 @@ def run_process_streets(
         nodes.set_crs(gdf.crs, inplace=True)
         log.info(f"Set CRS on nodes to {gdf.crs}")
 
-    # ----------------------------------------------------------
-    # STEP 12 — SAVE TO POSTGIS
-    # ----------------------------------------------------------
-    seg_table = "segments"
-    node_table = "nodes"
+    # STEP 12 – SAVE TO POSTGIS
+    segments_table_name = infdb.get_config_value(
+        ["process-streets", "data", "segments_table"]
+    )
+    nodes_table_name = infdb.get_config_value(
+        ["process-streets", "data", "nodes_table"]
+    )
+
+    # Falls in der YAML nichts gesetzt ist -> Fallback
+    if not segments_table_name:
+        segments_table_name = "segments"
+    if not nodes_table_name:
+        nodes_table_name = "nodes"
+
+    seg_table = f"{output_schema}.{segments_table_name}"
+    node_table = f"{output_schema}.{nodes_table_name}"
 
     log.info(f"Writing segments → {seg_table}")
     final_out.to_postgis(seg_table, engine, if_exists="replace", schema=output_schema, index=False)
@@ -1344,19 +1355,36 @@ def run_process_streets(
     # STEP 12b — OPTIONAL: write GeoJSON to local filesystem
     # ----------------------------------------------------------
     output_dir = infdb.get_config_value(["process-streets", "data", "output_dir"])
+
+    # Dateinamen ebenfalls aus der Config lesen
+    segments_geojson_name = infdb.get_config_value(
+        ["process-streets", "data", "segments_geojson"]
+    )
+    nodes_geojson_name = infdb.get_config_value(
+        ["process-streets", "data", "nodes_geojson"]
+    )
+
+    # Falls nichts gesetzt ist, aus Tabellennamen ableiten (optional)
+    if not segments_geojson_name:
+        segments_geojson_name = f"{segments_table_name}.geojson"
+    if not nodes_geojson_name:
+        nodes_geojson_name = f"{nodes_table_name}.geojson"
+
     if not output_dir:
-        output_dir = "/app/data/process_streets"
+        log.info("No output_dir configured – skipping GeoJSON export.")
+    else:
+        os.makedirs(output_dir, exist_ok=True)
 
-    os.makedirs(output_dir, exist_ok=True)
+        seg_geojson = os.path.join(output_dir, segments_geojson_name)
+        nodes_geojson = os.path.join(output_dir, nodes_geojson_name)
 
-    seg_geojson = os.path.join(output_dir, "segments_final.geojson")
-    nodes_geojson = os.path.join(output_dir, "nodes_final.geojson")
+        log.info(f"Writing segments GeoJSON → {seg_geojson}")
+        final_out.to_file(seg_geojson, driver="GeoJSON")
 
-    log.info(f"Writing segments GeoJSON → {seg_geojson}")
-    final_out.to_file(seg_geojson, driver="GeoJSON")
+        log.info(f"Writing nodes GeoJSON → {nodes_geojson}")
+        nodes.to_file(nodes_geojson, driver="GeoJSON")
 
-    log.info(f"Writing nodes GeoJSON → {nodes_geojson}")
-    nodes.to_file(nodes_geojson, driver="GeoJSON")
+
 
     # ----------------------------------------------------------
     # DONE

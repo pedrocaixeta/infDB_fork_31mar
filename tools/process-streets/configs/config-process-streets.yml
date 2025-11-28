@@ -24,8 +24,14 @@ process-streets:
             epsg: None
     data:
         input_schema: opendata
-        output_schema: process_streets   # needs to be snake_case
         table_name: basemap_verkehrslinie
+        output_schema: process_streets   # needs to be snake_case
+        segments_table: segments
+        nodes_table: nodes
+        # OPTIONAL: nur wenn man GeoJSON schreiben möchte. Wenn kein output_dir eingetragen ist dann wird übersprungen
+        output_dir:
+        segments_geojson: segments.geojson
+        nodes_geojson: nodes.geojson
 
     klasse_filter:
       - "Wirtschaftsweg"
