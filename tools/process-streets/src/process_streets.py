@@ -1335,10 +1335,10 @@ def run_process_streets(
     node_table = "nodes_final"
 
     log.info(f"Writing segments → {seg_table}")
-    final_out.to_postgis(seg_table, engine, if_exists="replace", output_schema=output_schema, index=False)
+    final_out.to_postgis(seg_table, engine, if_exists="replace", schema=output_schema, index=False)
 
     log.info(f"Writing nodes → {node_table}")
-    nodes.to_postgis(node_table, engine, if_exists="replace", output_schema=output_schema, index=False)
+    nodes.to_postgis(node_table, engine, if_exists="replace", schema=output_schema, index=False)
 
     # ----------------------------------------------------------
     # STEP 12b — OPTIONAL: write GeoJSON to local filesystem
