@@ -1331,8 +1331,8 @@ def run_process_streets(
     # ----------------------------------------------------------
     # STEP 12 — SAVE TO POSTGIS
     # ----------------------------------------------------------
-    seg_table = "segments_final"
-    node_table = "nodes_final"
+    seg_table = "segments"
+    node_table = "nodes"
 
     log.info(f"Writing segments → {seg_table}")
     final_out.to_postgis(seg_table, engine, if_exists="replace", schema=output_schema, index=False)
