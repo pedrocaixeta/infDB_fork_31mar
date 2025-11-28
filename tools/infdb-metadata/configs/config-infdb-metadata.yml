@@ -16,8 +16,8 @@ infdb-metadata:
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
-            user: None
-            password: None
+            user: infdb_user
+            password: infdb
             db: infdb-dev
             host: need.energy
             exposed_port: 5432

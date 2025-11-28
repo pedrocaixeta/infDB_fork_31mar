@@ -19,10 +19,10 @@ SCHEMA_PATH = HERE / "schema.yaml"
 BASE_IRI = os.getenv("IRI_BASE", "https://id.need.energy/dataschema")
 
 
-def load_env() -> None:
+def load_env(log) -> None:
     """Load environment variables from a .env file in the parent directory.
     """
-    print("Loading environment variables...", flush=True)
+    log.info("Loading environment variables...")
     load_dotenv(PARENT_PATH / ".env")
 
 
@@ -34,7 +34,7 @@ def make_iri(*parts: str) -> str:
     return "/".join([base, *encoded_parts])
 
 
-def get_conn() -> psycopg2.extensions.connection:
+def get_conn(log) -> psycopg2.extensions.connection:
     """Establish a connection to the PostgreSQL database using environment variables.
     """
     db_url = os.getenv("DB_URL")
@@ -47,14 +47,14 @@ def get_conn() -> psycopg2.extensions.connection:
         "password": os.getenv("DB_PASSWORD"),
         "dbname": os.getenv("DB_NAME"),
     }
-    print(params, flush=True)
+    log.info(params)
 
     if not params["user"] or not params["password"] or not params["dbname"]:
         raise RuntimeError(
             "Missing database connection information. Please set DB_URL "
             "or DB_HOST/DB_USER/DB_PASSWORD/DB_NAME in the .env file."
         )
-    print("Connecting to database...", flush=True)
+    log.info("Connecting to database...")
     return psycopg2.connect(**params)
 
 
@@ -105,7 +105,7 @@ def _fetch_columns(cur, schema: str, table: str) -> List[Dict[str, object]]:
     return columns
 
 
-def fetch_metadata(conn: psycopg2.extensions.connection) -> Dict[str, object]:
+def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, object]:
     """Fetch database schema metadata.
 
     Args:
@@ -114,7 +114,7 @@ def fetch_metadata(conn: psycopg2.extensions.connection) -> Dict[str, object]:
     Returns:
         Database metadata dictionary.
     """
-    print("Fetching schema and table list...", flush=True)
+    log.info("Fetching schema and table list...")
     cur = conn.cursor()
     db_name: Optional[str] = (
         conn.get_dsn_parameters().get("dbname") if hasattr(
@@ -154,7 +154,7 @@ def fetch_metadata(conn: psycopg2.extensions.connection) -> Dict[str, object]:
 
     schemas: Dict[str, Dict[str, object]] = {}
     for catalog_name, schema_name in schema_rows:
-        print(f"  Processing schema: {schema_name}", flush=True)
+        log.info(f"  Processing schema: {schema_name}")
         schema_entry = schemas.setdefault(
             schema_name,
             {
@@ -214,7 +214,7 @@ def fetch_metadata(conn: psycopg2.extensions.connection) -> Dict[str, object]:
     }
 
 
-def print_available_schemas(metadata: Dict[str, object]) -> List[str]:
+def print_available_schemas(log, metadata: Dict[str, object]) -> List[str]:
     """Print available schemas from the metadata.
 
     Args:
@@ -222,18 +222,18 @@ def print_available_schemas(metadata: Dict[str, object]) -> List[str]:
 
     Returns:
         List of schema names.
-    """ 
+    """
     schemas = [s.get("schema_name") for s in metadata.get("schemas", [])]
     if not schemas:
-        print("No user schemas found in the database; nothing to export.")
+        log.error("No user schemas found in the database; nothing to export.")
         return []
-    print("Available schemas:")
+    log.info("Available schemas:")
     for name in schemas:
-        print(f"  - {name}")
+        log.info(f"  - {name}")
     return schemas
 
 
-def prompt_schema_selection(available: List[str]) -> Optional[List[str]]:
+def prompt_schema_selection(log, available: List[str]) -> Optional[List[str]]:
     """Prompt the user to select schemas.
 
     Args:
@@ -242,7 +242,7 @@ def prompt_schema_selection(available: List[str]) -> Optional[List[str]]:
     Returns:
         List of selected schema names, or None for all.
     """
-    print("Awaiting schema selection...", flush=True)
+    log.info("Awaiting schema selection...")
     try:
         raw = input(
             "Enter schema names separated by commas (leave empty or type 'all' for all): "
@@ -264,7 +264,7 @@ def filter_schemas(metadata: Dict[str, object], schemas: Optional[List[str]]) ->
         schemas: List of schema names to include.
     Returns:
         Filtered database metadata dictionary.
-    """ 
+    """
     if not schemas:
         return metadata
     wanted = {s.strip() for s in schemas if s.strip()}
@@ -273,7 +273,7 @@ def filter_schemas(metadata: Dict[str, object], schemas: Optional[List[str]]) ->
     return {**metadata, "schemas": filtered}
 
 
-def write_metadata_file(data: Dict[str, object], path: Path, quiet: bool = False) -> None:
+def write_metadata_file(log, data: Dict[str, object], path: Path, quiet: bool = False) -> None:
     """Write metadata to a JSON file.
 
     Args:
@@ -284,10 +284,10 @@ def write_metadata_file(data: Dict[str, object], path: Path, quiet: bool = False
     with path.open("w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=2)
     if not quiet:
-        print(f"✅ Saved LinkML-shaped metadata to {path}")
+        log.info(f"✅ Saved LinkML-shaped metadata to {path}")
 
 
-def write_metadata_yaml(data: Dict[str, object], path: Path) -> None:
+def write_metadata_yaml(log, data: Dict[str, object], path: Path) -> None:
     """Write metadata to a YAML file.
     Args:
         data: The metadata dictionary to write.
@@ -295,7 +295,7 @@ def write_metadata_yaml(data: Dict[str, object], path: Path) -> None:
     """
     with path.open("w", encoding="utf-8") as fh:
         yaml.safe_dump(data, fh, sort_keys=False, allow_unicode=True)
-    print(f"✅ Saved LinkML-shaped metadata to {path}")
+    log.info(f"✅ Saved LinkML-shaped metadata to {path}")
 
 
 def wrap_database(metadata: Dict[str, object]) -> Dict[str, object]:
@@ -310,18 +310,18 @@ def wrap_database(metadata: Dict[str, object]) -> Dict[str, object]:
     return {"Database": metadata}
 
 
-def generate_rdf(schema_path: Path, data_path: Path, output_path: Path) -> Path:
+def generate_rdf(log, schema_path: Path, data_path: Path, output_path: Path) -> Path:
     """Generate RDF (TTL) from LinkML JSON using linkml-convert.
 
     Args:
         schema_path: Path to the LinkML schema file.
         data_path: Path to the LinkML JSON data file.
         output_path: Path to write the RDF (TTL) output.
-    
+
     Returns:
         Path to the generated RDF (TTL) file.
     """
-    print("Generating RDF (TTL) via linkml-convert...", flush=True)
+    log.info("Generating RDF (TTL) via linkml-convert...")
     cmd_path = shutil.which("linkml-convert")
     if cmd_path is None:
         candidate = Path(sys.executable).parent / "linkml-convert"
@@ -351,14 +351,14 @@ def generate_rdf(schema_path: Path, data_path: Path, output_path: Path) -> Path:
             text=True,
         )
         if completed.stdout:
-            print(completed.stdout.strip())
+            log.info(completed.stdout.strip())
     except FileNotFoundError as exc:
         raise RuntimeError("linkml-convert command not available") from exc
     except subprocess.CalledProcessError as exc:
         stderr = exc.stderr.strip() if exc.stderr else ""
         raise RuntimeError(f"linkml-convert failed: {stderr or exc}") from exc
 
-    print(f"✅ Generated RDF at {output_path}")
+    log.info(f"✅ Generated RDF at {output_path}")
     return output_path
 
 
@@ -379,82 +379,80 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run() -> int:
+def run(log) -> int:
     """Main execution function.
     """
     args = parse_args()
-    load_env()
+    load_env(log)
     try:
-        conn = get_conn()
+        conn = get_conn(log)
     except Exception as exc:
-        print(f"Failed to connect to database: {exc}", file=sys.stderr)
+        log.error(f"Failed to connect to database: {exc}", file=sys.stderr)
         return 1
 
     try:
         metadata = fetch_metadata(conn)
     finally:
         conn.close()
-    print("✅ Finished fetching metadata.", flush=True)
+    log.info("✅ Finished fetching metadata.")
 
-    available_schemas = print_available_schemas(metadata)
+    available_schemas = print_available_schemas(log, metadata)
     if not available_schemas:
         return 0
-    
+
     chosen = args.schemas
     if not chosen:
         chosen = prompt_schema_selection(available_schemas)
-    
+
     if chosen:
-        print("Filtering to selected schemas...", flush=True)
+        log.info("Filtering to selected schemas...")
     metadata = filter_schemas(metadata, chosen)
 
     selected_schemas = [s.get("schema_name")
                         for s in metadata.get("schemas", [])]
-    print(selected_schemas)
+    log.info(selected_schemas)
     if chosen and not selected_schemas:
-        print(
-            f"No matching schemas found for: {', '.join(chosen)}", file=sys.stderr)
+        log.error(f"No matching schemas found for: {', '.join(chosen)}")
         return 1
     if chosen:
-        print(f"Including schemas: {', '.join(selected_schemas)}")
-
+        log.info(f"Including schemas: {', '.join(selected_schemas)}")
     db_label = metadata.get("name") or "database"
-    suffix = ""
-    if selected_schemas:
-        suffix = "-" + "-".join(selected_schemas)
-    # data_path = HERE / f"{db_label}{suffix}_schema.json"
-    # yaml_path = HERE / f"{db_label}{suffix}_schema.yaml"
 
     # NOTE: to make sure the output is writable in containerized environments,
     # write to OUTPUT_DIR or /app/mnt/data in a docker by default
     out_base = Path(os.getenv("OUTPUT_DIR", "/app/mnt/data"))
     out_base.mkdir(parents=True, exist_ok=True)
+
+    # NOTE: revert to naming without schema names in suffix
+    # suffix = ""
+    # if selected_schemas:
+    #     suffix = "-" + "-".join(selected_schemas)
     # data_path = out_base / f"{db_label}{suffix}_schema.json"
     # yaml_path = out_base / f"{db_label}{suffix}_schema.yaml"
-    # NOTE: revert to naming without schema names in suffix
+
     data_path = out_base / f"{db_label}_schema.json"
     yaml_path = out_base / f"{db_label}_schema.yaml"
     wrapped = wrap_database(metadata)
-    print("Writing JSON and YAML outputs...", flush=True)
-    write_metadata_file(wrapped, data_path)
-    write_metadata_yaml(wrapped, yaml_path)
+    log.info("Writing JSON and YAML outputs...")
+    write_metadata_file(log, wrapped, data_path)
+    write_metadata_yaml(log, wrapped, yaml_path)
 
     rdf_input_path = Path(tempfile.mkstemp(
         prefix="rdf_input_", suffix=".json", dir=str(HERE))[1])
     try:
-        write_metadata_file(metadata, rdf_input_path, quiet=True)
-        # with open (rdf_input_path, "r", encoding="utf-8") as fh:   
+        write_metadata_file(log, metadata, rdf_input_path, quiet=True)
+        # with open (rdf_input_path, "r", encoding="utf-8") as fh:
         #     print(fh.read())
 
         rdf_output = data_path.with_suffix(".ttl")
         try:
             generate_rdf(SCHEMA_PATH, rdf_input_path, rdf_output)
         except Exception as exc:
-            print(
+            log.info(
                 f"Skipping RDF generation because LinkML tooling is unavailable: {exc}",
                 file=sys.stderr,
             )
-            print(
+            log.info(
                 "To generate RDF manually, run "
                 f"`linkml-convert {rdf_input_path} --schema {SCHEMA_PATH} "
                 f"--target-class Database --output {rdf_output} --output-format ttl`.",
