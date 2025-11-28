@@ -1,149 +1,226 @@
-# InfDB Dev Container Template
+# [Tool Name]
 
-A reusable template for creating Docker-based development containers that interact with the InfDB infrastructure. This template provides a standardized structure for importing (eg. infdb-laoder) data,  processing tools (eg infdb-basedata), and analysis scripts (kwp) that work with the InfDB PostgreSQL/PostGIS database.
+> **Template Notice**: This is a template README for infDB tools. Replace all placeholders in [brackets] with your tool-specific information.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Output](#output)
+- [Troubleshooting](#troubleshooting)
+- [License and Citation](#license-and-citation)
+- [Contact](#contact)
 
 ## Overview
 
-This template enables you to:
-- Quickly scaffold new InfDB tools with consistent structure
-- Access InfDB database connections with pre-configured clients
-- Run Python scripts with geospatial capabilities (GeoPandas, SQLAlchemy)
-- Execute SQL scripts for database operations
-- Develop with VS Code dev containers for debugging
+[Provide a brief description of what your tool does and its purpose within the infDB ecosystem. Explain the problem it solves or the functionality it adds.]
 
-## Workflow
-Each tool in the InfDB infrastructure operates in its own isolated database schema, named after the tool itself. This schema isolation ensures that multiple developers can work independently without interfering with each other's data or processes.
+**Use Cases:**
+- [Use case 1]
+- [Use case 2]
+- [Use case 3]
 
-### Schema Isolation
+## Features
 
-```
-PostgreSQL Database (infdb)
-│
-├── Schema: infdb-loader          # Data import tool
-│   ├── Tables
-│   ├── Views
-│   └── Functions
-│
-├── Schema: infdb-basedata        # Base data processing
-│   ├── Tables
-│   ├── Views
-│   └── Functions
-│
-├── Schema: kwp                   # Analysis scripts
-│   ├── Tables
-│   ├── Views
-│   └── Functions
-│
-└── Schema: process-streets         # Your new tool
-   ├── Tables
-   ├── Views
-   └── Functions
-```
+- [Feature 1 - brief description]
+- [Feature 2 - brief description]
+- [Feature 3 - brief description]
+- [Feature 4 - brief description]
 
-The schema name is automatically configured from your tool name and available in SQL scripts via the `{output_schema}` template variable.
+## Prerequisites
 
-## Getting Started
-### Run your tool
+Before using this tool, ensure you have:
 
-Prerequisites:
-- [Docker Desktop](https://docs.docker.com/get-started/get-docker/) (or Docker Engine) installed
-- Follow [development workflow instructions](#development-workflow) below
-- Run commands from the repository root
+- infDB instance running (see [infDB documentation](https://infdb.readthedocs.io/))
+- Docker and Docker Compose installed
+- [Any other specific requirements]
 
-**Option A — Docker Compose:**
-Start tool
+## Installation
+
+### Clone the Repository
+
+If this tool is part of the infDB repository:
 ```bash
-docker compose -f tools/process-streets/compose.yml up
+# Already included in infDB under tools/[tool-name]/
+cd infdb/tools/[tool-name]
 ```
 
-**Option B — VS Code Dev Containers:**
-1. Open created tool folder in [*Visual Studio Code*](https://code.visualstudio.com/download): File → → Open Folder... → `tools/process-streets`
-2. Install the “Dev Containers” extension
-3. Press F1 → “Dev Containers: Reopen in Container”
-4. Run and debug (F5) with breakpoints in Python
-
-**Hint**: If there is an error on startup while building since dev container already exists by using **Option A**, then delete it before manually:
+If this is a standalone tool:
 ```bash
-# Remove docker
-docker compose -f tools/process-streets/compose.yml down
+git clone [repository-url] [tool-name]
+cd [tool-name]
 ```
 
-## Project Structure
+## Configuration
 
-```
-process-streets/
-├── src/                                    # Python source modules
-│   └── demo.py                             # Example database operations
-│   └── template.py                         # Template python file for your own code
-├── sql/                                    # SQL scripts (alphabetical order)
-│   └── 00_cleanup.sql                      # Schema initialization
-│   └── 01_template.sql                     # Template sql file for your own code
-├── configs/                                # Configuration files
-│   └── config-process-streets.yml            # Tool-specific config
-├── main.py                                 # Entry point - starts here
-├── pyproject.toml                          # Python dependencies
-├── compose.yml                             # Docker Compose definition
-├── create_new_tool.yml                     # Creates new tool based on infdb-template
-├── Dockerfile                              # Docker image build
-├── .env                                    # Environment variables
-├── Readme_template.md                      # Readme for tool users
-└── Readme.md                               # Readme for tool developers
+### Configuration File
+
+The tool is configured via `configs/config-[tool-name].yml`. Copy the template first:
+
+```bash
+cp configs/config-[tool-name].yml.template configs/config-[tool-name].yml
 ```
 
-### Key Files
+### Configuration Options
 
-#### `main.py`
-Entry point that:
-- Initializes InfDB client (Sets up logging, database connections, etc.)
-- Executes your business logic
+Edit `configs/config-[tool-name].yml` with your settings:
 
-#### `src/demo.py`
-Example functions showing:
-- SQL script execution with InfDB
-- Database queries with InfDB client
-- Direct SQLAlchemy connections
-- GeoPandas spatial data integration
+```yaml
+[tool-name]:
+  name: [instance-name]
+  config-infdb: "config-infdb.yml"
+  path:
+    base: "data"
+    output: "{[tool-name]/path/base}/{[tool-name]/name}"
+  logging:
+    path: "{[tool-name]/path/base}/[tool-name].log"
+    level: "INFO"  # ERROR, WARNING, INFO, DEBUG
+  
+  # Tool-specific settings
+  [setting1]:
+    status: active
+    [parameter1]: [value1]
+    [parameter2]: [value2]
+  
+  [setting2]:
+    [parameter1]: [value1]
+```
 
-#### `sql/*.sql`
-SQL scripts for database operations:
-- Execute in alphabetical order (use prefixes: `01_`, `02_`)
-- Support template variables like `{output_schema}`, `{input_schema}`
-- Useful for schema setup, transformations, indexes
+**Configuration Parameters:**
 
-#### `pyproject.toml`
-Python project configuration:
-- Package dependencies
-- Python version requirements
-- Build system configuration
+| Parameter | Description | Default | Required |
+|-----------|-------------|---------|----------|
+| `name` | Instance name | - | Yes |
+| `config-infdb` | Path to infDB config | `config-infdb.yml` | Yes |
+| `path/base` | Base data directory | `data` | Yes |
+| `logging/level` | Log verbosity | `INFO` | No |
+| [Add tool-specific parameters] | | | |
 
-#### `compose.yml`
-Docker Compose service definition:
-- Container configuration
-- Volume mounts
-- Network settings
-- Environment variables
+### Environment Variables
 
-### Development Workflow
+If needed, configure environment variables in `.env`:
 
-1. **Define tool name:**
-   - Think of a tool name
-   - Use kebab-case naming convention as for example "process-streets" 
+```bash
+CONFIG_INFDB_PATH=../infdb/configs  # Path to infDB config folder
+[TOOL]_DATA_PATH=./data             # Path to data folder
+```
 
-2. **Create Dev Container:**
-   ```bash
-   # Replace process-streets
-   bash tools/_infdb-template/create_new_tool.sh process-streets
-   ```
+## Usage
 
-5. **Add dependencies:**
-   - Add needed package into **dependencies** in `tools/process-streets/pyproject.toml`.
-   - Run `uv sync` in order to update virtual environment with new packages or (re-start) docker via `docker compose -f tools/process-streets/compose.yml up`
+### Run the Tool
 
-6. **Implement your code:**
-   - **Python:** Add your code to `src/`
-   - **SQL:** Add your scripts to `sql/` - We recommend adding numbers according to the execution order (executed in alphabetical order)
-   - **Execution:** Start your added python code btw. sql scripts in `main.py`. The sql files can be easily executed as shown in `src/demo.py`. This spllting ensures clarity and easy overview what is executed.
+Execute the tool using Docker Compose:
 
-7. **Document your code:**
-   - Add docstrings and comments to your code
-   - Update Readme_template.md for user of your tool
+```bash
+docker compose -f tools/[tool-name]/compose.yml up
+```
+
+For standalone execution:
+```bash
+docker compose up
+```
+
+### Command-Line Options
+
+[If applicable, describe any command-line arguments or options]
+
+```bash
+# Example with options
+docker compose -f tools/[tool-name]/compose.yml up --build
+```
+
+### Execution Modes
+
+[Describe different ways the tool can be run, if applicable]
+
+- **Standard Mode**: [Description]
+- **[Alternative Mode]**: [Description]
+
+## Output
+
+### Output Location
+
+Results are stored in:
+```
+data/[instance-name]/
+├── [output-file-1]
+├── [output-folder]/
+│   ├── [file-1]
+│   └── [file-2]
+└── logs/
+  └── [tool-name].log
+```
+
+### Output Format
+
+[Describe the format and structure of output files]
+
+- **[Output Type 1]**: [Description and format]
+- **[Output Type 2]**: [Description and format]
+
+### Database Integration
+
+[If the tool writes to infDB, describe which tables/schemas are affected]
+
+Data is written to the following database tables:
+- `[schema].[table1]`: [Description]
+- `[schema].[table2]`: [Description]
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: [Common problem description]
+```
+Error message example
+```
+**Solution**: [How to fix it]
+
+---
+
+**Issue**: [Another common problem]
+**Solution**: [How to fix it]
+
+### Logging
+
+Check logs for detailed error information:
+```bash
+# View container logs
+docker compose logs [tool-name]
+
+# View application log file
+cat data/[instance-name]/logs/[tool-name].log
+```
+
+### Getting Help
+
+If you encounter issues:
+1. Check the logs for error messages
+2. Verify configuration settings
+3. Ensure infDB is running and accessible
+4. Review the [troubleshooting section in infDB docs](https://infdb.readthedocs.io/)
+5. Open an issue on the repository
+
+## License and Citation
+
+This tool is licensed under the **MIT License** (MIT).  
+See [LICENSE](LICENSE) for rights and obligations.  
+See the *Cite this repository* function or [CITATION.cff](CITATION.cff) for citation.
+
+Copyright: [Your Institution/Organization] | [MIT](LICENSE)
+
+## Contact
+
+[Your Name]  
+[Your Position/Role]  
+[Your Institution]  
+Email: [your.email@domain.com]  
+[Link to your profile or website]
+
+---
+
+**Part of the infDB ecosystem**: [https://infdb.readthedocs.io/](https://infdb.readthedocs.io/)
