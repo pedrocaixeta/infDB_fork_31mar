@@ -169,6 +169,7 @@ uv.lock
 *.gpkg
 *.gpkg.ebenen
 *.gml
+*.meta4
 *.zip
 *.csv
 data-infdb
