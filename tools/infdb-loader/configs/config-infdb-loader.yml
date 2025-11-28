@@ -534,7 +534,7 @@ infdb-loader:
         kwp-nrw:
           status: active
           schema: opendata
-          prefix: kwp-nrw
+          prefix: kwp_nrw
           path:
               base: "{infdb-loader/path/opendata}/kwp-nrw/"
               zip: "{infdb-loader/sources/kwp-nrw/path/base}/zip/"
