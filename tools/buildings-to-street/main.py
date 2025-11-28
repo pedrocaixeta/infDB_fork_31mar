@@ -34,8 +34,16 @@ def main():
         # ===========================================================
         infdb.log.info("Running SQL scripts ...")
         format_params = {
-            'input_schema': infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"]),
-            'output_schema': infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"]),
+            'streets_schema': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "schema"]),
+            'streets_table': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "table"]),
+            'streets_id': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "id-column"]),
+            'streets_geom': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "geom-column"]),
+            'buildings_schema': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "schema"]),
+            'buildings_table': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "table"]),
+            'buildings_id': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "id-column"]),
+            'buildings_geom': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "geom-column"]),
+            'output_schema': infdb.get_config_value([infdb.get_toolname(), "data", "output", "schema"]),
+            'output_table': infdb.get_config_value([infdb.get_toolname(), "data", "output", "table"]),
         }
         SQL_DIR = os.path.join("sql")   # add subfolders here if needed ("sql/subfolder")
         infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)

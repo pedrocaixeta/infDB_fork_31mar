@@ -26,15 +26,15 @@ buildings-to-street:
         max-distance: 50  # maximum distance in meters to consider a building connected to a street
     data:
         streets:
-            schema: basedata
-            table: 
-            id-column: ... # unique identifier column
-            geom-column: # contains linestring geometries
+            schema: need-intern
+            table: tudo_basemap_ways
+            id-column: None
+            geom-column: geom
         buildings:
-            schema: ro_heat
-            table: ...
-            id-column: ... # unique identifier column
-            geom-column: ... # contains polygon geometries with ground surface        
+            schema: basedata
+            table: kwp-nrw_Gebaeude_Fortschreibung_moderat
+            id-column: FEST_ID
+            geom-column: geom
         output:
             schema: buildings_to_streets
             table: buildings_to_streets
