@@ -7,7 +7,7 @@ Handles InfDB initialization, database connection, logging, and demo execution.
 # Import packages
 import os
 from infdb import InfDB
-from src import demo, buildings_to_street
+from src import buildings_to_street
 
 
 def main():
@@ -33,28 +33,32 @@ def main():
         # Start your added sql scripts in folder "sql"
         # ===========================================================
         infdb.log.info("Running SQL scripts ...")
+        
+        streets_id = infdb.get_config_value([infdb.get_toolname(), "data", "streets", "id-column"])
+        buildings_id = infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "id-column"])
+
+        # Handle "None" string from YAML
+        if streets_id == "None":
+            streets_id = None
+        if buildings_id == "None":
+            buildings_id = None
+
         format_params = {
             'streets_schema': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "schema"]),
             'streets_table': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "table"]),
-            'streets_id': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "id-column"]),
+            'streets_id': streets_id,
+            'streets_id_expr': f"s.{streets_id}::TEXT" if streets_id else "NULL",
             'streets_geom': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "geom-column"]),
             'buildings_schema': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "schema"]),
             'buildings_table': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "table"]),
-            'buildings_id': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "id-column"]),
+            'buildings_id': buildings_id,
+            'buildings_id_expr': f"b.{buildings_id}::TEXT" if buildings_id else "NULL",
             'buildings_geom': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "geom-column"]),
             'output_schema': infdb.get_config_value([infdb.get_toolname(), "data", "output", "schema"]),
             'output_table': infdb.get_config_value([infdb.get_toolname(), "data", "output", "table"]),
         }
         SQL_DIR = os.path.join("sql")   # add subfolders here if needed ("sql/subfolder")
         infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
-
-        # ===========================================================
-        # Demonstrate database querying - remove or comment out if not needed
-        # ===========================================================
-        infdb.log.info("Running demo ...")
-        demo.sql_demo(infdb)
-        demo.database_demo(infdb)
-        demo.database_demo_sqlalchemy()
 
     except Exception as e:
         infdb.log.error(f"Something went wrong: {str(e)}")
