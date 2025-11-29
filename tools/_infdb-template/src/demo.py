@@ -62,7 +62,7 @@ def database_demo(infdb):
     return gdf_buildings
 
 
-def database_demo_sqlalchemy():
+def database_demo_sqlalchemy(infdb):
     """
     Demonstrate direct SQLAlchemy database connection without using InfDB client (not recommended - configs from infDB are not considered automatically).
     
@@ -79,6 +79,15 @@ def database_demo_sqlalchemy():
     host = "ds1.need.energy"
     port = "54328"
     db = "infdb"
+
+    # or get parameters from infDB config
+    infdb.get_db_parameters_dict()
+    user = infdb.get_db_parameters_dict().get("user")
+    password = infdb.get_db_parameters_dict().get("password")
+    host = infdb.get_db_parameters_dict().get("host")
+    port = infdb.get_db_parameters_dict().get("port")
+    db = infdb.get_db_parameters_dict().get("database")
+
     db_connection_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
     
     engine = create_engine(db_connection_url)
@@ -87,3 +96,16 @@ def database_demo_sqlalchemy():
     gdf_buildings.head()
     
     return gdf_buildings
+
+
+def get_env_variables(infdb):
+    """
+    Retrieve environment variables for the InfDB tool.
+
+    Args:
+        infdb: InfDB client instance with database connection.
+        
+    Returns:
+        dict: Environment variables for the InfDB tool.
+    """
+    return infdb.get_env_variables_dict()
