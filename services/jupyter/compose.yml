@@ -1,5 +1,7 @@
 services:
     jupyter:
+        profiles:
+            - notebook
         build:
             context: .
             dockerfile: Dockerfile
@@ -11,9 +13,9 @@ services:
             SERVICES_JUPYTER_TOKEN: ${SERVICES_JUPYTER_TOKEN}
         volumes:
             - ../../configs:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
-            - ${SERVICES_JUPYTER_PATH_BASE}:/app
+            - infdb-data:/jupyter
             - /app/.venv
         networks:
-            - ${BASE_NETWORK_NAME}
+            - infdb_network
         extra_hosts:
             - "host.docker.internal:host-gateway"

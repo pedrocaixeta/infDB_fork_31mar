@@ -178,29 +178,52 @@ Before starting infDB, you need to configure it:
     cp configs/config-infdb.yml.template configs/config-infdb.yml
     ```
 
-2. **Edit the configuration file** at `configs/config-infdb.yml` to customize your infDB instance settings (database credentials, ports, paths, etc.).
+2. **Edit the environment file** at `.env` to customize your infDB instance settings (database credentials, ports, paths, etc.).
     
     **Note:** If you're using the default configuration, you can skip editing and proceed directly to generating the configuration files.
 
-    ```yaml
-    base:
-        name: infdb-demo
-        path:
-            base: "../data/{base/name}/"
-        network_name: "infdb-{base/name}_network"
-    services:
-        postgres:
-            status: active
-            user: infdb_user
-            password: infdb
-            db: infdb
-            exposed_port: 54328
-            epsg: 25832
-            path: 
-                base: "{base/path/base}/postgres/"
-                compose_file: "services/postgres/compose.yml"
+    ```bash
+    # ==============================================================================
+    # InfDB Docker Compose Configuration
+    # ==============================================================================
+    # This file contains all configuration parameters for the InfDB Docker setup.
+    # Copy this file to .env and customize the values as needed.
+    # ==============================================================================
 
-            ...
+    # ==============================================================================
+    # SERVICE ACTIVATION
+    # ==============================================================================
+    # Select profiles to activate
+
+    # Base profiles
+    COMPOSE_PROFILES=core,admin
+
+    # All profiles
+    # COMPOSE_PROFILES=core,admin,api,notebook,qwc
+
+    # ==============================================================================
+    # BASE CONFIGURATION
+    # ==============================================================================
+    # Base name for the project (used in network names and data paths)
+    BASE_NAME=infdb-demo
+
+    # Base path for persistent data storage
+    # Relative paths are relative to the project directory
+    BASE_PATH_BASE=../data/${BASE_NAME}
+
+    # Docker network name for inter-service communication
+    # Pattern: infdb_<instance-name>_network
+    BASE_NETWORK_NAME=infdb_${BASE_NAME}_network
+
+    # Path to config files (used by infdb-init)
+    CONFIG_INFDB_PATH=./configs
+
+
+    # ==============================================================================
+    # POSTGRESQL DATABASE (Core Service)
+    # ==============================================================================
+
+    ...
     ```
 
 

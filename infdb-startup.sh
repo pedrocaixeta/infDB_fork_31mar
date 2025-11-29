@@ -4,23 +4,38 @@
 # ----------------------------------------------------------------------
 # infDB Setup Script
 # ----------------------------------------------------------------------
-if [ ! -f configs/config-infdb.yml ]; then
-    echo "=== Copy config-infdb.yml from template ==="
-    cp configs/config-infdb.yml.template configs/config-infdb.yml
+
+# # Delete .env file if it exists for testing purposes
+# if [ -f .env ]; then
+#     echo "=== Deleting .env file ==="
+#     rm .env
+# fi
+
+# Check if .env file exists, if not create from template
+if [ ! -f .env ]; then
+    echo "=== Creating .env from template ==="
+    cp .env.template .env
+    echo "=== .env file created. Please review and customize it as needed. ==="
 fi
 
-# Pull latest images
+# Load environment variables from .env file
+set -a  # automatically export all variables
+source .env
+set +a
+
+# # Pull latest images
 echo "=== Pull latest docker images ==="
 docker compose pull
 
-# Create infDB docker setup
-echo "=== Create infDB setup compose file ==="
-docker compose -f services/infdb-setup/compose.yml up
+# Create Postgres data directory if it doesn't exist
+if [ ! -z "${SERVICES_POSTGRES_PATH_BASE}" ]; then
+    echo "=== Making Postgres data directory ==="
+    echo "${SERVICES_POSTGRES_PATH_BASE}"
+    mkdir -p "${SERVICES_POSTGRES_PATH_BASE}"
+fi
 
-# Stop and remove existing containers
-docker compose -f compose.yml down -v --remove-orphans
+echo "=== Starting infDB ==="
+docker compose up -d
 
-echo "=== Run infDB ==="
-docker compose -f compose.yml up -d
+echo "=== Successfully started InfDB. ==="
 
-echo "=== Done! InfDB is ready. ==="

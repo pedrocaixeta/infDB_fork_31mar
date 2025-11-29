@@ -50,19 +50,19 @@ log = infdb.get_worker_logger()
 
 
 # ---------- derived configuration constants (centralized env reads) ----------
-PYGEOAPI_PORT: int = int(infdb.get_config_value(["services", "pygeoapi", "port"]))
-PYGEOAPI_HOST: Optional[str] = infdb.get_config_value(["services", "pygeoapi", "base_host"])
+PYGEOAPI_PORT: int = int(read_env("SERVICES_PYGEOAPI_EXPOSED_PORT", required=True))
+PYGEOAPI_HOST: Optional[str] = read_env("SERVICES_PYGEOAPI_BASE_HOST")
 
-POSTGRES_USER: str = infdb.get_config_value(["services", "postgres", "user"]) #read_env("SERVICES_POSTGRES_USER", required=True) or ""
-POSTGRES_PASSWORD: str = infdb.get_config_value(["services", "postgres", "password"])#read_env("SERVICES_POSTGRES_PASSWORD", required=True) or ""
-POSTGRES_DB: str = infdb.get_config_value(["services", "postgres", "db"])#read_env("SERVICES_POSTGRES_DB", required=True) or ""
-POSTGRES_HOST: str = "postgres"
-POSTGRES_PORT: int = 5432
+POSTGRES_USER: str = read_env("SERVICES_POSTGRES_USER", required=True)
+POSTGRES_PASSWORD: str = read_env("SERVICES_POSTGRES_PASSWORD", required=True)
+POSTGRES_DB: str = read_env("SERVICES_POSTGRES_DB", required=True)
+POSTGRES_HOST: str = read_env("SERVICES_POSTGRES_HOST", required=True)
+POSTGRES_PORT: int = int(read_env("SERVICES_POSTGRES_PORT", required=True))
 
-TARGET_EPSG: int = int(infdb.get_config_value(["services", "postgres", "epsg"]))
+TARGET_EPSG: int = int(read_env("SERVICES_POSTGRES_EPSG", required=True))
 FALLBACK_EPSG: int = 25832
 
-FORCE_CRS84_ONLY: bool = (str(read_env("FORCE_CRS84_ONLY", "false")).lower() in ("1", "true", "yes", "y"))
+FORCE_CRS84_ONLY: bool = (str(read_env("SERVICES_PYGEOAPI_FORCE_CRS84_ONLY", "false")).lower() in ("1", "true", "yes", "y"))
 
 FORCE_DB_TRANSFORM_TABLES_RAW: str = read_env("FORCE_DB_TRANSFORM_TABLES", "*") or "*"
 _RAW_ITEMS: List[str] = [t.strip() for t in FORCE_DB_TRANSFORM_TABLES_RAW.split(",") if t.strip()]

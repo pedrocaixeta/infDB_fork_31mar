@@ -46,7 +46,7 @@ This README documents how each service is built and wired, what the watchdog con
                                 └──── connects to Postgres ─────┘
                                     (your CityDB / PostGIS)
 
-All services are joined to a shared Docker network `${BASE_NETWORK_NAME}` so they can resolve each other by container name.
+All services are joined to a shared Docker network `infdb_network` so they can resolve each other by container name.
 
 ---
 

@@ -1,5 +1,7 @@
 services:
     postgres:
+        profiles:
+            - core
         build:
             context: .
             dockerfile: Dockerfile
@@ -9,35 +11,18 @@ services:
             POSTGRES_DB: ${SERVICES_POSTGRES_DB}
             POSTGRES_USER: ${SERVICES_POSTGRES_USER}
             POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
-            SRID: ${SERVICES_POSTGRES_EPSG}   
+            SRID: ${SERVICES_POSTGRES_EPSG}
             CITYDB: ${SERVICES_POSTGRES_DB}
             PGUSER: ${SERVICES_POSTGRES_USER}
+            PGDATA: /infdb-data/postgres
         ports:
             - ${SERVICES_POSTGRES_EXPOSED_PORT}:5432
         volumes:
-            # - ${SERVICES_POSTGRES_PATH_BASE}:/home/postgres/pgdata/data
-            - postgres-data:/home/postgres/pgdata/data
+            - infdb-data:/infdb-data/
         networks:
-            - ${BASE_NETWORK_NAME}
+            - infdb_network
         healthcheck:
-            test:
-                [
-                    "CMD-SHELL",
-                    "pg_isready -U ${SERVICES_POSTGRES_USER} -d ${SERVICES_POSTGRES_DB}",
-                ]
+            test: [ "CMD-SHELL", "pg_isready -U ${SERVICES_POSTGRES_USER} -d ${SERVICES_POSTGRES_DB}" ]
             interval: 10s
             timeout: 5s
             retries: 5
-
-volumes:
-    postgres-data:
-        driver: local
-        driver_opts:
-            type: none
-            o: bind
-            device: ${SERVICES_POSTGRES_PATH_BASE}
-
-
-
-include:
-    - ../infdb-init/compose.yml
