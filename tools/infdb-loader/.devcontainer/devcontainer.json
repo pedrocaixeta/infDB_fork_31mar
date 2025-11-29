@@ -17,7 +17,7 @@
 	// The optional 'workspaceFolder' property is the path VS Code should open by default when
 	// connected. This is typically a file mount in .devcontainer/docker-compose.yml
 	//"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-	"workspaceFolder": "/app",
+	"workspaceFolder": "/workspaces",
 	"features": {
 		"ghcr.io/devcontainers/features/python:1": {}
 	},
@@ -40,8 +40,9 @@
 	"customizations": {
 		"vscode": {
 			"settings": {
-				"python.defaultInterpreterPath": ".venv/bin/python",
-				"python.terminal.activateEnvironment": true
+				"python.defaultInterpreterPath": "infdb-loader/.venv/bin/python",
+				"python.terminal.activateEnvironment": true,
+				"terminal.integrated.cwd": "infdb-loader"
 			},
 			"extensions": [
 				"ms-python.python",
