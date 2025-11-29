@@ -36,7 +36,7 @@ class InfdbClient:
             OperationalError: If the connection cannot be established.
         """
         self.log = log
-        self.db_params: DBParams = infdb_config.get_db_parameters(db_name)
+        self.db_params: DBParams = infdb_config.get_db_parameters()
         try:
             self.conn = psycopg2.connect(
                 host=self.db_params.get("host"),

@@ -9,7 +9,6 @@ from .logger import InfdbLogger
 # ============================== Constants ==============================
 
 DEFAULT_CONFIG_DIR: str = "configs"
-DEFAULT_DB_NAME: str = "postgres"
 DEFAULT_LOG_FILE: str = "infdb.log"
 DEFAULT_LOG_LEVEL: str = "INFO"
 
@@ -32,7 +31,7 @@ class InfDB:
         self.config_path: str = config_path
 
         # Load configuration
-        self.infdbconfig: InfdbConfig = InfdbConfig(tool_name=self.tool_name, config_path=self.config_path)
+        self.infdbconfig: InfdbConfig = InfdbConfig(tool_name=self.tool_name, config_basedir=self.config_path)
 
         # Initialize logging from config, with safe fallbacks
         log_path = self.get_config_value(["logging", "path"], insert_toolname=True) or DEFAULT_LOG_FILE
@@ -55,29 +54,27 @@ class InfDB:
 
     # ------------------ database helpers ------------------
 
-    def connect(self, db_name: str = DEFAULT_DB_NAME) -> InfdbClient:
+    def connect(self) -> InfdbClient:
         """Create a new database client.
 
         Prefer: `with inf.connect(...) as client: ...`.
 
-        Args:
-            db_name: Name of the database to connect to.
+        Args: None
 
         Returns:
             An InfdbClient connected to the requested database.
         """
-        return InfdbClient(self.infdbconfig, self.get_log(), db_name=db_name)
+        return InfdbClient(self.infdbconfig, self.get_log())
 
-    def get_db_engine(self, db_name: str = DEFAULT_DB_NAME):
+    def get_db_engine(self):
         """Return a SQLAlchemy engine for the specified database.
 
-        Args:
-            db_name: Name of the database to connect to.
+        Args: None
 
         Returns:
             A SQLAlchemy Engine instance connected to the same target DB.
         """
-        with self.connect(db_name=db_name) as client:
+        with self.connect() as client:
             return client.get_db_engine()
 
     # ------------------ configuration access ------------------
@@ -114,7 +111,6 @@ class InfDB:
 
         Args:
             keys: Ordered key path within the configuration.
-            keys: Ordered key path within the configuration.
             insert_toolname: If True, prepend the tool name to the key path.
 
         Returns:
@@ -124,3 +120,11 @@ class InfDB:
         if insert_toolname:
             keys.insert(0, self.tool_name)
         return self.infdbconfig.get_path(keys, type=type)
+
+    def get_env_variables(self, key) -> Dict[str, str]:
+        """Return a dictionary of environment variables for this tool.
+
+        Returns:
+            A dictionary of environment variables.
+        """
+        return self.infdbconfig.get_env_parameters(key=key, infdb=self)
