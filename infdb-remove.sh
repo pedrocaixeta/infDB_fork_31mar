@@ -6,6 +6,6 @@
 # ----------------------------------------------------------------------
 
 # Stop and remove existing containers
-docker compose down -v --remove-orphans
+docker compose --profile "*" down -v --remove-orphans
 
-echo "=== Done! InfDB has been removed. ==="
+echo "=== Successfully removed InfDB. ==="
