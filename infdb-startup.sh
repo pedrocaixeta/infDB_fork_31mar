@@ -29,11 +29,9 @@ echo "=== Pull latest docker images ==="
 docker compose pull
 
 # Create Postgres data directory if it doesn't exist
-if [ ! -z "${SERVICES_POSTGRES_PATH_BASE}" ]; then
-    echo "=== Making Postgres data directory ==="
-    echo "${SERVICES_POSTGRES_PATH_BASE}"
-    mkdir -p "${SERVICES_POSTGRES_PATH_BASE}"
-fi
+echo "=== Ensuring data directory exists at ${BASE_PATH_BASE}/${BASE_NAME} ==="
+mkdir -p "${BASE_PATH_BASE}/${BASE_NAME}"
+
 
 echo "=== Starting infDB ==="
 docker compose up -d

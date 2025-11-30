@@ -12,7 +12,7 @@ name: ${BASE_NAME}
 # This network will be created with the name specified in BASE_NETWORK_NAME
 networks:
   infdb_network:
-    name: ${BASE_NETWORK_NAME}
+    name: infdb-${BASE_NAME}_network
     driver: bridge
 
 # ==============================================================================
@@ -63,8 +63,6 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${BASE_PATH_BASE}
+      device: ${BASE_PATH_BASE}/${BASE_NAME}
 
-# Load environment variables from .env file
-env_file:
-  - .env
+# Load environment variables from .env fil
