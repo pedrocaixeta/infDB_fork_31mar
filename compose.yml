@@ -1,0 +1,66 @@
+# ==============================================================================
+# InfDB Docker Compose - Root Configuration
+# ==============================================================================
+# This is the main Docker Compose file that orchestrates all InfDB services.
+# Services are organized by profiles for flexible deployment options.
+#
+# ==============================================================================
+
+name: ${BASE_NAME}
+
+# Define the shared network with the name from environment variable
+# This network will be created with the name specified in BASE_NETWORK_NAME
+networks:
+  infdb_network:
+    name: ${BASE_NETWORK_NAME}
+    driver: bridge
+
+# ==============================================================================
+# CORE SERVICES (Always Required)
+# ==============================================================================
+include:
+  # PostgreSQL Database and Initialization
+  - path: services/postgres/compose.yml
+  - path: services/infdb-init/compose.yml
+
+  # ==============================================================================
+  # ADMIN SERVICES (Profile: admin)
+  # ==============================================================================
+  # pgAdmin - Database administration interface
+  - path: services/pgadmin/compose.yml
+
+  # ==============================================================================
+  # API SERVICES (Profile: api)
+  # ==============================================================================
+  # FastAPI - REST API service
+  - path: services/api/fastapi/compose.yml
+
+  # PyGeoAPI - OGC API service
+  - path: services/api/pygeoapi/compose.yml
+
+  # PostgREST - PostgreSQL REST API
+  - path: services/api/postgrest/compose.yml
+
+  # ==============================================================================
+  # JUPYTER SERVICES (Profile: notebook)
+  # ==============================================================================
+  # Jupyter - Interactive development environment
+  - path: services/jupyter/compose.yml
+
+  # ==============================================================================
+  # QGIS WEB CLIENT (Profile: qwc)
+  # ==============================================================================
+  # QGIS Web Client - Complete web mapping solution
+  - path: services/qgis_webclient/docker-compose.yml
+
+# ==============================================================================
+# VOLUMES
+# ==============================================================================
+volumes:
+  infdb-data:
+    name: ${BASE_NAME}-data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${BASE_PATH_BASE}

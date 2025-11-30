@@ -314,6 +314,12 @@ git reset --hard
 git clean -fdx
 ```
 
+
+### Stop and remove docker
+```bash
+docker stop $(docker ps -a -q)
+docker rm $(docker ps -a -q)
+```
 ## Repository Structure
 
 - **src/**: Main application package
