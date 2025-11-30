@@ -19,9 +19,10 @@ if [ ! -f .env ]; then
 fi
 
 # Load environment variables from .env file
-set -a  # automatically export all variables
-source .env
-set +a
+# Use export to make them available to docker compose
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | grep -v '^$' | xargs)
+fi
 
 # # Pull latest images
 echo "=== Pull latest docker images ==="
