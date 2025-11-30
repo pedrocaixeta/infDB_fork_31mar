@@ -178,3 +178,5 @@ services/api/pygeoapi/pygeoapi-config.yml
 # Jupyter Notebook
 src/notebooks/.Jupyter
 src/notebooks/.local
+
+.env
