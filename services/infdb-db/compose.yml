@@ -12,6 +12,7 @@ services:
             POSTGRES_USER: ${SERVICES_POSTGRES_USER}
             POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
             PGDATA: /infdb-data/postgres
+            SRID: ${SERVICES_POSTGRES_EPSG}
         ports:
             - ${SERVICES_POSTGRES_EXPOSED_PORT}:5432
         volumes:
