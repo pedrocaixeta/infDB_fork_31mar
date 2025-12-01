@@ -88,6 +88,11 @@ Additional community-developed or domain-specific tools can be easily integrated
 ## Getting Started
 To get started, follow these steps below. For more information in detail read the [https://infdb.readthedocs.io/](https://infdb.readthedocs.io/).
 
+### Prequisites
+**Docker**: You can either use Docker Engine: https://docs.docker.com/engine/install/ \
+or Docker Desktop (for a Graphical User Interface): https://docs.docker.com/desktop/
+
+### Steps
 If you are happy with the preconfiguration and default passwords, then just follow these four steps (see detailed instructions in the corresponding sections below):
 
 1. [Prepare folder structure](#Suggested-folder-structure-for-infDB)   
@@ -95,9 +100,13 @@ If you are happy with the preconfiguration and default passwords, then just foll
 3. [Startup infDB](#startup-script)
 4. [Import data and run toolchain](#setup-infdb-loader)
 
-**Important:** We strongly recommend executing all commands on **macOS or Linux**. 
+**Important:** All commands need to be executed on **macOS or Linux**. 
 
-**Windows users:** Please install [Ubuntu as Windows Subsystem for Linux (WSL)](https://apps.microsoft.com/detail/9nz3klhxdjp5?ocid=webpdpshare) from the Microsoft Store. After installation, launch the Linux terminal by searching for "Ubuntu" in your applications.
+**Windows users:** Please install
+- [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+- [Ubuntu as Windows Subsystem for Linux (WSL)](https://documentation.ubuntu.com/wsl/stable/howto/install-ubuntu-wsl2/)
+
+After installation, launch the Linux terminal by searching for "Ubuntu" in your applications.
 
 ### Folder Structure of infDB
 The infDB provides a modular folder structure that allows managing multiple database instances independently. Each instance represents a separate deployment with its own data, configuration, and services—ideal for handling different regions, projects, or environments.
@@ -113,12 +122,17 @@ The recommended structure places all instance data in a shared `data/` folder wh
 
 First of all, create the main `infdb` directory and navigate into it:
 ```bash
-# linux
 mkdir infdb
 cd infdb
 ```
 ### Clone infDB
 Then, you can access the repository either with SSH or HTTPS as you like:
+
+**Windows Users - IMPORTANT:** Clone the repository to your Ubuntu home directory:
+````
+\\wsl.localhost\Ubuntu\home\[PC username]
+````
+(in file explorer Windows shows \\wsl.localhost as Linux)
 
 **SSH vs HTTPS:**
 - **SSH (Secure Shell)**: Uses cryptographic key pairs for authentication. Once set up, you won't need to enter credentials for each operation. Recommended for frequent Git operations.
@@ -151,6 +165,9 @@ In order to start the tools of the use case Linear Heat Density, please use the 
 ```bash
 bash tools/run_linear-heat-density.sh
 ```
+
+**Windows Users**: Execute scripts from Linux terminal (search for Ubunut in applications)
+
 
 ### Setup infDB Configuration
 
@@ -202,13 +219,21 @@ docker compose -f compose.yml up -d
 
 **Hint:** If compose.yml is not found, you either forgot to run the command above or something went wrong. Please check the logs of the setup service.
 
-**Hint:** The infDB will be run as long as you stop it manually as described below even when the machine is restarted.
+**Hint:** The infDB will be run as long as you stop it manually as described below even when 
+the machine is restarted.
+
+**Hint** Ensure that Docker is running. If you use Docker Desktop, start the app.
 
 ### Remove infDB
 To stop all running infDB services and remove them, execute:
 ```bash
 docker compose -f compose.yml down -v
 ```
+
+## Developer on Windows 
+To open the repository in Visual Studio Code (VSC) click the two arrowheads in the lower left corner of VSC and select "Connect to WSL". Then you can open the repository folder from for Linux home directory.
+
+
 
 # Tools Directory
 For detailed information about each tool, their usage, configuration options, and examples, please refer to the [tools/Readme.md](tools/Readme.md) file.
