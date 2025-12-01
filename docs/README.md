@@ -4,26 +4,17 @@ This project uses [Sphinx](https://www.sphinx-doc.org/) for documentation, which
 
 ## 🛠️ Setup
 
-To build the documentation locally:
-
-1. Navigate to the `docs` folder:
-
-    ```bash
-    cd docs
-    ```
-
-2. Install the required dependencies:
-
-    ```bash
-    uv 
-    ```
+To build the documentation locally, navigate to the `docs` folder:
+```bash
+cd docs
+```
 
 ## Building Locally
 
 To build the HTML version of the documentation manually:
 
 ```bash
-make html
+uv run --group docs make html
 ```
 
 ## To automatically rebuild and serve the documentation with live reloading (suggested to use)
