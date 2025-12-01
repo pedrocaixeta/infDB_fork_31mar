@@ -11,14 +11,20 @@ from urllib.parse import quote
 import psycopg2
 from dotenv import load_dotenv
 import yaml
+import logging
 
-
+# Constants
 HERE = Path(__file__).resolve().parent
 PARENT_PATH = HERE.parent
 SCHEMA_PATH = HERE / "schema.yaml"
 BASE_IRI = os.getenv("IRI_BASE", "https://id.need.energy/dataschema")
 
+# Logger
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
+
+# Functions
 def load_env(log) -> None:
     """Load environment variables from a .env file in the parent directory.
 
@@ -52,6 +58,7 @@ def get_conn(log) -> psycopg2.extensions.connection:
         "user": os.getenv("DB_USER"),
         "password": os.getenv("DB_PASSWORD"),
         "dbname": os.getenv("DB_NAME"),
+        "connect_timeout": os.getenv("DB_CONNECT_TIMEOUT", "30")
     }
     log.info(params)
 
@@ -167,7 +174,7 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
     Returns:
         Database metadata dictionary.
     """
-    print("Fetching schema and table list...", flush=True)
+    log.info("Fetching schema and table list...")
     cur = conn.cursor()
     db_name: Optional[str] = (
         conn.get_dsn_parameters().get("dbname") if hasattr(
@@ -207,7 +214,7 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
 
     schemas: Dict[str, Dict[str, object]] = {}
     for catalog_name, schema_name in schema_rows:
-        log.info(f"  Processing schema: {schema_name}", flush=True)
+        log.info(f"  Processing schema: {schema_name}")
         schema_entry = schemas.setdefault(
             schema_name,
             {
@@ -553,7 +560,7 @@ def run(log) -> int:
         return 1
 
     try:
-        metadata = fetch_metadata(conn)
+        metadata = fetch_metadata(log, conn)
     finally:
         conn.close()
     log.info("✅ Finished fetching metadata.")
