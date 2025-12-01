@@ -132,7 +132,7 @@ Then, you can access the repository either with SSH or HTTPS as you like:
 ````
 \\wsl.localhost\Ubuntu\home\[PC username]
 ````
-(in file explorer Windows shows \\wsl.localhost as Linux)
+(in file explorer Windows shows \\wsl.localhost as Linux) and xecute scripts from Linux terminal (search for Ubunut in applications)
 
 **SSH vs HTTPS:**
 - **SSH (Secure Shell)**: Uses cryptographic key pairs for authentication. Once set up, you won't need to enter credentials for each operation. Recommended for frequent Git operations.
@@ -155,27 +155,12 @@ Navigate to the instance directory:
 cd infdb-demo
 ```
 
-### Start infDB
-The startup script simplifies the startup process if you dont want to execute each single step as shown below separately and are happy with the default configurations and passwords:
-```bash
-bash infdb-startup.sh
-```
-
-In order to start the tools of the use case Linear Heat Density, please use the following script:
-```bash
-bash tools/run_linear-heat-density.sh
-```
-
-**Windows Users**: Execute scripts from Linux terminal (search for Ubunut in applications)
-
-
 ### Setup infDB Configuration
-
 Before starting infDB, you need to configure it:
 
 1. **Copy the configuration template:**
     ```bash
-    cp configs/config-infdb.yml.template configs/config-infdb.yml
+    cp .env.template .env
     ```
 
 2. **Edit the environment file** at `.env` to customize your infDB instance settings (database credentials, ports, paths, etc.).
@@ -226,31 +211,33 @@ Before starting infDB, you need to configure it:
     ...
     ```
 
-
-
-After completing the configuration, generate the necessary configuration files by running:
+### Start infDB
+The startup script simplifies the startup process if you dont want to execute each single step as shown below separately and are happy with the default configurations and passwords:
 ```bash
-docker compose -f services/infdb-setup/compose.yml up
+bash infdb-startup.sh
 ```
-
-### Run infDB
-After the configuration files are generated, you can start all infDB services with:
-
-```bash
-docker compose -f compose.yml up -d
-```
-
-**Hint:** If compose.yml is not found, you either forgot to run the command above or something went wrong. Please check the logs of the setup service.
 
 **Hint:** The infDB will be run as long as you stop it manually as described below even when 
 the machine is restarted.
 
 **Hint** Ensure that Docker is running. If you use Docker Desktop, start the app.
 
+
+### Run Linear-Heat-Density
+In order to start the tools of the use case Linear Heat Density, please use the following script:
+```bash
+bash tools/run_linear-heat-density.sh
+```
+
+### Stop infDB
+```bash
+docker compose stop
+```
+
 ### Remove infDB
 To stop all running infDB services and remove them, execute:
 ```bash
-docker compose -f compose.yml down -v
+bash infdb-remove.sh
 ```
 
 ## Developer on Windows 
@@ -272,7 +259,7 @@ PGPASSWORD='citydb_password' psql -h localhost -p 5432 -U citydb_user -d citydb
 ### Configurations (only in addition for QGIS Desktop)
 .pg_service.conf for QGIS to connect to InfDB via service
 ```
-[infdb]
+[infdb_postgres]
 host=localhost
 port=5432
 dbname=citydb
@@ -315,7 +302,7 @@ git clean -fdx
 ```
 
 
-### Stop and remove docker
+### Stop and remove all docker containers
 ```bash
 docker stop $(docker ps -a -q)
 docker rm $(docker ps -a -q)
@@ -323,15 +310,7 @@ docker rm $(docker ps -a -q)
 ## Repository Structure
 
 - **src/**: Main application package
-  - **api/**: API endpoints (cityRouter.py, weatherRouter.py)
-  - **core/**: Core application code (dbConfig.py, etc.)
-  - **db/**: Database models and repositories
-    - **models/**: SQLModel classes for database entities
-    - **repositories/**: Data access layer for database operations
-  - **exceptions/**: Custom exception classes
-  - **externals/**: External API integrations (e.g., weather API)
-  - **schemas/**: Data schemas and validation
-  - **services/**: Business logic services
+  - **infdb_package/**: Business logic services
   - **main.py**: Application entry point
 - **docs/**: Documentation
   - **architecture/**: System architecture documentation
@@ -342,11 +321,14 @@ docker rm $(docker ps -a -q)
   - **source/**: Source files for documentation
   - **img/**: Images used in documentation
 - **dockers/**: Docker configuration files
+- **tools/**: External tools and scripts that interact with infDB
+  - Individual tool directories with their own configurations
+  - **Readme.md**: Detailed documentation for all tools
+- **configs/**: Configuration files for infDB initialization
 - **tests/**: Test suite
   - **unit/**: Unit tests for individual components
   - **integration/**: Tests for component interactions
   - **e2e/**: End-to-end tests for the application
-  - **conftest.py**: Pytest configuration and fixtures
 
 
 ## Development Workflow

@@ -232,7 +232,8 @@ def main():
             how="left",
         ).drop(columns=["bld_objectid"])
 
-        entise_input = entise_input.iloc[:500, :]
+        # For testing purposes, limit to 500 buildings
+        # entise_input = entise_input.iloc[:500, :]
 
         # Initialize the generator
         gen = TimeSeriesGenerator()
