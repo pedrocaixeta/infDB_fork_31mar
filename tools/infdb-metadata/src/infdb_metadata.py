@@ -72,7 +72,7 @@ def _fetch_columns(cur, schema: str, table: str) -> List[Dict[str, object]]:
     cur.execute(
         """
         SELECT table_catalog, table_schema, table_name, column_name, data_type,
-               is_nullable, column_default, ordinal_position
+                is_nullable, column_default, ordinal_position
         FROM information_schema.columns
         WHERE table_schema = %s AND table_name = %s
         ORDER BY ordinal_position
@@ -105,7 +105,53 @@ def _fetch_columns(cur, schema: str, table: str) -> List[Dict[str, object]]:
     return columns
 
 
-def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, object]:
+def _fetch_columns_infdb(infdb_client, schema: str, table: str) -> List[Dict[str, object]]:
+    """Fetch column metadata for a given schema and table.
+
+    Args:
+        infdb_client: InfDB client instance.
+        schema: Schema name.
+        table: Table name.
+
+    Returns:
+        List of column metadata dictionaries.
+    """
+    fetched = infdb_client.execute_query(
+        """
+        SELECT table_catalog, table_schema, table_name, column_name, data_type, is_nullable, column_default, ordinal_position
+        FROM information_schema.columns
+        WHERE table_schema = %s AND table_name = %s
+        ORDER BY ordinal_position
+        """,
+        (schema, table),
+    )
+    columns = []
+    for (
+        table_catalog,
+        table_schema,
+        table_name,
+        column_name,
+        data_type,
+        is_nullable,
+        column_default,
+        ordinal_position,
+    ) in fetched:
+        columns.append(
+            {
+                "table_catalog": table_catalog,
+                "table_schema": table_schema,
+                "table_name": table_name,
+                "column_name": column_name,
+                "data_type": data_type,
+                "is_nullable": is_nullable == "YES",
+                "column_default": column_default,
+                "ordinal_position": int(ordinal_position),
+            }
+        )
+    return columns
+
+
+def fetch_metadata(conn: psycopg2.extensions.connection) -> Dict[str, object]:
     """Fetch database schema metadata.
 
     Args:
@@ -114,7 +160,7 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
     Returns:
         Database metadata dictionary.
     """
-    log.info("Fetching schema and table list...")
+    print("Fetching schema and table list...", flush=True)
     cur = conn.cursor()
     db_name: Optional[str] = (
         conn.get_dsn_parameters().get("dbname") if hasattr(
@@ -154,7 +200,7 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
 
     schemas: Dict[str, Dict[str, object]] = {}
     for catalog_name, schema_name in schema_rows:
-        log.info(f"  Processing schema: {schema_name}")
+        print(f"  Processing schema: {schema_name}", flush=True)
         schema_entry = schemas.setdefault(
             schema_name,
             {
@@ -179,19 +225,18 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
                 SELECT kcu.column_name
                 FROM information_schema.table_constraints tc
                 JOIN information_schema.key_column_usage kcu
-                  ON tc.constraint_name = kcu.constraint_name
-                 AND tc.table_schema = kcu.table_schema
+                    ON tc.constraint_name = kcu.constraint_name
+                    AND tc.table_schema = kcu.table_schema
                 WHERE tc.constraint_type = 'PRIMARY KEY'
-                  AND tc.table_schema = %s
-                  AND tc.table_name = %s
+                    AND tc.table_schema = %s
+                    AND tc.table_name = %s
                 ORDER BY kcu.ordinal_position
                 """,
                 (table_schema, table_name),
             )
             pk_names = [row[0] for row in cur.fetchall()]
             column_by_name = {c["column_name"]: c for c in columns}
-            primary_key = [column_by_name[name]
-                           for name in pk_names if name in column_by_name]
+            primary_key = [column_by_name[name] for name in pk_names if name in column_by_name]
 
             table_entry = {
                 "id": make_iri("table", db_name, table_schema, table_name),
@@ -203,6 +248,105 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
             schema_entry["tables"].append(table_entry)
 
     cur.close()
+
+    if not schemas:
+        return {}
+
+    return {
+        "id": make_iri("database", db_name),
+        "name": db_name,
+        "schemas": list(schemas.values()),
+    }
+
+
+def fetch_metadata_infdb(log, infdb_client) -> Dict[str, object]:
+    """Fetch database schema metadata.
+
+    Args:
+        infdb_client: InfDB client instance.
+
+    Returns:
+        Database metadata dictionary.
+    """
+    log.info("Fetching schema and table list...")
+    db_name = os.getenv("DB_NAME")
+
+    schema_rows = infdb_client.execute_query(
+        """
+        SELECT catalog_name, schema_name
+        FROM information_schema.schemata
+        WHERE schema_name NOT IN ('pg_catalog', 'information_schema')
+        AND schema_name NOT LIKE '_timescaledb_%'
+        AND schema_name NOT LIKE 'pg_toast%'
+        AND schema_name NOT LIKE 'pg_temp%'
+        ORDER BY schema_name
+        """
+    )
+
+    table_rows = infdb_client.execute_query(
+        """
+        SELECT table_catalog, table_schema, table_name, table_type
+        FROM information_schema.tables
+        WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+        ORDER BY table_schema, table_name
+        """
+    )
+    # table_rows = cur.fetchall()
+
+    tables_by_schema: Dict[str, List[tuple]] = {}
+    for table_catalog, table_schema, table_name, table_type in table_rows:
+        tables_by_schema.setdefault(table_schema, []).append(
+            (table_catalog, table_schema, table_name, table_type)
+        )
+
+    schemas: Dict[str, Dict[str, object]] = {}
+    for catalog_name, schema_name in schema_rows:
+        log.info(f"  Processing schema: {schema_name}")
+        schema_entry = schemas.setdefault(
+            schema_name,
+            {
+                "id": make_iri("schema", db_name, schema_name),
+                "catalog_name": catalog_name,
+                "schema_name": schema_name,
+                "tables": [],
+            },
+        )
+        for table_catalog, table_schema, table_name, table_type in tables_by_schema.get(
+            schema_name, []
+        ):
+            # NOTE: print out tables in a schema
+            # print(f"    Table: {table_name}", flush=True)
+            columns = _fetch_columns_infdb(infdb_client, table_schema, table_name)
+            for col in columns:
+                col["id"] = make_iri(
+                    "column", db_name, table_schema, table_name, col["column_name"])
+
+            pk_names_fetched = infdb_client.execute_query(
+                """
+                SELECT kcu.column_name
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                    AND tc.table_schema = kcu.table_schema
+                WHERE tc.constraint_type = 'PRIMARY KEY'
+                    AND tc.table_schema = %s
+                    AND tc.table_name = %s
+                ORDER BY kcu.ordinal_position
+                """,
+                (table_schema, table_name),
+            )
+            pk_names = [row[0] for row in pk_names_fetched]
+            column_by_name = {c["column_name"]: c for c in columns}
+            primary_key = [column_by_name[name] for name in pk_names if name in column_by_name]
+
+            table_entry = {
+                "id": make_iri("table", db_name, table_schema, table_name),
+                "table_name": table_name,
+                "table_type": table_type,
+                "columns": columns,
+                "primary_key": primary_key,
+            }
+            schema_entry["tables"].append(table_entry)
 
     if not schemas:
         return {}
@@ -387,7 +531,7 @@ def run(log) -> int:
     try:
         conn = get_conn(log)
     except Exception as exc:
-        log.error(f"Failed to connect to database: {exc}", file=sys.stderr)
+        log.error(f"Failed to connect to database: {exc}")
         return 1
 
     try:
@@ -448,16 +592,82 @@ def run(log) -> int:
         try:
             generate_rdf(SCHEMA_PATH, rdf_input_path, rdf_output)
         except Exception as exc:
-            log.info(
-                f"Skipping RDF generation because LinkML tooling is unavailable: {exc}",
-                file=sys.stderr,
+            log.error(
+                f"Skipping RDF generation because LinkML tooling is unavailable: {exc}"
             )
             log.info(
                 "To generate RDF manually, run "
                 f"`linkml-convert {rdf_input_path} --schema {SCHEMA_PATH} "
-                f"--target-class Database --output {rdf_output} --output-format ttl`.",
-                file=sys.stderr,
+                f"--target-class Database --output {rdf_output} --output-format ttl`."
             )
+    finally:
+        try:
+            rdf_input_path.unlink()
+        except OSError:
+            pass
+    return 0
+
+
+def run_with_infdb(infdb_client, log) -> int:
+    """Main execution function with InfDB client.
+    """
+    args = parse_args()
+    try:
+        metadata = fetch_metadata_infdb(log, infdb_client)
+    except Exception as exc:
+        log.error(f"Failed to connect to database or fetch metadata: {exc}")
+        return 1
+    log.info("✅ Finished fetching metadata.")
+
+    available_schemas = print_available_schemas(log, metadata)
+    if not available_schemas:
+        return 0
+
+    chosen = args.schemas
+    if not chosen:
+        chosen = prompt_schema_selection(log, available_schemas)
+
+    if chosen:
+        log.info("Filtering to selected schemas...")
+    metadata = filter_schemas(metadata, chosen)
+
+    selected_schemas = [s.get("schema_name")
+                        for s in metadata.get("schemas", [])]
+    log.info(selected_schemas)
+    if chosen and not selected_schemas:
+        log.error(f"No matching schemas found for: {', '.join(chosen)}")
+        return 1
+    if chosen:
+        log.info(f"Including schemas: {', '.join(selected_schemas)}")
+    db_label = metadata.get("name") or "database"
+
+    out_base = Path(os.getenv("OUTPUT_DIR", "/app/mnt/data"))
+    out_base.mkdir(parents=True, exist_ok=True)
+
+    data_path = out_base / f"{db_label}_schema.json"
+    yaml_path = out_base / f"{db_label}_schema.yaml"
+    wrapped = wrap_database(metadata)
+    log.info("Writing JSON and YAML outputs...")
+    write_metadata_file(log, wrapped, data_path)
+    write_metadata_yaml(log, wrapped, yaml_path)
+
+    rdf_input_path = Path(tempfile.mkstemp(
+        prefix="rdf_input_", suffix=".json", dir=str(HERE))[1])
+    try:
+        write_metadata_file(log, metadata, rdf_input_path, quiet=True)
+
+        rdf_output = data_path.with_suffix(".ttl")
+        try:
+            generate_rdf(log, SCHEMA_PATH, rdf_input_path, rdf_output)
+        except Exception as exc:
+            log.error(
+                f"Skipping RDF generation because LinkML tooling is unavailable: {exc}"
+            )
+            log.info(
+                "To generate RDF manually, run "
+                f"`linkml-convert {rdf_input_path} --schema {SCHEMA_PATH} "
+                    f"--target-class Database --output {rdf_output} --output-format ttl`."
+                )
     finally:
         try:
             rdf_input_path.unlink()
