@@ -23,7 +23,7 @@ exclude_patterns = []
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_static_path = ['css']
-html_theme = "sphinx_rtd_theme"
+html_theme = "sphinx_material"
 html_css_files = [
     'extra.css',
 ]
