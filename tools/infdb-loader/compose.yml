@@ -17,6 +17,7 @@ services:
             - ${CONFIG_INFDB_ENV_PATH}
         environment:
             - UV_LINK_MODE=copy
+        user: "${UID}:${GID}"
 
 volumes:
     infdb-loader-data:

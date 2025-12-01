@@ -4,6 +4,9 @@
 # ----------------------------------------------------------------------
 # infDB Setup Script
 # ----------------------------------------------------------------------
+# Export UID and GID for Docker Compose
+export UID=$(id -u)
+export GID=$(id -g)
 
 # # Delete .env file if it exists for testing purposes
 # if [ -f .env ]; then
