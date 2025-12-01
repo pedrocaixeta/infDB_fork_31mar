@@ -60,8 +60,6 @@ The foundation is a PostgreSQL database enhanced with TimescaleDB, PostGIS, PGRo
 
 ### Services
 Integrated, preconfigured services extending the infDB:
-
-
 - [pgAdmin](https://www.pgadmin.org/): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
 - [FastAPI](https://fastapi.tiangolo.com/): REST endpoints (/city, /weather) with OpenAPI docs and validated access to 3D, geospatial, and time-series data.
 - [Jupyter](https://jupyter.org/): Notebook environment (dependencies and env vars preloaded) for exploratory queries, ETL prototypes, reproducible analysis.
@@ -75,7 +73,6 @@ These services provide core functionalities and support a seamless path from ing
 Tools are external software, scripts, or workflows that interact with infDB through its standardized APIs and database schemas, enabling specialized analysis and processing capabilities.
 
 #### Currently Integrated Tools
-
 The following tools are currently integrated with infDB:
 
 - **infDB-loader**: Containerized solution for automated ingestion of public open data for Germany
@@ -230,6 +227,7 @@ bash tools/run_linear-heat-density.sh
 ```
 
 ### Stop infDB
+To stop all running infDB services, execute:
 ```bash
 docker compose stop
 ```
@@ -238,6 +236,12 @@ docker compose stop
 To stop all running infDB services and remove them, execute:
 ```bash
 bash infdb-remove.sh
+```
+
+### Remove infdb-loader data
+To stop all running infDB services and remove them, execute:
+```bash
+tbd
 ```
 
 ## Developer on Windows 
@@ -333,15 +337,14 @@ docker rm $(docker ps -a -q)
 
 ## Development Workflow
 
-1. **Set up the environment** following the installation instructions.
-2. **Open an issue** to discuss new features, bugs, or changes.
-3. **Create a new branch** for each feature or bug fix based on an issue.
-4. **Implement the changes** following the coding guidelines.
-5. **Write tests** for new functionality or bug fixes.
-6. **Run tests** to ensure the code works as expected.
-7. **Create a merge request** to integrate your changes.
-8. **Address review comments** and update your code as needed.
-9. **Merge the changes** after approval.
+1. **Open an issue** to discuss new features, bugs, or changes.
+2. **Create a new branch** for each feature or bug fix based on an issue.
+3. **Implement the changes** following the coding guidelines.
+4. **Write tests** for new functionality or bug fixes.
+5. **Run tests** to ensure the code works as expected.
+6. **Create a merge request** to integrate your changes.
+7. **Address review comments** and update your code as needed.
+8. **Merge the changes** after approval.
 
 
 ## CI/CD Workflow
