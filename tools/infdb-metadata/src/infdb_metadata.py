@@ -21,6 +21,9 @@ BASE_IRI = os.getenv("IRI_BASE", "https://id.need.energy/dataschema")
 
 def load_env(log) -> None:
     """Load environment variables from a .env file in the parent directory.
+
+    Args:
+        log: Logger instance.
     """
     log.info("Loading environment variables...")
     load_dotenv(PARENT_PATH / ".env")
@@ -36,6 +39,9 @@ def make_iri(*parts: str) -> str:
 
 def get_conn(log) -> psycopg2.extensions.connection:
     """Establish a connection to the PostgreSQL database using environment variables.
+
+    Args:
+        log: Logger instance.
     """
     db_url = os.getenv("DB_URL")
     if db_url:
@@ -151,10 +157,11 @@ def _fetch_columns_infdb(infdb_client, schema: str, table: str) -> List[Dict[str
     return columns
 
 
-def fetch_metadata(conn: psycopg2.extensions.connection) -> Dict[str, object]:
+def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, object]:
     """Fetch database schema metadata.
 
     Args:
+        log: Logger instance.
         conn: Database connection.
 
     Returns:
@@ -200,7 +207,7 @@ def fetch_metadata(conn: psycopg2.extensions.connection) -> Dict[str, object]:
 
     schemas: Dict[str, Dict[str, object]] = {}
     for catalog_name, schema_name in schema_rows:
-        print(f"  Processing schema: {schema_name}", flush=True)
+        log.info(f"  Processing schema: {schema_name}", flush=True)
         schema_entry = schemas.setdefault(
             schema_name,
             {
@@ -263,6 +270,7 @@ def fetch_metadata_infdb(log, infdb_client) -> Dict[str, object]:
     """Fetch database schema metadata.
 
     Args:
+        log: Logger instance.
         infdb_client: InfDB client instance.
 
     Returns:
@@ -362,6 +370,7 @@ def print_available_schemas(log, metadata: Dict[str, object]) -> List[str]:
     """Print available schemas from the metadata.
 
     Args:
+        log: Logger instance.
         metadata: The database metadata dictionary.
 
     Returns:
@@ -381,6 +390,7 @@ def prompt_schema_selection(log, available: List[str]) -> Optional[List[str]]:
     """Prompt the user to select schemas.
 
     Args:
+        log: Logger instance.
         available: List of available schema names.
 
     Returns:
@@ -406,6 +416,7 @@ def filter_schemas(metadata: Dict[str, object], schemas: Optional[List[str]]) ->
     Args:
         metadata: The database metadata dictionary.
         schemas: List of schema names to include.
+
     Returns:
         Filtered database metadata dictionary.
     """
@@ -421,6 +432,7 @@ def write_metadata_file(log, data: Dict[str, object], path: Path, quiet: bool = 
     """Write metadata to a JSON file.
 
     Args:
+        log: Logger instance.
         data: The metadata dictionary to write.
         path: The file path to write the JSON data to.
         quiet: If True, suppress output messages.
@@ -433,7 +445,9 @@ def write_metadata_file(log, data: Dict[str, object], path: Path, quiet: bool = 
 
 def write_metadata_yaml(log, data: Dict[str, object], path: Path) -> None:
     """Write metadata to a YAML file.
+    
     Args:
+        log: Logger instance.
         data: The metadata dictionary to write.
         path: The file path to write the YAML data to.
     """
@@ -458,6 +472,7 @@ def generate_rdf(log, schema_path: Path, data_path: Path, output_path: Path) -> 
     """Generate RDF (TTL) from LinkML JSON using linkml-convert.
 
     Args:
+        log: Logger instance.
         schema_path: Path to the LinkML schema file.
         data_path: Path to the LinkML JSON data file.
         output_path: Path to write the RDF (TTL) output.
@@ -525,6 +540,9 @@ def parse_args() -> argparse.Namespace:
 
 def run(log) -> int:
     """Main execution function.
+
+    Args:
+        log: Logger instance.
     """
     args = parse_args()
     load_env(log)
@@ -546,7 +564,7 @@ def run(log) -> int:
 
     chosen = args.schemas
     if not chosen:
-        chosen = prompt_schema_selection(available_schemas)
+        chosen = prompt_schema_selection(log, available_schemas)
 
     if chosen:
         log.info("Filtering to selected schemas...")
@@ -590,7 +608,7 @@ def run(log) -> int:
 
         rdf_output = data_path.with_suffix(".ttl")
         try:
-            generate_rdf(SCHEMA_PATH, rdf_input_path, rdf_output)
+            generate_rdf(log, SCHEMA_PATH, rdf_input_path, rdf_output)
         except Exception as exc:
             log.error(
                 f"Skipping RDF generation because LinkML tooling is unavailable: {exc}"
@@ -610,6 +628,10 @@ def run(log) -> int:
 
 def run_with_infdb(infdb_client, log) -> int:
     """Main execution function with InfDB client.
+
+    Args:
+        infdb_client: InfDB client instance.
+        log: Logger instance.
     """
     args = parse_args()
     try:

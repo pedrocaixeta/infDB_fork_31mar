@@ -91,7 +91,7 @@ LinkML model describing the `Database` class used for JSON/YAML/TTL serializatio
 Defines the runtime container, mounts `./mnt` for outputs, and wires environment variables.
 
 ## Development Workflow
-
+### Without infdb package
 1. **Configure credentials**
    - Add a `.env` next to `compose.yml` with either `DB_URL` or `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`.
    - Optionally set `OUTPUT_DIR` to override `/app/mnt/data`.
@@ -108,6 +108,12 @@ Defines the runtime container, mounts `./mnt` for outputs, and wires environment
    - JSON/YAML saved under `/app/mnt/data` (mounted to `mnt/data` on the host).
    - TTL is created when `linkml-convert` is available; otherwise the script prints how to generate it manually.
 
+### With infdb package
+1. **Configure credentials**
+With infdb package, you will configure the database connection in ./configs/config-infdb-metadata.yml file instead of in .env file.
+
+2. **Same workflow as without infdb package**
+
 ## License and Citation
 
 This tool is licensed under the **MIT License** (MIT).  
@@ -118,10 +124,10 @@ Copyright: [Institute of Energy Efficiency and Sustainable Building e3D, RWTH Aa
 
 ## Contact
 
-[Minsheng Xu]  
-[Research Assosiate]  
-[Institute of Energy Efficiency and Sustainable Building e3D, RWTH Aachen]  
-Email: [xu@e3d.rwth-aachen.de]  
+Minsheng Xu  
+Research Assosiate 
+Institute of Energy Efficiency and Sustainable Building e3D, RWTH Aachen  
+Email: xu@e3d.rwth-aachen.de
 
 ---
 
