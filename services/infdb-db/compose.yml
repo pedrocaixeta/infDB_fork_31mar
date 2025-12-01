@@ -11,9 +11,6 @@ services:
             POSTGRES_DB: ${SERVICES_POSTGRES_DB}
             POSTGRES_USER: ${SERVICES_POSTGRES_USER}
             POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
-            SRID: ${SERVICES_POSTGRES_EPSG}
-            CITYDB: ${SERVICES_POSTGRES_DB}
-            PGUSER: ${SERVICES_POSTGRES_USER}
             PGDATA: /infdb-data/postgres
         ports:
             - ${SERVICES_POSTGRES_EXPOSED_PORT}:5432

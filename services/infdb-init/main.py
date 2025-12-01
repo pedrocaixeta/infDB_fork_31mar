@@ -45,7 +45,7 @@ def main() -> None:
     log.info("Starting %s tool", inf.get_toolname())
 
     # DB parameters for 3DCityDB install
-    params = inf.infdbconfig.get_db_parameters("postgres")
+    params = inf.infdbconfig.get_db_parameters()
 
     # Ensure all env values are strings
     env = build_citydb_env(params)

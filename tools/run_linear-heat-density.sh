@@ -6,6 +6,7 @@
 # ----------------------------------------------------------------------
 
 echo "=== Run infDB-loader ==="
+mkdir -p ../data/infdb-loader
 docker compose -f tools/infdb-loader/compose.yml up
 
 echo "=== Run infdb-basedata ==="
