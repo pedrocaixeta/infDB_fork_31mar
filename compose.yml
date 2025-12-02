@@ -63,5 +63,3 @@ volumes:
       type: none
       o: bind
       device: ${BASE_PATH_BASE}/${BASE_NAME}
-
-# Load environment variables from .env fil

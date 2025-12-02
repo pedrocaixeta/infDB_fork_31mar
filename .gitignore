@@ -169,7 +169,6 @@ uv.lock
 # QWC Data
 services/qgis_webclient/volumes/solr/data/*
 services/qgis_webclient/volumes/db/*
-services/qgis_webclient/pg_service.conf
 
 # APIs configuration
 services/api/postgrest/postgrest.conf
