@@ -1345,11 +1345,30 @@ def run_process_streets(
     seg_table = f"{output_schema}.{segments_table_name}"
     node_table = f"{output_schema}.{nodes_table_name}"
 
-    log.info(f"Writing segments → {seg_table}")
-    final_out.to_postgis(seg_table, engine, if_exists="replace", schema=output_schema, index=False)
+    log.info(f"Writing segments to infdb → {seg_table}")
+    final_out.to_postgis(
+        segments_table_name,
+        engine,
+        if_exists="replace",
+        schema=output_schema,
+        index=False,
+    )
 
-    log.info(f"Writing nodes → {node_table}")
-    nodes.to_postgis(node_table, engine, if_exists="replace", schema=output_schema, index=False)
+    log.info(f"Writing nodes to infdb → {node_table}")
+    nodes.to_postgis(
+        nodes_table_name,
+        engine,
+        if_exists="replace",
+        schema=output_schema,
+        index=False,
+    )
+
+    # ----------------------------------------------------------
+    # STEP 12b — OPTIONAL: write GeoJSON to local filesystem
+    # ----------------------------------------------------------
+    output_dir = infdb.get_config_value(["process-streets", "data", "output_dir"])
+    ...
+
 
     # ----------------------------------------------------------
     # STEP 12b — OPTIONAL: write GeoJSON to local filesystem
