@@ -478,7 +478,7 @@ def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_nam
     tmp_gpkg = None
     
     if scope:
-        clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb, method='exact')
+        clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb)
 
         if clip_wkt:
             # Save clip geometry to temp GPKG for ogr2ogr
@@ -589,7 +589,7 @@ def fast_copy_points_csv(
         # Step 5: Get clipping WHERE clause
         where_clause = ""
         if clip_to_scope:
-            clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb, method='exact')
+            clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb)
 
             if clip_wkt:
                 where_clause = f"""
@@ -629,7 +629,7 @@ def fast_copy_points_csv(
         conn.close()
 
 
-def get_clip_geometry(target_crs: int, infdb: InfDB, method: str = 'exact'):
+def get_clip_geometry(target_crs: int, infdb: InfDB):
     """
     Get clipping geometry for the configured scope.
     
@@ -638,8 +638,6 @@ def get_clip_geometry(target_crs: int, infdb: InfDB, method: str = 'exact'):
     
     Parameters:
         target_crs: Target EPSG code (e.g., 25832 for UTM32N)
-        method: 'exact' = use actual boundaries (accurate)
-                'bbox' = use bounding box only (faster, less accurate)
     
     Returns:
         tuple: (geometry_wkt, method_used, row_count_estimate) or (None, None, None) if no clipping
@@ -654,22 +652,60 @@ def get_clip_geometry(target_crs: int, infdb: InfDB, method: str = 'exact'):
     # Transform to target CRS
     gdf_transformed = gdf_envelope.to_crs(epsg=target_crs)
     
-    if method == 'bbox':
-        # Use bounding box (matches old pandas behavior)
-        minx, miny, maxx, maxy = gdf_transformed.total_bounds
-        bbox_wkt = f"POLYGON(({minx} {miny},{maxx} {miny},{maxx} {maxy},{minx} {maxy},{minx} {miny}))"
-        log.info(f"Using bounding box clip: ({minx:.0f}, {miny:.0f}, {maxx:.0f}, {maxy:.0f})")
-        return bbox_wkt, 'bbox', None
-    
-    elif method == 'exact':
-        # Use actual boundary polygons (most accurate)
-        clip_geom = gdf_transformed.unary_union
-        clip_wkt = clip_geom.wkt
-        area_km2 = clip_geom.area / 1_000_000
-        log.info(f"Using exact geometry clip: {len(gdf_transformed)} polygons, {area_km2:.1f} km²")
-        return clip_wkt, 'exact', len(gdf_transformed)
-    
+    # Use actual boundary polygons (most accurate)
+    clip_geom = gdf_transformed.unary_union
+    clip_wkt = clip_geom.wkt
+    area_km2 = clip_geom.area / 1_000_000
+    log.info(f"Using exact geometry clip: {len(gdf_transformed)} polygons, {area_km2:.1f} km²")
+    return clip_wkt, 'exact', len(gdf_transformed)
+
+
+def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
+    """
+    Return one exact clipping geometry per configured scope.
+
+    Returns a list of dicts:
+      {
+        "scope": "<AGS prefix from config>",
+        "landkreis": "<first 5 digits>",
+        "geom": shapely geometry (in target_crs),
+        "bbox": (minx, miny, maxx, maxy),
+      }
+    Intended for cases where you need to process each scope separately:
+    For DGM1: build a separate -te + -cutline + output raster for each AGS.
+    That avoids one huge raster with a lot of NoData; you get one small raster per municipality.
+    """
+    scope_cfg = infdb.get_config_value([infdb.get_toolname(), "scope"]) or []
+    log = infdb.get_worker_logger()
+
+    if isinstance(scope_cfg, str):
+        scope_cfg = [scope_cfg]
+
+    # get_all_envelops() already returns a list of GDFs per scope prefix, in the same order
+    envelopes = get_all_envelops(infdb)
+
+    results = []
+    for scope_prefix, gdf in zip(scope_cfg, envelopes):
+        if gdf is None or gdf.empty:
+            log.warning("No envelope polygons found for scope %s", scope_prefix)
+            continue
+
+        gdf_tr = gdf.to_crs(epsg=target_crs)
+        geom = gdf_tr.unary_union
+        minx, miny, maxx, maxy = geom.bounds
+
+        results.append({
+            "scope": scope_prefix,
+            "landkreis": scope_prefix[:5],
+            "geom": geom,
+            "bbox": (minx, miny, maxx, maxy),
+        })
+
+    if not results:
+        log.info("No valid per-scope clip geometries; no clipping will be applied.")
     else:
-        raise ValueError(f"Unknown clip method: {method}. Use 'exact' or 'bbox'.")
+        log.info(
+            "Prepared %d per-scope clip geometries (exact).", len(results)
+        )
 
-
+    return results

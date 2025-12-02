@@ -6,7 +6,9 @@ from pathlib import Path
 from sqlalchemy import text
 from typing import Dict, List, Optional
 from shapely import wkt as shapely_wkt
-from shapely.geometry import mapping
+from shapely.geometry import mapping, Polygon
+import geopandas as gpd
+from shapely.ops import unary_union
 
 from infdb import InfDB 
 from . import utils
@@ -60,18 +62,25 @@ def load(infdb: InfDB) -> bool:
 
         # -------------------- Configuration Setup --------------------
         # Get base directory for downloaded/processed files
-        base_path = Path(infdb.get_config_path(
-            [infdb.get_toolname(), "sources", "opendata_bavaria", "path", "base"], 
-            type="loader"
-        ))
+        base_path = Path(
+            infdb.get_config_path(
+                [infdb.get_toolname(), "sources", "opendata_bavaria", "path", "base"],
+                type="loader",
+            )
+        )
         base_path.mkdir(parents=True, exist_ok=True)
 
         # Read dataset configurations
-        datasets = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "datasets"]) or {}
+        datasets = infdb.get_config_value(
+            [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets"]
+        ) or {}
 
         # -------------------- Database Connection Parameters --------------------
         db_params = infdb.get_db_parameters_dict()
-        pgurl = f'postgresql://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}:{db_params["exposed_port"]}/{db_params["db"]}'
+        pgurl = (
+            f'postgresql://{db_params["user"]}:{db_params["password"]}'
+            f'@{db_params["host"]}:{db_params["exposed_port"]}/{db_params["db"]}'
+        )
         target_epsg = db_params["epsg"]
 
         # -------------------- Load DGM1 (Digital Terrain Model) --------------------
@@ -103,209 +112,192 @@ def load(infdb: InfDB) -> bool:
 
 # ====================================================================================
 # DGM1 LOADER - Digital Terrain Model (Elevation Raster Data)
+# SIMPLE VERSION: just download all tiles per Landkreis and import into PostGIS
 # ====================================================================================
 
 def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
-    """Load DGM1 clipped exactly to the configured scope polygon."""
+    """
+    Load DGM1 (Geländemodell 1m) for each configured AGS scope.
 
-    # ---------------------- Configuration -------------------------
-    config_base = [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "gelaendemodell_1m"]
+    For every scope (8-digit AGS):
+      * download the corresponding meta4 / tiles
+      * unzip the archives
+      * clip all tiles exactly to the scope polygon via gdalwarp
+      * import the clipped raster into <schema>.<table_name>_<AGS>
+    """
 
-    # Read loader configuration
-    url_template = infdb.get_config_value(config_base + ["url"])  # URL with #scope placeholder
-    schema = infdb.get_config_value(config_base + ["schema"])
-    table = infdb.get_config_value(config_base + ["table_name"])
-    raw_table = f"{table}_raw"
-    source_srid = int(infdb.get_config_value(config_base + ["srid"]))  # UTM32N
-    target_resolution_meters = float(infdb.get_config_value(config_base + ["target_resolution"]))
+    log = infdb.get_worker_logger()
 
-    # Create output directory structure
+    # ---------- 1. Read configuration ----------
+    source_cfg = [infdb.get_toolname(), "sources", "opendata_bavaria"]
+    dgm1_cfg = source_cfg + ["datasets", "gelaendemodell_1m"]
+
+    url_template = infdb.get_config_value(dgm1_cfg + ["url"])
+    schema = (
+        infdb.get_config_value(dgm1_cfg + ["schema"])
+        or infdb.get_config_value(source_cfg + ["schema"])
+        or "public"
+    )
+    table_base = (
+        infdb.get_config_value(dgm1_cfg + ["table_name"]) or "gelaendemodell_1m"
+    )
+    source_srid = int(
+        infdb.get_config_value(dgm1_cfg + ["srid"]) or (target_epsg or 25832)
+    )
+    target_res = float(
+        infdb.get_config_value(dgm1_cfg + ["target_resolution"]) or 1.0
+    )
+
+    log.info(
+        "DGM1: schema=%s base_table=%s srid=%s target_res=%.2f",
+        schema,
+        table_base,
+        source_srid,
+        target_res,
+    )
+
     dgm1_base_dir = base_path / "gelaendemodell_1m"
     dgm1_base_dir.mkdir(parents=True, exist_ok=True)
 
-    # Prepare fresh database tables
-    with infdb.connect() as db:
-        db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
-        db.execute_query(f"DROP TABLE IF EXISTS {schema}.{raw_table};")
+    # ---------- 2. Read scopes (8-digit AGS) and geometries ----------
+    scopes = infdb.get_config_value([infdb.get_toolname(), "scope"]) or []
+    if isinstance(scopes, str):
+        scopes = [scopes]
 
-    # ==================== 2. SCOPE DETERMINATION ====================
-    # Get municipality codes (AGS - Amtlicher Gemeindeschlüssel)
-    configured_scope_values = infdb.get_config_value([infdb.get_toolname(), "scope"]) or []
-    if isinstance(configured_scope_values, str):
-        configured_scope_values = [configured_scope_values]
-
-    # Normalize to 8-digit AGS codes
-    ags_municipality_codes = []
-    for raw in configured_scope_values:
-        v = str(raw).strip()
-        if v:
-            ags_municipality_codes.append(v.zfill(8)[:8])
-
-    if not ags_municipality_codes:
-        log.warning("DGM1: No valid AGS municipality codes configured; skipping loader.")
+    scopes = [s.strip() for s in scopes if str(s).strip()]
+    if not scopes:
+        log.warning("DGM1: no scopes configured – nothing to do.")
         return
 
-    # Extract Landkreis codes (first 5 digits) - data is distributed by district
-    landkreis_download_codes = sorted({ags[:5] for ags in ags_municipality_codes})
-    log.info("DGM1: Landkreise: " + ", ".join(landkreis_download_codes))
+    # One geometry per scope in the raster SRID
+    scope_geoms = utils.get_clip_geometries_per_scope(source_srid, infdb)
+    if not scope_geoms:
+        log.warning("DGM1: no scope geometries available – aborting.")
+        return
 
-    # ==================== 3. EXACT CLIPPING PREPARATION ====================
-    # Get precise scope geometry (union of all municipalities)
-    clip_wkt, clip_method, _ = utils.get_clip_geometry(source_srid, infdb=infdb, method="exact")
+    # Map AGS -> geometry for quick lookup
+    geom_by_scope = {}
+    for sc in scope_geoms:
+        ags = str(sc.get("scope") or sc.get("ags") or "").strip()
+        if ags:
+            geom_by_scope[ags] = sc["geom"]
 
-    clip_extent_args = ""  # For gdalwarp bounding box
-    cutline_args = ""       # For gdalwarp polygon clipping
-    scope_geojson_path = None
-
-    if clip_wkt:
-        try:
-            # Parse WKT geometry and extract bounding box
-            geom = shapely_wkt.loads(clip_wkt)
-            minx, miny, maxx, maxy = geom.bounds
-            clip_extent_args = f"-te {minx} {miny} {maxx} {maxy} -te_srs EPSG:{source_srid}"
-            log.info(f"DGM1: Using exact-geometry bbox: {minx},{miny},{maxx},{maxy}")
-
-            # Export scope polygon as GeoJSON for gdalwarp cutline
-            scope_geojson_path = dgm1_base_dir / "dgm1_scope_clip.geojson"
-            fc = {
-                "type": "FeatureCollection",
-                "features": [
-                    {
-                        "type": "Feature",
-                        "properties": {},
-                        "geometry": mapping(geom)
-                    }
-                ]
-            }
-            scope_geojson_path.write_text(json.dumps(fc))
-            
-            # Configure gdalwarp to clip to polygon and set outside areas to NoData
-            cutline_args = (
-                f'-cutline "{scope_geojson_path}" '
-                f'-cutline_srs EPSG:{source_srid} '
-                "-crop_to_cutline "  # Trim to polygon extent
-                "-dstnodata 0 "      # Set pixels outside polygon to 0 (transparent)
-            )
-        except Exception as e:
-            log.error(f"DGM1: Failed to prepare exact clip geometry → {e}")
-            clip_extent_args = ""
-            cutline_args = ""
-            scope_geojson_path = None
-
-    # ==================== 4. DATABASE CONNECTION SETUP ====================
+    # DB connection string for raster2pgsql
     pgurl = utils._pg_connstring_for_psql(infdb)
-    psql_command = f'psql --no-psqlrc -q -v ON_ERROR_STOP=1 -X "{pgurl}"'
+    psql_cmd = f'psql --no-psqlrc -q -v ON_ERROR_STOP=1 -X "{pgurl}"'
 
-    any_data_imported = False
+    # ---------- 3. Per-scope processing ----------
+    for ags in scopes:
+        if ags not in geom_by_scope:
+            log.warning("DGM1: no geometry found for scope %s skipping.", ags)
+            continue
 
-    # ==================== 5. PER-LANDKREIS PROCESSING LOOP ====================
-    for landkreis_code in landkreis_download_codes:
+        scope_geom = geom_by_scope[ags]
+        scope_dir = dgm1_base_dir / ags
+        scope_dir.mkdir(parents=True, exist_ok=True)
 
-        log.info(f"DGM1: processing Landkreis {landkreis_code}")
-        landkreis_dir = dgm1_base_dir / landkreis_code
-        landkreis_dir.mkdir(parents=True, exist_ok=True)
+        log.info("DGM1: processing scope %s", ags)
 
-        # ---------- 5a. DOWNLOAD ----------
-        # Fetch raster tiles for this district
-        download_url = url_template.replace("#scope", landkreis_code)
+        # 3a) Download tiles for this AGS
+        download_url = url_template.replace("#scope", ags)
+        log.info("DGM1: downloading from %s", download_url)
+
         utils.download_aria2c(
             download_url,
-            landkreis_dir,
+            scope_dir,
             connections=1,
             allow_overwrite=False,
             auto_file_renaming=False,
         )
 
-        # ---------- 5b. EXTRACT ----------
-        # Unzip downloaded archives
-        zip_files = utils.get_all_files(str(landkreis_dir), ".zip")
+        # 3b) Unzip any archives
+        zip_files = utils.get_all_files(str(scope_dir), ".zip")
         if zip_files:
-            utils.unzip(zip_files, str(landkreis_dir), infdb=infdb)
+            log.info("DGM1: extracting %d zip files for %s", len(zip_files), ags)
+            utils.unzip(zip_files, str(scope_dir), infdb=infdb)
 
-        # ---------- 5c. FIND SOURCE RASTERS ----------
-        # Locate all .tif and .asc files recursively
+        # 3c) Collect all TIFF tiles
         raster_source_files = subprocess.check_output(
-            ["find", str(landkreis_dir), "-type", "f",
-             "(", "-iname", "*.tif", "-o", "-iname", "*.asc", ")", "-print"],
-            text=True
+            [
+                "find",
+                str(scope_dir),
+                "-type",
+                "f",
+                "-iname",
+                "*.tif",
+                "-print",
+            ],
+            text=True,
         ).strip()
 
         if not raster_source_files:
-            continue  # No raster data for this district
-
-        tile_paths = raster_source_files.splitlines()
-
-        # ---------- 5d. BUILD VIRTUAL RASTER (VRT) ----------
-        # Combine all tiles into a single virtual dataset for efficient processing
-        virtual_raster_path = landkreis_dir / f"dgm1_{landkreis_code}.vrt"
-        tile_list_file = landkreis_dir / "raster_tiles.txt"
-        tile_list_file.write_text("\n".join(tile_paths))
-
-        utils.do_cmd(
-            f'gdalbuildvrt -resolution highest -r bilinear '
-            f'-input_file_list "{tile_list_file}" "{virtual_raster_path}"'
-        )
-
-        # ---------- 5e. WARP, RESAMPLE & CLIP ----------
-        # Transform to target resolution and clip to exact scope polygon
-        output_filename = f"dgm1_{landkreis_code}_{target_resolution_meters}m.tif"
-        output_geotiff_path = landkreis_dir / output_filename
-
-        gdalwarp_opts = (
-            "-of GTiff "  # Output format
-            # Compression and tiling options for efficient storage
-            "-co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 "
-            "-co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 "
-            "-co NUM_THREADS=ALL_CPUS -r bilinear "  # Resampling method
-            f"-t_srs EPSG:{source_srid} "  # Target coordinate system
-            f"-tr {target_resolution_meters} {target_resolution_meters} "  # Target resolution
-            f"{clip_extent_args} {cutline_args} "  # Spatial clipping
-            "-overwrite -multi -wo NUM_THREADS=ALL_CPUS"  # Performance options
-        )
-
-        utils.do_cmd(
-            f'gdalwarp {gdalwarp_opts} "{virtual_raster_path}" "{output_geotiff_path}"'
-        )
-
-        # ---------- 5f. VALIDATE ----------
-        # Check output file integrity and log statistics
-        try:
-            utils.do_cmd(f'gdalinfo "{output_geotiff_path}" -stats -nomd')
-            file_size_mb = output_geotiff_path.stat().st_size / 1_000_000
-            log.info(f"DGM1: Created clipped raster ({file_size_mb:.1f} MB)")
-        except Exception as e:
-            log.error(f"DGM1: Warping/clipping failed for {landkreis_code}: {e}")
-            output_geotiff_path.unlink(missing_ok=True)
+            log.warning("DGM1: no .tif tiles found for scope %s – skipping.", ags)
             continue
 
-        # ---------- 5g. IMPORT TO POSTGIS ----------
-        # Convert raster to PostGIS format and load into database
-        target_table = f"{schema}.{table}"
-        mode = "" if not any_data_imported else "-a"  # Append mode after first import
+        tile_paths = raster_source_files.splitlines()
+        src_files = " ".join(f'"{p}"' for p in tile_paths)
+
+        # 3d) Write scope geometry as cutline (GeoPackage)
+        mask_path = scope_dir / f"mask_{ags}.gpkg"
+        gdf = gpd.GeoDataFrame(
+            {"id": [1]},
+            geometry=[scope_geom],
+            crs=f"EPSG:{source_srid}",
+        )
+        gdf.to_file(mask_path, layer="mask", driver="GPKG")
+
+        # 3e) Clip all tiles exactly to scope polygon
+        output_tif = scope_dir / f"dgm1_{ags}_{target_res}m.tif"
+        gdalwarp_opts = (
+            "-of GTiff "
+            "-co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 "
+            "-co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 "
+            "-r bilinear "
+            "-multi -wo NUM_THREADS=ALL_CPUS "
+            f"-t_srs EPSG:{source_srid} "
+            f"-tr {target_res} {target_res} "
+            "-srcnodata -9999 -dstnodata -9999 "
+            f'-cutline "{mask_path}" -cl mask -crop_to_cutline '
+        )
+        utils.do_cmd(f"gdalwarp {gdalwarp_opts} {src_files} \"{output_tif}\"")
+
+        # 3f) Basic validation
+        try:
+            size_mb = output_tif.stat().st_size / 1_000_000
+        except FileNotFoundError:
+            log.error("DGM1: clipped raster for %s not found at %s", ags, output_tif)
+            continue
+
+        if size_mb <= 0:
+            log.warning("DGM1: output for %s is empty – skipping import.", ags)
+            output_tif.unlink(missing_ok=True)
+            continue
+
+        log.info("DGM1: created clipped raster for %s (%.1f MB)", ags, size_mb)
+
+        # 3g) Import into PostGIS: one table per scope
+        per_scope_table = f"{table_base}_{ags}"
+        target_table = f"{schema}.{per_scope_table}"
+
+        with infdb.connect() as db:
+            db.execute_query(f"DROP TABLE IF EXISTS {target_table};")
 
         import_pipeline = (
-            "raster2pgsql -q "  # Quiet mode
-            f"-s {source_srid} "  # Set SRID
-            "-I -M "  # Create index, vacuum analyze
-            "-t 256x256 "  # Tile size for efficient queries
-            f'"{output_geotiff_path}" {target_table} {mode} | {psql_command}'
+            "raster2pgsql -q "
+            f"-s {source_srid} "
+            "-I -C -M "
+            "-N -9999 "
+            "-t 256x256 "
+            f'"{output_tif}" {target_table} | {psql_cmd}'
         )
 
+        log.info("DGM1: importing scope %s into %s", ags, target_table)
         utils.do_cmd(import_pipeline)
-        any_data_imported = True
+        log.info("DGM1: scope %s import finished.", ags)
 
-    # ==================== 6. FINALIZATION ====================
-    # Create spatial index and update statistics
-    if any_data_imported:
-        utils.do_cmd(
-            f'{psql_command} -c '
-            f'"CREATE INDEX IF NOT EXISTS {table}_rast_gix '
-            f'ON {schema}.{table} USING GIST(ST_ConvexHull(rast));"'
-        )
-        utils.do_cmd(f'{psql_command} -c "ANALYZE {schema}.{table};"')
-        log.info(f"DGM1: Completed successfully → {schema}.{table}")
-    else:
-        log.warning("DGM1: No data imported")
+
+
+
 
 
 # ====================================================================================
@@ -358,7 +350,7 @@ def _load_tatsaechliche_nutzung(
         log.warning("TN: No scope geometry found; skipping TN import.")
         return
     else:
-        log.info("TN: scope geometry available – will use it for spatial filtering via ogr2ogr.")
+        log.info("TN: scope geometry available will use it for spatial filtering via ogr2ogr.")
 
     # ==================== 5. LAYER DISCOVERY ====================
     # Enumerate all thematic layers in the GeoPackage
