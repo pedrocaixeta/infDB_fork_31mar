@@ -3,6 +3,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 USER root
 RUN apt-get update && apt-get install -y aria2 && rm -rf /var/lib/apt/lists/*
+USER 1000
 
 WORKDIR /workspaces/infdb-loader
 

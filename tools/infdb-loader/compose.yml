@@ -17,13 +17,13 @@ services:
             - ${CONFIG_INFDB_ENV_PATH}
         environment:
             - UV_LINK_MODE=copy
-        user: "${UID}:${GID}"
+        # user: "${UID}:${GID}"
 
 volumes:
     infdb-loader-data:
-        name: infdb-loader-data
-        driver: local
-        driver_opts:
-            type: none
-            o: bind
-            device: ${INFDB_LOADER_DATA_PATH}
+        # name: infdb-loader-data
+        # driver: local
+        # driver_opts:
+        #     type: none
+        #     o: bind
+        #     device: ${INFDB_LOADER_DATA_PATH}

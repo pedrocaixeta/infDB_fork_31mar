@@ -57,9 +57,9 @@ include:
 # ==============================================================================
 volumes:
   infdb-data:
-    name: ${BASE_NAME}-data
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${BASE_PATH_BASE}/${BASE_NAME}
+    # name: ${BASE_NAME}-data
+    # driver: local
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: ${BASE_PATH_BASE}/${BASE_NAME}
