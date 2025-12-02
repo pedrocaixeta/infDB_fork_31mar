@@ -274,8 +274,6 @@ sslmode=disable
 
 # For Developers
 
-
-
 ### Local development environment for InfDB for developers
 ```bash
 # on linux and macos by installation script
@@ -299,18 +297,30 @@ venv\Scripts\activate
 ```
 ### Clean repo
 ```bash
-# linux and macos
 git fetch origin
 git reset --hard
 git clean -fdx
 ```
-
 
 ### Stop and remove all docker containers
 ```bash
 docker stop $(docker ps -a -q)
 docker rm $(docker ps -a -q)
 ```
+
+### Clean docker
+```bash
+docker system prune -a --volume
+```
+
+### Tree with permission
+```bash
+tree -pug
+# -p permissions
+# -u user
+# -g group
+```
+
 ## Repository Structure
 
 - **src/**: Main application package
