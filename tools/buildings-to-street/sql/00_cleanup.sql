@@ -6,4 +6,5 @@
 -- DROP SCHEMA IF EXISTS {output_schema} CASCADE ;
 -- CREATE SCHEMA {output_schema};
 
+CREATE SCHEMA IF NOT EXISTS {output_schema};
 DROP TABLE IF EXISTS {output_schema}.{output_table};
