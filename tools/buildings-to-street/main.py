@@ -37,22 +37,27 @@ def main():
         streets_id = infdb.get_config_value([infdb.get_toolname(), "data", "streets", "id-column"])
         buildings_id = infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "id-column"])
 
-        # Handle "None" string from YAML
-        if streets_id == "None":
-            streets_id = None
-        if buildings_id == "None":
-            buildings_id = None
+        # Define ID expressions: Use column if exists, else generate stable hash from geometry
+        if streets_id == "None" or streets_id is None:
+            streets_geom = infdb.get_config_value([infdb.get_toolname(), "data", "streets", "geom-column"])
+            streets_id_expr = f"md5(ST_AsBinary(s.{streets_geom}))"
+        else:
+            streets_id_expr = f"s.{streets_id}::text"
+
+        if buildings_id == "None" or buildings_id is None:
+            buildings_geom = infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "geom-column"])
+            buildings_id_expr = f"md5(ST_AsBinary(b.{buildings_geom}))"
+        else:
+            buildings_id_expr = f"b.{buildings_id}::text"
 
         format_params = {
             'streets_schema': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "schema"]),
             'streets_table': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "table"]),
-            'streets_id': streets_id,
-            'streets_id_expr': f"s.{streets_id}::TEXT" if streets_id else "NULL",
+            'streets_id_expr': streets_id_expr,
             'streets_geom': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "geom-column"]),
             'buildings_schema': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "schema"]),
             'buildings_table': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "table"]),
-            'buildings_id': buildings_id,
-            'buildings_id_expr': f"b.{buildings_id}::TEXT" if buildings_id else "NULL",
+            'buildings_id_expr': buildings_id_expr,
             'buildings_geom': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "geom-column"]),
             'output_schema': infdb.get_config_value([infdb.get_toolname(), "data", "output", "schema"]),
             'output_table': infdb.get_config_value([infdb.get_toolname(), "data", "output", "table"]),

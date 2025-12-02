@@ -36,5 +36,5 @@ buildings-to-street:
             id-column: '"Fest_ID"'
             geom-column: geom
         output:
-            schema: buildings_to_streets
+            schema: linear_heat_density
             table: buildings_to_streets
