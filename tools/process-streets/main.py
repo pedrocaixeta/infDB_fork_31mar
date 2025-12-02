@@ -57,6 +57,7 @@ def main():
 
         # Output result as JSON (InfDB standard)
         print(json.dumps(results, indent=4))
+        log.info(json.dumps(results, indent=4))
         return 0
 
     except Exception as e:
