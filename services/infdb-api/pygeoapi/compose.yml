@@ -32,7 +32,7 @@ services:
     image: geopython/pygeoapi:latest
     environment:
       PYGEOAPI_CONFIG: /app-config/pygeoapi-config.yml
-      CONTAINER_PORT: ${SERVICES_PYGEOAPI_PORT}
+      CONTAINER_PORT: ${SERVICES_PYGEOAPI_EXPOSED_PORT}
     volumes:
       - ./:/app-config:ro
     ports:

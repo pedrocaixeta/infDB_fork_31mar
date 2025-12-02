@@ -8,8 +8,8 @@ services:
     ports:
       - ${SERVICES_PYGEOAPI_EXPOSED_PORT}:${SERVICES_PYGEOAPI_EXPOSED_PORT}
     environment:
-      - PYGEOAPI_INTERNAL=http://pygeoapi:${SERVICES_PYGEOAPI_PORT}/
-      - POSTGREST_INTERNAL=http://postgrest:${SERVICES_POSTGREST_PORT}/
+      - PYGEOAPI_INTERNAL=http://pygeoapi:${SERVICES_PYGEOAPI_EXPOSED_PORT}/
+      - POSTGREST_INTERNAL=http://postgrest:${SERVICES_POSTGREST_EXPOSED_PORT}/
     restart: unless-stopped
     networks:
       - infdb_network

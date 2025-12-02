@@ -36,7 +36,7 @@ services:
     volumes:
       - .:/app:ro # read-only is fine for PostgREST
     ports:
-      - "${SERVICES_POSTGREST_PORT}:${SERVICES_POSTGREST_PORT}"
+      - "${SERVICES_POSTGREST_EXPOSED_PORT}:${SERVICES_POSTGREST_EXPOSED_PORT}"
     depends_on:
       pgrstwatch:
         condition: service_healthy
