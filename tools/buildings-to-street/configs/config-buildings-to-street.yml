@@ -22,8 +22,6 @@ buildings-to-street:
             host: None
             exposed_port: None
             epsg: None
-    parameters:
-        max-distance: 50  # maximum distance in meters to consider a building connected to a street
     data:
         streets:
             schema: need_intern
