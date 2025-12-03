@@ -19,7 +19,7 @@ process-streets:
             user: None
             password: None
             db: None
-            host: ds1.need.energy
+            host: None
             exposed_port: None
             epsg: None
     data:
