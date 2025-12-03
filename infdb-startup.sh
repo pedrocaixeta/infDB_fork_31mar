@@ -2,17 +2,13 @@
 # set -euo pipefail
 
 # ----------------------------------------------------------------------
-# infDB Setup Script
+# infDB startup script
 # ----------------------------------------------------------------------
-# Export UID and GID for Docker Compose
-export UID=$(id -u)
-export GID=$(id -g)
 
-# # Delete .env file if it exists for testing purposes
-# if [ -f .env ]; then
-#     echo "=== Deleting .env file ==="
-#     rm .env
-# fi
+# # Load environment variables from .env file
+set -a
+[ -f .env ] && . .env
+set +a
 
 # Check if .env file exists, if not create from template
 if [ ! -f .env ]; then
@@ -21,19 +17,9 @@ if [ ! -f .env ]; then
     echo "=== .env file created. Please review and customize it as needed. ==="
 fi
 
-# Load environment variables from .env file
-set -a
-[ -f .env ] && . .env
-set +a
-
-# # Pull latest images
+# Pull latest images
 echo "=== Pull latest docker images ==="
 docker compose pull
-
-# Create Postgres data directory if it doesn't exist
-echo "=== Ensuring data directory exists at ${BASE_PATH_BASE}/${BASE_NAME} ==="
-mkdir -p "${BASE_PATH_BASE}/${BASE_NAME}"
-
 
 echo "=== Starting infDB ==="
 docker compose up -d
