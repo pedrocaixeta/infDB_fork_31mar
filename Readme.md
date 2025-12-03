@@ -302,10 +302,16 @@ git reset --hard
 git clean -fdx
 ```
 
-### Stop and remove all docker containers
+### Stop and remove all docker containers and volumes
 ```bash
+# 1. Stop all containers
 docker stop $(docker ps -a -q)
+
+# 2. Remove all containers (breaks the link to the volumes)
 docker rm $(docker ps -a -q)
+
+# 3. Delete all volumes
+docker volume rm $(docker volume ls -q)
 ```
 
 ### Clean docker

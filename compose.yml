@@ -16,7 +16,7 @@ networks:
     driver: bridge
 
 # ==============================================================================
-# CORE SERVICES (Always Required)
+# CORE SERVICES (Profile: core)
 # ==============================================================================
 include:
   # PostgreSQL Database (includes 3DCityDB initialization)
@@ -55,8 +55,8 @@ include:
 # ==============================================================================
 # VOLUMES
 # ==============================================================================
-volumes:
-  infdb-data:
+# volumes:
+#   infdb-data:
     # name: ${BASE_NAME}-data
     # driver: local
     # driver_opts:
