@@ -14,6 +14,8 @@ import os
 from typing import Optional, List, Tuple
 from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
 from shapely.ops import linemerge, split as shp_split
+from sqlalchemy import text
+
 
 GLOBAL_JUNCTION_DEGREE = 3
 ROUND_MERGE = 6
@@ -1047,9 +1049,15 @@ def run_process_streets(
     engine = infdb.get_db_engine()
     input_schema = infdb.get_config_value(["process-streets", "data", "input", "schema"])
     output_schema = infdb.get_config_value(["process-streets", "data", "output", "schema"])
+    if not table_name or str(table_name).strip().lower() in ("none", ""):
+        table_name = infdb.get_config_value(
+            ["process-streets", "data", "input", "table_name"]
+        )
+        log.info(f"table_name from config: {table_name}")
 
     full_table = f"{input_schema}.{table_name}"
     log.info(f"Loading input table: {full_table}")
+
 
     # ----------------------------------------------------------
     # LOAD INPUT
@@ -1345,6 +1353,20 @@ def run_process_streets(
     seg_table = f"{output_schema}.{segments_table_name}"
     node_table = f"{output_schema}.{nodes_table_name}"
 
+    # Sicherstellen, dass das Ausgabeschema existiert
+    try:
+        log.info(f"Ensuring schema '{output_schema}' exists...")
+        with engine.begin() as conn:
+            conn.execute(
+                text(f'CREATE SCHEMA IF NOT EXISTS "{output_schema}"')
+            )
+        log.info(f"Schema '{output_schema}' exists or was created.")
+    except Exception as e:
+        log.warning(
+            f"Could not ensure schema '{output_schema}' exists "
+            f"(maybe missing rights): {e}"
+        )
+  
     log.info(f"Writing segments to infdb → {seg_table}")
     final_out.to_postgis(
         segments_table_name,
