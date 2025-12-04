@@ -129,7 +129,7 @@ Then, you can access the repository either with SSH or HTTPS as you like:
 ````
 \\wsl.localhost\Ubuntu\home\[PC username]
 ````
-(in file explorer Windows shows \\wsl.localhost as Linux) and xecute scripts from Linux terminal (search for Ubunut in applications)
+(in file explorer Windows shows \\wsl.localhost as Linux) and execute scripts from Linux terminal (search for Ubuntu in applications)
 
 **SSH vs HTTPS:**
 - **SSH (Secure Shell)**: Uses cryptographic key pairs for authentication. Once set up, you won't need to enter credentials for each operation. Recommended for frequent Git operations.
