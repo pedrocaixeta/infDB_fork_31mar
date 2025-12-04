@@ -239,7 +239,7 @@ bash infdb-remove.sh
 ```
 
 ### Remove infdb-loader data
-To stop all running infDB services and remove them, execute:
+To remove the downloaded infdb-loader data, execute:
 ```bash
 tbd
 ```
