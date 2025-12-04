@@ -1045,8 +1045,8 @@ def run_process_streets(
     log.info("=== PROCESS-STREETS PIPELINE START (basemap-logic) ===")
 
     engine = infdb.get_db_engine()
-    input_schema = infdb.get_config_value(["process-streets", "data", "input_schema"])
-    output_schema = infdb.get_config_value(["process-streets", "data", "output_schema"])
+    input_schema = infdb.get_config_value(["process-streets", "data", "input", "schema"])
+    output_schema = infdb.get_config_value(["process-streets", "data", "output", "schema"])
 
     full_table = f"{input_schema}.{table_name}"
     log.info(f"Loading input table: {full_table}")
@@ -1192,7 +1192,7 @@ def run_process_streets(
         round_decimals=6
     )
     class3 = mark_deadend_junction_iter(class3, round_dec=6, type_col="segment_type")
-        # ----------------------------------------------------------
+    # ----------------------------------------------------------
     # STEP 7b — SECOND DEJ LENGTH FILTER (after CLASS_3)
     # ----------------------------------------------------------
     if apply_length_filter:
@@ -1330,10 +1330,10 @@ def run_process_streets(
 
     # STEP 12 – SAVE TO POSTGIS
     segments_table_name = infdb.get_config_value(
-        ["process-streets", "data", "segments_table"]
+        ["process-streets", "data", "output", "segments_table"]
     )
     nodes_table_name = infdb.get_config_value(
-        ["process-streets", "data", "nodes_table"]
+        ["process-streets", "data", "output",  "nodes_table"]
     )
 
     # Falls in der YAML nichts gesetzt ist -> Fallback
@@ -1366,21 +1366,18 @@ def run_process_streets(
     # ----------------------------------------------------------
     # STEP 12b — OPTIONAL: write GeoJSON to local filesystem
     # ----------------------------------------------------------
-    output_dir = infdb.get_config_value(["process-streets", "data", "output_dir"])
-    ...
+    file_export_status = infdb.get_config_value(
+        ["process-streets", "data", "output", "file_export", "status"]
+    )
+    output_dir = infdb.get_config_value(
+        ["process-streets", "data", "output", "file_export", "output_dir"]
+    )
 
-
-    # ----------------------------------------------------------
-    # STEP 12b — OPTIONAL: write GeoJSON to local filesystem
-    # ----------------------------------------------------------
-    output_dir = infdb.get_config_value(["process-streets", "data", "output_dir"])
-
-    # Dateinamen ebenfalls aus der Config lesen
     segments_geojson_name = infdb.get_config_value(
-        ["process-streets", "data", "segments_geojson"]
+        ["process-streets", "data", "output", "file_export", "segments_geojson"]
     )
     nodes_geojson_name = infdb.get_config_value(
-        ["process-streets", "data", "nodes_geojson"]
+        ["process-streets", "data", "output", "file_export", "nodes_geojson"]
     )
 
     # Falls nichts gesetzt ist, aus Tabellennamen ableiten (optional)
@@ -1389,8 +1386,9 @@ def run_process_streets(
     if not nodes_geojson_name:
         nodes_geojson_name = f"{nodes_table_name}.geojson"
 
-    if not output_dir:
-        log.info("No output_dir configured – skipping GeoJSON export.")
+    # Wenn Export deaktiviert ist oder kein output_dir: überspringen
+    if not output_dir or str(file_export_status).strip().lower() not in ("active", "on", "true", "1"):
+        log.info("GeoJSON export inactive or no output_dir configured – skipping GeoJSON export.")
     else:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -1402,8 +1400,6 @@ def run_process_streets(
 
         log.info(f"Writing nodes GeoJSON → {nodes_geojson}")
         nodes.to_file(nodes_geojson, driver="GeoJSON")
-
-
 
     # ----------------------------------------------------------
     # DONE
