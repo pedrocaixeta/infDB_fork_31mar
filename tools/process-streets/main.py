@@ -56,7 +56,6 @@ def main():
         log.info("Pipeline finished successfully.")
 
         # Output result as JSON (InfDB standard)
-        print(json.dumps(results, indent=4))
         log.info(json.dumps(results, indent=4))
         return 0
 
