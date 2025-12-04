@@ -1,4 +1,4 @@
-FROM 3dcitydb/citydb-tool
+FROM python:3.12-slim
 
 WORKDIR /app
 USER root
@@ -27,10 +27,21 @@ ADD https://astral.sh/uv/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin/:$PATH"
 
-# Project files
+# COPY requiremets into the container
 COPY pyproject.toml /app/pyproject.toml
+# COPY uv.lock /app/uv.lock
+
+## Install venv with uv
+# RUN uv sync
+
+## Install infdb package in editable mode
+# COPY infdb_package /app/infdb_package
+# RUN uv pip install -e /app/infdb_package
+
+# Copy the source code into the container
 COPY src /app/src
+COPY sql /app/sql
 COPY main.py /app/main.py
 
-ENTRYPOINT []
+# Run main.py with uv and environment defined in pyproject.toml
 CMD ["uv", "run", "python", "main.py"]

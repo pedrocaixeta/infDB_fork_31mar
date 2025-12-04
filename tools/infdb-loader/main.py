@@ -1,6 +1,7 @@
 import logging
 import multiprocessing as mp
-from typing import List
+import os
+from typing import Any, Dict, List
 
 from infdb import InfDB
 from src import utils
@@ -15,6 +16,10 @@ from src import (
     need,
     openmeteo,
     opendata_bavaria,
+    kwp_nrw,
+    gebaeude_neuburg,
+    waermeatlas_hessen_bensheim,
+    tudo_basemap_ways
     # wetterdienst,
 )
 
@@ -43,12 +48,12 @@ def main() -> None:
     log.info("-------------------------------------------------------------")
 
     # Download opendata package for development directly (original guard)
-    if utils.if_active("package", infdb):
-        package.load(infdb)
+    # if utils.if_active("package", infdb):
+    #     package.load(infdb)
 
-    # Drop schema "opendata" for clean development runs
-    with infdb.connect() as db:  # InfdbClient context
-        db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
+    # # Drop schema "opendata" for clean development runs
+    # with infdb.connect() as db:  # InfdbClient context
+    #     db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
 
     # Ensure that administrative areas are loaded for scope
     bkg.load(infdb)
@@ -56,13 +61,18 @@ def main() -> None:
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
-    # processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
-    # processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
-    # #processes.append(mp.Process(target=lod2_nrw.load,   args=(infdb,), name="lod2-nrw"))
-    # processes.append(mp.Process(target=plz.load,        args=(infdb,), name="plz"))
-    # processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
-    # processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
-    # processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
+    processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
+    processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
+    processes.append(mp.Process(target=lod2.load,       args=(infdb,), name="lod2"))
+    processes.append(mp.Process(target=lod2_nrw.load,   args=(infdb,), name="lod2-nrw"))
+    processes.append(mp.Process(target=plz.load,        args=(infdb,), name="plz"))
+    processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
+    processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
+    processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
+    processes.append(mp.Process(target=kwp_nrw.load,     args=(infdb,), name="kwp_nrw"))
+    processes.append(mp.Process(target=gebaeude_neuburg.load,     args=(infdb,), name="gebaeude-neuburg"))
+    processes.append(mp.Process(target=waermeatlas_hessen_bensheim.load,     args=(infdb,), name="waermeatlas_hessen_bensheim"))
+    processes.append(mp.Process(target=tudo_basemap_ways.load,     args=(infdb,), name="tudo-basemap-ways"))
     # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
     processes.append(mp.Process(target=opendata_bavaria.load, args=(infdb,), name="opendata_bavaria"))
 

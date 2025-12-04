@@ -54,7 +54,6 @@ SELECT f.id AS
 FROM feature f
          JOIN property p ON f.id = p.feature_id
 WHERE f.objectclass_id = 901 -- =building
---   AND p.namespace_id = 10 -- =bldg (redundant?)
   AND p.name = 'function'
   AND p.val_string LIKE '31001_%'  -- only allow buildings
   -- AND p.val_string <> '31001_2463' -- exclude garages
@@ -97,25 +96,60 @@ WHERE b.feature_id = hd.feature_id;
 -- 05_fill_floor_area_geom.sql
 -- fill geom and floor_area columns
 --------------------------------------------------------------
+--------------------------------------------------------------
+-- 05_fill_floor_area_geom.sql
+-- Fill geometry, ground surface area, and centroid columns
+-- 
+-- This query extracts building ground surfaces from the 3D City DB
+-- geometry hierarchy by:
+-- 1. Finding buildings (objectclass_id 901) and their objectids of their child surface geometries
+-- 2. Matching those references to ground surfaces (objectclass_id 710)
+-- 3. Calculating the area of each ground surface geometry
+-- 4. Updating the buildings table with:
+--    - groundsurface_flaeche: ground surface area in square meters
+--    - geom: the ground surface geometry (footprint)
+--    - centroid: calculated center point of the geometry
+-- Author: Patrick Buchenberg - Hackthon@Darmstadt
+--------------------------------------------------------------
 WITH ground_data AS (
-    SELECT 
-        regexp_replace(f.objectid, '_[^_]*-.*$', '')    as building_objectid,
-        cast(p.val_string as double precision)          as area,
-        ST_Force2D(gd.geometry)                         as geom,
-        f.id as feature_id
-    FROM feature f
-          JOIN geometry_data gd ON f.id = gd.feature_id
-          JOIN property p ON f.id = p.feature_id
-    WHERE f.objectclass_id = 710 -- GroundSurface
-    AND p.name = 'Flaeche'
+    WITH group_901 AS (
+    SELECT
+        feature.objectid AS objectid,
+        feature.id as feature_id,
+        gd.geometry_properties ->> 'objectId' as root_object_id,
+        child ->> 'objectId' as child_object_id
+    FROM feature
+             JOIN geometry_data gd ON feature.id = gd.feature_id
+             CROSS JOIN LATERAL jsonb_array_elements(gd.geometry_properties -> 'children') AS child
+    WHERE objectclass_id = 901
+    ),
+    group_710 AS (
+         SELECT
+             feature.objectid AS objectid,
+             gd.geometry_properties ->> 'objectId' as root_object_id,
+             child ->> 'objectId' as child_object_id,
+            gd.geometry
+         FROM feature
+                  JOIN geometry_data gd ON feature.id = gd.feature_id
+                  CROSS JOIN LATERAL jsonb_array_elements(gd.geometry_properties -> 'children') AS child
+         WHERE objectclass_id = 710
+    )
+    SELECT
+        group_901.objectid as objectid,
+        group_901.feature_id as feature_id,
+        group_710.objectid as ground_surface_objectid,
+        group_710.geometry as geom,
+        st_area(group_710.geometry) as area
+    FROM group_901
+            JOIN group_710
+                  ON group_901.child_object_id = group_710.child_object_id
 )
 UPDATE {output_schema}.buildings_lod2 b
 SET groundsurface_flaeche = ground_data.area,
     geom       = ground_data.geom,
     centroid   = ST_Centroid(ground_data.geom)
 FROM ground_data
-WHERE objectid = building_objectid;
---WHERE b.feature_id = ground_data.feature_id;
+WHERE b.objectid = ground_data.objectid;
 
 -- -- delete buildings below an area threshold
 -- DELETE

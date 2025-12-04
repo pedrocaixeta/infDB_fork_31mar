@@ -175,93 +175,107 @@ def get_links(url: str, ending: str, flt: str, infdb:InfDB) -> list[str]:
     log.debug(links)
     return links
 
+def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, access_token: str,
+                       timeout=60, max_retries=5, backoff_base=1.5, chunk=1024*1024) -> str:
+    """HEAD (size if available) → streamed GET with retries/backoff."""
+    os.makedirs(dest_dir, exist_ok=True)
 
-def download_files(urls, base_path, infdb, max_concurrent=3, max_retries=4, backoff_base=1.8, timeout=60):
-    """
-    Polite, robust downloader that won't get throttled.
-    - Limits parallelism with ThreadPoolExecutor (default 3).
-    - Retries on 429/5xx with exponential backoff + jitter.
-    - Saves atomically (write to .part then os.replace).
-    - If `urls` is a single string, it is treated as list [urls].
-    - Returns a list of absolute local file paths.
-    - Can also pass multiple URLs.
-    """
+    # filename from URL path
+    filename = os.path.basename(urlparse(url).path) or "download"
+    dest = os.path.join(dest_dir, filename)
     log = infdb.get_worker_logger()
-    if isinstance(urls, str):
-        urls = [urls]
 
-    os.makedirs(base_path, exist_ok=True)
+    auth = (username, access_token)
+    session = requests.Session()
+    session.auth = auth
 
-    session = requests.Session() # Uses a persistent requests.Session() for connection reuse (reduces overhead).
-    session.headers.update({"User-Agent": "IDP-Loader/1.0"})
-
-    lock = threading.Lock() # Threading lock ensures multiple threads don’t append to results simultaneously (thread-safe).
-    results = []
-
-    def _dest_for(url):
-        # Use URL basename as filename (matches historical behavior on many sites)
-        name = os.path.basename(urlparse(url).path) or "download"
-        return os.path.join(base_path, name)
-
-    def _download_one(url):
-        dest = _dest_for(url)
-        tmp = dest + ".part"
-
-        # Optionally check size via HEAD to skip re-downloads (best-effort)
-        size = None
-        try:
-            r = session.head(url, timeout=timeout, allow_redirects=True)
+    # HEAD: get size if available
+    size = None
+    try:
+        with session.head(url, allow_redirects=True, timeout=timeout) as r:
             if r.ok and "content-length" in r.headers:
                 size = int(r.headers["content-length"])
-        except Exception:
-            pass
+    except Exception:
+        pass  # server may not support HEAD properly
 
-        # Skip if file exists and Content-Length matches (if known)
-        if os.path.exists(dest) and size and os.path.getsize(dest) == size:
-            log.info(f"File already present: {dest}")
-            return dest
+    # short-circuit if already present with same size
+    if size and os.path.exists(dest) and os.path.getsize(dest) == size:
+        log.info("File %s already exists (size match).", dest)
+        return dest
+    if os.path.exists(dest):
+        log.info("File %s already exists (size unknown); skipping re-download.", dest)
+        return dest
 
-        attempt = 0
-        while True:
-            try:
-                with session.get(url, stream=True, timeout=timeout) as r:
-                    if r.status_code in (429, 500, 502, 503, 504):
-                        raise requests.HTTPError(f"HTTP {r.status_code}", response=r)
-                    r.raise_for_status()
+    # GET with retries
+    for attempt in range(max_retries + 1):
+        try:
+            with session.get(url, stream=True, timeout=timeout) as resp:
+                resp.raise_for_status()
+                tmp = dest + ".part"
+                with open(tmp, "wb") as f:
+                    for b in resp.iter_content(chunk_size=chunk):
+                        if b:
+                            f.write(b)
+                if size and os.path.getsize(tmp) != size:
+                    raise IOError(f"Size mismatch: expected {size}, got {os.path.getsize(tmp)}")
+                os.replace(tmp, dest)
+                log.info("Downloaded %s", dest)
+                return dest
+        except Exception as e:
+            if attempt >= max_retries:
+                # don’t leak creds in logs
+                log.error("Download failed for %s: %s", url, e.__class__.__name__)
+                raise
+            sleep_s = (backoff_base ** attempt) + random.uniform(0, 0.25 * backoff_base)
+            log.warning("Retry %d/%d for %s in %.1fs", attempt + 1, max_retries, url, sleep_s)
+            time.sleep(sleep_s)
 
-                    # Stream chunks to disk
-                    with open(tmp, "wb") as f:
-                        for chunk in r.iter_content(chunk_size=128 * 1024):
-                            if chunk:
-                                f.write(chunk)
-                    os.replace(tmp, dest)
-                    return dest
+    session.close()
 
-            except Exception as e:
-                attempt += 1
-                if attempt > max_retries:
-                    log.error(f"Failed to download {url}: {e}")
-                    try:
-                        if os.path.exists(tmp):
-                            os.remove(tmp)
-                    except Exception:
-                        pass
-                    return None
+def download_files(urls, file_path: str, infdb: InfDB, protocol: str = "http", username: str = None, access_token: str = None) -> list[str]:
+    """
+    If `webdav` provided → use requests (supports WebDAV basic auth).
+    Else → use SmartDL (your current async flow).
+    """
+    # Create base path if base_path is supposed to be a directory
+    filename, name, extension = get_file_from_url(file_path)
+    log = infdb.get_worker_logger()
+    if extension:
+        base_path = os.path.dirname(file_path)
+    else:
+        base_path = file_path
+    os.makedirs(base_path, exist_ok=True)
+    
+    url_list = _ensure_list(urls)
 
-                # Exponential backoff with a bit of randomness to avoid thundering herd
-                sleep_s = (backoff_base ** attempt) + random.uniform(0, 0.25 * backoff_base)
-                log.warning(f"Retry {attempt}/{max_retries} for {url} in {sleep_s:.1f}s due to {e}")
-                time.sleep(sleep_s)
+    # Auth path (WebDAV or protected HTTP)
+    if protocol == "webdav":
+        if not username or not access_token:
+            raise ValueError("Username and access_token required when protocol=webdav")
+        results = []
+        for url in url_list:
+            results.append(_requests_download(url, base_path, infdb, username=username, access_token=access_token))
+        return results
 
-    with ThreadPoolExecutor(max_workers=max_concurrent) as ex:
-        futs = [ex.submit(_download_one, u) for u in urls]
-        for fut in as_completed(futs):
-            path = fut.result()
-            if path:
-                with lock:
-                    results.append(path)
+    # Original SmartDL path (no auth)
+    objs = []
+    files = []
+    for url in url_list:
+        obj = SmartDL(url, file_path, progress_bar=WGET_PROGRESS_BAR)
+        target_path = obj.get_dest()
+        if os.path.exists(target_path):
+            log.info("File %s already exists.", target_path)
+        else:
+            log.info("File %s downloading ...", target_path)
+            obj.start(blocking=False)
+        
+        objs.append(obj)
 
-    return results
+    files: list[str] = []
+    for obj in objs:
+        obj.wait()
+        files.append(obj.get_dest())
+    return files
 
 
 def unzip(zip_files, unzip_dir: str, infdb: InfDB) -> None:
@@ -348,7 +362,7 @@ def download_aria2c(
 
 def get_envelop(infdb: InfDB):
     """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope =  infdb.get_config_value([infdb.get_toolname(), "scope"])
+    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
     log = infdb.get_worker_logger()
     if isinstance(scope, str):
         scope = [scope]
@@ -357,7 +371,9 @@ def get_envelop(infdb: InfDB):
     path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
     log.debug("Envelop Path (file): %s", path)
     gdf = gpd.read_file(path, layer="vg5000_gem")
-    return gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
+    gdf_scope = gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
+    gdf_scope.to_postgis("scope", infdb.get_db_engine(), if_exists="replace", schema="opendata", index=False)
+    return gdf_scope
 
 
 def get_all_envelops(infdb: InfDB):
@@ -380,6 +396,11 @@ def get_all_envelops(infdb: InfDB):
 
 # ============================== file helpers ==============================
 
+def get_subdirectories_by_suffix(folder, suffix):
+    """Return all subdirectories in `folder` whose names end with `suffix`."""
+    folder = Path(folder)
+    return [str(p) for p in folder.iterdir() if p.is_dir() and p.name.endswith(suffix)]
+
 def get_all_files(folder_path: str, ending: str) -> list[str]:
     """Recursively collect all files under `folder_path` with the given ending."""
     files: list[str] = []
@@ -392,7 +413,9 @@ def get_all_files(folder_path: str, ending: str) -> list[str]:
 
 
 def get_file(folder_path: str, filename: str, ending: str, infdb: InfDB) -> Optional[str]:
-    """Return the newest file path in `folder_path` containing `filename` and ending with `ending`."""
+    """Return the newest file path in `folder_path` containing `filename` and ending with `ending`.
+    Necessary for data that was updated by provider:
+    All data is saved in files -> selects newest to save in database."""
     files = get_all_files(folder_path, ending)
     log = infdb.get_worker_logger()
     matching = [f for f in files if filename.lower() in Path(f).stem.lower()]
