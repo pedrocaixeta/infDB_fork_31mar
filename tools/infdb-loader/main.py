@@ -63,7 +63,6 @@ def main() -> None:
     processes: List[mp.Process] = []
     processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
     processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
-    processes.append(mp.Process(target=lod2.load,       args=(infdb,), name="lod2"))
     processes.append(mp.Process(target=lod2_nrw.load,   args=(infdb,), name="lod2-nrw"))
     processes.append(mp.Process(target=plz.load,        args=(infdb,), name="plz"))
     processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))

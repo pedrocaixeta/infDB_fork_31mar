@@ -109,7 +109,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         # Download INTO the zip directory and use the returned file path
         zip_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "zip"], type="loader")
         link = dataset["url"]
-        downloaded = utils.download_files(link, zip_dir, infdb, max_concurrent=1 )  # returns [<zip_file_path>]
+        downloaded = utils.download_files(link, zip_dir, infdb)  # returns [<zip_file_path>]
         zip_file = downloaded[0]
 
         # Unzip using the real file path

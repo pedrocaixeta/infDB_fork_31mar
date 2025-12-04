@@ -12,11 +12,10 @@ from typing import Iterable, List, Optional
 from pathlib import Path
 
 import geopandas as gpd
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from bs4 import BeautifulSoup
+from pySmartDL import SmartDL
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
 

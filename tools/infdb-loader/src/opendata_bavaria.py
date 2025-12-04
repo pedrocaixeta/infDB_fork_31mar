@@ -345,7 +345,7 @@ def _load_tatsaechliche_nutzung(
 
     # ==================== 4. SCOPE GEOMETRY CHECK ====================
     # Verify we have a scope polygon for spatial filtering
-    clip_wkt, _, _ = utils.get_clip_geometry(target_crs=target_epsg, infdb=infdb, method="exact")
+    clip_wkt, _, _ = utils.get_clip_geometry(target_crs=target_epsg, infdb=infdb)
     if not clip_wkt:
         log.warning("TN: No scope geometry found; skipping TN import.")
         return
