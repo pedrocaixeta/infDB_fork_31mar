@@ -11,8 +11,7 @@ import yaml
 
 DEFAULT_CONFIG_DIR: str = "configs"
 CONFIG_FILE_TEMPLATE: str = "config-{tool}.yml"
-INFDB_BASE_DIR: str = os.path.join("mnt", "configs-infdb")
-LOADER_BASE_DIR: str = os.path.join("mnt", "data")
+DATA_BASE_DIR: str = os.path.join("..", "data")
 SETUP_BASE_DIR: str = "."
 FILE_ENCODING: str = "utf-8"
 
@@ -20,17 +19,16 @@ FILE_ENCODING: str = "utf-8"
 class InfdbConfig:
     """Read and resolve tool-specific YAML config with optional InfDB base merge."""
 
-    def __init__(self, tool_name: str, config_path: Optional[str] = DEFAULT_CONFIG_DIR) -> None:
+    def __init__(self, tool_name: str, config_basedir: Optional[str] = DEFAULT_CONFIG_DIR) -> None:
         """Initialize configuration for a tool.
 
         Args:
             tool_name: The tool identifier (used to select the YAML file and section).
-            config_path: Base directory containing config files (defaults to 'configs').
+            config_basedir: Base directory containing config files (defaults to 'configs').
         """
         self.tool_name: str = tool_name
         self.log: logging.Logger = logging.getLogger(__name__)
-        base_dir = config_path
-        self.config_path: str = os.path.join(base_dir, CONFIG_FILE_TEMPLATE.format(tool=tool_name))
+        self.config_path: str = os.path.join(config_basedir, CONFIG_FILE_TEMPLATE.format(tool=tool_name))
         self._CONFIG: Dict[str, Any] = self._merge_configs(self.config_path)
 
     def __str__(self) -> str:
@@ -53,19 +51,6 @@ class InfdbConfig:
         configs = self._load_config(base_path)
         if not configs:
             return {}
-
-        # OPTIONAL merge of shared InfDB config: skip silently if not present
-        tool_block = configs.get(self.tool_name) or {}
-        base_filename: Optional[str] = tool_block.get("config-infdb")
-        if base_filename:
-            base_path_infdb = os.path.join(INFDB_BASE_DIR, base_filename)
-            self.log.debug("Merging InfDB base config from '%s'", base_path_infdb)
-            if os.path.exists(base_path_infdb):
-                configs.update(self._load_config(base_path_infdb))
-            else:
-                self.log.debug("InfDB base config '%s' not found (skipping).", base_path_infdb)
-        else:
-            self.log.debug("No '%s.config-infdb' defined — skipping base merge.", self.tool_name)
 
         return self._resolve_yaml_placeholders(configs)
 
@@ -145,13 +130,7 @@ class InfdbConfig:
         """
         path = self.get_value(keys)
         if not os.path.isabs(path):
-            if type == "loader":
-                path = os.path.join(LOADER_BASE_DIR, path)
-            elif type == "heat" or type == "package":
-                path = os.path.join(self.get_root_path(), path)
-            elif type == "setup":
-                print("We are in the setup yaaaay!!!")
-                path = os.path.join(SETUP_BASE_DIR, path)
+                path = os.path.join(DATA_BASE_DIR, path)  # mounted data dir within docker
         path = os.path.abspath(path)
         return path
 
@@ -160,8 +139,10 @@ class InfdbConfig:
         """Return the project root path (two levels up from this file)."""
         return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    def get_db_parameters(self, service_name: str="postgres") -> Dict[str, Any]:
-        """Merge DB params: tool hosts override services; host defaults to host.docker.internal.
+    def get_db_parameters(self, db_name="postgres") -> Dict[str, str]:
+        """Return database connection parameters for a given service from config-toolname.yml. 
+           Adopt it from environment variables if set to "None". 
+           Host is set to "host.docker.internal" if "None".
 
         Args:
             service_name: Name of the DB service section to read.
@@ -169,19 +150,27 @@ class InfdbConfig:
         Returns:
             Final parameters dictionary for the requested service.
         """
-        dict_config = self.get_config()
-        parameters_loader: Dict[str, Any] = self.get_value([self.tool_name, "hosts", service_name]) or {}
 
-        if "services" in dict_config:
-            parameters: Dict[str, Any] = dict(self.get_value(["services", service_name]) or {})
-            for key, loader_val in (parameters_loader or {}).items():
-                if loader_val != "None":
-                        parameters[key] = loader_val
-                
-                # Special case: default host to host.docker.internal
-                if loader_val == "None" and key == "host":
-                    parameters[key] = "host.docker.internal"
-        else:
-            parameters = parameters_loader
+        db_params_service = self.get_value([self.tool_name, "hosts", db_name])
+        for key in db_params_service:
+            if db_params_service[key] == "None":
+                if key == "host":
+                    db_params_service[key] = "host.docker.internal"
+                else:
+                    db_params_service[key] = os.getenv(f"SERVICES_{db_name.upper()}_{key.upper()}")
 
-        return parameters or {}
+        return db_params_service
+    
+    def get_env_parameters(self, key, infdb) -> Dict[str, str]:
+        """Return a dictionary of environment variables for this tool.
+
+        Returns:
+            A dictionary of environment variables.
+        """
+
+        env_params = os.getenv(key.upper())
+        if env_params is None:
+            infdb.get_log().error(f"Environment variable '{key.upper()}' is not set.")
+            raise ValueError(f"Environment variable '{key.upper()}' is not set.")
+
+        return env_params

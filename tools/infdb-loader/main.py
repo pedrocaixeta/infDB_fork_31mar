@@ -35,6 +35,7 @@ def main() -> None:
     - Launches the original set of processes; respects utils.if_multiprocesing() to serialize.
     - Stops the queue listener at the end.
     """
+    
     # Bootstrap InfDB (provides package config + central logging)
     infdb = InfDB(tool_name="infdb-loader", config_path="configs")
 

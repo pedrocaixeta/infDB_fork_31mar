@@ -148,7 +148,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
                 crs="EPSG:3035",
             )
 
-            epsg = infdb.get_config_value(["services", "postgres", "epsg"])
+            epsg = infdb.get_db_parameters_dict().get("epsg")
             if epsg is None:
                 raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
             gdf = gdf.to_crs(epsg=epsg)

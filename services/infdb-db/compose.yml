@@ -1,0 +1,26 @@
+services:
+    postgres:
+        profiles:
+            - core
+        build:
+            context: .
+            dockerfile: Dockerfile
+        shm_size: "1g" # increase shared memory within docker container
+        restart: unless-stopped
+        environment:
+            POSTGRES_DB: ${SERVICES_POSTGRES_DB}
+            POSTGRES_USER: ${SERVICES_POSTGRES_USER}
+            POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
+            PGDATA: /infdb-data
+            SRID: ${SERVICES_POSTGRES_EPSG}
+        ports:
+            - ${SERVICES_POSTGRES_EXPOSED_PORT}:5432
+        volumes:
+            - infdb-db-data:/infdb-data
+        networks:
+            - infdb_network
+        healthcheck:
+            test: [ "CMD-SHELL", "pg_isready -U ${SERVICES_POSTGRES_USER} -d ${SERVICES_POSTGRES_DB}" ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
