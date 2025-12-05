@@ -8,17 +8,10 @@
 
 name: ${BASE_NAME}
 
-# Define the shared network with the name from environment variable
-# This network will be created with the name specified in BASE_NETWORK_NAME
-networks:
-  infdb_network:
-    name: infdb-${BASE_NAME}_network
-    driver: bridge
-
-# ==============================================================================
-# CORE SERVICES (Profile: core)
-# ==============================================================================
 include:
+  # ==============================================================================
+  # DATABASE SERVICES (Profile: core)
+  # ==============================================================================
   # PostgreSQL Database (includes 3DCityDB initialization)
   - path: services/infdb-db/compose.yml
 
@@ -55,11 +48,15 @@ include:
 # ==============================================================================
 # VOLUMES
 # ==============================================================================
-# volumes:
-#   infdb-data:
-    # name: ${BASE_NAME}-data
-    # driver: local
-    # driver_opts:
-    #   type: none
-    #   o: bind
-    #   device: ${BASE_PATH_BASE}/${BASE_NAME}
+volumes:
+  infdb-db-data:
+    name: ${BASE_NAME}-db-data
+
+
+# ==============================================================================
+# NETWORKS
+# ==============================================================================
+networks:
+  infdb_network:
+    name: infdb-${BASE_NAME}_network
+    driver: bridge
