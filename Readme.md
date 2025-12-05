@@ -109,13 +109,12 @@ After installation, launch the Linux terminal by searching for "Ubuntu" in your 
 The infDB provides a modular folder structure that allows managing multiple database instances independently. Each instance represents a separate deployment with its own data, configuration, and services—ideal for handling different regions, projects, or environments.
 ```
 infdb/
-├── data/
 ├── infdb-demo/
 ├── sonthofen/
 ├── ...
 └── muenchen/
 ```
-The recommended structure places all instance data in a shared `data/` folder while keeping each instance's configuration and tools in separate directories (e.g., `infdb-demo/`, `sonthofen/`, `muenchen/`). This approach simplifies backups, migrations, and multi-instance management.
+The recommended structure places all instance data in docker managed volumes while keeping each instance's configuration and tools in separate directories (e.g., `infdb-demo/`, `sonthofen/`, `muenchen/`). This approach simplifies backups, migrations, and multi-instance management.
 
 First of all, create the main `infdb` directory and navigate into it:
 ```bash
@@ -188,10 +187,6 @@ Before starting infDB, you need to configure it:
     # ==============================================================================
     # Base name for the project (used in network names and data paths)
     BASE_NAME=infdb-demo
-
-    # Base path for persistent data storage
-    # Relative paths are relative to the project directory
-    BASE_PATH_BASE=../data/${BASE_NAME}
 
     # Docker network name for inter-service communication
     # Pattern: infdb_<instance-name>_network

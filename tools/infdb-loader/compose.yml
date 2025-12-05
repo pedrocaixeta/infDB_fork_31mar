@@ -4,12 +4,12 @@ services:
             context: .
             dockerfile: Dockerfile
         volumes:
-            # - infdb-loader-data:/workspaces/data
-            # - ./configs:/workspaces/infdb-loader/configs:ro  # for production
+            - infdb-loader-data:/workspaces/data
+            #- ./configs:/workspaces/infdb-loader/configs:ro  # for production
             - .:/workspaces/infdb-loader # for development only
             - ../../src/infdb_package:/workspaces/infdb_package
-            - /workspaces/infdb-loader/.venv # Exclude .venv from volume mount
-            - .vscode:/workspaces/.vscode:ro
+            - /workspaces/infdb-loader/.venv # for development only: exclude .venv from volume mount
+            - .vscode:/workspaces/.vscode:ro # for development only
         extra_hosts:
             - "host.docker.internal:host-gateway"
         env_file:
@@ -17,13 +17,7 @@ services:
             - ${CONFIG_INFDB_ENV_PATH}
         environment:
             - UV_LINK_MODE=copy
-        # user: "${UID}:${GID}"
 
-# volumes:
-#     infdb-loader-data:
-        # name: infdb-loader-data
-        # driver: local
-        # driver_opts:
-        #     type: none
-        #     o: bind
-        #     device: ${INFDB_LOADER_DATA_PATH}
+volumes:
+    infdb-loader-data:
+        name: infdb-loader-data
