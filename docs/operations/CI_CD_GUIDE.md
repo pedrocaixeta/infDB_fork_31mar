@@ -215,3 +215,20 @@ notify:
 3. **Leverage Caching**: Cache dependencies to speed up builds and minimize network usage.
 4. **Parallelize Tests**: Use parallel and matrix configurations to test across Python versions or run independent test suites concurrently.
 5. **Store Artifacts**: Save important artifacts (e.g., test results, coverage reports) to help with debugging and quality assurance.
+
+# Adding new Gitlab runners instances
+
+## Gitlab Runner
+https://docs.gitlab.com/runner/install/linux-repository/
+
+### Installation of gitlab-runner on Linux:
+```bash
+curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | sudo bash
+sudo apt install gitlab-runner
+```
+
+### Register new runner
+```bash
+gitlab-runner register  --url https://git-ce.rwth-aachen.de  --token glrt-WqOWig7h-6rGJICLtJ1XH286MQpwOm1lNAp0OjMKdTpjYmET.01.1c0qmuroh
+```
+If we want to run the jobs inside a docker container, choose `Executor type: docker`

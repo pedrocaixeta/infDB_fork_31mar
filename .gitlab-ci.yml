@@ -1,10 +1,18 @@
 # .gitlab-ci.yml
-image: python:3.12-slim
 
 # Global variables
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+
+# Default tags for all jobs
+default:
+  image: python:3.12-slim
+  tags:
+    - infdb-feature
+    - docker
+    - python
+
 
 # Cache configuration
 cache:
