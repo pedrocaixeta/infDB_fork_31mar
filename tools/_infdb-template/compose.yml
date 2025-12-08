@@ -12,7 +12,6 @@ services:
         extra_hosts:
             - "host.docker.internal:host-gateway"
         env_file:
-            - ${CONFIG_INFDB_ENV_PATH}
             - .env
         environment:
             - UV_LINK_MODE=copy
