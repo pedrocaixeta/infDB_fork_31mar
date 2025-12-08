@@ -13,6 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 from infdb import InfDB
 from pySmartDL import SmartDL
+from infdb.utils import do_cmd as infdb_do_cmd
 
 # ============================== Constants ==============================
 HTTP_TIMEOUT_SECONDS: int = 60
@@ -404,3 +405,7 @@ def get_number_processes(infdb: InfDB) -> int:
         number_processes = min(multiprocessing.cpu_count(), max_processes)
     log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes
+
+
+def do_cmd(cmd: str) -> int:
+    return infdb_do_cmd(cmd)
