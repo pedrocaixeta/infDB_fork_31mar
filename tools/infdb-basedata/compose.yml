@@ -11,4 +11,3 @@ services:
             - "host.docker.internal:host-gateway"
         env_file:
             - .env
-            - ${CONFIG_INFDB_ENV_PATH}

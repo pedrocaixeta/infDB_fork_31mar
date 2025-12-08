@@ -230,14 +230,30 @@ docker compose stop
 ### Remove infDB
 To stop all running infDB services and remove them, execute:
 ```bash
-bash infdb-remove.sh
+bash docker compose down
 ```
 
 ### Remove infdb-loader data
 To remove the downloaded infdb-loader data, execute:
 ```bash
-tbd
+bash infdb-remove.sh
 ```
+
+### Visualize infDB data in QWC Web Client
+1. In [.env](.env) make sure profiles `core` and `qwc`to `COMPOSE_PROFILES`
+2. Restart infDB with new profile to start services including QWC Web Client:
+```bash
+bash infdb-startup.sh
+```
+3. Open http://localhost:80/ in your web browser.
+
+### Inspect infDB Data in Database with Postgres Admin UI
+1. In [.env](.env) make sure profiles `core` and `admin`to `COMPOSE_PROFILES`
+2. Restart infDB with new profile to start services including QWC Web Client:
+```bash
+bash infdb-startup.sh
+```
+3. Open http://localhost:82/ in your web browser.
 
 ## Developer on Windows 
 To open the repository in Visual Studio Code (VSC) click the two arrowheads in the lower left corner of VSC and select "Connect to WSL". Then you can open the repository folder from for Linux home directory.

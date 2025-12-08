@@ -4,6 +4,10 @@
 # ----------------------------------------------------------------------
 # infDB with Linear Heat Density Setup Script
 # ----------------------------------------------------------------------
+echo "Loading environment variables from .env file..."
+set -a
+[ -f .env ] && . .env
+set +a
 
 echo "=== Run infDB-loader ==="
 mkdir -p ../data/infdb-loader
