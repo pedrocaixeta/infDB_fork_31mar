@@ -172,7 +172,7 @@ class InfdbConfig:
 
         env_param = os.getenv(key.upper())
         if env_param is None:
-            infdb.get_log().error(f"Environment variable '{key.upper()}' is not set.")
+            infdb.get_logger().error(f"Environment variable '{key.upper()}' is not set.")
             raise ValueError(f"Environment variable '{key.upper()}' is not set.")
 
         return env_param

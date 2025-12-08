@@ -24,10 +24,10 @@ def main():
     infdbclient_citydb = infdbhandler.connect()
 
     # Logger setup
-    infdblog = infdbhandler.get_log()
+    log = infdbhandler.get_logger()
 
     # Start message
-    infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
+    log.info(f"Starting {infdbhandler.get_toolname()} tool")
 
     # Setup database engine
     engine = infdbclient_citydb.get_db_engine()
@@ -41,7 +41,7 @@ def main():
         infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         infdbclient_citydb.execute_query(sql)
-        infdblog.info(f"output schema: {output_schema} created successfully")
+        log.info(f"output schema: {output_schema} created successfully")
 
         SQL_QUERY = f"""
                     DROP TABLE IF EXISTS {output_schema}.temp_rc_calculation CASCADE;
@@ -90,8 +90,8 @@ def main():
 
         buildings = pd.read_sql(SQL_QUERY, engine)
 
-        infdblog.debug(f"Loaded {len(buildings)} buildings from the database.")
-        infdblog.debug(buildings.head())
+        log.debug(f"Loaded {len(buildings)} buildings from the database.")
+        log.debug(buildings.head())
 
         random_years = np.full(len(buildings), np.nan)
 
@@ -130,7 +130,7 @@ def main():
             },
         }
 
-        infdblog.debug("Starting refurbishment simulation")
+        log.debug("Starting refurbishment simulation")
         refurbed_df = basic_refurbishment.simulate_refurbishment(
             buildings,
             end_of_simulation_year,
@@ -139,15 +139,15 @@ def main():
             age_column=construction_year_col,
             provide_last_refurb_only=True,
         )
-        infdblog.debug("Refurbishment simulation completed")
-        infdblog.debug(refurbed_df.info())
-        infdblog.debug(refurbed_df.head())
+        log.debug("Refurbishment simulation completed")
+        log.debug(refurbed_df.info())
+        log.debug(refurbed_df.head())
 
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
         refurbed_df.to_sql("buildings_rc", engine, if_exists="replace", schema=schema, index=False)
-        infdblog.debug("Refurbished data writing to database")
+        log.debug("Refurbished data writing to database")
 
-        infdblog.debug("Starting construction of building elements")
+        log.debug("Starting construction of building elements")
         # Run SQL: 02_create_layer_view
         infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
 
@@ -159,7 +159,7 @@ def main():
 
         # TODO: sort by layer_index according to EUReCA specification
         # TODO: Handling of windows
-        infdblog.debug("Starting construction of building elements")
+        log.debug("Starting construction of building elements")
         elements = elements[elements["element_name"] != "Window"]
 
         elements["materials"] = elements.apply(
@@ -252,15 +252,15 @@ def main():
             index=True,
             method="multi",
         )
-        infdblog.info(summary.head())
+        log.info(summary.head())
 
         # Time Series
         write_timeseries = False
         if not write_timeseries:
-            infdblog.info("Skipping EnTiSe output time series writing to database as per configuration")
+            log.info("Skipping EnTiSe output time series writing to database as per configuration")
             return
 
-        infdblog.debug("Writing EnTiSe output time series to database")
+        log.debug("Writing EnTiSe output time series to database")
 
         # Create metadata table if not exists
         metadata_sql = f"""
@@ -279,7 +279,7 @@ def main():
         try:
             infdbclient_citydb.execute_query(metadata_sql)
         except Exception as e:
-            infdblog.error("Failed to create metadata table: %s", e)
+            log.error("Failed to create metadata table: %s", e)
 
         # Ensure unique constraint for metadata upserts
         try:
@@ -289,7 +289,7 @@ def main():
             """
             infdbclient_citydb.execute_query(unique_idx_sql)
         except Exception as e:
-            infdblog.error("Failed to create unique index on metadata: %s", e)
+            log.error("Failed to create unique index on metadata: %s", e)
 
         # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
 
@@ -299,7 +299,7 @@ def main():
         try:
             infdbclient_citydb.execute_query("CREATE EXTENSION IF NOT EXISTS timescaledb;")
         except Exception as e:
-            infdblog.warning("Could not ensure timescaledb extension (continuing): %s", e)
+            log.warning("Could not ensure timescaledb extension (continuing): %s", e)
 
         create_sql = f"""
         CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
@@ -316,7 +316,7 @@ def main():
         try:
             infdbclient_citydb.execute_query(create_sql)
         except Exception as e:
-            infdblog.error("Failed to create timeseries table with Timescale hypertable syntax: %s", e)
+            log.error("Failed to create timeseries table with Timescale hypertable syntax: %s", e)
             # Fallback: create as a plain Postgres table
             try:
                 create_sql_plain = f"""
@@ -327,9 +327,9 @@ def main():
                 );
                 """
                 infdbclient_citydb.execute_query(create_sql_plain)
-                infdblog.info("Created plain Postgres timeseries table as fallback (no TimescaleDB features).")
+                log.info("Created plain Postgres timeseries table as fallback (no TimescaleDB features).")
             except Exception as e2:
-                infdblog.error("Failed to create plain timeseries table: %s", e2)
+                log.error("Failed to create plain timeseries table: %s", e2)
                 raise
 
         # Upload using baseline
@@ -339,16 +339,18 @@ def main():
             output_schema=output_schema,
             table_name=table_name,
             dict_df=dict_df,
-            infdblog=infdblog,
+            infdblog=log,
         )
         upload_dt = time.perf_counter() - upload_start
-        infdblog.info(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
+        log.info(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
         print(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
 
-        infdblog.info("Ro-heat successfully completed")
+        log.info("Ro-heat successfully completed")
+        infdbhandler.stop_logger()
 
     except Exception as e:
-        infdblog.error(f"Something went wrong: {str(e)}")
+        log.error(f"Something went wrong: {str(e)}")
+        infdbhandler.stop_logger()
         raise e
 
 

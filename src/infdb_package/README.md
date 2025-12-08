@@ -82,7 +82,7 @@ with infdb.connect() as db:
 ## Logging
 
 ```python
-log = infdb.get_log()
+log = infdb.get_logger()
 log.info("hi")
 worker_log = infdb.get_worker_logger()
 worker_log.info("from worker")

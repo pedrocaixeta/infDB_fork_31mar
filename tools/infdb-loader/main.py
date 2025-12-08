@@ -39,9 +39,8 @@ def main() -> None:
     infdb = InfDB(tool_name="infdb-loader", config_path="configs")
 
     # Root logger and the running QueueListener (started by InfdbLogger internally)
-    log = infdb.get_log()
+    log = infdb.get_logger()
     # log_queue = infdb.infdblogger.log_queue # Uncomment when wetterdienst is supported again
-    listener = infdb.infdblogger.listener
 
     log.info("Starting loader.............................................")
     log.info("-------------------------------------------------------------")
@@ -105,10 +104,8 @@ def main() -> None:
         log.info("No processes failed.")
 
     # Stop the central listener explicitly
-    if listener:
-        listener.stop()
-
     log.info("Processes done")
+    infdb.stop_logger()
 
 
 if __name__ == "__main__":

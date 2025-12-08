@@ -16,20 +16,23 @@ def main():
 
     # Initialize InfDB handler
     infdb = InfDB(tool_name="infdb-metadata")
-
+    log = infdb.get_logger()
     # Start messagero
-    infdb.log.info(f"Starting {infdb.get_toolname()} tool")
+    log.info(f"Starting {infdb.get_toolname()} tool")
 
     try:
         # ===========================================================
         # Start your added python code in folder "src"
         # ===========================================================
-        infdb.log.info("Running python code ...")
+        log.info("Running python code ...")
         client = infdb.connect()
-        infdb_metadata.run_with_infdb(client, infdb.log)
+        infdb_metadata.run_with_infdb(client, infdb.logger)
+        infdb.stop_logger()
 
     except Exception as e:
-        infdb.log.error(f"Something went wrong: {str(e)}")
+        log.error(f"Something went wrong: {str(e)}")
+        infdb.stop_logger()
+
         raise e
 
 

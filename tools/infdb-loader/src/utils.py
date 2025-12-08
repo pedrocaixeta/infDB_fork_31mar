@@ -128,8 +128,8 @@ def _requests_download(
         with session.head(url, allow_redirects=True, timeout=timeout) as r:
             if r.ok and "content-length" in r.headers:
                 size = int(r.headers["content-length"])
-    except Exception:
-        pass  # server may not support HEAD properly
+    except Exception as exc:
+        log.exception("Exception occurred during _requests_download(): %s", exc)
 
     # short-circuit if already present with same size
     if size and os.path.exists(dest) and os.path.getsize(dest) == size:

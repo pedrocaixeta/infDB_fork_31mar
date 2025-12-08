@@ -73,9 +73,9 @@ class InfdbClient:
                 self.cur.close()
             if getattr(self, "conn", None):
                 self.conn.close()
-        except Exception:
+        except Exception as exc:
             # Intentionally swallow exceptions on cleanup to preserve current behavior.
-            pass
+            self.log.exception("Exception occurred during close(): %s", exc)
 
     def __del__(self) -> None:
         """Best-effort resource cleanup on GC."""

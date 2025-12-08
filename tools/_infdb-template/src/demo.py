@@ -36,7 +36,7 @@ def sql_demo(infdb):
     infdb.connect().execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
 
     # Execute sql scripts
-    infdb.get_log().info("Running SQL scripts ...")
+    infdb.get_logger().info("Running SQL scripts ...")
     SQL_DIR = os.path.join("sql")  # add subfolders here if needed
     infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
 

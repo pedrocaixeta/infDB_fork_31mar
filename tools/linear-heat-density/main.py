@@ -17,9 +17,9 @@ def main():
 
     # Initialize InfDB handler
     infdb = InfDB(tool_name="linear-heat-density")
-
+    log = infdb.get_logger()
     # Start message
-    infdb.log.info(f"Starting {infdb.get_toolname()} tool")
+    log.info(f"Starting {infdb.get_toolname()} tool")
 
     streets_id = infdb.get_config_value([infdb.get_toolname(), "data", "input", "streets", "id-column"])
     heat_demand_id = infdb.get_config_value([infdb.get_toolname(), "data", "input", "heat-demand", "id-column"])
@@ -41,7 +41,7 @@ def main():
         # ===========================================================
         # Start your added sql scripts in folder "sql"
         # ===========================================================
-        infdb.log.info("Running SQL scripts ...")
+        log.info("Running SQL scripts ...")
         format_params = {
             "buildings_to_streets_schema": infdb.get_config_value(
                 [infdb.get_toolname(), "data", "input", "buildings-to-streets", "schema"]
@@ -68,9 +68,11 @@ def main():
         }
         SQL_DIR = os.path.join("sql")  # add subfolders here if needed ("sql/subfolder")
         infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
+        infdb.stop_logger()
 
     except Exception as e:
-        infdb.log.error(f"Something went wrong: {str(e)}")
+        log.error(f"Something went wrong: {str(e)}")
+        infdb.stop_logger()
         raise e
 
 

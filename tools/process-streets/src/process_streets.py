@@ -1019,7 +1019,7 @@ def run_process_streets(
     (inkl. ID-Handling und 'mixed'-Attributen).
     """
 
-    log = infdb.get_log()
+    log = infdb.get_logger()
     log.info("=== PROCESS-STREETS PIPELINE START (basemap-logic) ===")
 
     engine = infdb.get_db_engine()

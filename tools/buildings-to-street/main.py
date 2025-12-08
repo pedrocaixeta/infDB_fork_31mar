@@ -19,21 +19,21 @@ def main():
 
     # Initialize InfDB handler
     infdb = InfDB(tool_name="buildings-to-street")
-
+    log = infdb.get_logger()
     # Start message
-    infdb.log.info(f"Starting {infdb.get_toolname()} tool")
+    log.info(f"Starting {infdb.get_toolname()} tool")
 
     try:
         # ===========================================================
         # Start your added python code in folder "src"
         # ===========================================================
-        infdb.log.info("Running python code ...")
+        log.info("Running python code ...")
         buildings_to_street.example_function(variable="Hello, InfDB!")
 
         # ===========================================================
         # Start your added sql scripts in folder "sql"
         # ===========================================================
-        infdb.log.info("Running SQL scripts ...")
+        log.info("Running SQL scripts ...")
 
         streets_id = infdb.get_config_value([infdb.get_toolname(), "data", "streets", "id-column"])
         buildings_id = infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "id-column"])
@@ -65,9 +65,11 @@ def main():
         }
         SQL_DIR = os.path.join("sql")  # add subfolders here if needed ("sql/subfolder")
         infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
+        infdb.stop_logger()
 
     except Exception as e:
-        infdb.log.error(f"Something went wrong: {str(e)}")
+        log.error(f"Something went wrong: {str(e)}")
+        infdb.stop_logger()
         raise e
 
 

@@ -20,7 +20,7 @@ def main():
     # INIT INFDB
     # -----------------------------------------------------
     infdb = InfDB(tool_name="process-streets")
-    log = infdb.get_log()
+    log = infdb.get_logger()
 
     log.info("=== Starting process-streets tool ===")
     log.info("Loading configuration...")
@@ -56,10 +56,13 @@ def main():
 
         # Output result as JSON (InfDB standard)
         log.info(json.dumps(results, indent=4))
+        infdb.stop_logger()
+
         return 0
 
     except Exception as e:
         log.error(f"Process-streets failed: {str(e)}")
+        infdb.stop_logger()
         raise
 
 

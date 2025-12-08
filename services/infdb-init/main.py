@@ -40,7 +40,7 @@ def main() -> None:
     """Initialize InfDB, assemble env, and run the 3DCityDB create script."""
     # Initialize InfDB (config + logging)
     inf = InfDB(tool_name="infdb-init", config_path="configs")
-    log = inf.get_log()
+    log = inf.get_logger()
 
     log.info("Starting %s tool", inf.get_toolname())
 
@@ -60,6 +60,7 @@ def main() -> None:
     )
 
     log.info("Successfully finished %s tool", inf.get_toolname())
+    inf.stop_logger()
 
 
 if __name__ == "__main__":

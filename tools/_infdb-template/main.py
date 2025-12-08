@@ -21,19 +21,20 @@ def main():
     infdb = InfDB(tool_name="choose-a-name")
 
     # Start message
-    infdb.log.info(f"Starting {infdb.get_toolname()} tool")
+    log = infdb.get_logger()
+    log.info(f"Starting {infdb.get_toolname()} tool")
 
     try:
         # ===========================================================
         # Start your added python code in folder "src"
         # ===========================================================
-        infdb.log.info("Running python code ...")
+        log.info("Running python code ...")
         choose_a_name.example_function(variable="Hello, InfDB!")
 
         # ===========================================================
         # Start your added sql scripts in folder "sql"
         # ===========================================================
-        infdb.log.info("Running SQL scripts ...")
+        log.info("Running SQL scripts ...")
         format_params = {
             "input_schema": infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"]),
             "output_schema": infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"]),
@@ -44,13 +45,15 @@ def main():
         # ===========================================================
         # Demonstrate database querying - remove or comment out if not needed
         # ===========================================================
-        infdb.log.info("Running demo ...")
+        log.info("Running demo ...")
         demo.sql_demo(infdb)
         demo.database_demo(infdb)
         demo.database_demo_sqlalchemy()
+        infdb.stop_logger()
 
     except Exception as e:
-        infdb.log.error(f"Something went wrong: {str(e)}")
+        log.error(f"Something went wrong: {str(e)}")
+        infdb.stop_logger()
         raise e
 
 

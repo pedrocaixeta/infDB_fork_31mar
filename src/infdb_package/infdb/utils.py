@@ -97,8 +97,8 @@ def _atomic_write(
     if dir_mode:
         try:
             os.chmod(out_dir, int(dir_mode, 8))
-        except Exception:
-            pass
+        except Exception as exc:
+            log.exception("Exception occurred during _atomic_write(): %s", exc)
 
     return path
 
