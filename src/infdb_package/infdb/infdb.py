@@ -1,10 +1,9 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .client import InfdbClient
 from .config import InfdbConfig
 from .logger import InfdbLogger
-
 
 # ============================== Constants ==============================
 
@@ -31,11 +30,19 @@ class InfDB:
         self.config_path: str = config_path
 
         # Load configuration
-        self.infdbconfig: InfdbConfig = InfdbConfig(tool_name=self.tool_name, config_basedir=self.config_path)
+        self.infdbconfig: InfdbConfig = InfdbConfig(
+            tool_name=self.tool_name, config_basedir=self.config_path
+        )
 
         # Initialize logging from config, with safe fallbacks
-        log_path = self.get_config_value(["logging", "path"], insert_toolname=True) or DEFAULT_LOG_FILE
-        level = self.get_config_value(["logging", "level"], insert_toolname=True) or DEFAULT_LOG_LEVEL
+        log_path = (
+            self.get_config_value(["logging", "path"], insert_toolname=True)
+            or DEFAULT_LOG_FILE
+        )
+        level = (
+            self.get_config_value(["logging", "level"], insert_toolname=True)
+            or DEFAULT_LOG_LEVEL
+        )
         self.infdblogger: InfdbLogger = InfdbLogger(log_path=log_path, level=level)
         self.log: logging.Logger = self.infdblogger.root_logger
 
@@ -87,7 +94,7 @@ class InfDB:
         """Return the merged configuration dictionary."""
         return self.infdbconfig.get_config()
 
-    def get_db_parameters_dict(self)-> Dict[str, Any]:
+    def get_db_parameters_dict(self) -> Dict[str, Any]:
         """Return final parameters dictionary for the postgres service."""
         return self.infdbconfig.get_db_parameters()
 
@@ -106,7 +113,9 @@ class InfDB:
             keys.insert(0, self.tool_name)
         return self.infdbconfig.get_value(keys)
 
-    def get_config_path(self, keys: List[str], type: str="config", insert_toolname: bool = False) -> str:
+    def get_config_path(
+        self, keys: List[str], type: str = "config", insert_toolname: bool = False
+    ) -> str:
         """Resolve a filesystem path from config.
 
         Args:
@@ -121,7 +130,7 @@ class InfDB:
             keys.insert(0, self.tool_name)
         return self.infdbconfig.get_path(keys, type=type)
 
-    def get_env_variables(self, key) -> Dict[str, str]:
+    def get_env_variables(self, key) -> Optional[str]:
         """Return a dictionary of environment variables for this tool.
 
         Returns:

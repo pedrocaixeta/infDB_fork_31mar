@@ -88,7 +88,9 @@ type-check:
   script:
     - source .venv/bin/activate
     - uv pip install mypy
+    - uv pip install types-PyYAML types-psycopg2 types-greenlet # additional dependencies for type checking
     - mypy src/
+
   allow_failure: true
 
 # Security check
