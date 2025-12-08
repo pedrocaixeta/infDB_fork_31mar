@@ -83,11 +83,12 @@ class Material:
     thermal capacity and resistance.
     """
 
-    name: str
-    thick: float = 0.100  # Thickness [m]
-    cond: float = 1.00  # Conductivity [W/mK]
-    spec_heat: float = 1000.0  # Specific heat [J/kgK]
-    dens: float = 1000.0  # Density [kg/m3]
+    # Commented out because properties already defined in __init__ and @property
+    # name: str
+    # thick: float = 0.100  # Thickness [m]
+    # cond: float = 1.00  # Conductivity [W/mK]
+    # spec_heat: float = 1000.0  # Specific heat [J/kgK]
+    # dens: float = 1000.0  # Density [kg/m3]
 
     # Just to use the @property decorator and the setter function
     # _name: str = field(init = False, repr = False)
@@ -302,9 +303,10 @@ class AirGapMaterial:
     Thermal resistance is the primary property, from which conductivity is derived.
     """
 
-    name: str
-    thick: float = 0.100  # Thickness [m]
-    thermal_resistance: float = 1.00  # thermal_resistance [m2K/W]
+    # Commented out because properties already defined in __init__ and @property
+    # name: str
+    # thick: float = 0.100  # Thickness [m]
+    # thermal_resistance: float = 1.00  # thermal_resistance [m2K/W]
 
     # Just to use the @property decorator and the setter function
     # _name: str = field(init = False, repr = False)
@@ -737,7 +739,7 @@ class Construction(object):
                 / ((np.real(a[1, 1]) - 1) ** 2 + (np.imag(a[1, 1])) ** 2)
             )
 
-            if asim == False:
+            if not asim:
                 C1 = (
                     sup
                     * ((np.real(a[1, 1]) - 1) ** 2 + (np.imag(a[1, 1])) ** 2)
@@ -860,7 +862,7 @@ Very heavy	3.5	370000		105714.2857	    0.1			            1000	            1495
         }[weight_class]
         equivalent_material = Material(
             f"Equivalent material construction {name}",
-            thick=0.3,
+            thick=thickness,
             cond=conductivity,
             dens=density,
             thermal_absorptance=0.9,
