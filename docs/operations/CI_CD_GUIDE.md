@@ -49,9 +49,10 @@ install_dependencies:
 - **Purpose**: Checks code quality and adherence to style guidelines.
 - **Why Important**: Helps catch errors early, enforces code consistency, and maintains readability.
 - **Typical Tools**:
-  - `flake8` for code quality and PEP 8 compliance
-  - `black` in `--check` mode to enforce code formatting without making changes
+  - `flake8` for code quality and PEP 8 compliance -> Not implemented yet
+  - `ruff` in `format --check` mode to enforce code formatting without making changes
   - `mypy` for static type checking
+  - `bandit` for security linting
 - **Best Practices**:
   - Run linters on every commit to catch issues early.
   - Configure linters to match the project's style guide.
@@ -64,8 +65,7 @@ lint:
   image: python:3.12
   script:
     - source venv/bin/activate
-    - flake8 path/to/your/code
-    - black --check path/to/your/code
+    - ruff format --check path/to/your/code
     - mypy path/to/your/code
 ```
 
