@@ -4,7 +4,7 @@ import io
 import time
 
 import pandas as pd
-from sqlalchemy import text, MetaData, Table
+from sqlalchemy import MetaData, Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 

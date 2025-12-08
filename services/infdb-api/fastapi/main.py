@@ -1,12 +1,13 @@
-import os
-from fastapi import FastAPI, Request, HTTPException, Response, Query
-import httpx
-from urllib.parse import urljoin
-from typing import Optional, Mapping, Iterable, Tuple, List
 import json
+import os
+from typing import Optional, Iterable, Tuple
+from urllib.parse import urljoin
+
+import httpx
+from fastapi import FastAPI, Request, HTTPException, Response, Query
 from fastapi.middleware.gzip import GZipMiddleware
-from shapely.geometry import shape, mapping
 from shapely.errors import ShapelyError
+from shapely.geometry import shape, mapping
 
 # Internal URLs for pygeoapi and PostgREST services
 PYGEOAPI_URL = os.getenv("PYGEOAPI_INTERNAL")
@@ -16,15 +17,18 @@ POSTGREST_URL = os.getenv("POSTGREST_INTERNAL")
 app = FastAPI(title="infDB API Gateway", version="1.0.0")
 app.add_middleware(GZipMiddleware, minimum_size=500)  # Enable gzip compression for large responses
 
+
 # Root endpoint for basic API status
 @app.get("/")
 async def root():
     return {"message": "INFDB API is running."}
 
+
 # Health check endpoint
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
 
 # Health check for PostgREST service
 @app.get("/postgrest/health")
@@ -38,25 +42,27 @@ async def postgrest_health():
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"PostgREST unreachable at {url}: {e}")
 
+
 # Helper to proxy HTTP responses, preserving headers except for hop-by-hop headers
 def _proxy_response(resp: httpx.Response) -> Response:
     media = resp.headers.get("content-type", "application/json")
     r = Response(content=resp.content, status_code=resp.status_code, media_type=media)
-    hop = {"connection","keep-alive","proxy-authenticate","proxy-authorization","te",
-           "trailers","transfer-encoding","upgrade","content-encoding"}
+    hop = {"connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te",
+           "trailers", "transfer-encoding", "upgrade", "content-encoding"}
     for k, v in resp.headers.items():
         lk = k.lower()
-        if lk not in hop and lk not in {"content-length","content-type"}:
+        if lk not in hop and lk not in {"content-length", "content-type"}:
             r.headers[k] = v
     return r
 
+
 # Helper to proxy requests to another service
 async def _proxy(
-    req: Request,
-    base_url: str,
-    subpath: str,
-    *,
-    override_params: Optional[Iterable[Tuple[str, str]]] = None
+        req: Request,
+        base_url: str,
+        subpath: str,
+        *,
+        override_params: Optional[Iterable[Tuple[str, str]]] = None
 ) -> httpx.Response:
     method = req.method
     target = urljoin(base_url, subpath)
@@ -68,16 +74,17 @@ async def _proxy(
         resp = await client.request(method, target, params=params, content=body, headers=headers)
     return resp
 
+
 # ---- PostgREST Endpoints ----
 
 # GET endpoint to fetch data from PostgREST, with geometry simplification
 @app.get("/postgrest/{schema}/{table}")
 async def get_postgrest(
-    request: Request,
-    schema: str,
-    table: str,
-    limit: int = 100,
-    tolerance: float = Query(100, description="Geometry simplification tolerance (units match your data)")
+        request: Request,
+        schema: str,
+        table: str,
+        limit: int = 100,
+        tolerance: float = Query(100, description="Geometry simplification tolerance (units match your data)")
 ):
     # Only pass allowed params to PostgREST, filter out internal params
     passthrough = [
@@ -128,12 +135,13 @@ async def get_postgrest(
     else:
         return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type"))
 
+
 # POST endpoint to insert a new row into a table via PostgREST
 @app.post("/postgrest/{schema}/{table}")
 async def post_postgrest(
-    schema: str,
-    table: str,
-    row: dict
+        schema: str,
+        table: str,
+        row: dict
 ):
     headers = {"Content-Type": "application/json", "Content-Profile": schema}
     try:
@@ -155,14 +163,15 @@ async def post_postgrest(
     else:
         return {"status": "success"}
 
+
 # PUT endpoint to update an existing row in a table via PostgREST
 @app.put("/postgrest/{schema}/{table}/{item_id}")
 async def put_postgrest(
-    schema: str,
-    table: str,
-    item_id: str,
-    row: dict,
-    key_column: str = Query("id", description="Primary key column name")
+        schema: str,
+        table: str,
+        item_id: str,
+        row: dict,
+        key_column: str = Query("id", description="Primary key column name")
 ):
     headers = {"Content-Type": "application/json", "Content-Profile": schema}
     params = {key_column: f"eq.{item_id}"}
@@ -186,13 +195,14 @@ async def put_postgrest(
     else:
         return {"status": "updated"}
 
+
 # DELETE endpoint to remove a row from a table via PostgREST
 @app.delete("/postgrest/{schema}/{table}/{item_id}")
 async def delete_postgrest(
-    schema: str,
-    table: str,
-    item_id: str,
-    key_column: str = Query("id", description="Primary key column name")
+        schema: str,
+        table: str,
+        item_id: str,
+        key_column: str = Query("id", description="Primary key column name")
 ):
     headers = {"Content-Type": "application/json", "Content-Profile": schema}
     params = {key_column: f"eq.{item_id}"}
@@ -211,4 +221,3 @@ async def delete_postgrest(
     if resp.status_code not in (200, 204):
         raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
     return {"status": "deleted"}
-

@@ -1,20 +1,18 @@
-import logging
 import multiprocessing
-import os, time, random
+import os
+import random
+import time
 from pathlib import Path
 from typing import Iterable, List, Optional
-
-import geopandas as gpd
-import requests
-from bs4 import BeautifulSoup
-from pySmartDL import SmartDL
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
 
 import chardet
-
+import geopandas as gpd
+import requests
+from bs4 import BeautifulSoup
 from infdb import InfDB
-from infdb.utils import do_cmd
+from pySmartDL import SmartDL
 
 # ============================== Constants ==============================
 HTTP_TIMEOUT_SECONDS: int = 60

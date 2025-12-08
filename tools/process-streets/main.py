@@ -7,10 +7,11 @@ Handles InfDB initialization, database connection, logging, and demo execution.
 # Import packages
 
 import json
-import sys
 
 from infdb import InfDB
+
 from src import process_streets
+
 
 # Import your full pipeline
 # (The file must be located at: /app/src/process_streets.py)

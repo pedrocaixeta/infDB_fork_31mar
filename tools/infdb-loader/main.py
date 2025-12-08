@@ -1,10 +1,8 @@
-import logging
 import multiprocessing as mp
-import os
-from typing import Any, Dict, List
+from typing import List
 
 from infdb import InfDB
-from src import utils
+
 from src import (
     bkg,
     basemap,
@@ -13,7 +11,6 @@ from src import (
     census2022,
     plz,
     tabula,
-    package,
     need,
     openmeteo,
     kwp_nrw,
@@ -22,6 +19,8 @@ from src import (
     tudo_basemap_ways
     # wetterdienst,
 )
+from src import utils
+
 
 # ============================== Entry Point ============================
 
@@ -41,7 +40,7 @@ def main() -> None:
 
     # Root logger and the running QueueListener (started by InfdbLogger internally)
     log = infdb.get_log()
-    log_queue = infdb.infdblogger.log_queue
+    #log_queue = infdb.infdblogger.log_queue # Uncomment when wetterdienst is supported again
     listener = infdb.infdblogger.listener
 
     log.info("Starting loader.............................................")

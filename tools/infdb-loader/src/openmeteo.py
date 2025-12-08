@@ -1,21 +1,16 @@
 import io
-import logging
-import multiprocessing as mp
 import os
-from logging.handlers import QueueHandler
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict
 
+import infdb as InfDB
 import openmeteo_requests
 import pandas as pd
 import requests_cache
 from retry_requests import retry
 
-import infdb as InfDB
-
 from . import bkg
 from . import utils
-
 
 # ============================== Constants ==============================
 

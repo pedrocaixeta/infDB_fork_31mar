@@ -1,13 +1,12 @@
 import json
 import os
 import sys
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import pandas as pd
-
 from infdb import InfDB
-from . import utils
 
+from . import utils
 
 # ============================== Constants ==============================
 FILE_ENCODING: str = "utf-8"

@@ -1,10 +1,6 @@
-import logging
-import sys
-from typing import Final
-
 from infdb import InfDB
-from . import utils
 
+from . import utils
 
 
 def load(infdb: InfDB) -> None:

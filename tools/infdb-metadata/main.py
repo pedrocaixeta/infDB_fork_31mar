@@ -5,27 +5,9 @@ Handles InfDB initialization, database connection, logging, and demo execution.
 """
 
 # Import packages
-import os
-import sys
 from infdb import InfDB
-from pathlib import Path
-import tempfile
+
 import src.infdb_metadata as infdb_metadata
-from src.infdb_metadata import (
-    parse_args,
-    load_env,
-    get_conn,
-    fetch_metadata,
-    print_available_schemas,
-    prompt_schema_selection,
-    filter_schemas,
-    wrap_database,
-    write_metadata_file,
-    write_metadata_yaml,
-    generate_rdf,
-    SCHEMA_PATH,
-    HERE,
-)
 
 
 def main():

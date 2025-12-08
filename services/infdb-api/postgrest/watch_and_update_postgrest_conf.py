@@ -1,18 +1,12 @@
-import os
-import re
-import sys
-import time
-import tempfile
-import pathlib
 import logging
+import pathlib
+import re
+import time
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Iterable
 
 import psycopg
-from psycopg import Connection
-from psycopg.rows import dict_row
 from infdb import InfDB
-
 from infdb.utils import (
     read_env,
     atomic_write_text as utils_atomic_write_text,
@@ -20,7 +14,8 @@ from infdb.utils import (
     build_dsn_from_env,
     compute_signature as utils_compute_signature,
 )
-
+from psycopg import Connection
+from psycopg.rows import dict_row
 
 infdb = InfDB(tool_name="infdb-postgrest", config_path="configs")
 # ============================== Logging ==============================

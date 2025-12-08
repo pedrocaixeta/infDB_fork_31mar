@@ -1,15 +1,12 @@
-import logging
 import multiprocessing as mp
 import os
 import sys
-from typing import Any, Dict, Iterable, List
-
-import geopandas as gpd
-import pandas as pd
-from charset_normalizer import from_path
+from typing import Any, Dict, List
 
 from infdb import InfDB
+
 from . import utils
+
 
 def load(infdb: InfDB) -> None:
     """Entry point to download, validate, and process KWP NRW datasets from heat atlas NRW.

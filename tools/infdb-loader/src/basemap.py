@@ -1,8 +1,9 @@
 import os
-import time
-from typing import List, Sequence, Optional
 import sys
+from typing import List, Sequence
+
 from infdb import InfDB
+
 from . import utils
 
 

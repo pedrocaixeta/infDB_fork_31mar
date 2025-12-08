@@ -1,20 +1,15 @@
-import os
-import sys
-import time
-import tempfile
-import pathlib
 import logging
+import pathlib
+import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
 import psycopg
-from psycopg import sql
-from psycopg.rows import dict_row
 import yaml
-
 from infdb import InfDB
 from infdb.utils import read_env, build_dsn_from_env, atomic_write_yaml
-
+from psycopg import sql
+from psycopg.rows import dict_row
 
 # =========================
 # ===== Module Constants ===

@@ -1,12 +1,9 @@
 # src/bkg.py
-import logging
-import multiprocessing as mp
 import os
-from logging.handlers import QueueHandler
-import sys
-from typing import List, Sequence, Union
+from typing import Sequence, Union
 
 from infdb import InfDB
+
 from . import utils
 
 

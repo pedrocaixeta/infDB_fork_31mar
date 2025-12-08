@@ -3,8 +3,8 @@ import sys
 from typing import Dict, List, Optional
 
 from infdb import InfDB
+
 from . import utils
-from pySmartDL import SmartDL
 
 
 def load(infdb: InfDB)  -> bool:
