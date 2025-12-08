@@ -55,7 +55,7 @@ def get_all_timeseries_data(database_connection, start, end):
     return df
 
 def get_bld2ts(database_connection):
-    query = f"""
+    query = """
         SELECT *
         FROM basedata.bld2ts
     """
@@ -217,7 +217,7 @@ def upload_timeseries_baseline(engine, output_schema, table_name, dict_df, infdb
     conn = engine.raw_connection()
     cur = conn.cursor()
     try:
-        cur.execute(f"DROP INDEX IF EXISTS entise_ts_data_idx;")
+        cur.execute("DROP INDEX IF EXISTS entise_ts_data_idx;")
         conn.commit()
     except Exception as e:
         infdblog.debug(f"Could not drop entise_ts_data_idx: {e}")
