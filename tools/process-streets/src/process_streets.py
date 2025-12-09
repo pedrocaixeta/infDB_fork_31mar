@@ -1036,6 +1036,7 @@ def run_process_streets(
     apply_length_filter: bool,
     min_length_deadend_junction: float,
     remove_deadend_deadend: bool,
+    remove_loop: bool,
     infdb
 ):
     """
@@ -1049,6 +1050,13 @@ def run_process_streets(
     engine = infdb.get_db_engine()
     input_schema = infdb.get_config_value(["process-streets", "data", "input", "schema"])
     output_schema = infdb.get_config_value(["process-streets", "data", "output", "schema"])
+
+    # NEU: objektart-Filter aus der YAML lesen
+    klasse_objektart_filter = infdb.get_config_value(
+        ["process-streets", "klasse_objektart_filter"]
+    )
+    if not isinstance(klasse_objektart_filter, dict):
+        klasse_objektart_filter = {}
     if not table_name or str(table_name).strip().lower() in ("none", ""):
         table_name = infdb.get_config_value(
             ["process-streets", "data", "input", "table_name"]
@@ -1095,7 +1103,7 @@ def run_process_streets(
         log.warning("Input table EMPTY!")
         return {"status": "no_input_rows"}
 
-    # Sicherstellen, dass es eine 'id'-Spalte gibt (wie in basemap_full_pipeline)
+    # Sicherstellen, dass es eine 'id'-Spalte gibt 
     if "id" not in gdf.columns:
         gdf["id"] = gdf.index.astype(str)
         log.info("No 'id' column in input -> created from index.")
@@ -1106,14 +1114,52 @@ def run_process_streets(
     geom_col = gdf.geometry.name
 
     # ----------------------------------------------------------
-    # STEP 1 — Klasse-Filter (wie bisher)
+    # STEP 1 — Klasse-Filter + optional objektart-Filter
     # ----------------------------------------------------------
     if klasse_filter:
         log.info(f"Applying klasse_filter: {klasse_filter}")
         if "klasse" in gdf.columns:
+            # 1) Nach Klasse filtern
             gdf = gdf[gdf["klasse"].isin(klasse_filter)].copy()
+
+            # 2) Optional: objektart-Filter pro Klasse aus der config
+            if klasse_objektart_filter:
+                if "objektart" not in gdf.columns:
+                    log.warning(
+                        "Column 'objektart' missing – skipping klasse_objektart_filter."
+                    )
+                else:
+                    # Klassen, für die ein spezieller objektart-Filter existiert
+                    classes_with_obj_filter = set(klasse_objektart_filter.keys())
+
+                    # Basis: alle Zeilen ohne speziellen objektart-Filter bleiben drin
+                    mask = ~gdf["klasse"].isin(classes_with_obj_filter)
+
+                    # Für jede Klasse mit definierter objektart-Liste
+                    for klasse_name, allowed_objektarten in klasse_objektart_filter.items():
+                        mask |= (
+                            (gdf["klasse"] == klasse_name)
+                            & gdf["objektart"].isin(allowed_objektarten)
+                        )
+
+                    gdf = gdf[mask].copy()
         else:
-            log.warning("Column 'klasse' missing — skipping filter.")
+            log.warning("Column 'klasse' missing – skipping klasse_filter.")
+    else:
+        log.info("No klasse_filter configured – skipping STEP 1.")
+
+    # Debug nach STEP 1:
+    if "klasse" in gdf.columns:
+        log.info(f"Unique klassen after STEP 1: {gdf['klasse'].unique()}")
+    if "klasse" in gdf.columns and "objektart" in gdf.columns:
+        bundes = gdf[gdf["klasse"] == "Bundesstraße"]
+        if not bundes.empty:
+            log.info(
+                "Objektart for Bundesstraße after STEP 1:\n%s",
+                bundes["objektart"].value_counts().to_string()
+            )
+
+ 
 
     # ----------------------------------------------------------
     # STEP 2 — Split Lines (echte Schnittpunkte)
@@ -1313,12 +1359,24 @@ def run_process_streets(
     final_true = mark_deadend_junction_iter(final_true, round_dec=6, type_col="segment_type")
     final_true["length_m"] = final_true[geom_col].length.astype(float)
 
-    # Optional: deadend-deadend entfernen
+    # Optional: deadend-deadend und loop entfernen
+    final_out = final_true.copy()
+
     if remove_deadend_deadend:
         log.info("Removing 'deadend-deadend' segments in final output...")
-        final_out = final_true[final_true["segment_type"] != "deadend-deadend"].copy()
-    else:
-        final_out = final_true
+        before = len(final_out)
+        final_out = final_out[final_out["segment_type"] != "deadend-deadend"].copy()
+        removed = before - len(final_out)
+        log.info("Removed %d deadend-deadend segments in final output.", removed)
+
+    # NEU: loop-Segmente entfernen
+    if remove_loop:
+        log.info("Removing 'loop' segments in final output...")
+        before = len(final_out)
+        final_out = final_out[final_out["segment_type"] != "loop"].copy()
+        removed = before - len(final_out)
+        log.info("Removed %d loop segments in final output.", removed)
+
 
     # CRS für final_out sicherstellen
     if final_out.crs is None:
@@ -1441,13 +1499,14 @@ def run_process_streets(
 # =========================================================
 
 def main(table_name, klasse_filter, apply_length_filter,
-         min_length_deadend_junction, remove_deadend_deadend, infdb):
+         min_length_deadend_junction, remove_deadend_deadend, remove_loop, infdb):
 
     def to_bool(x):
         return str(x).strip().lower() in ("true", "1", "yes", "y", "ja")
 
     apply_length_filter = to_bool(apply_length_filter)
     remove_deadend_deadend = to_bool(remove_deadend_deadend)
+    remove_loop = to_bool(remove_loop)
 
     # NEU: sicherstellen, dass es ein float ist
     try:
@@ -1469,5 +1528,6 @@ def main(table_name, klasse_filter, apply_length_filter,
         apply_length_filter,
         min_length_deadend_junction,
         remove_deadend_deadend,
+        remove_loop,
         infdb
     )
