@@ -22,7 +22,6 @@ WGET_PROGRESS_BAR: bool = True  # preserve SmartDL progress bar behavior
 GPKG_EXT: str = ".gpkg"
 SQL_SCHEMA_GEOMETRY_COL: str = "geom"
 
-
 # ============================== Internal helpers ==============================
 
 
@@ -431,5 +430,18 @@ def get_number_processes(infdb: InfDB) -> int:
     return number_processes
 
 
-def do_cmd(cmd: str) -> int:
+def do_cmd(cmd: str | List[str]) -> int:
+    """
+    Execute a shell command without shell interpretation.
+    """
     return infdb_do_cmd(cmd)
+
+
+# def do_unsafe_cmd(cmd: str | List[str]) -> int:
+#     """
+#     Execute a shell command with shell interpretation.
+#
+#     Warning: Allowing shell interpretation is considered unsafe in general and should be used with caution!
+#     """
+#
+#     return infdb_do_cmd(cmd, is_shell_interpreted=True)

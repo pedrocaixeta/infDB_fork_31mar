@@ -46,7 +46,9 @@ def load(infdb: InfDB) -> bool:
             [infdb.get_toolname(), "sources", "lod2-nrw", "import-mode"]
         )
         cmd_parts: List[str] = [
-            "citydb import citygml",
+            "citydb",
+            "import",
+            "citygml",
             "-H",
             params["host"],
             "-d",
@@ -60,7 +62,7 @@ def load(infdb: InfDB) -> bool:
             f"--import-mode={import_mode}",
             str(gml_path),
         ]
-        utils.do_cmd(" ".join(str(a) for a in cmd_parts))
+        utils.do_cmd(cmd_parts)
 
         # Post-import SQL (e.g., create LOD2 building table/view)
         format_params = {"output_schema": "opendata"}

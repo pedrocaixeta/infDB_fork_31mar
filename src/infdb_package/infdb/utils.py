@@ -1,8 +1,8 @@
 import logging
 import os
-import subprocess
+import subprocess  # nosec B404
 import tempfile
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, List, Optional
 
 import yaml
 
@@ -143,9 +143,16 @@ def write_yaml(data: Any, output_path: str) -> None:
 # ============================== Shell helper ==============================
 
 
-def do_cmd(cmd: str) -> int:
+def do_cmd(cmd: str | List[str], is_shell_interpreted: bool = False) -> int:
     """
     Execute a shell command, streaming output to the logger.
+
+    Args:
+        cmd: Command to run. Can be a string or a list of strings.
+        is_shell_interpreted: If True, run command through the shell.
+               Default is False for security.
+
+    Warning: Setting is_shell_interpreted=True is considered unsafe in general and should be used with caution!
     """
     if not cmd:
         raise ValueError("cmd must be a non-empty string")
@@ -153,7 +160,7 @@ def do_cmd(cmd: str) -> int:
     log.info("Executing command: %s", cmd)
     process = subprocess.Popen(
         cmd,
-        shell=True,
+        shell=is_shell_interpreted,  # nosec B602
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
