@@ -10,6 +10,7 @@ import numpy as np
 import networkx as nx
 from collections import Counter, defaultdict
 import os 
+import uuid
 
 from typing import Optional, List, Tuple
 from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
@@ -1369,13 +1370,42 @@ def run_process_streets(
         removed = before - len(final_out)
         log.info("Removed %d deadend-deadend segments in final output.", removed)
 
-    # NEU: loop-Segmente entfernen
+    # loop-Segmente entfernen
     if remove_loop:
         log.info("Removing 'loop' segments in final output...")
         before = len(final_out)
         final_out = final_out[final_out["segment_type"] != "loop"].copy()
         removed = before - len(final_out)
         log.info("Removed %d loop segments in final output.", removed)
+    # ----------------------------------------------------------
+    # STEP 10.a — origin_id + neue UUID id
+    # ----------------------------------------------------------
+    
+    if "id" in final_out.columns:
+        final_out = final_out.rename(columns={"id": "origin_id"})
+        log.info("Renamed 'id' column to 'origin_id' to preserve original IDs.")
+    else:
+        final_out["origin_id"] = None
+        log.info("No 'id' column present in final_out; created empty 'origin_id'.")
+
+    # neue UUID-basierte id für jede Zeile
+    final_out["id"] = [str(uuid.uuid4()) for _ in range(len(final_out))]
+    log.info("Assigned new UUIDs to 'id' column in final_out.")
+
+        # ----------------------------------------------------------
+    # STEP 10.b — Hilfsspalten entfernen & Spaltenreihenfolge
+    # ----------------------------------------------------------
+    # Unnötige Spalten wie id_0 o.ä. entfernen
+    for col in ["id_0", "index"]:
+        if col in final_out.columns:
+            final_out = final_out.drop(columns=[col])
+            log.info(f"Dropped helper column '{col}' from final_out.")
+
+    # Sicherstellen, dass 'id' und 'origin_id' ganz vorne stehen
+    front_cols = [c for c in ["id", "origin_id"] if c in final_out.columns]
+    other_cols = [c for c in final_out.columns if c not in front_cols]
+    final_out = final_out[front_cols + other_cols]
+    log.info(f"Reordered columns so that {front_cols} are at the beginning.")
 
 
     # CRS für final_out sicherstellen
