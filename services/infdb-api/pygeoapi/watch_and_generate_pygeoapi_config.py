@@ -152,8 +152,8 @@ def get_schema_signature(connection: psycopg.Connection[Any]) -> str:
                 AND t.typname IN ('geometry','geography')
             )
             SELECT COALESCE(
-              string_agg(schema_name||'.'||table_name||'.'||geom_col||':'||COALESCE(srid::text,''),'|' ORDER BY schema_name,table_name,geom_col),
-              ''
+              string_agg(schema_name||'.'||table_name||'.'||geom_col||':'||COALESCE(srid::text,''),'|' 
+                ORDER BY schema_name,table_name,geom_col),''
             ) AS sig
             FROM geomcols;
             """

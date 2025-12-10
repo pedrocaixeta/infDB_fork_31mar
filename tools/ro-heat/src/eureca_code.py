@@ -419,7 +419,8 @@ class Construction(object):
         for mat in materials_list:
             if (not isinstance(mat, Material)) and (not isinstance(mat, AirGapMaterial)):
                 raise TypeError(
-                    f"Construction {name}. materials_list must be a list of Materials or AirGapMaterial objects. Material {mat.name}"
+                    f"Construction {name}. materials_list must be a list of Materials or AirGapMaterial objects."
+                    f" Material {mat.name}"
                 )
         if construction_type not in [
             "ExtWall",
@@ -430,7 +431,8 @@ class Construction(object):
             "IntFloor",
         ]:
             raise WrongConstructionType(
-                f'Construction {name}. construction type {construction_type} not in ["ExtWall", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"]'
+                f"Construction {name}. construction type {construction_type} not in "
+                '["ExtWall", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"]'
             )
         self.name = name
         self.construction_type = construction_type
