@@ -503,10 +503,8 @@ def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_nam
         clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb)
 
         if clip_wkt:
-            # Save clip geometry to temp GPKG for ogr2ogr
             tmp_gpkg = os.path.splitext(os.path.abspath(input_file))[0] + "_clip_tmp.gpkg"
             try:
-                # Reconstruct GeoDataFrame from WKT for saving
                 from shapely import wkt as shapely_wkt
                 clip_geom = shapely_wkt.loads(clip_wkt)
                 clip_gdf = gpd.GeoDataFrame([{'geom': clip_geom}], geometry='geom', crs=f"EPSG:{epsg}")
@@ -518,9 +516,14 @@ def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_nam
                 clipsrc_opt = []
 
     # Import each layer
+    first = True
     for src_layer, dst_name in zip(layers, layer_names):
         log.info(f"Importing '{src_layer}' → {schema}.{dst_name}")
         
+        # Only the first layer uses -overwrite; subsequent ones append
+        layer_overwrite = overwrite and first
+        first = False
+
         args = [
             "ogr2ogr",
             "-progress",
@@ -531,11 +534,11 @@ def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_nam
             "-lco", "GEOMETRY_NAME=geom",
             "-t_srs", f"EPSG:{epsg}",
             "-makevalid",
-        ] + (["-overwrite"] if overwrite else ["-append"]) \
+        ] + (["-overwrite"] if layer_overwrite else ["-append"]) \
           + clipsrc_opt \
           + [src_layer]
         
-        _ogr2ogr(args,infdb)
+        _ogr2ogr(args, infdb)
 
     # Cleanup temp file
     if tmp_gpkg and os.path.exists(tmp_gpkg):

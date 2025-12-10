@@ -296,10 +296,6 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
         log.info("DGM1: scope %s import finished.", ags)
 
 
-
-
-
-
 # ====================================================================================
 # LAND USE (TN) LOADER - Vector Polygon Data for Actual Land Usage
 # ====================================================================================
@@ -360,70 +356,41 @@ def _load_tatsaechliche_nutzung(
 
     log.info(f"TN: Nutzung_kreis.gpkg contains {len(layer_names)} layers.")
 
-    # ==================== 6. PER-LAYER IMPORT ====================
-    # Import each layer, applying spatial filter to keep only features in scope
-    is_first_import = True  # First import creates table, rest append
-    total_rows_before = 0
-    total_rows_imported = 0
+    # ==================== 6. IMPORT ALL LAYERS INTO ONE TABLE ====================
+    # Import all thematic layers from the GeoPackage into a single target table.
+    # Spatial filtering by scope is handled inside utils.import_layers.
+    log.info(
+        "TN: importing all %d layers into %s.%s (clipped to scope)...",
+        len(layer_names),
+        schema,
+        table,
+    )
 
-    # Get initial row count (in case table exists from previous run)
+    # Map every source layer name to the same destination table name
+    dest_names = [table] * len(layer_names)
+
+    utils.import_layers(
+        input_file=str(gpkg_path),
+        layers=layer_names,   # all source layers at once
+        schema=schema,
+        infdb=infdb,
+        layer_names=dest_names,  # each layer -> same table
+        scope=True,           # apply scope clipping
+        overwrite=True,       # overwrite existing table before import
+    )
+
+    # ==================== 7. FINALIZATION ====================
+    # Get final row count and create spatial index if there is data
+    total_rows_imported = 0
     with engine.connect() as conn:
         try:
-            total_rows_before = conn.execute(
+            total_rows_imported = conn.execute(
                 text(f"SELECT COUNT(*) FROM {schema}.{table}")
             ).scalar() or 0
         except Exception:
-            total_rows_before = 0
+            total_rows_imported = 0
 
-    total_rows_imported = total_rows_before
-
-    for layer_name in layer_names:
-        try:
-            log.info(f"TN: importing from layer '{layer_name}' (cut to scope)...")
-
-            # Import via ogr2ogr with spatial filter
-            # scope=True triggers utils.import_layers to:
-            # - Apply spatial filter using configured scope geometry
-            # - Only copy features that intersect the scope polygon
-            utils.import_layers(
-                input_file=str(gpkg_path),
-                layers=[layer_name],
-                schema=schema,
-                infdb=infdb,
-                layer_names=[table],
-                scope=True,  # Enable spatial filtering
-                overwrite=(is_first_import),  # First layer creates, rest append
-            )
-            is_first_import = False
-
-            # Track import progress
-            with engine.connect() as conn:
-                current_row_count = conn.execute(
-                    text(f"SELECT COUNT(*) FROM {schema}.{table}")
-                ).scalar() or 0
-
-            newly_imported = current_row_count - total_rows_imported
-            total_rows_imported = current_row_count
-
-            if newly_imported > 0:
-                log.info(
-                    f"TN: layer '{layer_name}' contributed {newly_imported:,} rows "
-                    f"(cumulative {total_rows_imported:,})."
-                )
-            else:
-                log.info(
-                    f"TN: layer '{layer_name}' has no features in scope "
-                    f"(0 new rows added)."
-                )
-
-        except Exception as e:
-            log.warning(f"TN: layer '{layer_name}' failed during import: {e}")
-            continue
-
-    # ==================== 7. FINALIZATION ====================
-    # Create spatial index for efficient spatial queries
-    if total_rows_imported > 0:
-        with engine.connect() as conn:
+        if total_rows_imported > 0:
             conn.execute(
                 text(
                     f"CREATE INDEX IF NOT EXISTS {table}_geom_gix "
@@ -432,12 +399,15 @@ def _load_tatsaechliche_nutzung(
             )
             conn.commit()
 
+    if total_rows_imported > 0:
         log.info(
-            f"TN: import finished for {schema}.{table}. "
-            f"Total rows after import: {total_rows_imported:,}."
+            "TN: import finished for %s.%s. Total rows after import: %,d.",
+            schema,
+            table,
+            total_rows_imported,
         )
     else:
-        log.warning(f"TN: no TN features were imported into {schema}.{table}.")
+        log.warning("TN: no TN features were imported into %s.%s.", schema, table)
 
 
 # ==================== load lod2 ====================
