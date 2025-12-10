@@ -1,16 +1,13 @@
 # src/bkg.py
-import logging
-import multiprocessing as mp
 import os
-from logging.handlers import QueueHandler
-import sys
-from typing import List, Sequence, Union
+from typing import Sequence, Union
 
 from infdb import InfDB
+
 from . import utils
 
 
-def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_existing: bool = False) -> None:
+def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear_existing: bool = False) -> None:
     """Create (or update) a single geogitter table by inserting grid cells per resolution.
 
     Behavior preserved:
@@ -54,11 +51,11 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_
             ON {schema}.{table_name} USING GIST (geom);
         """
         db.execute_query(ddl)
-    
+
         all_envelops = utils.get_all_envelops(infdb)
         for envelop in all_envelops:
             log.debug("Envelop: %s", envelop)
-            
+
             wkt = envelop.to_crs(3035).unary_union.wkt
 
             # Ensure list

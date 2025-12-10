@@ -24,10 +24,10 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-  "psycopg2-binary",
-  "PyYAML",
-  "dotenv",
-  "SQLAlchemy",
+    "psycopg2-binary",
+    "PyYAML",
+    "dotenv",
+    "SQLAlchemy",
 ]
 
 [tool.hatch.build.targets.wheel]

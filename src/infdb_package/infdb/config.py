@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-
 # ============================== Constants ==============================
 
 DEFAULT_CONFIG_DIR: str = "configs"
@@ -28,7 +27,10 @@ class InfdbConfig:
         """
         self.tool_name: str = tool_name
         self.log: logging.Logger = logging.getLogger(__name__)
-        self.config_path: str = os.path.join(config_basedir, CONFIG_FILE_TEMPLATE.format(tool=tool_name))
+        self.config_path: str = os.path.join(
+            config_basedir or DEFAULT_CONFIG_DIR,
+            CONFIG_FILE_TEMPLATE.format(tool=tool_name),
+        )
         self._CONFIG: Dict[str, Any] = self._merge_configs(self.config_path)
 
     def __str__(self) -> str:
@@ -114,7 +116,7 @@ class InfdbConfig:
         element: Any = self.get_config()
         for key in keys:
             if not isinstance(element, dict) or key not in element:
-                return None 
+                return None
             element = element.get(key, {})
         return element
 
@@ -130,7 +132,7 @@ class InfdbConfig:
         """
         path = self.get_value(keys)
         if not os.path.isabs(path):
-                path = os.path.join(DATA_BASE_DIR, path)  # mounted data dir within docker
+            path = os.path.join(DATA_BASE_DIR, path)  # mounted data dir within docker
         path = os.path.abspath(path)
         return path
 
@@ -140,8 +142,8 @@ class InfdbConfig:
         return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     def get_db_parameters(self, db_name="postgres") -> Dict[str, str]:
-        """Return database connection parameters for a given service from config-toolname.yml. 
-           Adopt it from environment variables if set to "None". 
+        """Return database connection parameters for a given service from config-toolname.yml.
+           Adopt it from environment variables if set to "None".
            Host is set to "host.docker.internal" if "None".
 
         Args:
@@ -160,17 +162,17 @@ class InfdbConfig:
                     db_params_service[key] = os.getenv(f"SERVICES_{db_name.upper()}_{key.upper()}")
 
         return db_params_service
-    
-    def get_env_parameters(self, key, infdb) -> Dict[str, str]:
+
+    def get_env_parameters(self, key, infdb) -> Optional[str]:
         """Return a dictionary of environment variables for this tool.
 
         Returns:
             A dictionary of environment variables.
         """
 
-        env_params = os.getenv(key.upper())
-        if env_params is None:
-            infdb.get_log().error(f"Environment variable '{key.upper()}' is not set.")
+        env_param = os.getenv(key.upper())
+        if env_param is None:
+            infdb.get_logger().error(f"Environment variable '{key.upper()}' is not set.")
             raise ValueError(f"Environment variable '{key.upper()}' is not set.")
 
-        return env_params
+        return env_param

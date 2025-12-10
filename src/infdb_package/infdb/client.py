@@ -1,14 +1,13 @@
 import logging
 import os
 import time
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import psycopg2
 import sqlalchemy
 from psycopg2 import OperationalError
 
 from .config import InfdbConfig
-
 
 # ============================== Constants ==============================
 DB_URL_TEMPLATE: str = "postgresql://{user}:{password}@{host}:{port}/{db}"
@@ -74,9 +73,9 @@ class InfdbClient:
                 self.cur.close()
             if getattr(self, "conn", None):
                 self.conn.close()
-        except Exception:
+        except Exception as exc:
             # Intentionally swallow exceptions on cleanup to preserve current behavior.
-            pass
+            self.log.exception("Exception occurred during close(): %s", exc)
 
     def __del__(self) -> None:
         """Best-effort resource cleanup on GC."""

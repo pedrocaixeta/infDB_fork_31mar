@@ -1,26 +1,27 @@
-import os
-import re
-import sys
-import time
-import tempfile
-import pathlib
 import logging
+import pathlib
+import re
+import time
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Iterable
 
 import psycopg
-from psycopg import Connection
-from psycopg.rows import dict_row
 from infdb import InfDB
-
 from infdb.utils import (
-    read_env,
     atomic_write_text as utils_atomic_write_text,
-    read_text as utils_read_text,
+)
+from infdb.utils import (
     build_dsn_from_env,
+    read_env,
+)
+from infdb.utils import (
     compute_signature as utils_compute_signature,
 )
-
+from infdb.utils import (
+    read_text as utils_read_text,
+)
+from psycopg import Connection
+from psycopg.rows import dict_row
 
 infdb = InfDB(tool_name="infdb-postgrest", config_path="configs")
 # ============================== Logging ==============================
@@ -46,26 +47,16 @@ DB_USER: str = infdb.get_config_value(["services", "postgres", "user"])
 DB_PASSWORD: str = infdb.get_config_value(["services", "postgres", "password"])
 DB_NAME: str = infdb.get_config_value(["services", "postgres", "db"])
 DB_HOST: str = "postgres"
-DB_PORT: int = 5432
+DB_PORT: str = "5432"
 
 POSTGREST_PORT: int = int(infdb.get_config_value(["services", "postgrest", "port"]))
-DSN: str = build_dsn_from_env(
-    user_var=DB_USER,
-    pwd_var=DB_PASSWORD,
-    db_var=DB_NAME,
-    host_var=DB_HOST,
-    port_var=DB_PORT
-)
+DSN: str = build_dsn_from_env(user_var=DB_USER, pwd_var=DB_PASSWORD, db_var=DB_NAME, host_var=DB_HOST, port_var=DB_PORT)
 
 CHANNEL: str = DEFAULT_CHANNEL
 POLL_INTERVAL_SECONDS: float = DEFAULT_WATCH_INTERVAL_SECONDS
 MIN_REBUILD_GAP_SECONDS: float = DEFAULT_MIN_RELOAD_GAP_SECONDS
 
-EXCLUDE_SCHEMAS: list[str] = [
-    s.strip()
-    for s in DEFAULT_EXCLUDE_SCHEMAS_CSV.split(",")
-    if s.strip()
-]
+EXCLUDE_SCHEMAS: list[str] = [s.strip() for s in DEFAULT_EXCLUDE_SCHEMAS_CSV.split(",") if s.strip()]
 
 # File/dir modes (read once)
 CONF_FILE_MODE_STR: str = str(read_env("POSTGREST_CONF_MODE", default="0644"))
@@ -88,6 +79,7 @@ CONF_PATH, CONF_DIR = resolve_conf_path()
 
 
 # ============================== FS helpers (using utils) ==============================
+
 
 def utcnow() -> str:
     """Return current UTC time in ISO 8601 format."""
@@ -122,6 +114,7 @@ def read_text(path: pathlib.Path) -> str:
 
 # ============================== Config rendering ==============================
 
+
 def ensure_conf_exists(conf_path: pathlib.Path, conf_dir: pathlib.Path) -> None:
     """Ensure the PostgREST config file exists; create a minimal one if missing.
 
@@ -134,15 +127,10 @@ def ensure_conf_exists(conf_path: pathlib.Path, conf_dir: pathlib.Path) -> None:
 
     # Build defaults (prefer explicit URIs if set; otherwise use globals)
     db_uri = DSN
-    anon_role =  DB_USER
+    anon_role = DB_USER
     port = POSTGREST_PORT
 
-    default_conf = (
-        f'db-uri = "{db_uri}"\n'
-        f'db-anon-role = "{anon_role}"\n'
-        f"server-port = {port}\n"
-        f'db-schemas = ""\n'
-    )
+    default_conf = f'db-uri = "{db_uri}"\ndb-anon-role = "{anon_role}"\nserver-port = {port}\ndb-schemas = ""\n'
     atomic_write_text(default_conf, conf_path)
     print(f"[{utcnow()}] created {conf_path} with minimal defaults")
 
@@ -150,6 +138,7 @@ def ensure_conf_exists(conf_path: pathlib.Path, conf_dir: pathlib.Path) -> None:
 def fnmatch_any(name: str, patterns: Iterable[str]) -> bool:
     """Return True if `name` matches any of the glob `patterns`."""
     import fnmatch
+
     return any(fnmatch.fnmatch(name, p) for p in patterns)
 
 
@@ -188,6 +177,7 @@ def notify_postgrest_reload(conn: Connection[dict], channel: str) -> None:
 
 
 # ============================== Main loop ==============================
+
 
 def loop() -> None:
     """Watch DB schemas; update PostgREST config and notify on changes."""

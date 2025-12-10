@@ -1,20 +1,15 @@
-import os
-import sys
-import time
-import tempfile
-import pathlib
 import logging
+import pathlib
+import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
 import psycopg
+import yaml
+from infdb import InfDB
+from infdb.utils import atomic_write_yaml, build_dsn_from_env, read_env
 from psycopg import sql
 from psycopg.rows import dict_row
-import yaml
-
-from infdb import InfDB
-from infdb.utils import read_env, build_dsn_from_env, atomic_write_yaml
-
 
 # =========================
 # ===== Module Constants ===
@@ -30,6 +25,7 @@ GERMANY_BBOX_CRS84: List[float] = [5.866315, 47.270111, 15.041932, 55.058384]
 # =========================
 # ========= Logging ========
 # =========================
+
 
 def _setup_logging() -> logging.Logger:
     """Configure and return the module logger.
@@ -62,7 +58,12 @@ POSTGRES_PORT: int = int(read_env("SERVICES_POSTGRES_PORT", required=True))
 TARGET_EPSG: int = int(read_env("SERVICES_POSTGRES_EPSG", required=True))
 FALLBACK_EPSG: int = 25832
 
-FORCE_CRS84_ONLY: bool = (str(read_env("SERVICES_PYGEOAPI_FORCE_CRS84_ONLY", "false")).lower() in ("1", "true", "yes", "y"))
+FORCE_CRS84_ONLY: bool = str(read_env("SERVICES_PYGEOAPI_FORCE_CRS84_ONLY", "false")).lower() in (
+    "1",
+    "true",
+    "yes",
+    "y",
+)
 
 FORCE_DB_TRANSFORM_TABLES_RAW: str = read_env("FORCE_DB_TRANSFORM_TABLES", "*") or "*"
 _RAW_ITEMS: List[str] = [t.strip() for t in FORCE_DB_TRANSFORM_TABLES_RAW.split(",") if t.strip()]
@@ -97,6 +98,7 @@ DB_DSN: str = build_dsn_from_env(
 # ======= IO helpers ======
 # =========================
 
+
 class NoAliasDumper(yaml.SafeDumper):
     """YAML dumper that disables anchors/aliases."""
 
@@ -115,6 +117,7 @@ class NoAliasDumper(yaml.SafeDumper):
 # ===============================
 # ====== Change detection =======
 # ===============================
+
 
 def get_schema_signature(connection: psycopg.Connection[Any]) -> str:
     """Return a stable signature of geometry-bearing columns in the DB.
@@ -149,8 +152,8 @@ def get_schema_signature(connection: psycopg.Connection[Any]) -> str:
                 AND t.typname IN ('geometry','geography')
             )
             SELECT COALESCE(
-              string_agg(schema_name||'.'||table_name||'.'||geom_col||':'||COALESCE(srid::text,''),'|' ORDER BY schema_name,table_name,geom_col),
-              ''
+              string_agg(schema_name||'.'||table_name||'.'||geom_col||':'||COALESCE(srid::text,''),'|' 
+                ORDER BY schema_name,table_name,geom_col),''
             ) AS sig
             FROM geomcols;
             """
@@ -191,6 +194,7 @@ def get_dml_signature_geom(connection: psycopg.Connection[Any]) -> int:
 # =========================
 # ======= DB helpers ======
 # =========================
+
 
 def list_columns(cursor: psycopg.Cursor[Any], schema: str, table: str) -> List[Tuple[str, str]]:
     """List column names and types for a table.
@@ -253,14 +257,16 @@ def list_geometry_sources(cursor) -> list[dict]:
                 """
             )
             for row in cursor.fetchall():
-                sources.append({
-                    "schema": row["schema"],
-                    "table": row["table_name"],        # map back to expected key
-                    "geom_col": row["geom_col"],
-                    "srid": row["srid"],
-                    "geom_type": row["geom_type"],
-                    "is_geography": False,
-                })
+                sources.append(
+                    {
+                        "schema": row["schema"],
+                        "table": row["table_name"],  # map back to expected key
+                        "geom_col": row["geom_col"],
+                        "srid": row["srid"],
+                        "geom_type": row["geom_type"],
+                        "is_geography": False,
+                    }
+                )
         except Exception:
             # ignore and fall through to other options
             pass
@@ -282,14 +288,16 @@ def list_geometry_sources(cursor) -> list[dict]:
                 """
             )
             for row in cursor.fetchall():
-                sources.append({
-                    "schema": row["schema"],
-                    "table": row["table_name"],        # map back to expected key
-                    "geom_col": row["geom_col"],
-                    "srid": row["srid"],
-                    "geom_type": row["geom_type"],
-                    "is_geography": True,
-                })
+                sources.append(
+                    {
+                        "schema": row["schema"],
+                        "table": row["table_name"],  # map back to expected key
+                        "geom_col": row["geom_col"],
+                        "srid": row["srid"],
+                        "geom_type": row["geom_type"],
+                        "is_geography": True,
+                    }
+                )
         except Exception:
             pass
 
@@ -321,17 +329,18 @@ def list_geometry_sources(cursor) -> list[dict]:
         """
     )
     for row in cursor.fetchall():
-        sources.append({
-            "schema": row["schema"],
-            "table": row["relname"],     # map to expected key
-            "geom_col": row["geom_col"],
-            "srid": None,
-            "geom_type": None,
-            "is_geography": (row["typname"] == "geography"),
-        })
+        sources.append(
+            {
+                "schema": row["schema"],
+                "table": row["relname"],  # map to expected key
+                "geom_col": row["geom_col"],
+                "srid": None,
+                "geom_type": None,
+                "is_geography": (row["typname"] == "geography"),
+            }
+        )
 
     return sources
-
 
 
 def pick_id_column(cursor: psycopg.Cursor[Any], schema: str, table: str) -> Optional[str]:
@@ -355,6 +364,7 @@ def pick_id_column(cursor: psycopg.Cursor[Any], schema: str, table: str) -> Opti
 # =============================
 # ===== SRID resolution =======
 # =============================
+
 
 def resolve_srid(
     cursor: psycopg.Cursor[Any],
@@ -407,6 +417,7 @@ def resolve_srid(
 # ==========================================
 # == helper: ensure a target-EPSG view   ===
 # ==========================================
+
 
 def ensure_target_view(
     cursor: psycopg.Cursor[Any],
@@ -475,6 +486,7 @@ def ensure_target_view(
 # ========= build =========
 # =========================
 
+
 def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
     """Scan DB, assemble pygeoapi config, and write YAML atomically.
 
@@ -524,7 +536,10 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
             geom_field = "geom"
 
             srid_code = resolve_srid(
-                cursor, schema=schema, table=table, geometry_column=geom_field,
+                cursor,
+                schema=schema,
+                table=table,
+                geometry_column=geom_field,
                 srid_hint=geometry_column_entry.get("srid"),
             )
             epsg_uri_detected = make_epsg_uri(srid_code)
@@ -605,15 +620,23 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
         # Write YAML atomically using shared helper (preserves original behavior)
         config_document: Dict[str, Any] = {
             "server": {
-                "bind": {"host": "0.0.0.0", "port": PYGEOAPI_PORT},
+                "bind": {"host": "0.0.0.0", "port": PYGEOAPI_PORT},  # nosec B104
                 "url": f"http://{PYGEOAPI_HOST}:{PYGEOAPI_PORT}",
                 "mimetype": "application/json; charset=UTF-8",
-                "encoding": "utf-8", "gzip": False, "limit": 1000,
-                "language": "en-US", "cors": True, "pretty_print": True, "admin": False,
+                "encoding": "utf-8",
+                "gzip": False,
+                "limit": 1000,
+                "language": "en-US",
+                "cors": True,
+                "pretty_print": True,
+                "admin": False,
                 "limits": {"default_items": 10, "max_items": 50},
-                "map": {"url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                        "attribution": ('&copy; <a href="https://openstreetmap.org/copyright">'
-                                        'OpenStreetMap contributors</a>')},
+                "map": {
+                    "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                    "attribution": (
+                        '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+                    ),
+                },
                 "ogc_schemas_location": "/schemas.opengis.net",
             },
             "logging": {"level": "DEBUG"},
@@ -628,22 +651,26 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
                 },
                 "license": {"name": "CC-BY 4.0 license", "url": "https://creativecommons.org/licenses/by/4.0/"},
                 "provider": {"name": "pygeoapi Development Team", "url": "https://pygeoapi.io"},
-                "contact": {"name": "Infdb Development Team", "position": "Developers",
-                            "address": "Technical University of Munich", "city": "Munich"},
+                "contact": {
+                    "name": "Infdb Development Team",
+                    "position": "Developers",
+                    "address": "Technical University of Munich",
+                    "city": "Munich",
+                },
             },
             "resources": resources,
         }
 
         atomic_write_yaml(config_document, OUTPUT_CONFIG_PATH)
         log.info(
-            "Wrote %s with %d resource(s). Skipped %d table(s).",
-            OUTPUT_CONFIG_PATH.resolve(), len(resources), skipped
+            "Wrote %s with %d resource(s). Skipped %d table(s).", OUTPUT_CONFIG_PATH.resolve(), len(resources), skipped
         )
 
 
 # =========================
 # ======= main loop =======
 # =========================
+
 
 def listen_and_rebuild() -> None:
     """Connect, build config, and rebuild on schema/DML changes.

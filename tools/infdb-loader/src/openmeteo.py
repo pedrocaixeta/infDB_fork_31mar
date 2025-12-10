@@ -1,21 +1,15 @@
 import io
-import logging
-import multiprocessing as mp
 import os
-from logging.handlers import QueueHandler
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict
 
+import infdb as InfDB
 import openmeteo_requests
 import pandas as pd
 import requests_cache
 from retry_requests import retry
 
-import infdb as InfDB
-
-from . import bkg
-from . import utils
-
+from . import bkg, utils
 
 # ============================== Constants ==============================
 
@@ -28,7 +22,6 @@ TS_METADATA_SUFFIX: str = "_ts_metadata"
 HOURLY_RESOLUTION_TEXT: str = "1 hour"
 HOURLY_UNIT_TEXT: str = "°C"
 GEO_SRID_WGS84: int = 4326
-
 
 
 def temperature_2m(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB) -> None:
@@ -222,7 +215,7 @@ def load(infdb: InfDB) -> bool:
 
         # Ensure BKG 10km grid exists
         bkg_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "schema"])
-        bkg.create_geogitter("10km", infdb) 
+        bkg.create_geogitter("10km", infdb)
 
         # DB engine via package
         engine = infdb.get_db_engine()

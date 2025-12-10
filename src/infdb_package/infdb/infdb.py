@@ -1,10 +1,9 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .client import InfdbClient
 from .config import InfdbConfig
 from .logger import InfdbLogger
-
 
 # ============================== Constants ==============================
 
@@ -37,20 +36,24 @@ class InfDB:
         log_path = self.get_config_value(["logging", "path"], insert_toolname=True) or DEFAULT_LOG_FILE
         level = self.get_config_value(["logging", "level"], insert_toolname=True) or DEFAULT_LOG_LEVEL
         self.infdblogger: InfdbLogger = InfdbLogger(log_path=log_path, level=level)
-        self.log: logging.Logger = self.infdblogger.root_logger
+        self.logger: logging.Logger = self.infdblogger.root_logger
 
     def __str__(self) -> str:
         return f"InfDB(tool='{self.tool_name}', config='{self.config_path}')"
 
     # ------------------ config & logging helpers ------------------
 
-    def get_log(self) -> logging.Logger:
+    def get_logger(self) -> logging.Logger:
         """Return the root logger used by this instance."""
-        return self.log
+        return self.logger
 
     def get_worker_logger(self) -> logging.Logger:
         """Create and return a worker logger from the InfdbLogger helper."""
         return self.infdblogger.setup_worker_logger()
+
+    def stop_logger(self) -> None:
+        """Stop the InfdbLogger's QueueListener."""
+        self.infdblogger.stop()
 
     # ------------------ database helpers ------------------
 
@@ -64,7 +67,7 @@ class InfDB:
         Returns:
             An InfdbClient connected to the requested database.
         """
-        return InfdbClient(self.infdbconfig, self.get_log())
+        return InfdbClient(self.infdbconfig, self.get_logger())
 
     def get_db_engine(self):
         """Return a SQLAlchemy engine for the specified database.
@@ -87,7 +90,7 @@ class InfDB:
         """Return the merged configuration dictionary."""
         return self.infdbconfig.get_config()
 
-    def get_db_parameters_dict(self)-> Dict[str, Any]:
+    def get_db_parameters_dict(self) -> Dict[str, Any]:
         """Return final parameters dictionary for the postgres service."""
         return self.infdbconfig.get_db_parameters()
 
@@ -106,7 +109,7 @@ class InfDB:
             keys.insert(0, self.tool_name)
         return self.infdbconfig.get_value(keys)
 
-    def get_config_path(self, keys: List[str], type: str="config", insert_toolname: bool = False) -> str:
+    def get_config_path(self, keys: List[str], type: str = "config", insert_toolname: bool = False) -> str:
         """Resolve a filesystem path from config.
 
         Args:
@@ -121,7 +124,7 @@ class InfDB:
             keys.insert(0, self.tool_name)
         return self.infdbconfig.get_path(keys, type=type)
 
-    def get_env_variables(self, key) -> Dict[str, str]:
+    def get_env_variable(self, key) -> Optional[str]:
         """Return a dictionary of environment variables for this tool.
 
         Returns:
