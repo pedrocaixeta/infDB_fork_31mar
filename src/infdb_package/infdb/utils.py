@@ -2,13 +2,12 @@ import logging
 import os
 import subprocess
 import tempfile
-from typing import Any, Optional, Iterable
+from typing import Any, Iterable, Optional
 
 import yaml
 
 from .client import InfdbClient
 from .config import InfdbConfig
-
 
 # ============================== Constants ==============================
 
@@ -21,6 +20,7 @@ log = logging.getLogger(LOGGER_NAME)
 
 
 # ============================== Env helpers ==============================
+
 
 def read_env(var_name: str, default: Optional[str] = None, required: bool = False) -> Optional[str]:
     """
@@ -48,6 +48,7 @@ def build_dsn_from_env(
 
 # ============================== Filesystem helpers ==============================
 
+
 def ensure_dir_exists(path: str) -> str:
     """
     Ensure a directory (or a file's parent directory) exists; return absolute path.
@@ -65,7 +66,9 @@ def ensure_dir_exists(path: str) -> str:
     return abs_path
 
 
-def _atomic_write(binary: bool, data: Any, output_path: str, file_mode: str | None = None, dir_mode: str | None = None) -> str:
+def _atomic_write(
+    binary: bool, data: Any, output_path: str, file_mode: str | None = None, dir_mode: str | None = None
+) -> str:
     """
     Internal: write text/bytes atomically and optionally set chmods.
     """
@@ -77,11 +80,13 @@ def _atomic_write(binary: bool, data: Any, output_path: str, file_mode: str | No
     os.makedirs(out_dir, exist_ok=True)
 
     mode = "wb" if binary else "w"
-    with tempfile.NamedTemporaryFile(mode, delete=False, dir=out_dir, suffix=".tmp", encoding=None if binary else FILE_ENCODING) as tmp:
+    with tempfile.NamedTemporaryFile(
+        mode, delete=False, dir=out_dir, suffix=".tmp", encoding=None if binary else FILE_ENCODING
+    ) as tmp:
         if binary:
-            tmp.write(data)                  # bytes
+            tmp.write(data)  # bytes
         else:
-            tmp.write(str(data))             # text
+            tmp.write(str(data))  # text
         tmp.flush()
         os.fsync(tmp.fileno())
         tmp_name = tmp.name
@@ -137,6 +142,7 @@ def write_yaml(data: Any, output_path: str) -> None:
 
 # ============================== Shell helper ==============================
 
+
 def do_cmd(cmd: str) -> int:
     """
     Execute a shell command, streaming output to the logger.
@@ -165,6 +171,7 @@ def do_cmd(cmd: str) -> int:
 
 
 # ============================== DB convenience ==============================
+
 
 def do_sql_query(
     query: str,
@@ -195,6 +202,7 @@ def get_db_engine(
 
 
 # ============================== Misc helpers ==============================
+
 
 def compute_signature(items: Iterable[str]) -> str:
     """

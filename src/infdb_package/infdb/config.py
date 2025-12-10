@@ -18,9 +18,7 @@ FILE_ENCODING: str = "utf-8"
 class InfdbConfig:
     """Read and resolve tool-specific YAML config with optional InfDB base merge."""
 
-    def __init__(
-        self, tool_name: str, config_basedir: Optional[str] = DEFAULT_CONFIG_DIR
-    ) -> None:
+    def __init__(self, tool_name: str, config_basedir: Optional[str] = DEFAULT_CONFIG_DIR) -> None:
         """Initialize configuration for a tool.
 
         Args:
@@ -58,9 +56,7 @@ class InfdbConfig:
 
         return self._resolve_yaml_placeholders(configs)
 
-    def _flatten_dict(
-        self, data: Dict[str, Any], parent_key: str = "", sep: str = "/"
-    ) -> Dict[str, Any]:
+    def _flatten_dict(self, data: Dict[str, Any], parent_key: str = "", sep: str = "/") -> Dict[str, Any]:
         """Flatten nested dictionaries into path-like keys."""
         items: Dict[str, Any] = {}
         for key, value in data.items():
@@ -143,9 +139,7 @@ class InfdbConfig:
     @staticmethod
     def get_root_path() -> str:
         """Return the project root path (two levels up from this file)."""
-        return os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
+        return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     def get_db_parameters(self, db_name="postgres") -> Dict[str, str]:
         """Return database connection parameters for a given service from config-toolname.yml.
@@ -165,9 +159,7 @@ class InfdbConfig:
                 if key == "host":
                     db_params_service[key] = "host.docker.internal"
                 else:
-                    db_params_service[key] = os.getenv(
-                        f"SERVICES_{db_name.upper()}_{key.upper()}"
-                    )
+                    db_params_service[key] = os.getenv(f"SERVICES_{db_name.upper()}_{key.upper()}")
 
         return db_params_service
 

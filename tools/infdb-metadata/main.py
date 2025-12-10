@@ -1,13 +1,11 @@
-
 """
 Main entry point for the infdb-metadata tool.
 Handles InfDB initialization, database connection, logging, and demo execution.
 """
 
 # Import packages
-from infdb import InfDB
-
 import src.infdb_metadata as infdb_metadata
+from infdb import InfDB
 
 
 def main():
@@ -18,7 +16,6 @@ def main():
 
     # Initialize InfDB handler
     infdb = InfDB(tool_name="infdb-metadata")
-    
 
     # Start messagero
     infdb.log.info(f"Starting {infdb.get_toolname()} tool")

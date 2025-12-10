@@ -20,7 +20,7 @@ def get_hourly_temperature_2m(objectid, database_connection, start_time=None, en
         ORDER BY time ASC;
     """
     df = pd.read_sql(sql=query, con=database_connection)
-    df.set_index('time', inplace=True)
+    df.set_index("time", inplace=True)
 
     return df
 
@@ -35,13 +35,16 @@ def get_hourly_temperature_2m(objectid, database_connection, start_time=None, en
             )
         }
 """
+
+
 def get_distinct_building_ids(database_connection):
     query = """
         SELECT DISTINCT objectid 
         FROM opendata.buildings_lod2
     """
     df = pd.read_sql(sql=query, con=database_connection)
-    return df['objectid'].tolist()
+    return df["objectid"].tolist()
+
 
 def get_all_timeseries_data(database_connection, start, end):
     query = f"""
@@ -50,9 +53,10 @@ def get_all_timeseries_data(database_connection, start, end):
         WHERE time >= '{start}' AND time < '{end}'
     """
     df = pd.read_sql(sql=query, con=database_connection)
-    df.set_index('time', inplace=True)
+    df.set_index("time", inplace=True)
 
     return df
+
 
 def get_bld2ts(database_connection):
     query = """
@@ -65,8 +69,10 @@ def get_bld2ts(database_connection):
 
 
 def post_timeseries_data(database_connection, df_timeseries):
-    df_timeseries.to_sql('openmeteo_ts_data', con=database_connection, schema='opendata', if_exists='append', index=False)
-    
+    df_timeseries.to_sql(
+        "openmeteo_ts_data", con=database_connection, schema="opendata", if_exists="append", index=False
+    )
+
 
 def _upsert_metadata_and_get_ids(engine, infdblog, output_schema, objectids):
     """Upsert metadata for all series and return mapping (name, objectid, source) -> id using
@@ -82,15 +88,17 @@ def _upsert_metadata_and_get_ids(engine, infdblog, output_schema, objectids):
     records = []
     for objectid in objectids:
         for name, description, typ, unit in series_defs:
-            records.append({
-                "name": name,
-                "description": description,
-                "type": typ,
-                "unit": unit,
-                "changelog": 0,
-                "objectid": str(objectid),
-                "source": "ro-heat",
-            })
+            records.append(
+                {
+                    "name": name,
+                    "description": description,
+                    "type": typ,
+                    "unit": unit,
+                    "changelog": 0,
+                    "objectid": str(objectid),
+                    "source": "ro-heat",
+                }
+            )
 
     if not records:
         return {}
@@ -104,26 +112,21 @@ def _upsert_metadata_and_get_ids(engine, infdblog, output_schema, objectids):
     batch_size = 1000
     with engine.begin() as conn:
         for start in range(0, len(records), batch_size):
-            batch = records[start:start + batch_size]
+            batch = records[start : start + batch_size]
             insert_stmt = pg_insert(meta_table).values(batch)
-            upsert_stmt = (
-                insert_stmt.on_conflict_do_update(
-                    index_elements=[meta_table.c.name, meta_table.c.objectid, meta_table.c.source],
-                    set_={
-                        "unit": insert_stmt.excluded.unit,
-                        "type": insert_stmt.excluded.type,
-                        "description": insert_stmt.excluded.description,
-                    },
-                )
-                .returning(meta_table.c.id, meta_table.c.name, meta_table.c.objectid, meta_table.c.source)
-            )
+            upsert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=[meta_table.c.name, meta_table.c.objectid, meta_table.c.source],
+                set_={
+                    "unit": insert_stmt.excluded.unit,
+                    "type": insert_stmt.excluded.type,
+                    "description": insert_stmt.excluded.description,
+                },
+            ).returning(meta_table.c.id, meta_table.c.name, meta_table.c.objectid, meta_table.c.source)
             res = conn.execute(upsert_stmt)
             for row in res.mappings():
                 meta_map[(row["name"], row["objectid"], row["source"])] = row["id"]
 
-    infdblog.info(
-        f"Upserted metadata for {len(objectids)} buildings; total series rows: {len(records)}"
-    )
+    infdblog.info(f"Upserted metadata for {len(objectids)} buildings; total series rows: {len(records)}")
     return meta_map
 
 
@@ -180,18 +183,16 @@ def build_timeseries_df(dict_df, meta_map, infdblog):
     ts_df["time"] = pd.to_datetime(ts_df["time"], utc=True, errors="coerce")
     ts_df = ts_df[ts_df["time"].notna()]
 
-    infdblog.info(
-        f"Built timeseries DataFrame with {len(ts_df)} rows across {total_series} series."
-    )
+    infdblog.info(f"Built timeseries DataFrame with {len(ts_df)} rows across {total_series} series.")
     return ts_df, total_series
 
 
 def upload_timeseries_baseline(engine, output_schema, table_name, dict_df, infdblog):
     """Baseline uploader:
-       - upsert metadata
-       - build a single DataFrame with all rows
-       - single COPY into final table
-       No staging, no chunking, no concurrency.
+    - upsert metadata
+    - build a single DataFrame with all rows
+    - single COPY into final table
+    No staging, no chunking, no concurrency.
     """
     # 1) Upsert metadata
     objectids = [str(objid) for objid in dict_df.keys()]
@@ -205,8 +206,7 @@ def upload_timeseries_baseline(engine, output_schema, table_name, dict_df, infdb
     ts_df, total_series = build_timeseries_df(dict_df, meta_map, infdblog)
     build_dt = time.perf_counter() - build_start
     infdblog.info(
-        f"Built full timeseries DataFrame in {build_dt:.2f}s "
-        f"({len(ts_df):,} rows across {total_series} series)."
+        f"Built full timeseries DataFrame in {build_dt:.2f}s ({len(ts_df):,} rows across {total_series} series)."
     )
 
     if ts_df.empty:
@@ -236,10 +236,7 @@ def upload_timeseries_baseline(engine, output_schema, table_name, dict_df, infdb
         except Exception:
             pass
 
-        copy_sql = (
-            f"COPY {output_schema}.{table_name} "
-            f"(ts_metadata_id, time, value) FROM STDIN WITH (FORMAT csv)"
-        )
+        copy_sql = f"COPY {output_schema}.{table_name} (ts_metadata_id, time, value) FROM STDIN WITH (FORMAT csv)"
         cur.copy_expert(copy_sql, buf)
         conn.commit()
     finally:
@@ -249,10 +246,7 @@ def upload_timeseries_baseline(engine, output_schema, table_name, dict_df, infdb
     copy_dt = time.perf_counter() - copy_start
     rows = len(ts_df)
     rps = rows / copy_dt if copy_dt > 0 else rows
-    infdblog.info(
-        f"Baseline COPY: {rows:,} rows inserted in {copy_dt:.2f}s "
-        f"({rps:,.0f} rows/s)"
-    )
+    infdblog.info(f"Baseline COPY: {rows:,} rows inserted in {copy_dt:.2f}s ({rps:,.0f} rows/s)")
 
     # 5) Recreate index and ANALYZE
     conn = engine.raw_connection()

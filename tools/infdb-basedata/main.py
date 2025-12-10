@@ -12,9 +12,7 @@ def main() -> None:
     """
     # Load InfDB facade (config + logging)
     infdb = InfDB(tool_name="infdb-basedata", config_path="configs")
-    
-    
-    
+
     # Logger
     log = infdb.get_log()
     log.info("Starting %s tool", infdb.get_toolname())

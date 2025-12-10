@@ -146,10 +146,7 @@ class Material:
             value = float(value)
         except ValueError:
             raise TypeError(f"Material {self.name}, thickness is not a float: {value}")
-        if (
-            value < material_limits["thickness"][0]
-            or value > material_limits["thickness"][1]
-        ):
+        if value < material_limits["thickness"][0] or value > material_limits["thickness"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
             raise MaterialPropertyOutsideBoundaries(
@@ -171,10 +168,7 @@ class Material:
             value = float(value)
         except ValueError:
             raise TypeError(f"Material {self.name}, density is not a float: {value}")
-        if (
-            value < material_limits["density"][0]
-            or value > material_limits["density"][1]
-        ):
+        if value < material_limits["density"][0] or value > material_limits["density"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
             raise MaterialPropertyOutsideBoundaries(
@@ -195,13 +189,8 @@ class Material:
         try:
             value = float(value)
         except ValueError:
-            raise TypeError(
-                f"Material {self.name}, conductivity is not a float: {value}"
-            )
-        if (
-            value < material_limits["conductivity"][0]
-            or value > material_limits["conductivity"][1]
-        ):
+            raise TypeError(f"Material {self.name}, conductivity is not a float: {value}")
+        if value < material_limits["conductivity"][0] or value > material_limits["conductivity"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
             raise MaterialPropertyOutsideBoundaries(
@@ -222,13 +211,8 @@ class Material:
         try:
             value = float(value)
         except ValueError:
-            raise TypeError(
-                f"Material {self.name}, specific heat is not a float: {value}"
-            )
-        if (
-            value < material_limits["specific_heat"][0]
-            or value > material_limits["specific_heat"][1]
-        ):
+            raise TypeError(f"Material {self.name}, specific heat is not a float: {value}")
+        if value < material_limits["specific_heat"][0] or value > material_limits["specific_heat"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
             raise MaterialPropertyOutsideBoundaries(
@@ -249,13 +233,8 @@ class Material:
         try:
             value = float(value)
         except ValueError:
-            raise TypeError(
-                f"Material {self.name}, thermal_absorptance is not a float: {value}"
-            )
-        if (
-            value < material_limits["absorptance"][0]
-            or value > material_limits["absorptance"][1]
-        ):
+            raise TypeError(f"Material {self.name}, thermal_absorptance is not a float: {value}")
+        if value < material_limits["absorptance"][0] or value > material_limits["absorptance"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
             raise MaterialPropertyOutsideBoundaries(
@@ -313,9 +292,7 @@ class AirGapMaterial:
     # _thick: float = field(init = False, repr = False)
     # _resistance: float = field(init = False, repr = False)
 
-    def __init__(
-        self, name: str, thick: float = 0.100, thermal_resistance: float = 1.00
-    ):
+    def __init__(self, name: str, thick: float = 0.100, thermal_resistance: float = 1.00):
         """Defines the material and check the properties. Checks properties values using setter methods
 
         Parameters
@@ -351,10 +328,7 @@ class AirGapMaterial:
             value = float(value)
         except ValueError:
             raise TypeError(f"Material {self.name}, thickness is not a float: {value}")
-        if (
-            value < material_limits["thickness"][0]
-            or value > material_limits["thickness"][1]
-        ):
+        if value < material_limits["thickness"][0] or value > material_limits["thickness"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
             raise MaterialPropertyOutsideBoundaries(
@@ -375,13 +349,8 @@ class AirGapMaterial:
         try:
             value = float(value)
         except ValueError:
-            raise TypeError(
-                f"Material {self.name}, thermal_resistance is not a float: {value}"
-            )
-        if (
-            value < material_limits["thermal_resistance"][0]
-            or value > material_limits["thermal_resistance"][1]
-        ):
+            raise TypeError(f"Material {self.name}, thermal_resistance is not a float: {value}")
+        if value < material_limits["thermal_resistance"][0] or value > material_limits["thermal_resistance"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
             raise MaterialPropertyOutsideBoundaries(
@@ -405,6 +374,7 @@ class AirGapMaterial:
 AirGapMaterial: {self.name}
     thickness: {self.thick} {units["length"]}
     thermal resistance: {self.thermal_resistance} {units["thermal_resistance"]}"""
+
 
 # %% OpaqueMaterial class
 
@@ -431,9 +401,7 @@ class Construction(object):
 
     rad_heat_trans_coef = 5.0
 
-    def __init__(
-        self, name: str, materials_list: list, construction_type: str = "ExtWall"
-    ):
+    def __init__(self, name: str, materials_list: list, construction_type: str = "ExtWall"):
         """Initializes the Construction object
 
         Parameters
@@ -449,9 +417,7 @@ class Construction(object):
 
         # Check input data type
         for mat in materials_list:
-            if (not isinstance(mat, Material)) and (
-                not isinstance(mat, AirGapMaterial)
-            ):
+            if (not isinstance(mat, Material)) and (not isinstance(mat, AirGapMaterial)):
                 raise TypeError(
                     f"Construction {name}. materials_list must be a list of Materials or AirGapMaterial objects. Material {mat.name}"
                 )
@@ -472,19 +438,13 @@ class Construction(object):
 
         # Set outside and inside convective and radiant heat transfer coefficients
 
-        self._R_si = 1 / (
-            self.tot_heat_trans_coef.loc[self.construction_type]["Inside"]
-        )
-        self._R_se = 1 / (
-            self.tot_heat_trans_coef.loc[self.construction_type]["Outside"]
-        )
+        self._R_si = 1 / (self.tot_heat_trans_coef.loc[self.construction_type]["Inside"])
+        self._R_se = 1 / (self.tot_heat_trans_coef.loc[self.construction_type]["Outside"])
         self._conv_heat_trans_coef_int = (
-            self.tot_heat_trans_coef.loc[self.construction_type]["Inside"]
-            - self.rad_heat_trans_coef
+            self.tot_heat_trans_coef.loc[self.construction_type]["Inside"] - self.rad_heat_trans_coef
         )
         self._conv_heat_trans_coef_ext = (
-            self.tot_heat_trans_coef.loc[self.construction_type]["Outside"]
-            - self.rad_heat_trans_coef
+            self.tot_heat_trans_coef.loc[self.construction_type]["Outside"] - self.rad_heat_trans_coef
         )
 
         self.ext_absorptance = self.materials_list[0].thermal_absorptance
@@ -522,9 +482,7 @@ class Construction(object):
         # Set some parameters from the standard
 
         T = 86400
-        sigma_2 = (T / np.pi) * (
-            self.conductivities / (self.densities * self.spec_heats)
-        )
+        sigma_2 = (T / np.pi) * (self.conductivities / (self.densities * self.spec_heats))
         # Depth of penetration
         sigma = np.sqrt(sigma_2)
         eps = self.thicknesses / sigma
@@ -534,21 +492,17 @@ class Construction(object):
         Z = np.zeros((2, 2, self.number_of_layers), complex)
 
         for i in range(self.number_of_layers):
-            Z[0, 0, i] = np.cosh(eps[i]) * np.cos(eps[i]) + 1j * np.sinh(
-                eps[i]
-            ) * np.sin(eps[i])
+            Z[0, 0, i] = np.cosh(eps[i]) * np.cos(eps[i]) + 1j * np.sinh(eps[i]) * np.sin(eps[i])
             Z[1, 1, i] = Z[0, 0, i]
             Z[0, 1, i] = -(sigma[i] / (2 * self.conductivities[i])) * (
                 np.sinh(eps[i]) * np.cos(eps[i])
                 + np.cosh(eps[i]) * np.sin(eps[i])
-                + 1j
-                * (np.cosh(eps[i]) * np.sin(eps[i]) - np.sinh(eps[i]) * np.cos(eps[i]))
+                + 1j * (np.cosh(eps[i]) * np.sin(eps[i]) - np.sinh(eps[i]) * np.cos(eps[i]))
             )
             Z[1, 0, i] = -(self.conductivities[i] / sigma[i]) * (
                 np.sinh(eps[i]) * np.cos(eps[i])
                 - np.cosh(eps[i]) * np.sin(eps[i])
-                + 1j
-                * (np.sinh(eps[i]) * np.cos(eps[i]) + np.cosh(eps[i]) * np.sin(eps[i]))
+                + 1j * (np.sinh(eps[i]) * np.cos(eps[i]) + np.cosh(eps[i]) * np.sin(eps[i]))
             )
         Z_si = np.eye(2)
         # Internal surface resistance (convection and radiation, ISO 6946)
@@ -623,7 +577,6 @@ class Construction(object):
         Z_t7 = np.zeros((2, 2, self.number_of_layers), complex)
 
         for i in range(self.number_of_layers):
-
             r = R[i]
             c = C[i]
             """
@@ -645,23 +598,11 @@ class Construction(object):
                 Re_a22 = Re_a11
                 Im_a22 = Im_a11
 
-                Re_a12 = (
-                    r
-                    / (2 * arg)
-                    * (np.cosh(arg) * np.sin(arg) + np.sinh(arg) * np.cos(arg))
-                )
-                Im_a12 = (
-                    r
-                    / (2 * arg)
-                    * (np.cosh(arg) * np.sin(arg) - np.sinh(arg) * np.cos(arg))
-                )
+                Re_a12 = r / (2 * arg) * (np.cosh(arg) * np.sin(arg) + np.sinh(arg) * np.cos(arg))
+                Im_a12 = r / (2 * arg) * (np.cosh(arg) * np.sin(arg) - np.sinh(arg) * np.cos(arg))
 
-                Re_a21 = (
-                    -arg / r * (np.cosh(arg) * np.sin(arg) - np.sinh(arg) * np.cos(arg))
-                )
-                Im_a21 = (
-                    arg / r * (np.cosh(arg) * np.sin(arg) + np.sinh(arg) * np.cos(arg))
-                )
+                Re_a21 = -arg / r * (np.cosh(arg) * np.sin(arg) - np.sinh(arg) * np.cos(arg))
+                Im_a21 = arg / r * (np.cosh(arg) * np.sin(arg) + np.sinh(arg) * np.cos(arg))
 
                 Av[0, 0, om] = Re_a11 + 1j * Im_a11
                 Av[1, 1, om] = Re_a22 + 1j * Im_a22
@@ -706,13 +647,9 @@ class Construction(object):
         # Check input data type
 
         if not isinstance(sup, float):
-            raise TypeError(
-                f"ERROR surface {self.name} input sup is not a float: sup {sup}"
-            )
+            raise TypeError(f"ERROR surface {self.name} input sup is not a float: sup {sup}")
         if not isinstance(asim, bool):
-            raise TypeError(
-                f"ERROR surface {self.name} input asim is not a boolean: asim {asim}"
-            )
+            raise TypeError(f"ERROR surface {self.name} input asim is not a boolean: asim {asim}")
         # Procudeure Section 6.4
 
         if sup == 0:
@@ -732,10 +669,7 @@ class Construction(object):
             R1 = (
                 1
                 / sup
-                * (
-                    (np.real(a[1, 1]) - 1) * np.real(a[0, 1])
-                    + np.imag(a[1, 1]) * np.imag(a[0, 1])
-                )
+                * ((np.real(a[1, 1]) - 1) * np.real(a[0, 1]) + np.imag(a[1, 1]) * np.imag(a[0, 1]))
                 / ((np.real(a[1, 1]) - 1) ** 2 + (np.imag(a[1, 1])) ** 2)
             )
 
@@ -743,28 +677,15 @@ class Construction(object):
                 C1 = (
                     sup
                     * ((np.real(a[1, 1]) - 1) ** 2 + (np.imag(a[1, 1])) ** 2)
-                    / (
-                        omega
-                        * (
-                            np.real(a[0, 1]) * np.imag(a[1, 1])
-                            - (np.real(a[1, 1]) - 1) * np.imag(a[0, 1])
-                        )
-                    )
+                    / (omega * (np.real(a[0, 1]) * np.imag(a[1, 1]) - (np.real(a[1, 1]) - 1) * np.imag(a[0, 1])))
                 )
             else:
                 # sarebbe C1_korr per pareti caricate asimmetricamente (pareti AW)
                 C1 = (
                     sup
                     * (1 / (omega * R1 * sup))
-                    * (
-                        rw * sup
-                        - np.real(a[0, 1]) * np.real(a[1, 1])
-                        - np.imag(a[1, 1]) * np.imag(a[0, 1])
-                    )
-                    / (
-                        np.real(a[1, 1]) * np.imag(a[0, 1])
-                        - np.real(a[0, 1]) * np.imag(a[1, 1])
-                    )
+                    * (rw * sup - np.real(a[0, 1]) * np.real(a[1, 1]) - np.imag(a[1, 1]) * np.imag(a[0, 1]))
+                    / (np.real(a[1, 1]) * np.imag(a[0, 1]) - np.real(a[0, 1]) * np.imag(a[1, 1]))
                 )
             R1_t[days] = R1
             C1_t[days] = C1
@@ -773,9 +694,7 @@ class Construction(object):
 
         # versione di jacopo
         # if (rr>0.99 and cr<0.95) or (((rr<0.99 and cr<0.95) and (abs(rr-cr)>0.3))):
-        if (rr > 0.99 and cr < 0.95) or (
-            ((rr < 0.95 and cr < 0.95) and (abs(rr - cr) > 0.3))
-        ):
+        if (rr > 0.99 and cr < 0.95) or ((rr < 0.95 and cr < 0.95) and (abs(rr - cr) > 0.3)):
             R1 = R1_t["2"]  # T_bt = 2 days
             C1 = C1_t["2"]
         else:

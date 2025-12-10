@@ -3,8 +3,6 @@ from typing import Dict
 from infdb import InfDB
 
 
-
-
 def main() -> None:
     """Run the KWP SQL workflow.
 
@@ -22,9 +20,9 @@ def main() -> None:
 
     # Gather parameters from config
     format_params: Dict[str, str] = {
-        "input_schema_basedata": inf.get_config_value([inf.get_toolname(),"data", "input_schema_basedata"]),
-        "input_schema_ro-heat": inf.get_config_value([inf.get_toolname(),"data", "input_schema_ro-heat"]),
-        "output_schema": inf.get_config_value([inf.get_toolname(),"data", "output_schema"]),
+        "input_schema_basedata": inf.get_config_value([inf.get_toolname(), "data", "input_schema_basedata"]),
+        "input_schema_ro-heat": inf.get_config_value([inf.get_toolname(), "data", "input_schema_ro-heat"]),
+        "output_schema": inf.get_config_value([inf.get_toolname(), "data", "output_schema"]),
     }
 
     try:

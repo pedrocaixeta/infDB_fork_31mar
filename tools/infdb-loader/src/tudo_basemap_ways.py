@@ -72,4 +72,3 @@ def load(infdb: InfDB) -> bool:
             str(err),
         )
         sys.exit(1)
-

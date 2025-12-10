@@ -44,3 +44,9 @@ docs = [
 #[build-system]
 #requires = ["hatchling"]
 #build-backend = "hatchling.build"
+
+[tool.ruff]
+lint.select = ["E", "F", "B", "I"]
+lint.ignore = []
+line-length = 120
+target-version = "py312"

@@ -1,4 +1,3 @@
-
 """
 Main entry point for the choose-a-name tool.
 Handles InfDB initialization, database connection, logging, and demo execution.
@@ -6,8 +5,10 @@ Handles InfDB initialization, database connection, logging, and demo execution.
 
 # Import packages
 import os
+
 from infdb import InfDB
-from src import demo, choose_a_name
+
+from src import choose_a_name, demo
 
 
 def main():
@@ -34,10 +35,10 @@ def main():
         # ===========================================================
         infdb.log.info("Running SQL scripts ...")
         format_params = {
-            'input_schema': infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"]),
-            'output_schema': infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"]),
+            "input_schema": infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"]),
+            "output_schema": infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"]),
         }
-        SQL_DIR = os.path.join("sql")   # add subfolders here if needed ("sql/subfolder")
+        SQL_DIR = os.path.join("sql")  # add subfolders here if needed ("sql/subfolder")
         infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
 
         # ===========================================================
@@ -55,4 +56,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

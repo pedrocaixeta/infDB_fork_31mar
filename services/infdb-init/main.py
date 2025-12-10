@@ -1,9 +1,7 @@
+import subprocess
 from typing import Any, Dict
 
-import subprocess
-
 from infdb import InfDB
-
 
 # ============================== Constants ==============================
 
@@ -11,6 +9,7 @@ PGBIN_PATH: str = "/var/lib/postgresql/17/bin"
 
 
 # ============================== Helpers ===============================
+
 
 def build_citydb_env(params: Dict[str, Any]) -> Dict[str, str]:
     """Build the environment mapping for the 3DCityDB setup script.
@@ -35,6 +34,7 @@ def build_citydb_env(params: Dict[str, Any]) -> Dict[str, str]:
 
 
 # ============================== Entry Point ===========================
+
 
 def main() -> None:
     """Initialize InfDB, assemble env, and run the 3DCityDB create script."""

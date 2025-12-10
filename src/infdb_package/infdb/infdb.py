@@ -30,19 +30,11 @@ class InfDB:
         self.config_path: str = config_path
 
         # Load configuration
-        self.infdbconfig: InfdbConfig = InfdbConfig(
-            tool_name=self.tool_name, config_basedir=self.config_path
-        )
+        self.infdbconfig: InfdbConfig = InfdbConfig(tool_name=self.tool_name, config_basedir=self.config_path)
 
         # Initialize logging from config, with safe fallbacks
-        log_path = (
-            self.get_config_value(["logging", "path"], insert_toolname=True)
-            or DEFAULT_LOG_FILE
-        )
-        level = (
-            self.get_config_value(["logging", "level"], insert_toolname=True)
-            or DEFAULT_LOG_LEVEL
-        )
+        log_path = self.get_config_value(["logging", "path"], insert_toolname=True) or DEFAULT_LOG_FILE
+        level = self.get_config_value(["logging", "level"], insert_toolname=True) or DEFAULT_LOG_LEVEL
         self.infdblogger: InfdbLogger = InfdbLogger(log_path=log_path, level=level)
         self.log: logging.Logger = self.infdblogger.root_logger
 
@@ -113,9 +105,7 @@ class InfDB:
             keys.insert(0, self.tool_name)
         return self.infdbconfig.get_value(keys)
 
-    def get_config_path(
-        self, keys: List[str], type: str = "config", insert_toolname: bool = False
-    ) -> str:
+    def get_config_path(self, keys: List[str], type: str = "config", insert_toolname: bool = False) -> str:
         """Resolve a filesystem path from config.
 
         Args:

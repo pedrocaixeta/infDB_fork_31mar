@@ -14,8 +14,6 @@ JSON_EXT: str = ".json"
 CSV_EXT: str = ".csv"
 
 
-
-
 def load(infdb: InfDB) -> bool:
     """Download Tabula JSONs, transform them to CSV, and load into Postgres.
 
@@ -25,7 +23,7 @@ def load(infdb: InfDB) -> bool:
     - Ensures the target schema then writes tables with `if_exists='replace'`.
     """
     log = infdb.get_worker_logger()
-    TOOL_NAME= infdb.get_toolname()
+    TOOL_NAME = infdb.get_toolname()
     try:
         if not utils.if_active("tabula", infdb):
             return True

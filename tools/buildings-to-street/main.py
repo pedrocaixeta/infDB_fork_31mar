@@ -1,4 +1,3 @@
-
 """
 Main entry point for the buildings-to-street tool.
 Handles InfDB initialization, database connection, logging, and demo execution.
@@ -6,7 +5,9 @@ Handles InfDB initialization, database connection, logging, and demo execution.
 
 # Import packages
 import os
+
 from infdb import InfDB
+
 from src import buildings_to_street
 
 
@@ -33,7 +34,7 @@ def main():
         # Start your added sql scripts in folder "sql"
         # ===========================================================
         infdb.log.info("Running SQL scripts ...")
-        
+
         streets_id = infdb.get_config_value([infdb.get_toolname(), "data", "streets", "id-column"])
         buildings_id = infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "id-column"])
 
@@ -51,18 +52,18 @@ def main():
             buildings_id_expr = f"b.{buildings_id}::text"
 
         format_params = {
-            'streets_schema': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "schema"]),
-            'streets_table': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "table"]),
-            'streets_id_expr': streets_id_expr,
-            'streets_geom': infdb.get_config_value([infdb.get_toolname(), "data", "streets", "geom-column"]),
-            'buildings_schema': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "schema"]),
-            'buildings_table': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "table"]),
-            'buildings_id_expr': buildings_id_expr,
-            'buildings_geom': infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "geom-column"]),
-            'output_schema': infdb.get_config_value([infdb.get_toolname(), "data", "output", "schema"]),
-            'output_table': infdb.get_config_value([infdb.get_toolname(), "data", "output", "table"]),
+            "streets_schema": infdb.get_config_value([infdb.get_toolname(), "data", "streets", "schema"]),
+            "streets_table": infdb.get_config_value([infdb.get_toolname(), "data", "streets", "table"]),
+            "streets_id_expr": streets_id_expr,
+            "streets_geom": infdb.get_config_value([infdb.get_toolname(), "data", "streets", "geom-column"]),
+            "buildings_schema": infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "schema"]),
+            "buildings_table": infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "table"]),
+            "buildings_id_expr": buildings_id_expr,
+            "buildings_geom": infdb.get_config_value([infdb.get_toolname(), "data", "buildings", "geom-column"]),
+            "output_schema": infdb.get_config_value([infdb.get_toolname(), "data", "output", "schema"]),
+            "output_table": infdb.get_config_value([infdb.get_toolname(), "data", "output", "table"]),
         }
-        SQL_DIR = os.path.join("sql")   # add subfolders here if needed ("sql/subfolder")
+        SQL_DIR = os.path.join("sql")  # add subfolders here if needed ("sql/subfolder")
         infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
 
     except Exception as e:
@@ -72,4 +73,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

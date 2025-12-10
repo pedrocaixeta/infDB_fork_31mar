@@ -1,17 +1,18 @@
-import json
-import os
 import argparse
+import json
+import logging
+import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 import tempfile
+from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import quote
+
 import psycopg2
-from dotenv import load_dotenv
 import yaml
-import logging
+from dotenv import load_dotenv
 
 # Constants
 HERE = Path(__file__).resolve().parent
@@ -36,8 +37,7 @@ def load_env(log) -> None:
 
 
 def make_iri(*parts: str) -> str:
-    """Construct an IRI by joining the base IRI with encoded parts.
-    """
+    """Construct an IRI by joining the base IRI with encoded parts."""
     base = BASE_IRI.rstrip("/")
     encoded_parts = [quote(str(p), safe="") for p in parts]
     return "/".join([base, *encoded_parts])
@@ -58,7 +58,7 @@ def get_conn(log) -> psycopg2.extensions.connection:
         "user": os.getenv("DB_USER"),
         "password": os.getenv("DB_PASSWORD"),
         "dbname": os.getenv("DB_NAME"),
-        "connect_timeout": os.getenv("DB_CONNECT_TIMEOUT", "30")
+        "connect_timeout": os.getenv("DB_CONNECT_TIMEOUT", "30"),
     }
     log.info(params)
 
@@ -176,12 +176,8 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
     """
     log.info("Fetching schema and table list...")
     cur = conn.cursor()
-    db_name: Optional[str] = (
-        conn.get_dsn_parameters().get("dbname") if hasattr(
-            conn, "get_dsn_parameters") else None
-    )
-    db_name = db_name or os.getenv("DB_NAME") or os.getenv(
-        "POSTGRES_DB") or "database"
+    db_name: Optional[str] = conn.get_dsn_parameters().get("dbname") if hasattr(conn, "get_dsn_parameters") else None
+    db_name = db_name or os.getenv("DB_NAME") or os.getenv("POSTGRES_DB") or "database"
 
     cur.execute(
         """
@@ -208,9 +204,7 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
 
     tables_by_schema: Dict[str, List[tuple]] = {}
     for table_catalog, table_schema, table_name, table_type in table_rows:
-        tables_by_schema.setdefault(table_schema, []).append(
-            (table_catalog, table_schema, table_name, table_type)
-        )
+        tables_by_schema.setdefault(table_schema, []).append((table_catalog, table_schema, table_name, table_type))
 
     schemas: Dict[str, Dict[str, object]] = {}
     for catalog_name, schema_name in schema_rows:
@@ -224,15 +218,12 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
                 "tables": [],
             },
         )
-        for table_catalog, table_schema, table_name, table_type in tables_by_schema.get(
-            schema_name, []
-        ):
+        for table_catalog, table_schema, table_name, table_type in tables_by_schema.get(schema_name, []):
             # NOTE: print out tables in a schema
             # print(f"    Table: {table_name}", flush=True)
             columns = _fetch_columns(cur, table_schema, table_name)
             for col in columns:
-                col["id"] = make_iri(
-                    "column", db_name, table_schema, table_name, col["column_name"])
+                col["id"] = make_iri("column", db_name, table_schema, table_name, col["column_name"])
 
             cur.execute(
                 """
@@ -310,9 +301,7 @@ def fetch_metadata_infdb(log, infdb_client) -> Dict[str, object]:
 
     tables_by_schema: Dict[str, List[tuple]] = {}
     for table_catalog, table_schema, table_name, table_type in table_rows:
-        tables_by_schema.setdefault(table_schema, []).append(
-            (table_catalog, table_schema, table_name, table_type)
-        )
+        tables_by_schema.setdefault(table_schema, []).append((table_catalog, table_schema, table_name, table_type))
 
     schemas: Dict[str, Dict[str, object]] = {}
     for catalog_name, schema_name in schema_rows:
@@ -326,15 +315,12 @@ def fetch_metadata_infdb(log, infdb_client) -> Dict[str, object]:
                 "tables": [],
             },
         )
-        for table_catalog, table_schema, table_name, table_type in tables_by_schema.get(
-            schema_name, []
-        ):
+        for table_catalog, table_schema, table_name, table_type in tables_by_schema.get(schema_name, []):
             # NOTE: print out tables in a schema
             # print(f"    Table: {table_name}", flush=True)
             columns = _fetch_columns_infdb(infdb_client, table_schema, table_name)
             for col in columns:
-                col["id"] = make_iri(
-                    "column", db_name, table_schema, table_name, col["column_name"])
+                col["id"] = make_iri("column", db_name, table_schema, table_name, col["column_name"])
 
             pk_names_fetched = infdb_client.execute_query(
                 """
@@ -405,9 +391,7 @@ def prompt_schema_selection(log, available: List[str]) -> Optional[List[str]]:
     """
     log.info("Awaiting schema selection...")
     try:
-        raw = input(
-            "Enter schema names separated by commas (leave empty or type 'all' for all): "
-        ).strip()
+        raw = input("Enter schema names separated by commas (leave empty or type 'all' for all): ").strip()
     except EOFError:
         # Non-interactive environment; default to all
         return None
@@ -430,8 +414,7 @@ def filter_schemas(metadata: Dict[str, object], schemas: Optional[List[str]]) ->
     if not schemas:
         return metadata
     wanted = {s.strip() for s in schemas if s.strip()}
-    filtered = [s for s in metadata.get(
-        "schemas", []) if s.get("schema_name") in wanted]
+    filtered = [s for s in metadata.get("schemas", []) if s.get("schema_name") in wanted]
     return {**metadata, "schemas": filtered}
 
 
@@ -452,7 +435,7 @@ def write_metadata_file(log, data: Dict[str, object], path: Path, quiet: bool = 
 
 def write_metadata_yaml(log, data: Dict[str, object], path: Path) -> None:
     """Write metadata to a YAML file.
-    
+
     Args:
         log: Logger instance.
         data: The metadata dictionary to write.
@@ -493,9 +476,7 @@ def generate_rdf(log, schema_path: Path, data_path: Path, output_path: Path) -> 
         candidate = Path(sys.executable).parent / "linkml-convert"
         cmd_path = str(candidate) if candidate.exists() else None
     if cmd_path is None:
-        raise RuntimeError(
-            "linkml-convert command not found. Install LinkML with `pip install linkml`."
-        )
+        raise RuntimeError("linkml-convert command not found. Install LinkML with `pip install linkml`.")
 
     cmd = [
         cmd_path,
@@ -534,9 +515,7 @@ def parse_args() -> argparse.Namespace:
     Returns:
         Parsed arguments namespace.
     """
-    parser = argparse.ArgumentParser(
-        description="Export PostgreSQL schema metadata in LinkML JSON and TTL formats."
-    )
+    parser = argparse.ArgumentParser(description="Export PostgreSQL schema metadata in LinkML JSON and TTL formats.")
     parser.add_argument(
         "--schemas",
         nargs="+",
@@ -577,8 +556,7 @@ def run(log) -> int:
         log.info("Filtering to selected schemas...")
     metadata = filter_schemas(metadata, chosen)
 
-    selected_schemas = [s.get("schema_name")
-                        for s in metadata.get("schemas", [])]
+    selected_schemas = [s.get("schema_name") for s in metadata.get("schemas", [])]
     log.info(selected_schemas)
     if chosen and not selected_schemas:
         log.error(f"No matching schemas found for: {', '.join(chosen)}")
@@ -606,8 +584,7 @@ def run(log) -> int:
     write_metadata_file(log, wrapped, data_path)
     write_metadata_yaml(log, wrapped, yaml_path)
 
-    rdf_input_path = Path(tempfile.mkstemp(
-        prefix="rdf_input_", suffix=".json", dir=str(HERE))[1])
+    rdf_input_path = Path(tempfile.mkstemp(prefix="rdf_input_", suffix=".json", dir=str(HERE))[1])
     try:
         write_metadata_file(log, metadata, rdf_input_path, quiet=True)
         # with open (rdf_input_path, "r", encoding="utf-8") as fh:
@@ -617,9 +594,7 @@ def run(log) -> int:
         try:
             generate_rdf(log, SCHEMA_PATH, rdf_input_path, rdf_output)
         except Exception as exc:
-            log.error(
-                f"Skipping RDF generation because LinkML tooling is unavailable: {exc}"
-            )
+            log.error(f"Skipping RDF generation because LinkML tooling is unavailable: {exc}")
             log.info(
                 "To generate RDF manually, run "
                 f"`linkml-convert {rdf_input_path} --schema {SCHEMA_PATH} "
@@ -660,8 +635,7 @@ def run_with_infdb(infdb_client, log) -> int:
         log.info("Filtering to selected schemas...")
     metadata = filter_schemas(metadata, chosen)
 
-    selected_schemas = [s.get("schema_name")
-                        for s in metadata.get("schemas", [])]
+    selected_schemas = [s.get("schema_name") for s in metadata.get("schemas", [])]
     log.info(selected_schemas)
     if chosen and not selected_schemas:
         log.error(f"No matching schemas found for: {', '.join(chosen)}")
@@ -680,8 +654,7 @@ def run_with_infdb(infdb_client, log) -> int:
     write_metadata_file(log, wrapped, data_path)
     write_metadata_yaml(log, wrapped, yaml_path)
 
-    rdf_input_path = Path(tempfile.mkstemp(
-        prefix="rdf_input_", suffix=".json", dir=str(HERE))[1])
+    rdf_input_path = Path(tempfile.mkstemp(prefix="rdf_input_", suffix=".json", dir=str(HERE))[1])
     try:
         write_metadata_file(log, metadata, rdf_input_path, quiet=True)
 
@@ -689,14 +662,12 @@ def run_with_infdb(infdb_client, log) -> int:
         try:
             generate_rdf(log, SCHEMA_PATH, rdf_input_path, rdf_output)
         except Exception as exc:
-            log.error(
-                f"Skipping RDF generation because LinkML tooling is unavailable: {exc}"
-            )
+            log.error(f"Skipping RDF generation because LinkML tooling is unavailable: {exc}")
             log.info(
                 "To generate RDF manually, run "
                 f"`linkml-convert {rdf_input_path} --schema {SCHEMA_PATH} "
-                    f"--target-class Database --output {rdf_output} --output-format ttl`."
-                )
+                f"--target-class Database --output {rdf_output} --output-format ttl`."
+            )
     finally:
         try:
             rdf_input_path.unlink()

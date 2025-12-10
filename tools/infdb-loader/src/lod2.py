@@ -3,17 +3,15 @@ import sys
 from typing import Dict, List, Optional
 
 from infdb import InfDB
-from . import utils
 
+from . import utils
 
 # ============================== Constants ==============================
 
-ARIA2C_BASE_CMD: str = (
-    "aria2c --continue=true --allow-overwrite=false --auto-file-renaming=false"
-)
+ARIA2C_BASE_CMD: str = "aria2c --continue=true --allow-overwrite=false --auto-file-renaming=false"
 
 
-def load(infdb: InfDB)  -> bool:
+def load(infdb: InfDB) -> bool:
     """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL.
 
     Behavior preserved:
@@ -56,11 +54,16 @@ def load(infdb: InfDB)  -> bool:
         import_mode: Optional[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2", "import-mode"])
         cmd_parts: List[str] = [
             "citydb import citygml",
-            "-H", params["host"],
-            "-d", params["db"],
-            "-u", params["user"],
-            "-p", params["password"],
-            "-P", str(params["exposed_port"]),
+            "-H",
+            params["host"],
+            "-d",
+            params["db"],
+            "-u",
+            params["user"],
+            "-p",
+            params["password"],
+            "-P",
+            str(params["exposed_port"]),
             f"--import-mode={import_mode}",
             str(gml_path),
         ]

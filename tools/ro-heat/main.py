@@ -1,14 +1,12 @@
 import os
 import time
 
-from entise.core.generator import TimeSeriesGenerator
-from infdb import InfDB
 import numpy as np
 import pandas as pd
+from entise.core.generator import TimeSeriesGenerator
+from infdb import InfDB
 
-from src import basic_refurbishment
-from src import eureca_code
-from src import timedata
+from src import basic_refurbishment, eureca_code, timedata
 
 # Parameters
 rng = np.random.default_rng(seed=42)
@@ -39,7 +37,6 @@ def main():
     output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output_schema"])
 
     try:
-
         sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
         infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
@@ -147,17 +144,18 @@ def main():
         infdblog.debug(refurbed_df.head())
 
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
-        refurbed_df.to_sql(
-            "buildings_rc", engine, if_exists="replace", schema=schema, index=False
-        )
+        refurbed_df.to_sql("buildings_rc", engine, if_exists="replace", schema=schema, index=False)
         infdblog.debug("Refurbished data writing to database")
 
         infdblog.debug("Starting construction of building elements")
         # Run SQL: 02_create_layer_view
         infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
 
-        elements = pd.read_sql("""SELECT *
-                                  FROM v_element_layer_data""", engine)
+        elements = pd.read_sql(
+            """SELECT *
+                                  FROM v_element_layer_data""",
+            engine,
+        )
 
         # TODO: sort by layer_index according to EUReCA specification
         # TODO: Handling of windows
@@ -172,9 +170,7 @@ def main():
         )
 
         constructions = (
-            elements.groupby(["building_objectid", "element_name", "area"])["materials"]
-            .apply(list)
-            .reset_index()
+            elements.groupby(["building_objectid", "element_name", "area"])["materials"].apply(list).reset_index()
         )
 
         # Map tabula to EUReCA names
@@ -203,30 +199,34 @@ def main():
         )
 
         rc_values = (
-            constructions.groupby("building_objectid")[["capacitance", "resistance"]].sum().sort_values(
-                "building_objectid")
+            constructions.groupby("building_objectid")[["capacitance", "resistance"]]
+            .sum()
+            .sort_values("building_objectid")
         )
 
         bld2ts = timedata.get_bld2ts(database_connection=engine)
 
-        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine,
-                                                     start=pd.Timestamp(f"{simulation_year}-01-01"),
-                                                     end=pd.Timestamp(f"{simulation_year}-12-31"))
-        all_ts_df.index.name = 'datetime'
+        all_ts_df = timedata.get_all_timeseries_data(
+            database_connection=engine,
+            start=pd.Timestamp(f"{simulation_year}-01-01"),
+            end=pd.Timestamp(f"{simulation_year}-12-31"),
+        )
+        all_ts_df.index.name = "datetime"
         all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
-        data = {x: y.sort_index().reset_index() for x, y in all_ts_df.groupby('ts_metadata_id')}
+        data = {x: y.sort_index().reset_index() for x, y in all_ts_df.groupby("ts_metadata_id")}
 
         # Preparation for EnTiSe
         entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
         entise_input = entise_input.rename(
-            columns={'resistance': 'resistance[K W-1]', 'capacitance': 'capacitance[J K-1]'}, errors=True)
+            columns={"resistance": "resistance[K W-1]", "capacitance": "capacitance[J K-1]"}, errors=True
+        )
         entise_input["hvac"] = "1R1C"
         entise_input["min_temperature[C]"] = 20.0
         entise_input["max_temperature[C]"] = 24.0
         entise_input["gains_solar"] = 0.0
 
         entise_input = entise_input.merge(
-            bld2ts[['bld_objectid', 'ts_metadata_id']].rename(columns={"ts_metadata_id": "weather"}),
+            bld2ts[["bld_objectid", "ts_metadata_id"]].rename(columns={"ts_metadata_id": "weather"}),
             left_on="id",
             right_on="bld_objectid",
             how="left",
@@ -293,7 +293,7 @@ def main():
 
         # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
 
-        table_name = 'entise_ts_data'
+        table_name = "entise_ts_data"
 
         # Try to ensure TimescaleDB extension is available (best-effort)
         try:

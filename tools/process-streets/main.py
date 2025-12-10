@@ -1,4 +1,3 @@
-
 """
 Main entry point for the process-streets tool.
 Handles InfDB initialization, database connection, logging, and demo execution.
@@ -12,12 +11,11 @@ from infdb import InfDB
 
 from src import process_streets
 
-
 # Import your full pipeline
 # (The file must be located at: /app/src/process_streets.py)
 
-def main():
 
+def main():
     # -----------------------------------------------------
     # INIT INFDB
     # -----------------------------------------------------
@@ -51,7 +49,7 @@ def main():
             apply_length_filter=apply_length_filter,
             min_length_deadend_junction=min_length_deadend_junction,
             remove_deadend_deadend=remove_deadend_deadend,
-            infdb=infdb
+            infdb=infdb,
         )
 
         log.info("Pipeline finished successfully.")
