@@ -299,7 +299,7 @@ def import_layers(
         return
 
     # Multi-layer path
-    for layer, layer_name in zip(layers, target_names):
+    for layer, layer_name in zip(layers, target_names, strict=True):
         log.info("Importing layer: %s into %s.%s", layer, schema, layer_name)
         gdf = gpd.read_file(input_file, layer=layer, mask=gdf_scope)
         gdf.to_crs(epsg=epsg, inplace=True)

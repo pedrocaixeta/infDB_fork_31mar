@@ -459,7 +459,7 @@ class Construction(object):
         self.densities = np.zeros(self.number_of_layers)
         self.spec_heats = np.zeros(self.number_of_layers)
         self.thermal_resistances = np.zeros(self.number_of_layers)
-        for i, mat in zip(range(self.number_of_layers), self.materials_list):
+        for i, mat in zip(range(self.number_of_layers), self.materials_list, strict=True):
             self.net_thermal_resistance += mat.thermal_resistance
             self.thicknesses[i] = mat.thick
             self.conductivities[i] = mat.cond
@@ -662,9 +662,7 @@ class Construction(object):
         C1_t = dict()
 
         for a, omega, days in zip(
-            [self._A1n_t2, self._A1n_t7],
-            [self.omega_bt[0], self.omega_bt[1]],
-            ["2", "7"],
+            [self._A1n_t2, self._A1n_t7], [self.omega_bt[0], self.omega_bt[1]], ["2", "7"], strict=True
         ):
             # rcValues Given the complex matrix of the building element BT, the function
             # calculates the values R1 and C1

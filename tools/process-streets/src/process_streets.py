@@ -122,7 +122,7 @@ def split_lines_at_nodes_and_intersections_fast(gdf: gpd.GeoDataFrame, round_dec
     # ---------------------------------------------------------
     # 3. Detect intersection points
     # ---------------------------------------------------------
-    for i, j in zip(left, right):
+    for i, j in zip(left, right, strict=True):
         a = flat.at[i, geom_col]
         b = flat.at[j, geom_col]
         inter = a.intersection(b)
