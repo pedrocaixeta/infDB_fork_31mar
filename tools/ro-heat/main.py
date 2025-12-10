@@ -1,4 +1,5 @@
 import os
+import time
 
 import numpy as np
 import pandas as pd
@@ -12,6 +13,7 @@ from src import timedata
 # Parameters
 rng = np.random.default_rng(seed=42)
 end_of_simulation_year = 2025
+simulation_year = 2024
 construction_year_col = "construction_year"
 schema = "ro_heat"
 
@@ -20,17 +22,24 @@ def main():
     # Load InfDB handler
     infdbhandler = InfDB(tool_name="ro-heat")
 
-    # Logger
+    # Database connection
+    infdbclient_citydb = infdbhandler.connect()
+
+    # Logger setup
     infdblog = infdbhandler.get_log()
+
+    # Start message
     infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
 
-    # DB client and engine (both via the facade)
-    infdbclient_citydb = infdbhandler.connect()
+    # Setup database engine
     engine = infdbclient_citydb.get_db_engine()
-    input_schema = infdbhandler.get_config_value([infdbhandler.get_toolname(), "data", "input_schema"])
-    output_schema = infdbhandler.get_config_value([infdbhandler.get_toolname(), "data", "output_schema"])
+
+    # Get configuration values
+    input_schema = infdbhandler.get_config_value(["ro-heat", "data", "input_schema"])
+    output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output_schema"])
 
     try:
+
         sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
         infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
@@ -104,15 +113,14 @@ def main():
 
         bld2ts = timedata.get_bld2ts(database_connection=engine)
 
-        infdblog.debug("Getting all time series data")
-        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine)
+        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine,
+                                                     start=pd.Timestamp(f"{simulation_year}-01-01"),
+                                                     end=pd.Timestamp(f"{simulation_year}-12-31"))
         all_ts_df.index.name = 'datetime'
         all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
-        all_ts_df = all_ts_df.reset_index()
-        data = {x: y.sort_index() for x, y in all_ts_df.groupby('ts_metadata_id')}
+        data = {x: y.sort_index().reset_index() for x, y in all_ts_df.groupby('ts_metadata_id')}
 
         # Preparation for EnTiSe
-        infdblog.debug("Preparing EnTiSe input data")
         entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
         entise_input = entise_input.rename(
             columns={'resistance': 'resistance[K W-1]', 'capacitance': 'capacitance[J K-1]'}, errors=True)
@@ -128,16 +136,14 @@ def main():
             how="left",
         ).drop(columns=["bld_objectid"])
 
-        # For testing purposes, limit to one building
-        entise_input = entise_input.iloc[:1, :]
+        # For testing purposes, limit to 500 buildings
+        entise_input = entise_input.iloc[:500, :]
 
         # Initialize the generator
-        infdblog.debug("Initializing time series generator")
         gen = TimeSeriesGenerator()
         gen.add_objects(entise_input)
 
         # Generate time series and summary
-        infdblog.debug("Starting EnTiSe time series generation")
         summary, dict_df = gen.generate(data, workers=os.cpu_count())
 
         # Summary
@@ -154,6 +160,11 @@ def main():
         infdblog.info(summary.head())
 
         # Time Series
+        write_timeseries = False
+        if not write_timeseries:
+            infdblog.info("Skipping EnTiSe output time series writing to database as per configuration")
+            return
+
         infdblog.debug("Writing EnTiSe output time series to database")
 
         # Create metadata table if not exists
@@ -161,7 +172,7 @@ def main():
         CREATE TABLE IF NOT EXISTS {output_schema}.entise_ts_metadata (
             id SERIAL PRIMARY KEY,
             name text,
-            decription text,
+            description text,
             grid_id text,
             type text,
             unit text,
@@ -175,8 +186,26 @@ def main():
         except Exception as e:
             infdblog.error("Failed to create metadata table: %s", e)
 
+        # Ensure unique constraint for metadata upserts
+        try:
+            unique_idx_sql = f"""
+            CREATE UNIQUE INDEX IF NOT EXISTS entise_ts_metadata_uniq
+            ON {output_schema}.entise_ts_metadata (name, objectid, source);
+            """
+            infdbclient_citydb.execute_query(unique_idx_sql)
+        except Exception as e:
+            infdblog.error("Failed to create unique index on metadata: %s", e)
+
         # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
+
         table_name = 'entise_ts_data'
+
+        # Try to ensure TimescaleDB extension is available (best-effort)
+        try:
+            infdbclient_citydb.execute_query("CREATE EXTENSION IF NOT EXISTS timescaledb;")
+        except Exception as e:
+            infdblog.warning("Could not ensure timescaledb extension (continuing): %s", e)
+
         create_sql = f"""
         CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
             ts_metadata_id integer,
@@ -192,63 +221,36 @@ def main():
         try:
             infdbclient_citydb.execute_query(create_sql)
         except Exception as e:
-            infdblog.error("Failed to create timeseries table: %s", e)
+            infdblog.error("Failed to create timeseries table with Timescale hypertable syntax: %s", e)
+            # Fallback: create as a plain Postgres table
+            try:
+                create_sql_plain = f"""
+                CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
+                    ts_metadata_id integer,
+                    time timestamptz,
+                    value double precision
+                );
+                """
+                infdbclient_citydb.execute_query(create_sql_plain)
+                infdblog.info("Created plain Postgres timeseries table as fallback (no TimescaleDB features).")
+            except Exception as e2:
+                infdblog.error("Failed to create plain timeseries table: %s", e2)
+                raise
 
-        for objectid, row in dict_df.items():
-            infdblog.debug(f"Processing building {objectid}")
+        # Upload using baseline
+        upload_start = time.perf_counter()
+        timedata.upload_timeseries_baseline(
+            engine=engine,
+            output_schema=output_schema,
+            table_name=table_name,
+            dict_df=dict_df,
+            infdblog=infdblog,
+        )
+        upload_dt = time.perf_counter() - upload_start
+        infdblog.info(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
+        print(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
 
-            # Insert indoor temperature
-            insert_metadata_sql = f"""
-                    INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-                    VALUES ('ro_heat_indoor_temperature',
-                        'Indoor temperature for building',
-                        'synthetic',
-                        '°C',
-                        0,
-                        '{objectid}',
-                        'ro-heat'
-                        )
-                    ON CONFLICT (id) DO NOTHING
-                    RETURNING id;
-                    """
-            timedata.add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row,
-                                         'indoor_temperature[C]')
-
-            # Insert heating load
-            insert_metadata_sql = f"""
-                    INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-                    VALUES ('ro_heat_heating_load',
-                        'Heating load for building',
-                        'synthetic',
-                        'W',
-                        0,
-                        '{objectid}',
-                        'ro-heat'
-                        )
-                    ON CONFLICT (id) DO NOTHING
-                    RETURNING id;
-                    """
-            timedata.add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row,
-                                         'heating:load[W]')
-
-            # Insert cooling load
-            insert_metadata_sql = f"""
-                    INSERT INTO {output_schema}.entise_ts_metadata (name, decription, type, unit, changelog, objectid, source)
-                    VALUES ('ro_heat_cooling_load',
-                        'Cooling load for building',
-                        'synthetic',
-                        'W',
-                        0,
-                        '{objectid}',
-                        'ro-heat'
-                        )
-                    ON CONFLICT (id) DO NOTHING
-                    RETURNING id;
-                    """
-            timedata.add_metadata_and_ts(engine, infdblog, output_schema, table_name, insert_metadata_sql, row,
-                                         'cooling:load[W]')
-
-        infdblog.info("Ro-heat sucessfully completed")
+        infdblog.info("Ro-heat successfully completed")
 
     except Exception as e:
         infdblog.error(f"Something went wrong: {str(e)}")

@@ -17,6 +17,7 @@ CLIPPED_PREFIX: str = "zensus-2022"
 
 
 
+
 def load(infdb: InfDB) -> None:
     """Entry point to download, validate, and process Zensus 2022 datasets.
 
@@ -147,7 +148,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
                 crs="EPSG:3035",
             )
 
-            epsg = infdb.get_config_value(["services", "postgres", "epsg"])
+            epsg = infdb.get_db_parameters_dict().get("epsg")
             if epsg is None:
                 raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
             gdf = gdf.to_crs(epsg=epsg)
@@ -171,7 +172,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
                 out_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "processed"], type="loader")
                 os.makedirs(out_dir, exist_ok=True)
                 gdf_clipped.to_file(
-                    os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
+                    os.pyath.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
                     layer=table_name,
                     driver="GPKG",
                 )

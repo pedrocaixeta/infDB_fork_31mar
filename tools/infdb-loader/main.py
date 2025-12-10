@@ -16,6 +16,10 @@ from src import (
     package,
     need,
     openmeteo,
+    kwp_nrw,
+    gebaeude_neuburg,
+    waermeatlas_hessen_bensheim,
+    tudo_basemap_ways
     # wetterdienst,
 )
 
@@ -31,6 +35,7 @@ def main() -> None:
     - Launches the original set of processes; respects utils.if_multiprocesing() to serialize.
     - Stops the queue listener at the end.
     """
+    
     # Bootstrap InfDB (provides package config + central logging)
     infdb = InfDB(tool_name="infdb-loader", config_path="configs")
 
@@ -44,12 +49,12 @@ def main() -> None:
     log.info("-------------------------------------------------------------")
 
     # Download opendata package for development directly (original guard)
-    if utils.if_active("package", infdb):
-        package.load(infdb)
+    # if utils.if_active("package", infdb):
+    #     package.load(infdb)
 
-    # Drop schema "opendata" for clean development runs
-    with infdb.connect() as db:  # InfdbClient context
-        db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
+    # # Drop schema "opendata" for clean development runs
+    # with infdb.connect() as db:  # InfdbClient context
+    #     db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
 
     # Ensure that administrative areas are loaded for scope
     bkg.load(infdb)
@@ -65,6 +70,10 @@ def main() -> None:
     processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
     processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
     processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
+    processes.append(mp.Process(target=kwp_nrw.load,     args=(infdb,), name="kwp_nrw"))
+    processes.append(mp.Process(target=gebaeude_neuburg.load,     args=(infdb,), name="gebaeude-neuburg"))
+    processes.append(mp.Process(target=waermeatlas_hessen_bensheim.load,     args=(infdb,), name="waermeatlas_hessen_bensheim"))
+    processes.append(mp.Process(target=tudo_basemap_ways.load,     args=(infdb,), name="tudo-basemap-ways"))
     # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
 
     for process in processes:

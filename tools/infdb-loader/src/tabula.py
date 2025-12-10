@@ -104,6 +104,7 @@ def load(infdb: InfDB) -> bool:
         # Ensure schema exists via InfdbClient and grab an engine
         schema: str = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "schema"])
         with infdb.connect() as db:
+            db.execute_query(f"DROP SCHEMA IF EXISTS {schema} CASCADE;")
             db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
             engine = db.get_db_engine()
 
