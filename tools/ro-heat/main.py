@@ -3,7 +3,9 @@ import time
 
 import numpy as np
 import pandas as pd
-from entise.core.generator import TimeSeriesGenerator
+
+# entise package has to type stubs
+from entise.core.generator import TimeSeriesGenerator  # type: ignore
 from infdb import InfDB
 
 from src import basic_refurbishment, eureca_code, timedata

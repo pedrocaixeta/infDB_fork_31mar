@@ -41,6 +41,7 @@ setup:
     - uv venv
     - source .venv/bin/activate
     - uv pip install -e .
+    - uv pip install entise
   artifacts:
     paths:
       - .venv/
@@ -101,8 +102,21 @@ type-check:
   script:
     - source .venv/bin/activate
     - uv pip install mypy
-    - uv pip install types-PyYAML types-psycopg2 types-greenlet # additional dependencies for type checking
-    - mypy src/
+    - uv pip install types-PyYAML types-psycopg2 types-greenlet pandas-stubs # additional dependencies for type checking
+    - mypy src
+    - mypy tests
+    #- mypy services/infdb-api/fastapi
+    - mypy services/infdb-init
+    - mypy services/infdb-api/postgrest
+    #- mypy services/infdb-api/pygeoapi
+    - mypy tools/infdb-basedata
+    #- mypy tools/infdb-loader
+    #- mypy tools/infdb-metadata
+    #- mypy tools/buildings-to-street
+    - mypy tools/kwp
+    - mypy tools/ro-heat
+    - mypy tools/linear-heat-density
+    #- mypy tools/sunpot
 
   allow_failure: true
 

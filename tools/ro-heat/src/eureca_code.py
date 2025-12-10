@@ -2,6 +2,8 @@
 # Original source: https://github.com/BETALAB-team/EUReCA
 # Licensed under the MIT License - see https://github.com/BETALAB-team/EUReCA/blob/main/LICENSE
 
+from typing import Dict, List
+
 import numpy as np
 import pandas as pd
 
@@ -20,14 +22,14 @@ units = {
     "non_dimensional_coefficient": "[-]",
 }
 
-material_limits = {
+material_limits: Dict[str, List[float]] = {
     "thickness": [0.0, 1.0],
     "conductivity": [0.0, 100.0],
     "density": [0.0, 10000.0],
     "specific_heat": [0.0, 3000.0],
     "starting_temperature": [0.0, 99.0],
-    "thermal_resistance": [0, 20],
-    "absorptance": [0, 1],
+    "thermal_resistance": [0.0, 20.0],
+    "absorptance": [0.0, 1.0],
 }
 
 
@@ -757,10 +759,10 @@ Construction: {self.name}
 
         # Hypothesis 30 cm
         thickness = 0.3
-        outside_ht_coef = cls.tot_heat_trans_coef.loc[construction_type]["Outside"]
-        inside_ht_coef = cls.tot_heat_trans_coef.loc[construction_type]["Inside"]
-        resistance = 1 / u_value - 1 / outside_ht_coef - 1 / inside_ht_coef
-        conductivity = 0.3 / resistance
+        outside_ht_coef: float = float(cls.tot_heat_trans_coef.yt[construction_type]["Outside"])
+        inside_ht_coef: float = float(cls.tot_heat_trans_coef.loc[construction_type]["Inside"])
+        resistance: float = 1 / u_value - 1 / outside_ht_coef - 1 / inside_ht_coef
+        conductivity: float = 0.3 / resistance
 
         """
 	According to A.2.3 ISO 13786					

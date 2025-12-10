@@ -47,7 +47,7 @@ DB_USER: str = infdb.get_config_value(["services", "postgres", "user"])
 DB_PASSWORD: str = infdb.get_config_value(["services", "postgres", "password"])
 DB_NAME: str = infdb.get_config_value(["services", "postgres", "db"])
 DB_HOST: str = "postgres"
-DB_PORT: int = 5432
+DB_PORT: str = "5432"
 
 POSTGREST_PORT: int = int(infdb.get_config_value(["services", "postgrest", "port"]))
 DSN: str = build_dsn_from_env(user_var=DB_USER, pwd_var=DB_PASSWORD, db_var=DB_NAME, host_var=DB_HOST, port_var=DB_PORT)
