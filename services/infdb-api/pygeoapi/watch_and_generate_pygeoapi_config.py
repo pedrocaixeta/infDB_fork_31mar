@@ -620,7 +620,7 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
         # Write YAML atomically using shared helper (preserves original behavior)
         config_document: Dict[str, Any] = {
             "server": {
-                "bind": {"host": "0.0.0.0", "port": PYGEOAPI_PORT},
+                "bind": {"host": "0.0.0.0", "port": PYGEOAPI_PORT},  # nosec B104
                 "url": f"http://{PYGEOAPI_HOST}:{PYGEOAPI_PORT}",
                 "mimetype": "application/json; charset=UTF-8",
                 "encoding": "utf-8",

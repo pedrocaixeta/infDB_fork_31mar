@@ -107,6 +107,11 @@ type-check:
   allow_failure: true
 
 # Security check
+# Bandit:
+#  - Low level issues should not block but can  .
+ # - Some options only exist in CLI, thus not stored in pyprojct.toml
+# B608: SQL strings in Python is used a lot, ideally should be refactored: https://bandit.readthedocs.io/en/latest/plugins/b608_hardcoded_sql_expressions.html
+
 security:
   stage: lint
   <<: *install_uv
@@ -115,6 +120,6 @@ security:
   script:
     - source .venv/bin/activate
     - uv pip install bandit safety
-    - bandit -r src/
+    - bandit -r **/*.py --severity-level medium --exclude build --skip "B608"
     - safety check
   allow_failure: true

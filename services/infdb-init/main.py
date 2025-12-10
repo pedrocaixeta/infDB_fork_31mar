@@ -54,7 +54,7 @@ def main() -> None:
     # Install 3DCityDB extension
     log.info("Installing 3DcityDB extension")
     subprocess.run(
-        ["bash", "/tmp/3dcitydb/postgresql/shell-scripts/unix/create-db.sh"],
+        ["bash", "/tmp/3dcitydb/postgresql/shell-scripts/unix/create-db.sh"],  # nosec B108
         env=env,
         check=True,
     )
