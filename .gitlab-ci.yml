@@ -24,6 +24,7 @@ cache:
 # Stages
 stages:
   - setup
+  - pre-commit-hook
   - test
   - lint
 
@@ -64,6 +65,18 @@ setup:
 #    paths:
 #      - htmlcov/
 #    expire_in: 1 week
+
+pre-commit-hook:
+  stage: pre-commit-hook
+  <<: *install_uv
+  dependencies:
+    - setup
+  script:
+    - apt-get update && apt-get install -y git
+    - source .venv/bin/activate
+    - uv pip install pre-commit
+    - pre-commit run --all-files
+  allow_failure: true
 
 # Linting job
 lint:
