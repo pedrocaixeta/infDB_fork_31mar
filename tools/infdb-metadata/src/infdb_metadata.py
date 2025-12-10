@@ -219,7 +219,7 @@ def fetch_metadata(log, conn: psycopg2.extensions.connection) -> Dict[str, objec
                 "tables": [],
             },
         )
-        for table_catalog, table_schema, table_name, table_type in tables_by_schema.get(schema_name, []):
+        for table_schema, table_name, table_type in tables_by_schema.get(schema_name, []):
             # NOTE: print out tables in a schema
             # print(f"    Table: {table_name}", flush=True)
             columns = _fetch_columns(cur, table_schema, table_name)
@@ -316,7 +316,7 @@ def fetch_metadata_infdb(log, infdb_client) -> Dict[str, object]:
                 "tables": [],
             },
         )
-        for table_catalog, table_schema, table_name, table_type in tables_by_schema.get(schema_name, []):
+        for table_schema, table_name, table_type in tables_by_schema.get(schema_name, []):
             # NOTE: print out tables in a schema
             # print(f"    Table: {table_name}", flush=True)
             columns = _fetch_columns_infdb(infdb_client, table_schema, table_name)
