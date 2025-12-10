@@ -40,7 +40,7 @@ async def postgrest_health():
             r = await client.get(url)
         return {"ok": r.status_code < 400, "status_code": r.status_code}
     except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"PostgREST unreachable at {url}: {e}")
+        raise HTTPException(status_code=502, detail=f"PostgREST unreachable at {url}: {e}") from e
 
 
 # Helper to proxy HTTP responses, preserving headers except for hop-by-hop headers
@@ -111,7 +111,7 @@ async def get_postgrest(
         raise HTTPException(
             status_code=502,
             detail=f"Cannot reach PostgREST at {POSTGREST_URL} -> {table}: {e.__class__.__name__}: {e}",
-        )
+        ) from e
 
     if resp.status_code >= 400:
         raise HTTPException(status_code=resp.status_code, detail=resp.text)
@@ -149,7 +149,7 @@ async def post_postgrest(schema: str, table: str, row: dict):
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=502, detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
-        )
+        ) from e
     if resp.status_code not in (200, 201):
         raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
     if resp.content:
@@ -175,7 +175,7 @@ async def put_postgrest(
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=502, detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
-        )
+        ) from e
     if resp.status_code not in (200, 204):
         raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
     if resp.content:
@@ -197,7 +197,7 @@ async def delete_postgrest(
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=502, detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
-        )
+        ) from e
     if resp.status_code not in (200, 204):
         raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
     return {"status": "deleted"}

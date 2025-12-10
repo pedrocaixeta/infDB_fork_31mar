@@ -144,8 +144,8 @@ class Material:
     def thick(self, value: float):
         try:
             value = float(value)
-        except ValueError:
-            raise TypeError(f"Material {self.name}, thickness is not a float: {value}")
+        except ValueError as e:
+            raise TypeError(f"Material {self.name}, thickness is not a float: {value}") from e
         if value < material_limits["thickness"][0] or value > material_limits["thickness"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
@@ -166,8 +166,8 @@ class Material:
     def dens(self, value: float):
         try:
             value = float(value)
-        except ValueError:
-            raise TypeError(f"Material {self.name}, density is not a float: {value}")
+        except ValueError as e:
+            raise TypeError(f"Material {self.name}, density is not a float: {value}") from e
         if value < material_limits["density"][0] or value > material_limits["density"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
@@ -188,8 +188,8 @@ class Material:
     def cond(self, value: float):
         try:
             value = float(value)
-        except ValueError:
-            raise TypeError(f"Material {self.name}, conductivity is not a float: {value}")
+        except ValueError as e:
+            raise TypeError(f"Material {self.name}, conductivity is not a float: {value}") from e
         if value < material_limits["conductivity"][0] or value > material_limits["conductivity"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
@@ -210,8 +210,8 @@ class Material:
     def spec_heat(self, value: float):
         try:
             value = float(value)
-        except ValueError:
-            raise TypeError(f"Material {self.name}, specific heat is not a float: {value}")
+        except ValueError as e:
+            raise TypeError(f"Material {self.name}, specific heat is not a float: {value}") from e
         if value < material_limits["specific_heat"][0] or value > material_limits["specific_heat"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
@@ -232,8 +232,8 @@ class Material:
     def thermal_absorptance(self, value: float):
         try:
             value = float(value)
-        except ValueError:
-            raise TypeError(f"Material {self.name}, thermal_absorptance is not a float: {value}")
+        except ValueError as e:
+            raise TypeError(f"Material {self.name}, thermal_absorptance is not a float: {value}") from e
         if value < material_limits["absorptance"][0] or value > material_limits["absorptance"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
@@ -326,8 +326,8 @@ class AirGapMaterial:
     def thick(self, value: float):
         try:
             value = float(value)
-        except ValueError:
-            raise TypeError(f"Material {self.name}, thickness is not a float: {value}")
+        except ValueError as e:
+            raise TypeError(f"Material {self.name}, thickness is not a float: {value}") from e
         if value < material_limits["thickness"][0] or value > material_limits["thickness"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
@@ -348,8 +348,8 @@ class AirGapMaterial:
     def thermal_resistance(self, value: float):
         try:
             value = float(value)
-        except ValueError:
-            raise TypeError(f"Material {self.name}, thermal_resistance is not a float: {value}")
+        except ValueError as e:
+            raise TypeError(f"Material {self.name}, thermal_resistance is not a float: {value}") from e
         if value < material_limits["thermal_resistance"][0] or value > material_limits["thermal_resistance"][1]:
             # Value in [m]. Take a look to units
             # Check if thickenss is outside
