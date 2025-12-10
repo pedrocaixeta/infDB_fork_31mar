@@ -4,12 +4,12 @@ ro-heat:
         path: "ro-heat.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
-        citydb:
-            user: infdb_user
-            password: infdb
-            db: infdb
-            host: ds1.need.energy
-            exposed_port: 54328
+        postgres:
+            user: None
+            password: None
+            db: None
+            host: None
+            exposed_port: None
             epsg: None # 3035 (Europe)
     data:
         input_schema: basedata
