@@ -124,7 +124,7 @@ class InfDB:
             keys.insert(0, self.tool_name)
         return self.infdbconfig.get_path(keys, type=type)
 
-    def get_env_variables(self, key) -> Optional[str]:
+    def get_env_variable(self, key) -> Optional[str]:
         """Return a dictionary of environment variables for this tool.
 
         Returns:
