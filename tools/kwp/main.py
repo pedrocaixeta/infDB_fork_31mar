@@ -1,48 +1,50 @@
+from typing import Dict
+
 from infdb import InfDB
 
 
-def main():
 
-    # Load InfDB handler
-    infdbhandler = InfDB(tool_name="kwp")
 
-    # Database connection
-    infdbclient_citydb = infdbhandler.connect()
+def main() -> None:
+    """Run the KWP SQL workflow.
 
-    # Logger setup
-    infdblog = infdbhandler.get_log()
+    Steps:
+      1) Initialize InfDB (config + logging).
+      2) Read input/output schemas from config (tool section).
+      3) Drop and (re)create output schema.
+      4) Execute all SQL files in the local ./sql directory with format parameters.
+    """
+    # Initialize InfDB (config + logging)
+    inf = InfDB(tool_name="kwp", config_path="configs")
+    log = inf.get_log()
 
-    # Start message
-    infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
+    log.info("Starting %s tool", inf.get_toolname())
 
-    # Setup database engine
-    engine = infdbclient_citydb.get_db_engine()
-
-    # Parameter
-    format_params = {
-    "input_schema_basedata": infdbhandler.get_config_value(["data", "input_schema_basedata"], insert_toolname=True),
-    "input_schema_ro-heat": infdbhandler.get_config_value(["data", "input_schema_ro-heat"], insert_toolname=True),
-    "output_schema": infdbhandler.get_config_value(["data", "output_schema"], insert_toolname=True)
-}
+    # Gather parameters from config
+    format_params: Dict[str, str] = {
+        "input_schema_basedata": inf.get_config_value([inf.get_toolname(),"data", "input_schema_basedata"]),
+        "input_schema_ro-heat": inf.get_config_value([inf.get_toolname(),"data", "input_schema_ro-heat"]),
+        "output_schema": inf.get_config_value([inf.get_toolname(),"data", "output_schema"]),
+    }
 
     try:
-        infdblog.info(f"Input schema basedata: {format_params['input_schema_basedata']}")
-        infdblog.info(f"Input schema ro-heat: {format_params['input_schema_ro-heat']}")
-        infdblog.info(f"Output schema: {format_params['output_schema']}")
+        log.info("Input schema basedata: %s", format_params["input_schema_basedata"])
+        log.info("Input schema ro-heat: %s", format_params["input_schema_ro-heat"])
+        log.info("Output schema: %s", format_params["output_schema"])
 
-        sql = f"DROP SCHEMA IF EXISTS {format_params['output_schema']} CASCADE;"
-        infdbclient_citydb.execute_query(sql)
-        sql = f"CREATE SCHEMA IF NOT EXISTS {format_params['output_schema']};"
-        infdbclient_citydb.execute_query(sql)
+        # DB work
+        with inf.connect() as db:
+            db.execute_query(f"DROP SCHEMA IF EXISTS {format_params['output_schema']} CASCADE;")
+            db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {format_params['output_schema']};")
 
-        # Run SQL scripts within sql folder
-        infdbclient_citydb.execute_sql_files("sql", format_params=format_params)
+            # Run all SQL scripts in ./sql with format params
+            db.execute_sql_files("sql", format_params=format_params)
 
-        infdblog.info("kwp sucessfully completed")
+        log.info("kwp successfully completed")
 
     except Exception as e:
-        infdblog.error(f"Something went wrong: {str(e)}")
-        raise e
+        log.error("Something went wrong: %s", str(e))
+        raise
 
 
 if __name__ == "__main__":

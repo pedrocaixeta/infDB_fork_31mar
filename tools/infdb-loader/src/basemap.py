@@ -1,66 +1,57 @@
 import os
-import logging
-import geopandas as gpd
-from . import utils, config, logger
+import time
+from typing import List, Sequence, Optional
+import sys
+from infdb import InfDB
+from . import utils
 
-log = logging.getLogger(__name__)
 
+def load(infdb: InfDB) -> None:
+    log = infdb.get_worker_logger()
+    try:
+        if not utils.if_active("basemap", infdb):
+            log.info("Basemap loader inactive → skipping.")
+            return
+        base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "basemap", "path", "base"], type="loader")
+        os.makedirs(base_path, exist_ok=True)
 
-def load(log_queue):
-    logger.setup_worker_logger(log_queue)
+        site_url = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "url"])
+        ending = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "ending"])
+        filters: Sequence[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "filter"]) or []
 
-    if not utils.if_active("basemap"):
-        return
+        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "schema"])
+        prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "prefix"])
+        layer_names: Sequence[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "basemap", "layer"]) or []
 
-    # Create folders if they do not exist
-    base_path = config.get_path(["loader", "sources", "basemap", "path", "base"])
-    os.makedirs(base_path, exist_ok=True)
+        # make sure schema exists
+        with infdb.connect() as db:
+            # db.execute_query(f"DROP SCHEMA IF EXISTS {schema} CASCADE;") # done in main.py
+            db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
-    # processed_path = config.get_path(["loader", "sources", "basemap", "path", "processed"])
-    # os.makedirs(processed_path, exist_ok=True)
+        for flt in filters:
+            urls: List[str] = utils.get_links(site_url, ending, flt, infdb)
+            if len(urls) != 1:
+                log.warning("Basemap: filter '%s' produced %d links → %s (skipping)", flt, len(urls), urls)
+                continue
+            else:
+                url = urls[0]
+            log.info("Basemap: selected %s for filter '%s'", url, flt)
 
-    site_url = config.get_value(["loader", "sources", "basemap", "url"])
-    ending = config.get_value(["loader", "sources", "basemap", "ending"])
-    filters = config.get_value(["loader", "sources", "basemap", "filter"])
+            filename, name, extension = utils.get_file_from_url(url)
+            name_no_day = name.rsplit("-", 1)[0]
+            expected_monthly_path = os.path.join(base_path, name_no_day + extension)
 
-    for filter in filters:
-        urls = utils.get_links(site_url, ending, filter)
-        if len(urls) == 1:
-            url = urls[0]
-        else:
-            log.warning(f"No or multiple link found for filter({filter}): {urls}")
+            log.info("Basemap: downloading to path %s", expected_monthly_path)
+            utils.download_files(url, expected_monthly_path, infdb)
 
-        
-        log.debug(url)
+            download_file = utils.get_file(base_path, flt, ".gpkg", infdb)
 
-        filename, name, extension = utils.get_file_from_url(url)
+            log.info("Basemap: importing %s into schema %s", download_file, schema)
+            layers = [layer + "_bdlm" for layer in layer_names]
+            utils.import_layers(download_file, layers, schema, infdb, prefix=prefix, layer_names=layer_names, if_exists="append")
 
-        # remove the two lines below if you want to keep the full date in the filename
-        name = name.rsplit("-", 1)[0]   # remove day -> year and month only
-        # name = name.rsplit("-", 2)[0]   # remove day and month -> year only
-
-        file_path = os.path.join(base_path, name + extension)
-        print(file_path)
-        download_files = utils.download_files(url, file_path)
-        log.debug(f"Download_files: {download_files}")
-
-        # Create schema if it doesn't exist
-        schema = config.get_value(["loader", "sources", "basemap", "schema"])
-        sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
-        utils.sql_query(sql)
-
-        prefix = config.get_value(["loader", "sources", "basemap", "prefix"])
-        log.debug(f"Using prefix: {prefix}")
-
-        file = utils.get_file(base_path, filter, ".gpkg")
-
-        log.info(f"Loading {file}...")
-        # list = gpd.list_layers(file)["name"]
-        # print(list)
-        layer_names = config.get_value(["loader", "sources", "basemap", "layer"])
-        layers = [layer + "_bdlm" for layer in layer_names]
-        utils.import_layers(
-            file, layers, schema, prefix=prefix, layer_names=layer_names
-        )  # TODO: Add if several files
-
-        log.info(f"Basemap data loaded successfully")
+        log.info("Basemap data loaded successfully")
+        sys.exit(0)
+    except Exception as err:
+        log.exception("An error occurred while processing BASEMAP data: %s", str(err))
+        sys.exit(1)

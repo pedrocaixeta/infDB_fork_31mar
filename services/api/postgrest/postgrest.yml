@@ -1,46 +1,42 @@
 services:
   pgrstwatch:
     image: python:3.12-slim
-    working_dir: /conf
+    working_dir: /app
     volumes:
-      - .:/conf:rw                           # mount ./postgrest → /conf
+      - .:/app:rw
+      - ../../../src/infdb_package:/app/mnt/infdb_package
+      - ../../../configs/:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
+      - ./configs:/app/configs #:ro # for configs
     environment:
       PYTHONUNBUFFERED: "1"
-      POSTGREST_CONF_PATH: /conf            # directory; script will create postgrest.conf
-      POSTGREST_DB_CHANNEL: pgrst
-      POSTGREST_WATCH_INTERVAL_SEC: "1.0"
-      POSTGREST_MIN_RELOAD_GAP_SEC: "3.0"
-      POSTGREST_EXCLUDE_SCHEMAS: "pg_*,information_schema,postgrest"
-      SERVICES_POSTGRES_USER: ${SERVICES_POSTGRES_USER}
-      SERVICES_POSTGRES_PASSWORD: ${SERVICES_POSTGRES_PASSWORD}
-      SERVICES_POSTGRES_DB: ${SERVICES_POSTGRES_DB}
-      SERVICES_POSTGRES_HOST: ${SERVICES_POSTGRES_HOST}
-      SERVICES_POSTGRES_EXPOSED_PORT: 5432
-      SERVICES_POSTGREST_PORT: ${SERVICES_POSTGREST_PORT:-3000}
     command:
       - /bin/sh
       - -lc
       - >
-        python -m pip install --no-cache-dir psycopg[binary]
+        python -m pip install --no-cache-dir
+        /app/mnt/infdb_package
+        psycopg[binary]
+        pyyaml
         && echo "[pgrstwatch] starting"
-        && exec python -u /conf/watch_and_update_postgrest_conf.py
+        && exec python -u /app/watch_and_update_postgrest_conf.py
     healthcheck:
-      test: ["CMD-SHELL", "test -s /conf/postgrest.conf"]
+      test: ["CMD-SHELL", "test -s /app/postgrest.conf"]
       interval: 5s
       timeout: 5s
       retries: 60
-      start_period: 90s              # give pip + first write time to finish
+      start_period: 90s
     restart: unless-stopped
     networks:
       - ${BASE_NETWORK_NAME}
+
 
   postgrest:
     image: postgrest/postgrest:latest
     command:
       - postgrest
-      - /conf/postgrest.conf
+      - /app/postgrest.conf
     volumes:
-      - .:/conf:ro                           # read-only is fine for PostgREST
+      - .:/app:ro                           # read-only is fine for PostgREST
     ports:
       - "${SERVICES_POSTGREST_PORT}:${SERVICES_POSTGREST_PORT}"
     depends_on:

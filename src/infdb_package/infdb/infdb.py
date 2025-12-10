@@ -1,0 +1,126 @@
+import logging
+from typing import Any, Dict, List
+
+from .client import InfdbClient
+from .config import InfdbConfig
+from .logger import InfdbLogger
+
+
+# ============================== Constants ==============================
+
+DEFAULT_CONFIG_DIR: str = "configs"
+DEFAULT_DB_NAME: str = "postgres"
+DEFAULT_LOG_FILE: str = "infdb.log"
+DEFAULT_LOG_LEVEL: str = "INFO"
+
+
+class InfDB:
+    """Facade for configuration, logging, and DB connections for InfDB.
+
+    Other repos (e.g., `infdb-loader`, `infdb-basedata`) should import and use this
+    class as the single entry point.
+    """
+
+    def __init__(self, tool_name: str, config_path: str = DEFAULT_CONFIG_DIR) -> None:
+        """Initialize the facade with configuration and logging.
+
+        Args:
+            tool_name: Identifier used to pick the tool section in the config.
+            config_path: Base directory containing YAML configuration files.
+        """
+        self.tool_name: str = tool_name
+        self.config_path: str = config_path
+
+        # Load configuration
+        self.infdbconfig: InfdbConfig = InfdbConfig(tool_name=self.tool_name, config_path=self.config_path)
+
+        # Initialize logging from config, with safe fallbacks
+        log_path = self.get_config_value(["logging", "path"], insert_toolname=True) or DEFAULT_LOG_FILE
+        level = self.get_config_value(["logging", "level"], insert_toolname=True) or DEFAULT_LOG_LEVEL
+        self.infdblogger: InfdbLogger = InfdbLogger(log_path=log_path, level=level)
+        self.log: logging.Logger = self.infdblogger.root_logger
+
+    def __str__(self) -> str:
+        return f"InfDB(tool='{self.tool_name}', config='{self.config_path}')"
+
+    # ------------------ config & logging helpers ------------------
+
+    def get_log(self) -> logging.Logger:
+        """Return the root logger used by this instance."""
+        return self.log
+
+    def get_worker_logger(self) -> logging.Logger:
+        """Create and return a worker logger from the InfdbLogger helper."""
+        return self.infdblogger.setup_worker_logger()
+
+    # ------------------ database helpers ------------------
+
+    def connect(self, db_name: str = DEFAULT_DB_NAME) -> InfdbClient:
+        """Create a new database client.
+
+        Prefer: `with inf.connect(...) as client: ...`.
+
+        Args:
+            db_name: Name of the database to connect to.
+
+        Returns:
+            An InfdbClient connected to the requested database.
+        """
+        return InfdbClient(self.infdbconfig, self.get_log(), db_name=db_name)
+
+    def get_db_engine(self, db_name: str = DEFAULT_DB_NAME):
+        """Return a SQLAlchemy engine for the specified database.
+
+        Args:
+            db_name: Name of the database to connect to.
+
+        Returns:
+            A SQLAlchemy Engine instance connected to the same target DB.
+        """
+        with self.connect(db_name=db_name) as client:
+            return client.get_db_engine()
+
+    # ------------------ configuration access ------------------
+
+    def get_toolname(self) -> str:
+        """Return the tool name configured for this instance."""
+        return self.tool_name
+
+    def get_config_dict(self) -> Dict[str, Any]:
+        """Return the merged configuration dictionary."""
+        return self.infdbconfig.get_config()
+
+    def get_db_parameters_dict(self)-> Dict[str, Any]:
+        """Return final parameters dictionary for the postgres service."""
+        return self.infdbconfig.get_db_parameters()
+
+    def get_config_value(self, keys: List[str], insert_toolname: bool = False):
+        """Return a value from the configuration by traversing a key path.
+
+        Args:
+            keys: Ordered key path within the configuration.
+            insert_toolname: If True, prepend the tool name to the key path.
+
+        Returns:
+            The value at the specified path, or None if missing.
+        """
+        keys = list(keys)
+        if insert_toolname:
+            keys.insert(0, self.tool_name)
+        return self.infdbconfig.get_value(keys)
+
+    def get_config_path(self, keys: List[str], type: str="config", insert_toolname: bool = False) -> str:
+        """Resolve a filesystem path from config.
+
+        Args:
+            keys: Ordered key path within the configuration.
+            keys: Ordered key path within the configuration.
+            insert_toolname: If True, prepend the tool name to the key path.
+
+        Returns:
+            An absolute filesystem path.
+        """
+        keys = list(keys)
+        if insert_toolname:
+            keys.insert(0, self.tool_name)
+        return self.infdbconfig.get_path(keys, type=type)

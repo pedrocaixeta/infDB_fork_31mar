@@ -1,59 +1,65 @@
-import os
-from infdb import InfDB
+from typing import Any, Dict
+
 import subprocess
 
-def main():
+from infdb import InfDB
 
-    # Load InfDB handler
-    infdbhandler = InfDB(tool_name="infdb-init")
 
-    # Database connection
-    infdbclient = infdbhandler.connect()
+# ============================== Constants ==============================
 
-    # Logger setup
-    infdblog = infdbhandler.get_log()
+PGBIN_PATH: str = "/var/lib/postgresql/17/bin"
 
-    # Start message
-    infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
 
-    # Check if schema 'citydb' exists
-    cursor = infdbclient.get_db_cursor()
-    cursor.execute(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = 'citydb')"
+# ============================== Helpers ===============================
+
+def build_citydb_env(params: Dict[str, Any]) -> Dict[str, str]:
+    """Build the environment mapping for the 3DCityDB setup script.
+
+    Args:
+        params: DB parameters returned by InfDB config (host, exposed_port, db, user, password, epsg).
+
+    Returns:
+        A dict of environment variables (all values coerced to strings).
+    """
+    return {
+        "PGBIN": PGBIN_PATH,
+        "PGHOST": str(params["host"]),
+        "PGPORT": str(params["exposed_port"]),
+        "CITYDB": str(params["db"]),
+        "PGUSER": str(params["user"]),
+        "PGPASSWORD": str(params["password"]),
+        "SRID": str(params["epsg"]),
+        "HEIGHT_EPSG": "0",
+        "CHANGELOG": "no",
+    }
+
+
+# ============================== Entry Point ===========================
+
+def main() -> None:
+    """Initialize InfDB, assemble env, and run the 3DCityDB create script."""
+    # Initialize InfDB (config + logging)
+    inf = InfDB(tool_name="infdb-init", config_path="configs")
+    log = inf.get_log()
+
+    log.info("Starting %s tool", inf.get_toolname())
+
+    # DB parameters for 3DCityDB install
+    params = inf.infdbconfig.get_db_parameters("postgres")
+
+    # Ensure all env values are strings
+    env = build_citydb_env(params)
+    log.debug("Environment variables set: %s", env)
+
+    # Install 3DCityDB extension
+    log.info("Installing 3DcityDB extension")
+    subprocess.run(
+        ["bash", "/tmp/3dcitydb/postgresql/shell-scripts/unix/create-db.sh"],
+        env=env,
+        check=True,
     )
-    schema_exists = cursor.fetchone()[0]
-    cursor.close()
-    
-    if schema_exists:
-        infdblog.info("Schema 'citydb' exists, skipping initialization")
-    
-    else:
-        infdblog.info("Schema 'citydb' does not exist, proceeding with initialization")
 
-        # Set up environment variables for 3DCityDB
-        param = {k: str(v) for k, v in infdbhandler.infdbconfig.get_db_parameters("postgres").items()}  # Ensure all values are strings
-        env = {
-            'PGBIN': '/var/lib/postgresql/17/bin',
-            'PGHOST': param['host'],
-            'PGPORT': param['exposed_port'],
-            'CITYDB': param['db'],
-            'PGUSER': param['user'],
-            'PGPASSWORD': param['password'],
-            'SRID': param['epsg'],
-            'HEIGHT_EPSG': "0",
-            'CHANGELOG': "no"
-        }
-        infdblog.debug(f"Environment variables set: {env}")
-        
-        # Install 3DcityDB extension
-        infdblog.info("Installing 3DcityDB extension")
-        subprocess.run([
-            "bash",
-            "/tmp/3dcitydb/postgresql/shell-scripts/unix/create-db.sh"
-        ], env=env, check=True)
-    
-    # End message
-    infdblog.info(f"Successfully finished {infdbhandler.get_toolname()} tool")
+    log.info("Successfully finished %s tool", inf.get_toolname())
 
 
 if __name__ == "__main__":

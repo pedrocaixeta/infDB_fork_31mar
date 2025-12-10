@@ -31,8 +31,8 @@ COPY pyproject.toml /app/pyproject.toml
 # RUN uv sync
 
 ## Install infdb package in editable mode
-# COPY ../../src/infdb-package /app/mnt/infdb-package
-# RUN uv pip install -e /app/mnt/infdb-package
+# COPY ../../src/infdb_package /app/mnt/infdb_package
+# RUN uv pip install -e /app/mnt/infdb_package
 
 # Copy the source code into the container
 COPY src /app/src

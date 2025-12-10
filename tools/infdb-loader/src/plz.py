@@ -1,55 +1,76 @@
 import os
-import logging
-from . import utils, config, logger
+from logging.handlers import QueueHandler
+import sys
+from typing import List, Sequence
 
-log = logging.getLogger(__name__)
+from infdb import InfDB
+from . import utils
 
 
-def load(log_queue):
+def load(infdb: InfDB) -> bool:
+    """Download PLZ dataset (if active), ensure schema, and import configured layers.
+
+    Behavior preserved:
+    - Early exit (True) when feature flag `plz` is inactive.
+    - Skips download when the target file already exists.
+    - Ensures schema via InfdbClient and imports layers with configured prefix.
+    """
+    file_path: str | None = None  # for safe logging if errors occur before assignment
     try:
-        logger.setup_worker_logger(log_queue)
+        log = infdb.get_worker_logger()
+        if not utils.if_active("plz", infdb):
+            return True
 
-        if not utils.if_active("plz"):
-            return
-
-        base_path = config.get_path(["loader", "sources", "plz", "path", "base"])
-        log.debug(f"base_path={base_path}")
+        base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "plz", "path", "base"], type="loader")
+        log.debug("base_path=%s", base_path)
         os.makedirs(base_path, exist_ok=True)
 
-        # processed_path = config.get_path(["loader", "sources", "plz", "path", "processed"])
-        # os.makedirs(processed_path, exist_ok=True)
+        url: str = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "url"])
+        log.debug("url=%s", url)
 
-        url = config.get_value(["loader", "sources", "plz", "url"])
-        log.debug(f"url={url}")
-        filename, name, extension = utils.get_file_from_url(url)
+        # Get auth flag (defaults to False if not present)
+        try:
+            protocol = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "protocol"])
+        except Exception:
+            protocol = "http"
+
+        # Get credentials if auth is enabled
+        username = None
+        access_token = None
+        if protocol == "webdav":
+            username = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "username"])
+            access_token = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "access_token"])
+
+        filename, *_ = utils.get_file_from_url(url)
 
         file_path = os.path.join(base_path, filename)
-        log.debug(f"Downloading PLZ data from {url} to {file_path}")
+        log.debug("Downloading PLZ data from %s to %s", url, file_path)
 
         if os.path.exists(file_path):
-            log.info(f"File {file_path} already exists.")
+            log.info("File %s already exists.", file_path)
         else:
-            # Download file
-            log.info(f"File {file_path} will be downloaded from {url}")
+            log.info("File %s will be downloaded from %s", file_path, url)
+            utils.download_files(url, base_path, infdb, protocol, username=username, access_token=access_token)
 
-            utils.download_files(url, base_path)
+        schema: str = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "schema"])
 
-        schema = config.get_value(["loader", "sources", "plz", "schema"])
+        # Ensure schema exists using InfdbClient
+        with infdb.connect() as db:
+            db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
-        # Create schema if it doesn't exist
-        sql = f"CREATE SCHEMA IF NOT EXISTS {schema};"
-        utils.sql_query(sql)
+        prefix: str = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "prefix"])
+        layers: Sequence[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "layer"])
 
-        prefix = config.get_value(["loader", "sources", "plz", "prefix"])
-        layers = config.get_value(["loader", "sources", "plz", "layer"])
+        log.info("Loading PLZ data from %s to %s", url, file_path)
+        utils.import_layers(file_path, layers, schema, infdb, prefix=prefix)
 
-        log.info(f"Loading PLZ data from {url} to {file_path}")
-        utils.import_layers(file_path, layers, schema, prefix=prefix)
+        log.info("PLZ data loaded successfully")
+        sys.exit(0)
 
-        log.info(f"PLZ data loaded successfully")
-    
     except Exception as err:
-        log.exception(f"An error occurred while processing plz file: {file_path} {str(err)}")
-        return False
-
-    return True
+        log.exception(
+            "An error occurred while processing plz file: %s %s",
+            file_path if file_path else "<unknown>",
+            str(err),
+        )
+        sys.exit(1)

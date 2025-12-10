@@ -42,12 +42,12 @@ For instance, it can be used for the following applications:
 
 ## How it works?
 The infDB architecture is composed of three coordinated layers as shown in the figure below:
-1. **PostgreSQL** – foundational geospatial and semantic building data (center)
-2. **Services** – preconfigured platform services (top)
+1. **PostgreSQL** – foundational geospatial and semantic infrastructure and energy data (center)
+2. **Services** – preconfigured platform services (left & top)
 3. **Tools** – external connected software and scripts. (right)
 
 The PostgreSQL database is the basis and extended by services and tools. More information of each layer is described below. 
-The PostgreSQL and all services are dockerized for a modular and flexible application.
+The PostgreSQL, all services and adopted tools are dockerized for a modular and flexible application.
 ![alt text](docs/img/infdb-overview.png)
 
 ### PostgreSQL
@@ -59,7 +59,7 @@ The foundation is a PostgreSQL database enhanced with TimescaleDB, PostGIS, PGRo
 - [3D City Database](http://www.3dcitydb.org/): Virtual 3D city model storage (buildings, terrain, infrastructure) with CityGML support, spatial indexing, and semantic queries for detailed urban analysis.
 
 ### Services
-Integrated, preconfigured services extending the 3D City Database:
+Integrated, preconfigured services extending the infDB:
 
 
 - [pgAdmin](https://www.pgadmin.org/): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
@@ -72,7 +72,7 @@ Integrated, preconfigured services extending the 3D City Database:
 These services provide core functionalities and support a seamless path from ingestion to analysis and visualization.
 
 ### Tools
-Tools are external software, scripts, or workflows that connect to infDB through its standardized APIs and database schemas, enabling specialized analysis and processing capabilities.
+Tools are external software, scripts, or workflows that interact with infDB through its standardized APIs and database schemas, enabling specialized analysis and processing capabilities.
 
 #### Currently Integrated Tools
 
@@ -262,7 +262,7 @@ venv\Scripts\activate
 ```bash
 # linux and macos
 git fetch origin
-git reset --hard origin/develop
+git reset --hard
 git clean -fdx
 ```
 

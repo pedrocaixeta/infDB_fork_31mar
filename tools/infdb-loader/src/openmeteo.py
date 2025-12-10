@@ -1,164 +1,183 @@
-import os
-import shutil
-from . import config, utils, logger, bkg
+import io
 import logging
+import multiprocessing as mp
+import os
+from logging.handlers import QueueHandler
+import sys
+from typing import Any, Dict, List
 
 import openmeteo_requests
-
 import pandas as pd
-import geopandas as gpd
 import requests_cache
 from retry_requests import retry
 
-import numpy as np
-import io
-from pyproj import Transformer
+import infdb as InfDB
 
-log = logging.getLogger(__name__)
-
-def temperature_2m(pd_dataframe, engine):
-    # Setup the Open-Meteo API client with cache and retry on error
-    cache_session = requests_cache.CachedSession('.cache', expire_after = -1)
-    retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
-    openmeteo = openmeteo_requests.Client(session = retry_session)   
-    
-    # Make sure all required weather variables are listed here
-    # The order of variables in hourly or daily is important to assign them correctly below
-    url = "https://archive-api.open-meteo.com/v1/archive"
+from . import bkg
+from . import utils
 
 
-    # Fast upload via COPY FROM (CSV stream) into a plain Postgres table
-    db_schema = config.get_value(["loader", "sources", "openmeteo", "schema"])
-    db_prefix = config.get_value(["loader", "sources", "openmeteo", "prefix"])
+# ============================== Constants ==============================
 
-    # Drop metadata table if exists
-    drop_metadata_sql = f"""
-    DROP TABLE IF EXISTS {db_schema}.{db_prefix}_ts_metadata;
+
+CACHE_EXPIRE_SECONDS: int = -1  # never expire
+RETRY_ATTEMPTS: int = 5
+RETRY_BACKOFF: float = 0.2
+
+TS_METADATA_SUFFIX: str = "_ts_metadata"
+HOURLY_RESOLUTION_TEXT: str = "1 hour"
+HOURLY_UNIT_TEXT: str = "°C"
+GEO_SRID_WGS84: int = 4326
+
+
+
+def temperature_2m(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB) -> None:
+    """Fetch hourly 2m temperature from Open-Meteo and bulk load to Postgres.
+
+    Args:
+        pd_dataframe: DataFrame with columns ['id', 'latitude', 'longitude'].
+        engine: SQLAlchemy Engine connected to the target DB.
+        infdb: To extract package configuration object (used for schema/prefix and timing).
     """
+    log = infdb.get_worker_logger()
+    # Setup the Open-Meteo API client with cache and retry on error
+    cache_session = requests_cache.CachedSession(".cache", expire_after=CACHE_EXPIRE_SECONDS)
+    retry_session = retry(cache_session, retries=RETRY_ATTEMPTS, backoff_factor=RETRY_BACKOFF)
+    openmeteo = openmeteo_requests.Client(session=retry_session)
+
+    # Target DB schema/tables
+    db_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "schema"])
+    db_prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "prefix"])
+    table_name = "openmeteo_ts_data"
+
+    # Drop & create metadata table
     try:
-        utils.sql_query(drop_metadata_sql)
+        with infdb.connect() as db:
+            db.execute_query(f"DROP TABLE IF EXISTS {db_schema}.{db_prefix}{TS_METADATA_SUFFIX};")
     except Exception as e:
         log.error("Failed to drop metadata table: %s", e)
-    
-    # Create metadata table if not exists
-    metadata_sql = f"""
-    CREATE TABLE IF NOT EXISTS {db_schema}.{db_prefix}_ts_metadata (
-        id SERIAL PRIMARY KEY,
-        name text,
-        decription text,
-        grid_id text,
-        type text,
-        resolution text,
-        unit text,
-        changelog integer,
-        group_id text,
-        geom geometry
-    );
-    """
+
     try:
-        utils.sql_query(metadata_sql)
+        with infdb.connect() as db:
+            db.execute_query(f"""
+            CREATE TABLE IF NOT EXISTS {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} (
+                id SERIAL PRIMARY KEY,
+                name text,
+                decription text,
+                grid_id text,
+                type text,
+                resolution text,
+                unit text,
+                changelog integer,
+                group_id text,
+                geom geometry
+            );
+            """)
     except Exception as e:
         log.error("Failed to create metadata table: %s", e)
-    
-    
-    table_name = 'openmeteo_ts_data'
-    drop_sql = f"""
-    DROP TABLE IF EXISTS {db_schema}.{table_name};
-    """
-    utils.sql_query(drop_sql)
 
-    # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
-    create_sql = f"""
-    CREATE TABLE IF NOT EXISTS {db_schema}.{table_name} (
-        ts_metadata_id integer,
-        time timestamptz,
-        value double precision
-    )
-    WITH (
-        timescaledb.hypertable,
-        timescaledb.partition_column='time',
-        timescaledb.segmentby='ts_metadata_id'
-    );
-    """
-    utils.sql_query(create_sql)
+    # Ensure data table exists (TimescaleDB hypertable)
+    with infdb.connect() as db:
+        db.execute_query(f"DROP TABLE IF EXISTS {db_schema}.{table_name};")
 
-    log.info(len(pd_dataframe))
+    with infdb.connect() as db:
+        db.execute_query(f"""
+        CREATE TABLE IF NOT EXISTS {db_schema}.{table_name} (
+            ts_metadata_id integer,
+            time timestamptz,
+            value double precision
+        )
+        WITH (
+            timescaledb.hypertable,
+            timescaledb.partition_column='time',
+            timescaledb.segmentby='ts_metadata_id'
+        );
+        """)
 
+    log.info("Open-Meteo: processing %d grid locations", len(pd_dataframe))
+
+    # Time window
+    start_date = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "timing", "start_time"])
+    end_date = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "timing", "end_time"])
+
+    # Process in batches of 100 locations (API limit)
     for batch in range(0, len(pd_dataframe), 100):
-        # Process current batch of locations (max 100 at a time)
-        batch_df = pd_dataframe.iloc[batch:batch+100]
+        batch_df = pd_dataframe.iloc[batch : batch + 100]
 
-        # Build comma-separated coordinate strings in WGS84 for this batch
-        lat_str = ",".join(map(str, batch_df['latitude'].tolist()))
-        lon_str = ",".join(map(str, batch_df['longitude'].tolist()))
-        coordinates = {"latitude": lat_str, "longitude": lon_str}
-        params = {
-            "latitude": coordinates["latitude"],
-            "longitude": coordinates["longitude"],
-            "start_date": config.get_value(["loader", "sources", "openmeteo", "timing", "start_time"]),
-            "end_date": config.get_value(["loader", "sources", "openmeteo", "timing", "end_time"]),
+        lat_str = ",".join(map(str, batch_df["latitude"].tolist()))
+        lon_str = ",".join(map(str, batch_df["longitude"].tolist()))
+        params: Dict[str, str] = {
+            "latitude": lat_str,
+            "longitude": lon_str,
+            "start_date": start_date,
+            "end_date": end_date,
             "hourly": "temperature_2m",
         }
 
-        responses = openmeteo.weather_api(url, params=params)
+        responses = openmeteo.weather_api("https://archive-api.open-meteo.com/v1/archive", params=params)
+
         # Process multiple locations
         for i, response in enumerate(responses):
-            # response = responses[0]
-            print(f"Coordinates: {response.Latitude()}°N {response.Longitude()}°E")
-            print(f"Elevation: {response.Elevation()} m asl")
-            print(f"Timezone difference to GMT+0: {response.UtcOffsetSeconds()}s")
+            log.debug(
+                "Coords: %.6f N, %.6f E | Elev: %.1f m | TZ offset: %ds",
+                response.Latitude(),
+                response.Longitude(),
+                response.Elevation(),
+                response.UtcOffsetSeconds(),
+            )
 
-            # Process hourly data. The order of variables needs to be the same as requested.
             hourly = response.Hourly()
             hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
 
-            hourly_data = {"time": pd.date_range(
-                start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-                end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-                freq = pd.Timedelta(seconds = hourly.Interval()),
-                inclusive = "left"
-            )}
+            hourly_data: Dict[str, Any] = {
+                "time": pd.date_range(
+                    start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
+                    end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
+                    freq=pd.Timedelta(seconds=hourly.Interval()),
+                    inclusive="left",
+                )
+            }
 
-            grid_id = batch_df.iloc[i]['id']
+            grid_id = batch_df.iloc[i]["id"]
             longitude = response.Longitude()
             latitude = response.Latitude()
 
-            # Insert metadata record and get the auto-generated id
+            # Insert metadata record and get the id
             insert_metadata_sql = f"""
-            INSERT INTO {db_schema}.{db_prefix}_ts_metadata (name, decription, grid_id, type, resolution, unit, changelog, group_id, geom)
-            VALUES ('{db_prefix}_hourly_temperature_2m',
-                'Temperature from Open-Meteo at 2m height, hourly',
-                '{grid_id}',
-                'measurement:temperature_2m',
-                '1 hour',
-                '°C',
-                0,
-                'openmeteo',
-                ST_SetSRID(ST_MakePoint({longitude},{latitude}), 4326)
-                )
-            ON CONFLICT (id) DO NOTHING
+            INSERT INTO {db_schema}.{db_prefix}{TS_METADATA_SUFFIX}
+                (name, decription, grid_id, type, resolution, unit, changelog, group_id, geom)
+            VALUES
+                ('{db_prefix}_hourly_temperature_2m',
+                 'Temperature from Open-Meteo at 2m height, hourly',
+                 '{grid_id}',
+                 'measurement:temperature_2m',
+                 '{HOURLY_RESOLUTION_TEXT}',
+                 '{HOURLY_UNIT_TEXT}',
+                 0,
+                 'openmeteo',
+                 ST_SetSRID(ST_MakePoint({longitude},{latitude}), {GEO_SRID_WGS84}))
             RETURNING id;
             """
+
             ts_metadata_id = None
             try:
                 with engine.begin() as conn:
                     result = pd.read_sql(insert_metadata_sql, con=conn)
                     if not result.empty:
-                        ts_metadata_id = result['id'].iloc[0]
+                        ts_metadata_id = int(result["id"].iloc[0])
                         log.info("Created metadata record with id=%s", ts_metadata_id)
             except Exception as e:
                 log.error("Failed to insert/retrieve metadata record: %s", e)
-            
+
+            # Prepare COPY buffer
             hourly_data["value"] = hourly_temperature_2m
             hourly_data["ts_metadata_id"] = ts_metadata_id
-            hourly_dataframe = pd.DataFrame(data = hourly_data)
+            hourly_dataframe = pd.DataFrame(data=hourly_data)
 
+            conn = None  # ensure defined for the exception path
             try:
-
-                # write CSV to an in-memory buffer without header/index
-                # Reorder columns to match COPY target: grid_id, time, value, ts_id
                 buf = io.StringIO()
-                hourly_dataframe[['ts_metadata_id', 'time', 'value']].to_csv(buf, index=False, header=False)
+                hourly_dataframe[["ts_metadata_id", "time", "value"]].to_csv(buf, index=False, header=False)
                 buf.seek(0)
 
                 conn = engine.raw_connection()
@@ -168,44 +187,63 @@ def temperature_2m(pd_dataframe, engine):
                 conn.commit()
                 cur.close()
                 conn.close()
-                log.info("COPYed %d hourly rows to %s.%s (response %d/%d)", len(hourly_dataframe), db_schema, table_name, i+1, len(responses))
+                log.info(
+                    "COPYed %d hourly rows to %s.%s (response %d/%d)",
+                    len(hourly_dataframe),
+                    db_schema,
+                    table_name,
+                    i + 1,
+                    len(responses),
+                )
             except Exception as e:
                 try:
-                    conn.rollback()
-                    conn.close()
+                    if conn is not None:
+                        conn.rollback()
+                        conn.close()
                 except Exception:
                     pass
                 log.error("Failed to COPY hourly data to Postgres: %s", e)
 
 
-def load(log_queue):
-    logger.setup_worker_logger(log_queue)
+def load(infdb: InfDB) -> bool:
+    """Prepare grid, query Open-Meteo, and load temperature time series.
 
-    if not utils.if_active("openmeteo"):
-        return
-
-    # Create base directory for Open-Meteo data
-    base_path = config.get_path(["loader", "sources", "openmeteo", "path", "base"])
-    os.makedirs(base_path, exist_ok=True)
-
-    # Make sure BKG grid cells with 10km resolution are available
-    bkg.create_geogitter("10km")
-
-    # Read centroid geometry (in WGS84) and numeric lat/lon columns
-    engine = utils.get_db_engine("postgres")
-    schema = config.get_value(["loader", "sources", "bkg", "schema"])
-    table_name = config.get_value(["loader", "sources", "bkg", "geogitter", "table_name"])
-    sql = f"""
-        SELECT id,
-               ST_Y(ST_Transform(ST_Centroid(geom), 4326)) AS latitude,
-               ST_X(ST_Transform(ST_Centroid(geom), 4326)) AS longitude
-        FROM {schema}.{table_name}
-        WHERE name='DE_Grid_ETRS89_LAEA_10km'
+    Behavior preserved:
+    - Early exit (True) when feature flag `openmeteo` is inactive.
+    - Creates/ensures 10km BKG grid (delegates to bkg.create_geogitter).
     """
-    pd_dataframe = pd.read_sql(sql=sql, con=engine)
-    print(pd_dataframe.head())
-    print(len(pd_dataframe))
-    
-    temperature_2m(pd_dataframe, engine)
+    log = infdb.get_worker_logger()
+    try:
+        if not utils.if_active("openmeteo", infdb):
+            return True
+        # Create base directory for Openmeteo data
+        base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "openmeteo", "path", "base"], type="loader")
+        os.makedirs(base_path, exist_ok=True)
 
-    log.info(f"Openmeteo data loaded successfully")
+        # Ensure BKG 10km grid exists
+        bkg_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "schema"])
+        bkg.create_geogitter("10km", infdb) 
+
+        # DB engine via package
+        engine = infdb.get_db_engine()
+
+        # Read centroid geometry and lat/lon for 10km grid
+        table_name = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "geogitter", "table_name"])
+        sql = f"""
+            SELECT id,
+                ST_Y(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS latitude,
+                ST_X(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS longitude
+            FROM {bkg_schema}.{table_name}
+            WHERE name='DE_Grid_ETRS89_LAEA_10km';
+        """
+        pd_dataframe = pd.read_sql(sql=sql, con=engine)
+        log.debug("Grid preview:\n%s", pd_dataframe.head())
+        log.info("Total grid cells: %d", len(pd_dataframe))
+
+        temperature_2m(pd_dataframe, engine, infdb)
+
+        log.info("Open-Meteo data loaded successfully")
+        sys.exit(0)
+    except Exception as err:
+        log.exception("An error occurred while processing OPENMETEO data: %s", str(err))
+        sys.exit(1)
