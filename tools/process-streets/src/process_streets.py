@@ -1201,12 +1201,20 @@ def run_process_streets(
         snap_eps=SNAP_EPS,
     )
 
-    is_mergedA = dej_family_merged.get("merged_from_count", 1).fillna(1).astype(int) > 1
+    # robust: merged_from_count kann fehlen (== kein Merge)
+    mfc = dej_family_merged.get("merged_from_count")
+
+    if isinstance(mfc, pd.Series):
+        is_mergedA = mfc.fillna(1).astype(int) > 1
+    else:
+        is_mergedA = pd.Series(False, index=dej_family_merged.index)
+
     dej_family_merged["segment_type"] = np.where(
         is_mergedA,
         "deadend-junction",
         dej_family_merged["_raw_type"]
     )
+
     dej_family_merged = dej_family_merged.drop(columns=["_raw_type"], errors="ignore")
 
     others_class1 = class1[~dej_mask].copy()
@@ -1299,12 +1307,19 @@ def run_process_streets(
         snap_eps=SNAP_EPS,
     )
 
-    is_mergedA2 = dej_family_merged2.get("merged_from_count", 1).fillna(1).astype(int) > 1
+    mfc2 = dej_family_merged2.get("merged_from_count")
+
+    if isinstance(mfc2, pd.Series):
+        is_mergedA2 = mfc2.fillna(1).astype(int) > 1
+    else:
+        is_mergedA2 = pd.Series(False, index=dej_family_merged2.index)
+
     dej_family_merged2["segment_type"] = np.where(
         is_mergedA2,
         "deadend-junction",
         dej_family_merged2.get("seg_raw")
     )
+
     dej_family_merged2 = dej_family_merged2.drop(columns=["seg_raw"], errors="ignore")
 
     othersA = class3[~dej_family_mask].copy()
@@ -1335,12 +1350,19 @@ def run_process_streets(
         snap_eps=SNAP_EPS,
     )
 
-    is_mergedB = jj_merged.get("merged_from_count", 1).fillna(1).astype(int) > 1
+    mfcB = jj_merged.get("merged_from_count")
+
+    if isinstance(mfcB, pd.Series):
+        is_mergedB = mfcB.fillna(1).astype(int) > 1
+    else:
+        is_mergedB = pd.Series(False, index=jj_merged.index)
+
     jj_merged["segment_type"] = np.where(
         is_mergedB,
         "junction-junction",
         jj_merged.get("seg_raw")
     )
+
     jj_merged = jj_merged.drop(columns=["seg_raw"], errors="ignore")
 
     othersB = after_A[~jj_family_mask].copy()
