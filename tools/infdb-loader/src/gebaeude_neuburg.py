@@ -1,8 +1,9 @@
 import os
 import sys
-from typing import List, Sequence
+from typing import Sequence
 
 from infdb import InfDB
+
 from . import utils
 
 
@@ -20,7 +21,9 @@ def load(infdb: InfDB) -> bool:
         if not utils.if_active("gebaeude-neuburg", infdb):
             return True
 
-        base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "gebaeude-neuburg", "path", "base"], type="loader")
+        base_path = infdb.get_config_path(
+            [infdb.get_toolname(), "sources", "gebaeude-neuburg", "path", "base"], type="loader"
+        )
         log.debug("base_path=%s", base_path)
         os.makedirs(base_path, exist_ok=True)
 
@@ -38,7 +41,7 @@ def load(infdb: InfDB) -> bool:
         access_token = None
         if protocol == "webdav":
             username = infdb.get_config_value([infdb.get_toolname(), "sources", "gebaeude-neuburg", "username"])
-            access_token = infdb.get_env_variables("WEBDAV_NEED_INTERNAL_ACCESS_TOKEN")
+            access_token = infdb.get_env_variable("WEBDAV_NEED_INTERNAL_ACCESS_TOKEN")
 
         filename, *_ = utils.get_file_from_url(url)
 

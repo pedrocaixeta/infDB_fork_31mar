@@ -1,10 +1,6 @@
-import logging
-import sys
-from typing import Final
-
 from infdb import InfDB
-from . import utils
 
+from . import utils
 
 
 def load(infdb: InfDB) -> None:
@@ -18,7 +14,7 @@ def load(infdb: InfDB) -> None:
     # Use loader config via infdb_package
     try:
         # Download opendata package
-        TOOL_NAME= infdb.get_toolname()
+        TOOL_NAME = infdb.get_toolname()
         archive_path = infdb.get_config_path([TOOL_NAME, "sources", "package", "path", "base"], type="loader")
         url = infdb.get_config_value([TOOL_NAME, "sources", "package", "url"])
         log.info("Download opendata package from %s to %s", url, archive_path)

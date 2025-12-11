@@ -3,8 +3,6 @@ import multiprocessing
 import os
 import sys
 from logging.handlers import QueueHandler, QueueListener
-from typing import Optional
-
 
 # ============================== Constants ==============================
 
@@ -41,9 +39,9 @@ class InfdbLogger:
             try:
                 if os.path.exists(log_path):
                     os.remove(log_path)
-            except Exception:
-                # Preserve original permissive behavior: ignore cleanup errors
-                pass
+            except Exception as exc:
+                # Infdb logger not fully initialized yet, use default logging
+                logging.exception("Exception occurred during __init__(): %s", exc)
 
         # File handler
         file_handler = logging.FileHandler(log_path, encoding=FILE_ENCODING)
@@ -61,14 +59,14 @@ class InfdbLogger:
         self.listener = QueueListener(self.log_queue, console_handler, file_handler)
         self.listener.start()
 
-    def __del__(self) -> None:
-        """Best-effort shutdown of the queue listener on GC."""
+    def stop(self):
+        """Flush and stop the QueueListener."""
+        self.root_logger.info("Shutting down infdb log listener...")
         try:
-            if getattr(self, "listener", None):
-                self.listener.stop()
-        except Exception:
-            # Ignore shutdown-time errors to match prior behavior
-            pass
+            self.listener.stop()
+        except Exception as exc:
+            # Infdb logger may be partially torn down, use default logging
+            logging.exception("Exception occurred during __stop__(): %s", exc)
 
     def setup_worker_logger(self) -> logging.Logger:
         """Create a logger for worker processes that forwards to the queue.

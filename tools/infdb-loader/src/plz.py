@@ -1,9 +1,9 @@
 import os
-from logging.handlers import QueueHandler
 import sys
-from typing import List, Sequence
+from typing import Sequence
 
 from infdb import InfDB
+
 from . import utils
 
 

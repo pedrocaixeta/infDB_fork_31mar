@@ -1,8 +1,9 @@
 import os
 import sys
-from typing import List, Sequence
+from typing import Sequence
 
 from infdb import InfDB
+
 from . import utils
 
 NAME = "tudo-basemap-ways"
@@ -40,7 +41,7 @@ def load(infdb: InfDB) -> bool:
         access_token = None
         if protocol == "webdav":
             username = infdb.get_config_value([infdb.get_toolname(), "sources", NAME, "username"])
-            access_token = infdb.get_env_variables("WEBDAV_NEED_INTERNAL_ACCESS_TOKEN")
+            access_token = infdb.get_env_variable("WEBDAV_NEED_INTERNAL_ACCESS_TOKEN")
 
         filename, *_ = utils.get_file_from_url(url)
 
@@ -71,4 +72,3 @@ def load(infdb: InfDB) -> bool:
             str(err),
         )
         sys.exit(1)
-

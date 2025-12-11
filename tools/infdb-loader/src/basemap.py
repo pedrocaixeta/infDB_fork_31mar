@@ -1,8 +1,9 @@
 import os
-import time
-from typing import List, Sequence, Optional
 import sys
+from typing import List, Sequence
+
 from infdb import InfDB
+
 from . import utils
 
 
@@ -48,7 +49,9 @@ def load(infdb: InfDB) -> None:
 
             log.info("Basemap: importing %s into schema %s", download_file, schema)
             layers = [layer + "_bdlm" for layer in layer_names]
-            utils.import_layers(download_file, layers, schema, infdb, prefix=prefix, layer_names=layer_names, if_exists="append")
+            utils.import_layers(
+                download_file, layers, schema, infdb, prefix=prefix, layer_names=layer_names, if_exists="append"
+            )
 
         log.info("Basemap data loaded successfully")
         sys.exit(0)

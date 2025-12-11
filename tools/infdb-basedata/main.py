@@ -12,11 +12,9 @@ def main() -> None:
     """
     # Load InfDB facade (config + logging)
     infdb = InfDB(tool_name="infdb-basedata", config_path="configs")
-    
-    
-    
+
     # Logger
-    log = infdb.get_log()
+    log = infdb.get_logger()
     log.info("Starting %s tool", infdb.get_toolname())
 
     # Config
@@ -54,6 +52,7 @@ def main() -> None:
         db.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
 
     log.info("Successfully finished %s tool", infdb.get_toolname())
+    infdb.stop_logger()
 
 
 if __name__ == "__main__":

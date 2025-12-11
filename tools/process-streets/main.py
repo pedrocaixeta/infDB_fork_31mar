@@ -1,4 +1,3 @@
-
 """
 Main entry point for the process-streets tool.
 Handles InfDB initialization, database connection, logging, and demo execution.
@@ -7,21 +6,21 @@ Handles InfDB initialization, database connection, logging, and demo execution.
 # Import packages
 
 import json
-import sys
 
 from infdb import InfDB
+
 from src import process_streets
 
 # Import your full pipeline
 # (The file must be located at: /app/src/process_streets.py)
 
-def main():
 
+def main():
     # -----------------------------------------------------
     # INIT INFDB
     # -----------------------------------------------------
     infdb = InfDB(tool_name="process-streets")
-    log = infdb.get_log()
+    log = infdb.get_logger()
 
     log.info("=== Starting process-streets tool ===")
     log.info("Loading configuration...")
@@ -50,17 +49,20 @@ def main():
             apply_length_filter=apply_length_filter,
             min_length_deadend_junction=min_length_deadend_junction,
             remove_deadend_deadend=remove_deadend_deadend,
-            infdb=infdb
+            infdb=infdb,
         )
 
         log.info("Pipeline finished successfully.")
 
         # Output result as JSON (InfDB standard)
         log.info(json.dumps(results, indent=4))
+        infdb.stop_logger()
+
         return 0
 
     except Exception as e:
         log.error(f"Process-streets failed: {str(e)}")
+        infdb.stop_logger()
         raise
 
 
