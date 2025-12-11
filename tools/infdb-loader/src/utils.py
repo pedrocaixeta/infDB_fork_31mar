@@ -533,7 +533,7 @@ def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_nam
             "-nlt", "PROMOTE_TO_MULTI",
             "-lco", "GEOMETRY_NAME=geom",
             "-t_srs", f"EPSG:{epsg}",
-            "-makevalid",
+            # "-makevalid",
         ] + (["-overwrite"] if layer_overwrite else ["-append"]) \
           + clipsrc_opt \
           + [src_layer]

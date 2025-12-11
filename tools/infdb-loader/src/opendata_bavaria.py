@@ -166,13 +166,13 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
 
     scopes = [s.strip() for s in scopes if str(s).strip()]
     if not scopes:
-        log.warning("DGM1: no scopes configured – nothing to do.")
+        log.warning("DGM1: no scopes configured nothing to do.")
         return
 
     # One geometry per scope in the raster SRID
     scope_geoms = utils.get_clip_geometries_per_scope(source_srid, infdb)
     if not scope_geoms:
-        log.warning("DGM1: no scope geometries available – aborting.")
+        log.warning("DGM1: no scope geometries available aborting.")
         return
 
     # Map AGS -> geometry for quick lookup
