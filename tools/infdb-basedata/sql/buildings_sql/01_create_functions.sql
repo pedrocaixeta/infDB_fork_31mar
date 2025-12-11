@@ -340,6 +340,7 @@ CREATE OR REPLACE FUNCTION {output_schema}.assign_weighted_year(
 ) RETURNS TEXT AS $$
 DECLARE
     total NUMERIC;
+    cumulative NUMERIC;
 BEGIN
     total := vor1919 + a1919bis1948 + a1949bis1978 + a1979bis1990 + a1991bis2000 + a2001bis2010 + a2011bis2019 + a2020undspaeter;
 
@@ -347,22 +348,44 @@ BEGIN
         RETURN NULL;
     END IF;
 
-    IF r < vor1919 / total THEN
+    cumulative := 0;
+
+    cumulative := cumulative + vor1919;
+    IF r <= cumulative / total THEN
         RETURN '-1919';
-    ELSIF r < (vor1919 + a1919bis1948) / total THEN
-        RETURN '1919-1948';
-    ELSIF r < (vor1919 + a1919bis1948 + a1949bis1978) / total THEN
-        RETURN '1949-1978';
-    ELSIF r < (vor1919 + a1919bis1948 + a1949bis1978 + a1979bis1990) / total THEN
-        RETURN '1979-1990';
-    ELSIF r < (vor1919 + a1919bis1948 + a1949bis1978 + a1979bis1990 + a1991bis2000) / total THEN
-        RETURN '1991-2000';
-    ELSIF r < (vor1919 + a1919bis1948 + a1949bis1978 + a1979bis1990 + a1991bis2000 + a2001bis2010) / total THEN
-        RETURN '2001-2010';
-    ELSIF r < (vor1919 + a1919bis1948 + a1949bis1978 + a1979bis1990 + a1991bis2000 + a2001bis2010 + a2011bis2019) / total THEN
-        RETURN '2011-2019';
-    ELSE
-        RETURN '2020-';
     END IF;
+
+    cumulative := cumulative + a1919bis1948;
+    IF r <= cumulative / total THEN
+        RETURN '1919-1948';
+    END IF;
+
+    cumulative := cumulative + a1949bis1978;
+    IF r <= cumulative / total THEN
+        RETURN '1949-1978';
+    END IF;
+
+    cumulative := cumulative + a1979bis1990;
+    IF r <= cumulative / total THEN
+        RETURN '1979-1990';
+    END IF;
+
+    cumulative := cumulative + a1991bis2000;
+    IF r <= cumulative / total THEN
+        RETURN '1991-2000';
+    END IF;
+
+    cumulative := cumulative + a2001bis2010;
+    IF r <= cumulative / total THEN
+        RETURN '2001-2010';
+    END IF;
+
+    cumulative := cumulative + a2011bis2019;
+    IF r <= cumulative / total THEN
+        RETURN '2011-2019';
+    END IF;
+
+    -- If we reach here, assign to the last period
+    RETURN '2020-';
 END;
 $$ LANGUAGE plpgsql;

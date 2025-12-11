@@ -18,14 +18,14 @@ UPDATE {output_schema}.buildings b
 SET construction_year = sub.assigned_year
 FROM (SELECT building_id,
              {output_schema}.assign_weighted_year(
-                     vor1919,
-                     a1919bis1948,
-                     a1949bis1978,
-                     a1979bis1990,
-                     a1991bis2000,
-                     a2001bis2010,
-                     a2011bis2019,
-                     a2020undspaeter,
+                     COALESCE(NULLIF(vor1919, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a1919bis1948, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a1949bis1978, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a1979bis1990, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a1991bis2000, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a2001bis2010, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a2011bis2019, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a2020undspaeter, 'NaN'::double precision), 0),
                      r)
                  AS assigned_year
       FROM (SELECT building_id,
@@ -61,10 +61,14 @@ CROSS JOIN LATERAL (
            g.a2020undspaeter
     FROM {output_schema}.buildings_grid g
     WHERE g.id IS NOT NULL
-      AND (COALESCE(g.vor1919, 0) + COALESCE(g.a1919bis1948, 0) +
-           COALESCE(g.a1949bis1978, 0) + COALESCE(g.a1979bis1990, 0) +
-           COALESCE(g.a1991bis2000, 0) + COALESCE(g.a2001bis2010, 0) +
-           COALESCE(g.a2011bis2019, 0) + COALESCE(g.a2020undspaeter, 0)) > 0
+      AND (COALESCE(NULLIF(g.vor1919, 'NaN'::double precision), 0) +
+           COALESCE(NULLIF(g.a1919bis1948, 'NaN'::double precision), 0) +
+           COALESCE(NULLIF(g.a1949bis1978, 'NaN'::double precision), 0) +
+           COALESCE(NULLIF(g.a1979bis1990, 'NaN'::double precision), 0) +
+           COALESCE(NULLIF(g.a1991bis2000, 'NaN'::double precision), 0) +
+           COALESCE(NULLIF(g.a2001bis2010, 'NaN'::double precision), 0) +
+           COALESCE(NULLIF(g.a2011bis2019, 'NaN'::double precision), 0) +
+           COALESCE(NULLIF(g.a2020undspaeter, 'NaN'::double precision), 0)) > 0
     ORDER BY g.geom <-> b.centroid
     LIMIT 1
 ) nearest
@@ -75,14 +79,14 @@ UPDATE {output_schema}.buildings b
 SET construction_year = sub.assigned_year
 FROM (SELECT building_id,
              {output_schema}.assign_weighted_year(
-                     vor1919,
-                     a1919bis1948,
-                     a1949bis1978,
-                     a1979bis1990,
-                     a1991bis2000,
-                     a2001bis2010,
-                     a2011bis2019,
-                     a2020undspaeter,
+                     COALESCE(NULLIF(vor1919, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a1919bis1948, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a1949bis1978, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a1979bis1990, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a1991bis2000, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a2001bis2010, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a2011bis2019, 'NaN'::double precision), 0),
+                     COALESCE(NULLIF(a2020undspaeter, 'NaN'::double precision), 0),
                      r)
                  AS assigned_year
       FROM (SELECT building_id,
