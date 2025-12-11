@@ -41,21 +41,25 @@ WHERE b.floor_number IS NULL
   AND afh.sample_count >= 5  -- Only use if we have enough samples
   AND afh.median_height_per_floor IS NOT NULL;
 
--- Step 3: For remaining buildings, use overall floor height by building type
+-- Step 3: For remaining buildings, use overall median floor height by building use
 -- Residential: ~3.0m, Commercial: ~3.5m, Public: ~3.5m
--- This catches buildings where building_use_id had too few samples in Step 2
-UPDATE {output_schema}.buildings
-SET floor_number = GREATEST(
-    ROUND(height /
+WITH fallback_floor_height AS (
+    SELECT
         CASE
             WHEN building_use = 'Residential' THEN 3.0
             WHEN building_use = 'Commercial' THEN 3.5
             WHEN building_use = 'Public' THEN 3.5
-            ELSE 3.2
-        END
-    ), 1)
-WHERE floor_number IS NULL
-  AND height IS NOT NULL;
+            ELSE 3
+        END as default_height_per_floor,
+        building_use
+    FROM {output_schema}.buildings
+    WHERE floor_number IS NULL
+)
+UPDATE {output_schema}.buildings b
+SET floor_number = GREATEST(ROUND(b.height / ffh.default_height_per_floor), 1)
+FROM fallback_floor_height ffh
+WHERE b.floor_number IS NULL
+  AND b.building_use = ffh.building_use;
 
 -- Step 4: Final fallback for any remaining buildings (use 3.2m average)
 UPDATE {output_schema}.buildings
