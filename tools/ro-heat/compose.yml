@@ -4,10 +4,11 @@ services:
             context: .
             dockerfile: Dockerfile
         volumes:
-            - ${CONFIG_INFDB_PATH}:/app/mnt/configs-infdb #:ro # for infdb configs
             - ./configs:/app/configs #:ro # for configs
             - ./:/app
             - ../../src/infdb_package:/app/mnt/infdb_package
             - /app/.venv
         extra_hosts:
             - "host.docker.internal:host-gateway"
+        env_file:
+            - .env

@@ -4,10 +4,19 @@ services:
             context: .
             dockerfile: Dockerfile
         volumes:
-            - ${CONFIG_INFDB_PATH}:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
-            - ./configs:/app/configs #:ro # for configs
-            - .:/app/ #:ro # for source code # for development only
-            - ../../src/infdb_package:/app/mnt/infdb_package
-            - /app/.venv # Exclude .venv from volume mount
+            - infdb-loader-data:/workspaces/data
+            #- ./configs:/workspaces/infdb-loader/configs:ro  # for production
+            - .:/workspaces/infdb-loader # for development only
+            - ../../src/infdb_package:/workspaces/infdb_package
+            - /workspaces/infdb-loader/.venv # for development only: exclude .venv from volume mount
+            - .vscode:/workspaces/.vscode:ro # for development only
         extra_hosts:
             - "host.docker.internal:host-gateway"
+        env_file:
+            - .env
+        environment:
+            - UV_LINK_MODE=copy
+
+volumes:
+    infdb-loader-data:
+        name: infdb-loader-data

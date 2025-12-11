@@ -1,20 +1,17 @@
 import json
 import os
 import sys
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import pandas as pd
-
 from infdb import InfDB
-from . import utils
 
+from . import utils
 
 # ============================== Constants ==============================
 FILE_ENCODING: str = "utf-8"
 JSON_EXT: str = ".json"
 CSV_EXT: str = ".csv"
-
-
 
 
 def load(infdb: InfDB) -> bool:
@@ -26,7 +23,7 @@ def load(infdb: InfDB) -> bool:
     - Ensures the target schema then writes tables with `if_exists='replace'`.
     """
     log = infdb.get_worker_logger()
-    TOOL_NAME= infdb.get_toolname()
+    TOOL_NAME = infdb.get_toolname()
     try:
         if not utils.if_active("tabula", infdb):
             return True
@@ -104,6 +101,7 @@ def load(infdb: InfDB) -> bool:
         # Ensure schema exists via InfdbClient and grab an engine
         schema: str = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "schema"])
         with infdb.connect() as db:
+            db.execute_query(f"DROP SCHEMA IF EXISTS {schema} CASCADE;")
             db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
             engine = db.get_db_engine()
 

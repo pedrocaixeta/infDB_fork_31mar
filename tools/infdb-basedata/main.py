@@ -12,17 +12,15 @@ def main() -> None:
     """
     # Load InfDB facade (config + logging)
     infdb = InfDB(tool_name="infdb-basedata", config_path="configs")
-    
-    
-    
+
     # Logger
-    log = infdb.get_log()
+    log = infdb.get_logger()
     log.info("Starting %s tool", infdb.get_toolname())
 
     # Config
     input_schema = infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"])
     output_schema = infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"])
-    epsg = infdb.get_config_value(["services", "postgres", "epsg"])
+    epsg = infdb.get_db_parameters_dict().get("epsg")
 
     format_params: Dict[str, Any] = {
         "input_schema": input_schema,
@@ -54,6 +52,7 @@ def main() -> None:
         db.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
 
     log.info("Successfully finished %s tool", infdb.get_toolname())
+    infdb.stop_logger()
 
 
 if __name__ == "__main__":

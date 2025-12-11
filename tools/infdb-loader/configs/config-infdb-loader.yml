@@ -10,7 +10,7 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-loader:
-    name: "{base/name}"
+    name: "Sonthofen-Oberhausen-Neuburg"  # Name of the infdb-loader instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich
         - "09780139"  # Sonthofen
@@ -25,20 +25,19 @@ infdb-loader:
         max_cores: 2    # max cores since of memory limitations to 2
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
-        base: "data" # only foldername - change path in ".env" file "LOADER_DATA_PATH"
-        opendata: "{infdb-loader/path/base}/opendata/"
-        processed: "{infdb-loader/path/base}/{infdb-loader/name}"
+        opendata: "opendata/"
+        processed: "{infdb-loader/name}"
     logging:
-        path: "{infdb-loader/path/base}/infdb-loader.log"
+        path: "infdb-loader.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
-            user: "{services/postgres/user}"
-            password: "{services/postgres/password}"
-            db: "{services/postgres/db}"
-            host: host.docker.internal  # change to external IP if not running on local machine
-            exposed_port: "{services/postgres/exposed_port}"
-            epsg: "{services/postgres/epsg}" # 3035 (Europe)
+            user: None
+            password: None
+            db: None
+            host: None  # change to external IP if not running on local machine
+            exposed_port: None
+            epsg: None # 3035 (Europe)
         webdav:
             username: infdb
             access_token: "letdown subscribe lily catchable landmine sphinx"
@@ -140,37 +139,37 @@ infdb-loader:
             schema: opendata
             prefix: basemap
             layer:
-                - barrierenlinie
-                - bauwerksflaeche
-                - bauwerkslinie
-                - bauwerkspunkt
-                - besondere_flaeche
-                - besondere_linie
-                - besonderer_punkt
-                - gewaesserflaeche
-                - gewaesserlinie
-                - gewaesserpunkt
-                - grenze_flaeche
-                - grenze_linie
-                - grenze_punkt
-                - historische_flaeche
-                - historische_linie
-                - historischer_punkt
-                - name_flaeche
-                - name_punkt
-                - reliefflaeche
-                - relieflinie
-                - reliefpunkt
-                - siedlungsflaeche
-                - vegetationsflaeche
-                - vegetationslinie
-                - vegetationspunkt
-                - verkehrsflaeche
+                # - barrierenlinie
+                # - bauwerksflaeche
+                # - bauwerkslinie
+                # - bauwerkspunkt
+                # - besondere_flaeche
+                # - besondere_linie
+                # - besonderer_punkt
+                # - gewaesserflaeche
+                # - gewaesserlinie
+                # - gewaesserpunkt
+                # - grenze_flaeche
+                # - grenze_linie
+                # - grenze_punkt
+                # - historische_flaeche
+                # - historische_linie
+                # - historischer_punkt
+                # - name_flaeche
+                # - name_punkt
+                # - reliefflaeche
+                # - relieflinie
+                # - reliefpunkt
+                # - siedlungsflaeche
+                # - vegetationsflaeche
+                # - vegetationslinie
+                # - vegetationspunkt
+                # - verkehrsflaeche
                 - verkehrslinie
-                - verkehrspunkt
-                - versorgungslinie
-                - versorgungspunkt
-                - weitere_nutzung_flaeche
+                # - verkehrspunkt
+                # - versorgungslinie
+                # - versorgungspunkt
+                # - weitere_nutzung_flaeche
         plz:
             status: active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$ea73c208-4fae-4ef3-a13e-7cb01a5e657a/plz-5stellig.geojson"
@@ -551,7 +550,7 @@ infdb-loader:
               - wind_speed_10m
               - precipitation
         kwp-nrw:
-          status: active
+          status: not-active
           schema: opendata
           prefix: kwp_nrw
           path:
@@ -606,7 +605,6 @@ infdb-loader:
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
             protocol: webdav
             username: "need"
-            access_token: "pulp ice ferocious stimulate thursday goatskin"
             path:
                 base: "{infdb-loader/path/opendata}/gebaeude-neuburg/"
                 processed: "{infdb-loader/path/processed}/gebaeude-neuburg/"
@@ -618,7 +616,6 @@ infdb-loader:
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/BensheimWaermeatlasHessen.gpkg"
             protocol: webdav
             username: "need"
-            access_token: "pulp ice ferocious stimulate thursday goatskin"
             path:
                 base: "{infdb-loader/path/opendata}/waermeatlas-hessen-bensheim/"
                 processed: "{infdb-loader/path/processed}/waermeatlas-hessen-bensheim/"
@@ -637,7 +634,6 @@ infdb-loader:
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/TUDO_Basemap_ways.geojson"
             protocol: webdav
             username: "need"
-            access_token: "pulp ice ferocious stimulate thursday goatskin"
             path:
                 base: "{infdb-loader/path/opendata}/tudo-basemap-ways/"
                 processed: "{infdb-loader/path/processed}/tudo-basemap-ways/"

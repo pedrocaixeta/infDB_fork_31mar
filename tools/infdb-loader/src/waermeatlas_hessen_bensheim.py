@@ -1,8 +1,9 @@
 import os
 import sys
-from typing import List, Sequence
+from typing import Sequence
 
 from infdb import InfDB
+
 from . import utils
 
 NAME = "waermeatlas-hessen-bensheim"
@@ -40,18 +41,14 @@ def load(infdb: InfDB) -> bool:
         access_token = None
         if protocol == "webdav":
             username = infdb.get_config_value([infdb.get_toolname(), "sources", NAME, "username"])
-            access_token = infdb.get_config_value([infdb.get_toolname(), "sources", NAME, "access_token"])
+            access_token = infdb.get_env_variable("WEBDAV_NEED_INTERNAL_ACCESS_TOKEN")
 
         filename, *_ = utils.get_file_from_url(url)
 
         file_path = os.path.join(base_path, filename)
         log.debug(f"Downloading {NAME} data from %s to %s", url, file_path)
 
-        if os.path.exists(file_path):
-            log.info("File %s already exists.", file_path)
-        else:
-            log.info("File %s will be downloaded from %s", file_path, url)
-            utils.download_files(url, base_path, infdb, protocol, username=username, access_token=access_token)
+        utils.download_files(url, base_path, infdb, protocol, username=username, access_token=access_token)
 
         schema: str = infdb.get_config_value([infdb.get_toolname(), "sources", NAME, "schema"])
 

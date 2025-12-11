@@ -1,5 +1,7 @@
 services:
     infdb-init:
+        profiles:
+            - core
         build:
             context: .
             dockerfile: Dockerfile

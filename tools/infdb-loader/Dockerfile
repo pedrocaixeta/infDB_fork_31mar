@@ -28,20 +28,16 @@ RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin/:$PATH"
 
 # COPY requiremets into the container
-COPY pyproject.toml /app/pyproject.toml
-# COPY uv.lock /app/uv.lock
-
-## Install venv with uv
-# RUN uv sync
-
-## Install infdb package in editable mode
-# COPY infdb_package /app/infdb_package
-# RUN uv pip install -e /app/infdb_package
+COPY pyproject.toml /workspaces/infdb-loader/pyproject.toml
+# COPY uv.lock /workspaces/infdb-loader/uv.lock
 
 # Copy the source code into the container
-COPY src /app/src
-COPY sql /app/sql
-COPY main.py /app/main.py
+COPY src src
+COPY sql sql
+COPY main.py main.py
+
+# Reset entrypoint to the default because of citydb-tool image
+ENTRYPOINT []
 
 # Run main.py with uv and environment defined in pyproject.toml
 CMD ["uv", "run", "python", "main.py"]

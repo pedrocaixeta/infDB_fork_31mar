@@ -1,4 +1,3 @@
-import logging
 import multiprocessing
 import os
 import csv
@@ -22,7 +21,7 @@ from zipfile import BadZipFile, ZipFile
 import chardet
 
 from infdb import InfDB, InfdbConfig
-from infdb.utils import do_cmd
+from infdb.utils import do_cmd as infdb_do_cmd
 
 # ============================== Constants ==============================
 HTTP_TIMEOUT_SECONDS: int = 60
@@ -31,8 +30,8 @@ WGET_PROGRESS_BAR: bool = True  # preserve SmartDL progress bar behavior
 GPKG_EXT: str = ".gpkg"
 SQL_SCHEMA_GEOMETRY_COL: str = "geom"
 
-
 # ============================== Internal helpers ==============================
+
 
 def _ensure_list(value) -> List:
     """Return value as list (wrap scalars); pass through lists unchanged."""
@@ -121,12 +120,14 @@ def _ogr2ogr(cmd_args, infdb, env_extra=None):
 
 # ======================== toggles & config helpers ========================
 
-def if_multiprocesing(infdb:InfDB) -> bool:
+
+def if_multiprocesing(infdb: InfDB) -> bool:
     """Return True if multiprocessing is enabled via config (original spelling/API)."""
     status = infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "status"])
     return status == "active"
 
-def if_active(service: str, infdb:InfDB) -> bool:
+
+def if_active(service: str, infdb: InfDB) -> bool:
     """Tell whether a given source service is active; logs decision.
 
     Args:
@@ -135,7 +136,7 @@ def if_active(service: str, infdb:InfDB) -> bool:
     Returns:
         True if active; False otherwise (with informational log).
     """
-    status =  infdb.get_config_value([infdb.get_toolname(), "sources", service, "status"])
+    status = infdb.get_config_value([infdb.get_toolname(), "sources", service, "status"])
     log = infdb.get_worker_logger()
     if status == "active":
         log.info("Loading %s data...", service)
@@ -151,7 +152,8 @@ def any_element_in_string(target_string: str, elements: Iterable[str]) -> bool:
 
 # ======================== downloading / scraping ========================
 
-def get_links(url: str, ending: str, flt: str, infdb:InfDB) -> list[str]:
+
+def get_links(url: str, ending: str, flt: str, infdb: InfDB) -> list[str]:
     """Scrape links from a page matching an ending and substring filter.
 
     Args:
@@ -174,8 +176,18 @@ def get_links(url: str, ending: str, flt: str, infdb:InfDB) -> list[str]:
     log.debug(links)
     return links
 
-def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, access_token: str,
-                       timeout=60, max_retries=5, backoff_base=1.5, chunk=1024*1024) -> str:
+
+def _requests_download(
+    url: str,
+    dest_dir: str,
+    infdb: InfDB,
+    username: str,
+    access_token: str,
+    timeout=60,
+    max_retries=5,
+    backoff_base=1.5,
+    chunk=1024 * 1024,
+) -> str:
     """HEAD (size if available) → streamed GET with retries/backoff."""
     os.makedirs(dest_dir, exist_ok=True)
 
@@ -194,8 +206,8 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
         with session.head(url, allow_redirects=True, timeout=timeout) as r:
             if r.ok and "content-length" in r.headers:
                 size = int(r.headers["content-length"])
-    except Exception:
-        pass  # server may not support HEAD properly
+    except Exception as exc:
+        log.exception("Exception occurred during _requests_download(): %s", exc)
 
     # short-circuit if already present with same size
     if size and os.path.exists(dest) and os.path.getsize(dest) == size:
@@ -225,13 +237,16 @@ def _requests_download(url: str, dest_dir: str, infdb: InfDB, username: str, acc
                 # don’t leak creds in logs
                 log.error("Download failed for %s: %s", url, e.__class__.__name__)
                 raise
-            sleep_s = (backoff_base ** attempt) + random.uniform(0, 0.25 * backoff_base)
+            sleep_s = (backoff_base**attempt) + random.uniform(0, 0.25 * backoff_base)
             log.warning("Retry %d/%d for %s in %.1fs", attempt + 1, max_retries, url, sleep_s)
             time.sleep(sleep_s)
 
     session.close()
 
-def download_files(urls, file_path: str, infdb: InfDB, protocol: str = "http", username: str = None, access_token: str = None) -> list[str]:
+
+def download_files(
+    urls, file_path: str, infdb: InfDB, protocol: str = "http", username: str = None, access_token: str = None
+) -> list[str]:
     """
     If `webdav` provided → use requests (supports WebDAV basic auth).
     Else → use SmartDL (your current async flow).
@@ -244,7 +259,7 @@ def download_files(urls, file_path: str, infdb: InfDB, protocol: str = "http", u
     else:
         base_path = file_path
     os.makedirs(base_path, exist_ok=True)
-    
+
     url_list = _ensure_list(urls)
 
     # Auth path (WebDAV or protected HTTP)
@@ -267,7 +282,7 @@ def download_files(urls, file_path: str, infdb: InfDB, protocol: str = "http", u
         else:
             log.info("File %s downloading ...", target_path)
             obj.start(blocking=False)
-        
+
         objs.append(obj)
 
     files: list[str] = []
@@ -395,10 +410,12 @@ def get_all_envelops(infdb: InfDB):
 
 # ============================== file helpers ==============================
 
+
 def get_subdirectories_by_suffix(folder, suffix):
     """Return all subdirectories in `folder` whose names end with `suffix`."""
     folder = Path(folder)
     return [str(p) for p in folder.iterdir() if p.is_dir() and p.name.endswith(suffix)]
+
 
 def get_all_files(folder_path: str, ending: str) -> list[str]:
     """Recursively collect all files under `folder_path` with the given ending."""
@@ -445,6 +462,7 @@ def get_file_from_url(url: str):
 
 # ======================= encoding / processes =======================
 
+
 def ensure_utf8_encoding(filepath: str, infdb: InfDB) -> str:
     """Detect file encoding; if not UTF-8, re-encode to a temp UTF-8 CSV and return its path."""
     log = infdb.get_worker_logger()
@@ -459,8 +477,10 @@ def ensure_utf8_encoding(filepath: str, infdb: InfDB) -> str:
     if source_encoding.lower() != "utf-8":
         log.info("Re-encoding file from %s to UTF-8: %s", source_encoding, filepath)
         temp_path = filepath + "_utf8.csv"
-        with open(filepath, "r", encoding=source_encoding, errors="replace") as src, \
-             open(temp_path, "w", encoding="utf-8") as dst:
+        with (
+            open(filepath, "r", encoding=source_encoding, errors="replace") as src,
+            open(temp_path, "w", encoding="utf-8") as dst,
+        ):
             for line in src:
                 dst.write(line)
         return temp_path
@@ -472,13 +492,17 @@ def get_number_processes(infdb: InfDB) -> int:
     """Determine worker process count based on CPU count and config max_cores."""
     log = infdb.get_worker_logger()
     number_processes = 1
-    max_processes =  infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "max_cores"]) or 1
-    if  infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "status"]) == "active":
+    max_processes = infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "max_cores"]) or 1
+    if infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "status"]) == "active":
         number_processes = min(multiprocessing.cpu_count(), max_processes)
     log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes
 
-
+def do_cmd(cmd: str | List[str]) -> int:
+    """
+    Execute a shell command without shell interpretation.
+    """
+    return infdb_do_cmd(cmd)
 
 # ======================= import / export to postgis =======================-----------------------------------------------------------------------------
 

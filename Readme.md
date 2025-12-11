@@ -60,8 +60,6 @@ The foundation is a PostgreSQL database enhanced with TimescaleDB, PostGIS, PGRo
 
 ### Services
 Integrated, preconfigured services extending the infDB:
-
-
 - [pgAdmin](https://www.pgadmin.org/): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
 - [FastAPI](https://fastapi.tiangolo.com/): REST endpoints (/city, /weather) with OpenAPI docs and validated access to 3D, geospatial, and time-series data.
 - [Jupyter](https://jupyter.org/): Notebook environment (dependencies and env vars preloaded) for exploratory queries, ETL prototypes, reproducible analysis.
@@ -75,7 +73,6 @@ These services provide core functionalities and support a seamless path from ing
 Tools are external software, scripts, or workflows that interact with infDB through its standardized APIs and database schemas, enabling specialized analysis and processing capabilities.
 
 #### Currently Integrated Tools
-
 The following tools are currently integrated with infDB:
 
 - **infDB-loader**: Containerized solution for automated ingestion of public open data for Germany
@@ -112,13 +109,12 @@ After installation, launch the Linux terminal by searching for "Ubuntu" in your 
 The infDB provides a modular folder structure that allows managing multiple database instances independently. Each instance represents a separate deployment with its own data, configuration, and services—ideal for handling different regions, projects, or environments.
 ```
 infdb/
-├── data/
 ├── infdb-demo/
 ├── sonthofen/
 ├── ...
 └── muenchen/
 ```
-The recommended structure places all instance data in a shared `data/` folder while keeping each instance's configuration and tools in separate directories (e.g., `infdb-demo/`, `sonthofen/`, `muenchen/`). This approach simplifies backups, migrations, and multi-instance management.
+The recommended structure places all instance data in docker managed volumes while keeping each instance's configuration and tools in separate directories (e.g., `infdb-demo/`, `sonthofen/`, `muenchen/`). This approach simplifies backups, migrations, and multi-instance management.
 
 First of all, create the main `infdb` directory and navigate into it:
 ```bash
@@ -132,7 +128,7 @@ Then, you can access the repository either with SSH or HTTPS as you like:
 ````
 \\wsl.localhost\Ubuntu\home\[PC username]
 ````
-(in file explorer Windows shows \\wsl.localhost as Linux)
+(in file explorer Windows shows \\wsl.localhost as Linux) and execute scripts from Linux terminal (search for Ubuntu in applications)
 
 **SSH vs HTTPS:**
 - **SSH (Secure Shell)**: Uses cryptographic key pairs for authentication. Once set up, you won't need to enter credentials for each operation. Recommended for frequent Git operations.
@@ -155,80 +151,109 @@ Navigate to the instance directory:
 cd infdb-demo
 ```
 
+### Setup infDB Configuration
+Before starting infDB, you need to configure it:
+
+1. **Copy the configuration template:**
+    ```bash
+    cp .env.template .env
+    ```
+
+2. **Edit the environment file** at `.env` to customize your infDB instance settings (database credentials, ports, paths, etc.).
+    
+    **Note:** If you're using the default configuration, you can skip editing and proceed directly to generating the configuration files.
+
+    ```bash
+    # ==============================================================================
+    # InfDB Docker Compose Configuration
+    # ==============================================================================
+    # This file contains all configuration parameters for the InfDB Docker setup.
+    # Copy this file to .env and customize the values as needed.
+    # ==============================================================================
+
+    # ==============================================================================
+    # SERVICE ACTIVATION
+    # ==============================================================================
+    # Select profiles to activate
+
+    # Base profiles
+    COMPOSE_PROFILES=core,admin
+
+    # All profiles
+    # COMPOSE_PROFILES=core,admin,api,notebook,qwc
+
+    # ==============================================================================
+    # BASE CONFIGURATION
+    # ==============================================================================
+    # Base name for the project (used in network names and data paths)
+    BASE_NAME=infdb-demo
+
+    # Docker network name for inter-service communication
+    # Pattern: infdb_<instance-name>_network
+    BASE_NETWORK_NAME=infdb_${BASE_NAME}_network
+
+    # Path to config files (used by infdb-init)
+    CONFIG_INFDB_PATH=./configs
+
+
+    # ==============================================================================
+    # POSTGRESQL DATABASE (Core Service)
+    # ==============================================================================
+
+    ...
+    ```
+
 ### Start infDB
 The startup script simplifies the startup process if you dont want to execute each single step as shown below separately and are happy with the default configurations and passwords:
 ```bash
 bash infdb-startup.sh
 ```
 
-In order to start the tools of the use case Linear Heat Density, please use the following script:
-```bash
-bash tools/run_linear-heat-density.sh
-```
-
-**Windows Users**: Execute scripts from Linux terminal (search for Ubunut in applications)
-
-
-### Setup infDB Configuration
-
-Before starting infDB, you need to configure it:
-
-1. **Copy the configuration template:**
-    ```bash
-    cp configs/config-infdb.yml.template configs/config-infdb.yml
-    ```
-
-2. **Edit the configuration file** at `configs/config-infdb.yml` to customize your infDB instance settings (database credentials, ports, paths, etc.).
-    
-    **Note:** If you're using the default configuration, you can skip editing and proceed directly to generating the configuration files.
-
-    ```yaml
-    base:
-        name: infdb-demo
-        path:
-            base: "../data/{base/name}/"
-        network_name: "infdb-{base/name}_network"
-    services:
-        postgres:
-            status: active
-            user: infdb_user
-            password: infdb
-            db: infdb
-            exposed_port: 54328
-            epsg: 25832
-            path: 
-                base: "{base/path/base}/postgres/"
-                compose_file: "services/postgres/compose.yml"
-
-            ...
-    ```
-
-
-
-After completing the configuration, generate the necessary configuration files by running:
-```bash
-docker compose -f services/infdb-setup/compose.yml up
-```
-
-### Run infDB
-After the configuration files are generated, you can start all infDB services with:
-
-```bash
-docker compose -f compose.yml up -d
-```
-
-**Hint:** If compose.yml is not found, you either forgot to run the command above or something went wrong. Please check the logs of the setup service.
-
 **Hint:** The infDB will be run as long as you stop it manually as described below even when 
 the machine is restarted.
 
 **Hint** Ensure that Docker is running. If you use Docker Desktop, start the app.
 
+
+### Run Linear-Heat-Density
+In order to start the tools of the use case Linear Heat Density, please use the following script:
+```bash
+bash tools/run_linear-heat-density.sh
+```
+
+### Stop infDB
+To stop all running infDB services, execute:
+```bash
+docker compose stop
+```
+
 ### Remove infDB
 To stop all running infDB services and remove them, execute:
 ```bash
-docker compose -f compose.yml down -v
+bash docker compose down
 ```
+
+### Remove infdb-loader data
+To remove the downloaded infdb-loader data, execute:
+```bash
+bash infdb-remove.sh
+```
+
+### Visualize infDB data in QWC Web Client
+1. In [.env](.env) make sure profiles `core` and `qwc`to `COMPOSE_PROFILES`
+2. Restart infDB with new profile to start services including QWC Web Client:
+```bash
+bash infdb-startup.sh
+```
+3. Open http://localhost:80/ in your web browser.
+
+### Inspect infDB Data in Database with Postgres Admin UI
+1. In [.env](.env) make sure profiles `core` and `admin`to `COMPOSE_PROFILES`
+2. Restart infDB with new profile to start services including QWC Web Client:
+```bash
+bash infdb-startup.sh
+```
+3. Open http://localhost:82/ in your web browser.
 
 ## Developer on Windows 
 To open the repository in Visual Studio Code (VSC) click the two arrowheads in the lower left corner of VSC and select "Connect to WSL". Then you can open the repository folder from for Linux home directory.
@@ -249,7 +274,7 @@ PGPASSWORD='citydb_password' psql -h localhost -p 5432 -U citydb_user -d citydb
 ### Configurations (only in addition for QGIS Desktop)
 .pg_service.conf for QGIS to connect to InfDB via service
 ```
-[infdb]
+[infdb_postgres]
 host=localhost
 port=5432
 dbname=citydb
@@ -259,8 +284,6 @@ sslmode=disable
 ```
 
 # For Developers
-
-
 
 ### Local development environment for InfDB for developers
 ```bash
@@ -285,24 +308,40 @@ venv\Scripts\activate
 ```
 ### Clean repo
 ```bash
-# linux and macos
 git fetch origin
 git reset --hard
 git clean -fdx
 ```
 
+### Stop and remove all docker containers and volumes
+```bash
+# 1. Stop all containers
+docker stop $(docker ps -a -q)
+
+# 2. Remove all containers (breaks the link to the volumes)
+docker rm $(docker ps -a -q)
+
+# 3. Delete all volumes
+docker volume rm $(docker volume ls -q)
+```
+
+### Clean docker
+```bash
+docker system prune -a --volume
+```
+
+### Tree with permission
+```bash
+tree -pug
+# -p permissions
+# -u user
+# -g group
+```
+
 ## Repository Structure
 
 - **src/**: Main application package
-  - **api/**: API endpoints (cityRouter.py, weatherRouter.py)
-  - **core/**: Core application code (dbConfig.py, etc.)
-  - **db/**: Database models and repositories
-    - **models/**: SQLModel classes for database entities
-    - **repositories/**: Data access layer for database operations
-  - **exceptions/**: Custom exception classes
-  - **externals/**: External API integrations (e.g., weather API)
-  - **schemas/**: Data schemas and validation
-  - **services/**: Business logic services
+  - **infdb_package/**: Business logic services
   - **main.py**: Application entry point
 - **docs/**: Documentation
   - **architecture/**: System architecture documentation
@@ -313,24 +352,26 @@ git clean -fdx
   - **source/**: Source files for documentation
   - **img/**: Images used in documentation
 - **dockers/**: Docker configuration files
+- **tools/**: External tools and scripts that interact with infDB
+  - Individual tool directories with their own configurations
+  - **Readme.md**: Detailed documentation for all tools
+- **configs/**: Configuration files for infDB initialization
 - **tests/**: Test suite
   - **unit/**: Unit tests for individual components
   - **integration/**: Tests for component interactions
   - **e2e/**: End-to-end tests for the application
-  - **conftest.py**: Pytest configuration and fixtures
 
 
 ## Development Workflow
 
-1. **Set up the environment** following the installation instructions.
-2. **Open an issue** to discuss new features, bugs, or changes.
-3. **Create a new branch** for each feature or bug fix based on an issue.
-4. **Implement the changes** following the coding guidelines.
-5. **Write tests** for new functionality or bug fixes.
-6. **Run tests** to ensure the code works as expected.
-7. **Create a merge request** to integrate your changes.
-8. **Address review comments** and update your code as needed.
-9. **Merge the changes** after approval.
+1. **Open an issue** to discuss new features, bugs, or changes.
+2. **Create a new branch** for each feature or bug fix based on an issue.
+3. **Implement the changes** following the coding guidelines.
+4. **Write tests** for new functionality or bug fixes.
+5. **Run tests** to ensure the code works as expected.
+6. **Create a merge request** to integrate your changes.
+7. **Address review comments** and update your code as needed.
+8. **Merge the changes** after approval.
 
 
 ## CI/CD Workflow
