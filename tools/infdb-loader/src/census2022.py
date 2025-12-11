@@ -1,4 +1,3 @@
-import logging
 import multiprocessing as mp
 import os
 import sys
@@ -7,15 +6,12 @@ from typing import Any, Dict, Iterable, List
 import geopandas as gpd
 import pandas as pd
 from charset_normalizer import from_path
-
 from infdb import InfDB
-from . import utils
 
+from . import utils
 
 # ============================== Constants ==============================
 CLIPPED_PREFIX: str = "zensus-2022"
-
-
 
 
 def load(infdb: InfDB) -> None:
@@ -34,7 +30,9 @@ def load(infdb: InfDB) -> None:
         if not utils.if_active("zensus_2022", infdb):
             return
 
-        datasets: List[Dict[str, Any]] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "datasets"])
+        datasets: List[Dict[str, Any]] = infdb.get_config_value(
+            [infdb.get_toolname(), "sources", "zensus_2022", "datasets"]
+        )
 
         url = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "url"])
         zip_links: List[str] = utils.get_website_links(url, infdb)
@@ -61,7 +59,9 @@ def load(infdb: InfDB) -> None:
         # folders
         zip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "zip"], type="loader")
         os.makedirs(zip_path, exist_ok=True)
-        unzip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader")
+        unzip_path = infdb.get_config_path(
+            [infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader"
+        )
         os.makedirs(unzip_path, exist_ok=True)
 
         number_processes = utils.get_number_processes(infdb)
@@ -70,8 +70,17 @@ def load(infdb: InfDB) -> None:
             # initializer=_init_logger_for_process,
             # initargs=(infdb,),
         ) as pool:
-            results = pool.starmap(process_dataset, [(dataset, infdb.get_toolname(),) for dataset in datasets])
-        
+            results = pool.starmap(
+                process_dataset,
+                [
+                    (
+                        dataset,
+                        infdb.get_toolname(),
+                    )
+                    for dataset in datasets
+                ],
+            )
+
         if not all(results):
             raise RuntimeError("Some datasets failed to process")
         else:
@@ -79,6 +88,7 @@ def load(infdb: InfDB) -> None:
     except Exception as err:
         log.exception("An error occurred while processing Census: %s", str(err))
         sys.exit(1)
+
 
 def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
     """Download, unzip, transform, and load one dataset to PostGIS.
@@ -93,7 +103,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         # Initialize InfDB in each worker process
         infdb = InfDB(tool_name=tool_name)
         log = infdb.get_worker_logger()
-        
+
         log.info("Working on %s", dataset["name"])
 
         # status gate
@@ -115,7 +125,9 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         zip_file = downloaded[0]
 
         # Unzip using the real file path
-        unzip_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader")
+        unzip_dir = infdb.get_config_path(
+            [infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader"
+        )
         folder_path = os.path.join(unzip_dir, dataset["table_name"])
         utils.unzip(zip_file, folder_path, infdb)
 
@@ -169,7 +181,9 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
 
             save_local = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "save_local"])
             if save_local == "active":
-                out_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "processed"], type="loader")
+                out_dir = infdb.get_config_path(
+                    [infdb.get_toolname(), "sources", "zensus_2022", "path", "processed"], type="loader"
+                )
                 os.makedirs(out_dir, exist_ok=True)
                 gdf_clipped.to_file(
                     os.pyath.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),

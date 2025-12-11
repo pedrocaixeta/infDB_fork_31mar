@@ -49,9 +49,10 @@ install_dependencies:
 - **Purpose**: Checks code quality and adherence to style guidelines.
 - **Why Important**: Helps catch errors early, enforces code consistency, and maintains readability.
 - **Typical Tools**:
-  - `flake8` for code quality and PEP 8 compliance
-  - `black` in `--check` mode to enforce code formatting without making changes
+  - `flake8` for code quality and PEP 8 compliance -> Not implemented yet
+  - `ruff` in `format --check` mode to enforce code formatting without making changes
   - `mypy` for static type checking
+  - `bandit` for security linting
 - **Best Practices**:
   - Run linters on every commit to catch issues early.
   - Configure linters to match the project's style guide.
@@ -64,8 +65,7 @@ lint:
   image: python:3.12
   script:
     - source venv/bin/activate
-    - flake8 path/to/your/code
-    - black --check path/to/your/code
+    - ruff format --check path/to/your/code
     - mypy path/to/your/code
 ```
 
@@ -215,3 +215,20 @@ notify:
 3. **Leverage Caching**: Cache dependencies to speed up builds and minimize network usage.
 4. **Parallelize Tests**: Use parallel and matrix configurations to test across Python versions or run independent test suites concurrently.
 5. **Store Artifacts**: Save important artifacts (e.g., test results, coverage reports) to help with debugging and quality assurance.
+
+# Adding new Gitlab runners instances
+
+## Gitlab Runner
+https://docs.gitlab.com/runner/install/linux-repository/
+
+### Installation of gitlab-runner on Linux:
+```bash
+curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | sudo bash
+sudo apt install gitlab-runner
+```
+
+### Register new runner
+```bash
+gitlab-runner register  --url https://git-ce.rwth-aachen.de  --token glrt-WqOWig7h-6rGJICLtJ1XH286MQpwOm1lNAp0OjMKdTpjYmET.01.1c0qmuroh
+```
+If we want to run the jobs inside a docker container, choose `Executor type: docker`

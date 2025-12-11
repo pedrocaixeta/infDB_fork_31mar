@@ -3,11 +3,11 @@ import sys
 from typing import Dict, List, Optional
 
 from infdb import InfDB
+
 from . import utils
-from pySmartDL import SmartDL
 
 
-def load(infdb: InfDB)  -> bool:
+def load(infdb: InfDB) -> bool:
     """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL.
 
     Behavior preserved:
@@ -42,18 +42,27 @@ def load(infdb: InfDB)  -> bool:
 
         # Import CityGML into PostGIS via citydb CLI
         params: Dict[str, str] = infdb.get_db_parameters_dict()
-        import_mode: Optional[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2-nrw", "import-mode"])
+        import_mode: Optional[str] = infdb.get_config_value(
+            [infdb.get_toolname(), "sources", "lod2-nrw", "import-mode"]
+        )
         cmd_parts: List[str] = [
-            "citydb import citygml",
-            "-H", params["host"],
-            "-d", params["db"],
-            "-u", params["user"],
-            "-p", params["password"],
-            "-P", str(params["exposed_port"]),
+            "citydb",
+            "import",
+            "citygml",
+            "-H",
+            params["host"],
+            "-d",
+            params["db"],
+            "-u",
+            params["user"],
+            "-p",
+            params["password"],
+            "-P",
+            str(params["exposed_port"]),
             f"--import-mode={import_mode}",
             str(gml_path),
         ]
-        utils.do_cmd(" ".join(str(a) for a in cmd_parts))
+        utils.do_cmd(cmd_parts)
 
         # Post-import SQL (e.g., create LOD2 building table/view)
         format_params = {"output_schema": "opendata"}

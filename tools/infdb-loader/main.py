@@ -1,29 +1,28 @@
-import logging
 import multiprocessing as mp
-import os
-from typing import Any, Dict, List
+from typing import List
 
 from infdb import InfDB
-from src import utils
+
 from src import (
-    bkg,
     basemap,
+    bkg,
+    census2022,
+    gebaeude_neuburg,
+    kwp_nrw,
     lod2,
     lod2_nrw,
-    census2022,
-    plz,
-    tabula,
-    package,
     need,
     openmeteo,
-    kwp_nrw,
-    gebaeude_neuburg,
-    waermeatlas_hessen_bensheim,
-    tudo_basemap_ways
+    plz,
+    tabula,
+    tudo_basemap_ways,
     # wetterdienst,
+    utils,
+    waermeatlas_hessen_bensheim,
 )
 
 # ============================== Entry Point ============================
+
 
 def main() -> None:
     """Bootstrap loader, drop dev schema, and spawn data-loading processes.
@@ -35,14 +34,13 @@ def main() -> None:
     - Launches the original set of processes; respects utils.if_multiprocesing() to serialize.
     - Stops the queue listener at the end.
     """
-    
+
     # Bootstrap InfDB (provides package config + central logging)
     infdb = InfDB(tool_name="infdb-loader", config_path="configs")
 
     # Root logger and the running QueueListener (started by InfdbLogger internally)
-    log = infdb.get_log()
-    log_queue = infdb.infdblogger.log_queue
-    listener = infdb.infdblogger.listener
+    log = infdb.get_logger()
+    # log_queue = infdb.infdblogger.log_queue # Uncomment when wetterdienst is supported again
 
     log.info("Starting loader.............................................")
     log.info("-------------------------------------------------------------")
@@ -62,18 +60,20 @@ def main() -> None:
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
-    processes.append(mp.Process(target=need.load,       args=(infdb,), name="need"))
-    processes.append(mp.Process(target=tabula.load,     args=(infdb,), name="tabula"))
-    processes.append(mp.Process(target=lod2.load,       args=(infdb,), name="lod2"))
-    processes.append(mp.Process(target=lod2_nrw.load,   args=(infdb,), name="lod2-nrw"))
-    processes.append(mp.Process(target=plz.load,        args=(infdb,), name="plz"))
-    processes.append(mp.Process(target=basemap.load,    args=(infdb,), name="basemap"))
+    processes.append(mp.Process(target=need.load, args=(infdb,), name="need"))
+    processes.append(mp.Process(target=tabula.load, args=(infdb,), name="tabula"))
+    processes.append(mp.Process(target=lod2.load, args=(infdb,), name="lod2"))
+    processes.append(mp.Process(target=lod2_nrw.load, args=(infdb,), name="lod2-nrw"))
+    processes.append(mp.Process(target=plz.load, args=(infdb,), name="plz"))
+    processes.append(mp.Process(target=basemap.load, args=(infdb,), name="basemap"))
     processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
-    processes.append(mp.Process(target=openmeteo.load,  args=(infdb,), name="openmeteo"))
-    processes.append(mp.Process(target=kwp_nrw.load,     args=(infdb,), name="kwp_nrw"))
-    processes.append(mp.Process(target=gebaeude_neuburg.load,     args=(infdb,), name="gebaeude-neuburg"))
-    processes.append(mp.Process(target=waermeatlas_hessen_bensheim.load,     args=(infdb,), name="waermeatlas_hessen_bensheim"))
-    processes.append(mp.Process(target=tudo_basemap_ways.load,     args=(infdb,), name="tudo-basemap-ways"))
+    processes.append(mp.Process(target=openmeteo.load, args=(infdb,), name="openmeteo"))
+    processes.append(mp.Process(target=kwp_nrw.load, args=(infdb,), name="kwp_nrw"))
+    processes.append(mp.Process(target=gebaeude_neuburg.load, args=(infdb,), name="gebaeude-neuburg"))
+    processes.append(
+        mp.Process(target=waermeatlas_hessen_bensheim.load, args=(infdb,), name="waermeatlas_hessen_bensheim")
+    )
+    processes.append(mp.Process(target=tudo_basemap_ways.load, args=(infdb,), name="tudo-basemap-ways"))
     # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
 
     for process in processes:
@@ -87,32 +87,25 @@ def main() -> None:
     for cnt, process in enumerate(processes, 1):
         process.join()
         status = "OK" if process.exitcode == 0 else "FAILED"
-        log.info(
-            "Process %s done (%d out of %d) - status: %s",
-            process.name, cnt, len(processes), status
-        )
+        log.info("Process %s done (%d out of %d) - status: %s", process.name, cnt, len(processes), status)
 
     # Summarize successes and failures
     successful = [p.name for p in processes if p.exitcode == 0]
     failed = [p.name for p in processes if p.exitcode != 0]
 
     if successful:
-        log.info("Successful processes (%d/%d): %s",
-                 len(successful), len(processes), ", ".join(successful))
+        log.info("Successful processes (%d/%d): %s", len(successful), len(processes), ", ".join(successful))
     else:
         log.warning("No processes completed successfully.")
 
     if failed:
-        log.error("Failed processes (%d/%d): %s",
-                  len(failed), len(processes), ", ".join(failed))
+        log.error("Failed processes (%d/%d): %s", len(failed), len(processes), ", ".join(failed))
     else:
         log.info("No processes failed.")
 
     # Stop the central listener explicitly
-    if listener:
-        listener.stop()
-
     log.info("Processes done")
+    infdb.stop_logger()
 
 
 if __name__ == "__main__":
