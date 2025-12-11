@@ -38,7 +38,7 @@ def build_dsn_from_env(
     pwd_var: str,
     db_var: str,
     host_var: str,
-    port_var: str,
+    port_var: int,
 ) -> str:
     """
     Build a PostgreSQL DSN string from common environment variables.

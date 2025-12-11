@@ -43,14 +43,29 @@ CONF_LINE_RE = re.compile(r'^\s*db-schemas\s*=\s*"(?:[^"\\]|\\.)*"\s*$', re.MULT
 
 # ============================== Runtime config (cached once) ==============================
 
-DB_USER: str = infdb.get_config_value(["services", "postgres", "user"])
-DB_PASSWORD: str = infdb.get_config_value(["services", "postgres", "password"])
-DB_NAME: str = infdb.get_config_value(["services", "postgres", "db"])
-DB_HOST: str = "postgres"
-DB_PORT: str = "5432"
 
-POSTGREST_PORT: int = int(infdb.get_config_value(["services", "postgrest", "port"]))
-DSN: str = build_dsn_from_env(user_var=DB_USER, pwd_var=DB_PASSWORD, db_var=DB_NAME, host_var=DB_HOST, port_var=DB_PORT)
+POSTGRES_HOST: str = str(read_env("SERVICES_POSTGRES_HOST", required=True))
+POSTGRES_PORT_STRING: str = str(read_env("SERVICES_POSTGRES_EXPOSED_PORT", required=True))
+POSTGRES_USER: str = str(read_env("SERVICES_POSTGRES_USER", required=True))
+POSTGRES_PASSWORD: str = str(read_env("SERVICES_POSTGRES_PASSWORD", required=True))
+POSTGRES_DB: str = str(read_env("SERVICES_POSTGRES_DB", required=True))
+if POSTGRES_PORT_STRING is None:
+    raise ValueError("SERVICES_POSTGRES_EXPOSED_PORT is required but not provided.")
+POSTGRES_PORT: int = int(POSTGRES_PORT_STRING)
+
+POSTGREST_PORT_STRING: str = str(read_env("SERVICES_POSTGREST_PORT", required=True))
+if POSTGREST_PORT_STRING is None:
+    raise ValueError("SERVICES_POSTGREST_PORT is required but not provided.")
+POSTGREST_PORT: int = int(POSTGREST_PORT_STRING)
+
+
+DSN: str = build_dsn_from_env(
+    user_var=POSTGRES_USER,
+    pwd_var=POSTGRES_PASSWORD,
+    db_var=POSTGRES_DB,
+    host_var=POSTGRES_HOST,
+    port_var=POSTGRES_PORT,
+)
 
 CHANNEL: str = DEFAULT_CHANNEL
 POLL_INTERVAL_SECONDS: float = DEFAULT_WATCH_INTERVAL_SECONDS
@@ -127,7 +142,7 @@ def ensure_conf_exists(conf_path: pathlib.Path, conf_dir: pathlib.Path) -> None:
 
     # Build defaults (prefer explicit URIs if set; otherwise use globals)
     db_uri = DSN
-    anon_role = DB_USER
+    anon_role = POSTGRES_USER
     port = POSTGREST_PORT
 
     default_conf = f'db-uri = "{db_uri}"\ndb-anon-role = "{anon_role}"\nserver-port = {port}\ndb-schemas = ""\n'

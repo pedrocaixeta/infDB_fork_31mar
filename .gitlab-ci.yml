@@ -99,7 +99,7 @@ type-check:
     #- mypy services/infdb-api/fastapi
     - mypy services/infdb-init
     - mypy services/infdb-api/postgrest
-    #- mypy services/infdb-api/pygeoapi
+    - mypy services/infdb-api/pygeoapi
     - mypy tools/infdb-basedata
     #- mypy tools/infdb-loader
     #- mypy tools/infdb-metadata

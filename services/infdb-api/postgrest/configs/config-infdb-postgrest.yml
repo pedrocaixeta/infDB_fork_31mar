@@ -3,11 +3,3 @@ infdb-postgrest:
     logging:
         path: "infdb-postgrest.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
-    hosts:
-        postgres:
-            user: None
-            password: None
-            db: None
-            host: None
-            exposed_port: None
-            epsg: None # 3035 (Europe)

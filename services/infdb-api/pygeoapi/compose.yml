@@ -10,7 +10,15 @@ services:
       - ../../../configs/:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
       - ./configs:/app/configs #:ro # for configs
     environment:
-      PYTHONUNBUFFERED: "1"
+      - PYTHONUNBUFFERED=1
+      - SERVICES_PYGEOAPI_EXPOSED_PORT=${SERVICES_PYGEOAPI_PORT}
+      - SERVICES_POSTGRES_DB=${SERVICES_POSTGRES_DB}
+      - SERVICES_POSTGRES_USER=${SERVICES_POSTGRES_USER}
+      - SERVICES_POSTGRES_PASSWORD=${SERVICES_POSTGRES_PASSWORD}
+      - SERVICES_POSTGRES_EPSG=${SERVICES_POSTGRES_EPSG}
+      - SERVICES_POSTGRES_HOST=${SERVICES_POSTGRES_HOST}
+      - SERVICES_POSTGRES_EXPOSED_PORT=${SERVICES_POSTGRES_EXPOSED_PORT}
+
     command:
       - /bin/sh
       - -lc
@@ -31,8 +39,8 @@ services:
       - api
     image: geopython/pygeoapi:latest
     environment:
-      PYGEOAPI_CONFIG: /app-config/pygeoapi-config.yml
-      CONTAINER_PORT: ${SERVICES_PYGEOAPI_PORT}
+      - PYGEOAPI_CONFIG=/app-config/pygeoapi-config.yml
+      - CONTAINER_PORT=${SERVICES_PYGEOAPI_PORT}
     volumes:
       - ./:/app-config:ro
     ports:

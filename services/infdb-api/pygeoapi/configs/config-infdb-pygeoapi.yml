@@ -3,11 +3,3 @@ infdb-pygeoapi:
     logging:
         path: "infdb-pygeoapi.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
-    hosts:
-        postgres:
-            user: None
-            password: None
-            db: None
-            host: None
-            exposed_port: None
-            epsg: None # 3035 (Europe)

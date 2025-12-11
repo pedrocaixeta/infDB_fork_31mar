@@ -46,16 +46,26 @@ log = infdb.get_worker_logger()
 
 
 # ---------- derived configuration constants (centralized env reads) ----------
-PYGEOAPI_PORT: int = int(read_env("SERVICES_PYGEOAPI_PORT", required=True))
+PYGEOAPI_PORT_STRING: str = str(read_env("SERVICES_PYGEOAPI_PORT", required=True))
+if PYGEOAPI_PORT_STRING is None:
+    raise ValueError("SERVICES_PYGEOAPI_PORT is required but not provided.")
+PYGEOAPI_PORT: int = int(PYGEOAPI_PORT_STRING)
 PYGEOAPI_HOST: Optional[str] = read_env("SERVICES_PYGEOAPI_BASE_HOST")
 
-POSTGRES_USER: str = read_env("SERVICES_POSTGRES_USER", required=True)
-POSTGRES_PASSWORD: str = read_env("SERVICES_POSTGRES_PASSWORD", required=True)
-POSTGRES_DB: str = read_env("SERVICES_POSTGRES_DB", required=True)
-POSTGRES_HOST: str = read_env("SERVICES_POSTGRES_HOST", required=True)
-POSTGRES_PORT: int = int(read_env("SERVICES_POSTGRES_PORT", required=True))
+POSTGRES_USER: str = str(read_env("SERVICES_POSTGRES_USER", required=True))
+POSTGRES_PASSWORD: str = str(read_env("SERVICES_POSTGRES_PASSWORD", required=True))
+POSTGRES_DB: str = str(read_env("SERVICES_POSTGRES_DB", required=True))
+POSTGRES_HOST: str = str(read_env("SERVICES_POSTGRES_HOST", required=True))
+POSTGRES_PORT_STRING: str = str(read_env("SERVICES_POSTGRES_EXPOSED_PORT", required=True))
+if POSTGRES_PORT_STRING is None:
+    raise ValueError("SERVICES_POSTGRES_EXPOSED_PORT is required but not provided.")
+POSTGRES_PORT: int = int(POSTGRES_PORT_STRING)
 
-TARGET_EPSG: int = int(read_env("SERVICES_POSTGRES_EPSG", required=True))
+TARGET_EPSG_STRING: str = str(read_env("SERVICES_POSTGRES_EPSG", required=True))
+if TARGET_EPSG_STRING is None:
+    raise ValueError("SERVICES_POSTGRES_EPSG is required but not provided.")
+TARGET_EPSG: int = int(TARGET_EPSG_STRING)
+
 FALLBACK_EPSG: int = 25832
 
 FORCE_CRS84_ONLY: bool = str(read_env("SERVICES_PYGEOAPI_FORCE_CRS84_ONLY", "false")).lower() in (
@@ -661,7 +671,7 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
             "resources": resources,
         }
 
-        atomic_write_yaml(config_document, OUTPUT_CONFIG_PATH)
+        atomic_write_yaml(config_document, str(OUTPUT_CONFIG_PATH))
         log.info(
             "Wrote %s with %d resource(s). Skipped %d table(s).", OUTPUT_CONFIG_PATH.resolve(), len(resources), skipped
         )
