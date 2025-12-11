@@ -1,4 +1,5 @@
 FROM python:3.12-slim
+# migrate to ghcr.io/astral-sh/uv:python3.12-trixie-slim
 
 WORKDIR /app
 

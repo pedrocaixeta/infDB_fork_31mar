@@ -1,10 +1,6 @@
-FROM python:3.12-slim
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+FROM ghcr.io/astral-sh/uv:python3.12-trixie-slim
 
 WORKDIR /workspaces/choose-a-name
-
-# Ensure the installed binary is on the `PATH`
-ENV PATH="/root/.local/bin/:$PATH"
 
 # COPY requiremets into the container
 COPY pyproject.toml pyproject.toml

@@ -1,11 +1,11 @@
-FROM python:latest
+FROM ghcr.io/astral-sh/uv:python3.12-trixie-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Install JupyterLab
-RUN pip install --no-cache-dir jupyterlab
+RUN uv pip install --no-cache-dir jupyterlab
 
 # Workdir for notebooks
 WORKDIR /app
