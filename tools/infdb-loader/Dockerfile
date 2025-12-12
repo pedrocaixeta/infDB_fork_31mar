@@ -19,19 +19,19 @@ RUN install -d /usr/share/postgresql-common/pgdg && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
       postgresql-client-17 \
-      postgis \ 
+      postgis \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv (Python package manager)
+# Install uv
 ADD https://astral.sh/uv/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin/:$PATH"
 
-# COPY requiremets into the container
-COPY pyproject.toml /workspaces/infdb-loader/pyproject.toml
-# COPY uv.lock /workspaces/infdb-loader/uv.lock
+# Project files in WORKDIR so uv and InfDB can see them
+COPY pyproject.toml pyproject.toml
+COPY configs configs
 
-# Copy the source code into the container
+# Source code in WORKDIR
 COPY src src
 COPY sql sql
 COPY main.py main.py

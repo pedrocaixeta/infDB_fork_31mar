@@ -3,7 +3,6 @@ import os
 import csv
 import time
 import random
-import logging
 import subprocess
 import psycopg2
 import shlex
@@ -326,13 +325,14 @@ def download_aria2c(
     quiet: bool = True
 ) -> None:
     """
-    Download files using aria2c with configurable options."""
+    Download files using aria2c with configurable options.
+    """
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Build command
-    cmd_parts = ["aria2c"]
+    cmd_parts: list[str] = ["aria2c"]
     
     # Connection settings
     if continue_download:
@@ -361,15 +361,21 @@ def download_aria2c(
     if output_filename:
         cmd_parts.extend(["-o", output_filename])
     
-    # URL (last argument)
-    cmd_parts.append(f'"{url}"')
+    # URL (last argument) – no quotes here, just a normal arg
+    cmd_parts.append(url)
     
-    # Execute
-    cmd = " ".join(cmd_parts)
-    do_cmd(cmd)
+    # Execute: pass argv list so subprocess can find `aria2c`
+    do_cmd(cmd_parts)
 
 
-
+def do_cmd(cmd: str | List[str]) -> int:
+    """
+    Execute a shell command without shell interpretation.
+    Normalizes a string command into a list using shlex.split.
+    """
+    if isinstance(cmd, str):
+        cmd = shlex.split(cmd)
+    return infdb_do_cmd(cmd)
 
 # =================== geospatial / DB import helpers ===================
 
