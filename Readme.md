@@ -283,6 +283,73 @@ password=citydb_password
 sslmode=disable
 ```
 
+# Troubleshooting: Issues Encountered During first infDB Installation on Windows
+
+This section summarizes some problems encountered during the first installation and startup of infDB on Windows, along with their solutions.
+
+**1.Ubuntu Opened as root instead of Normal User**
+
+-Problem:
+WSL launched Ubuntu as the root user. May lead to problems while executing commands.
+
+-Cause:
+No default user was configured during first installation.
+
+-Solution:
+```bash
+adduser username
+```
+
+Set the default user:
+```bash
+#ubuntu 
+config --default-user username
+```
+
+Restart WSL:
+```bash
+wsl --shutdown
+```
+
+**2.Docker Command Not Found in WSL2**
+
+-Problem:
+The command 'docker' could not be found in this WSL2 distro.
+
+-Cause:
+Docker Desktop installed, but WSL integration disabled.
+
+-Fix:
+Enable Docker & WSL integration:
+
+Docker Desktop → Settings → Resources → WSL Integration
+
+Enable integration with Ubuntu.
+After enabling, check via:
+```bash
+#ubuntu 
+
+docker –version
+```
+**3. Docker Permission Denied**
+
+-Problem:
+permission denied while trying to connect to the Docker daemon socket
+
+-Cause:
+Logged in user was not part of the docker group.
+
+-Fix:
+```bash
+#ubuntu 
+sudo usermod -aG docker username
+```
+Restart WSL:
+```bash
+#ubuntu 
+wsl –shutdown
+```
+
 # For Developers
 
 ### Local development environment for InfDB for developers
