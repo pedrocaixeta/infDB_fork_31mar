@@ -292,7 +292,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
         )
 
         log.info("DGM1: importing scope %s into %s", ags, target_table)
-        utils.do_cmd(import_pipeline)
+        utils.do_cmd(import_pipeline, shell=True)
         log.info("DGM1: scope %s import finished.", ags)
 
 

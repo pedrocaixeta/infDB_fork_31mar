@@ -605,6 +605,7 @@ infdb-loader:
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
             protocol: webdav
             username: "need"
+
             path:
                 base: "{infdb-loader/path/opendata}/gebaeude-neuburg/"
                 processed: "{infdb-loader/path/processed}/gebaeude-neuburg/"
@@ -639,5 +640,5 @@ infdb-loader:
                 processed: "{infdb-loader/path/processed}/tudo-basemap-ways/"
             schema: need_intern
             layer: 
-                - "tudo_basemap_ways"
+                - "Basemap_Oberhausen_Neuburg_Sonthofen_Verkehrslinie"
 

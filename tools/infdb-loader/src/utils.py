@@ -368,14 +368,17 @@ def download_aria2c(
     do_cmd(cmd_parts)
 
 
-def do_cmd(cmd: str | List[str]) -> int:
+def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
     """
-    Execute a shell command without shell interpretation.
-    Normalizes a string command into a list using shlex.split.
+    Execute a shell command.
+
+    - If `cmd` is a string and shell=False: split into argv via shlex.split (safe).
+    - If `cmd` is a string and shell=True: pass directly to shell (needed for pipes, redirections).
+    - If `cmd` is a list: passed as-is.
     """
-    if isinstance(cmd, str):
+    if isinstance(cmd, str) and not shell:
         cmd = shlex.split(cmd)
-    return infdb_do_cmd(cmd)
+    return infdb_do_cmd(cmd, is_shell_interpreted=shell)
 
 # =================== geospatial / DB import helpers ===================
 
@@ -503,12 +506,6 @@ def get_number_processes(infdb: InfDB) -> int:
         number_processes = min(multiprocessing.cpu_count(), max_processes)
     log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes
-
-def do_cmd(cmd: str | List[str]) -> int:
-    """
-    Execute a shell command without shell interpretation.
-    """
-    return infdb_do_cmd(cmd)
 
 # ======================= import / export to postgis =======================-----------------------------------------------------------------------------
 
