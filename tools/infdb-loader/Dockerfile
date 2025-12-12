@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-WORKDIR /app
+WORKDIR /workspaces/infdb-loader
 USER root
 ENV DEBIAN_FRONTEND=noninteractive
 
