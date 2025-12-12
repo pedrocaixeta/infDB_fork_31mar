@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM 3dcitydb/citydb-tool
 
 WORKDIR /workspaces/infdb-loader
 USER root
