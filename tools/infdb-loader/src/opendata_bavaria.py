@@ -249,6 +249,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
         # 3e) Clip all tiles exactly to scope polygon
         output_tif = scope_dir / f"dgm1_{ags}_{target_res}m.tif"
         gdalwarp_opts = (
+            "-overwrite "
             "-of GTiff "
             "-co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 "
             "-co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 "

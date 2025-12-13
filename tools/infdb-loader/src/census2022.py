@@ -172,6 +172,9 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
 
             log.info(f"Processed successfully {csv_path}")
 
+        # if we reach here without exceptions, this dataset was processed OK
+        return True
+
     except Exception as err:
         # if logger creation also fails, at least print
         try:
