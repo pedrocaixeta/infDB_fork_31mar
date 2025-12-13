@@ -414,41 +414,41 @@ def _load_tatsaechliche_nutzung(
 # ==================== load lod2 ====================
 def _load_lod2(infdb: InfDB)  -> bool:
     """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL.
-
-    Behavior preserved:
-    - Returns True when inactive (matching original early-exit).
-    - Uses aria2c for downloads and `citydb import citygml` for loading.
-    - Builds URL by replacing `#scope` token with each AGS value.
-    - Executes a post-import SQL file with format params.
     """
     log = infdb.get_worker_logger()
 
-    if not utils.if_active("lod2", infdb):
+    # Use the same activation logic as DGM1 / TN: based on the dataset config
+    lod2_cfg = infdb.get_config_value(
+        [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2"]
+    ) or {}
+    if lod2_cfg.get("status") != "active":
+        log.info("LoD2: building_lod2 dataset not active, skipping.")
         return True
 
+    tool = infdb.get_toolname()
 
-    base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "lod2", "path", "lod2"], type="loader")
-    os.makedirs(base_path, exist_ok=True)
-
-    # Directory for extracted GML files
-    gml_path = infdb.get_config_path([infdb.get_toolname(), "sources", "lod2", "path", "gml"], type="loader")
-    os.makedirs(gml_path, exist_ok=True)
+    # --- FIX 1: use opendata_bavaria.path.base instead of non-existent sources.lod2.paths ---
+    base_path = Path(
+        infdb.get_config_path(
+            [tool, "sources", "opendata_bavaria", "path", "base"],
+            type="loader",
+        )
+    )
+    gml_path = base_path / "building_lod2"
+    gml_path.mkdir(parents=True, exist_ok=True)
 
     # ==================== 3. SCOPE PROCESSING ====================
-    # Get list of administrative codes (AGS) defining spatial scope
-    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
+    scope = infdb.get_config_value([tool, "scope"])
     if isinstance(scope, str):
         scope = [scope]
 
-    # Download CityGML files for each administrative region
-    url_cfg = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2", "url"])
+    # --- FIX 2: use URL from building_lod2 dataset config ---
+    url_cfg = lod2_cfg.get("url")
     for ags in scope or []:
-        # Construct download URL by replacing placeholder with AGS code
-        url: str
         if isinstance(url_cfg, list):
             url = " ".join(url_cfg)
         else:
-            url = str(url_cfg)
+            url = str(url_cfg or "")
 
         url = url.replace("#scope", ags)
 
@@ -456,25 +456,25 @@ def _load_lod2(infdb: InfDB)  -> bool:
         utils.download_aria2c(
             url=url,
             output_dir=gml_path,
-            allow_overwrite=False,  # Skip if already downloaded
-            auto_file_renaming=False
+            allow_overwrite=False,
+            auto_file_renaming=False,
         )
 
     # ==================== 4. CITYDB IMPORT ====================
-    # Import CityGML into PostGIS using 3D City Database (3DCityDB) CLI tool
     params: Dict[str, str] = infdb.get_db_parameters_dict()
-    import_mode: Optional[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2", "import-mode"])
 
-    # Build citydb import command with database connection parameters
+    # --- FIX 3: import-mode from building_lod2 dataset config ---
+    import_mode: str = str(lod2_cfg.get("import-mode") or "skip")
+
     cmd_parts: List[str] = [
         "citydb import citygml",
-        "-H", params["host"],           # Database host
-        "-d", params["db"],             # Database name
-        "-u", params["user"],           # Username
-        "-p", params["password"],       # Password
-        "-P", str(params["exposed_port"]),  # Port
-        f"--import-mode={import_mode}", # Import mode (e.g., import, delete-import)
-        str(gml_path),                  # Directory containing GML files
+        "-H", params["host"],
+        "-d", params["db"],
+        "-u", params["user"],
+        "-p", params["password"],
+        "-P", str(params["exposed_port"]),
+        f"--import-mode={import_mode}",
+        str(gml_path),
     ]
     utils.do_cmd(" ".join(str(a) for a in cmd_parts))
 
