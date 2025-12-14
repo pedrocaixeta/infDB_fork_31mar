@@ -56,7 +56,7 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
         for envelop in all_envelops:
             log.debug("Envelop: %s", envelop)
 
-            wkt = envelop.to_crs(3035).unary_union.wkt
+            wkt = envelop.to_crs(3035).unary_union.wkt  # Use LAEA (EPSG:3035) for grid generation
 
             # Ensure list
             if isinstance(resolutions, str):
@@ -72,7 +72,8 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
                     log.warning("Skipping resolution with unknown unit: %s", resolution)
                     continue
 
-                log.info("Generating grid cells for %s with resolution %s", "add_AGS", resolution_meters)
+                log.info("Generating grid cells for %s (%s) with resolution %s", envelop["AGS"].item(), envelop["GEN"].item(), resolution_meters)
+
                 # todo: add_AGS parameter to identify the area from envelop
 
                 generate_grid_cells_sql = f"""
