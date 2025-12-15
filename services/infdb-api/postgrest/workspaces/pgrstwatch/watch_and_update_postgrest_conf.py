@@ -23,7 +23,7 @@ from infdb.utils import (
 from psycopg import Connection
 from psycopg.rows import dict_row
 
-infdb = InfDB(tool_name="infdb-postgrest", config_path="configs")
+infdb = InfDB(tool_name="infdb-postgrest", config_path="./")
 # ============================== Logging ==============================
 log = infdb.get_worker_logger()
 if not log.handlers:
@@ -36,7 +36,7 @@ DEFAULT_WATCH_INTERVAL_SECONDS: float = 1.0
 DEFAULT_MIN_RELOAD_GAP_SECONDS: float = 3.0
 DEFAULT_CHANNEL: str = "pgrst"
 DEFAULT_EXCLUDE_SCHEMAS_CSV: str = "pg_*,information_schema,postgrest"
-DEFAULT_CONF_PATH: str = "/app/postgrest.conf"
+DEFAULT_CONF_PATH: str = "/workspaces/postgrest/postgrest.conf"
 
 CONF_LINE_RE = re.compile(r'^\s*db-schemas\s*=\s*"(?:[^"\\]|\\.)*"\s*$', re.MULTILINE)
 
