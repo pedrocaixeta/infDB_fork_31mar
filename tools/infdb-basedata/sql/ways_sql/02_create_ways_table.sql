@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS {output_schema}.ways (
     reverse_cost               DOUBLE PRECISION,
     name  TEXT,
     name_kurz  TEXT,
-    geom                       geometry(LineString, {EPSG}),
+    geom                       geometry,
     postcode                 INTEGER
 );
 

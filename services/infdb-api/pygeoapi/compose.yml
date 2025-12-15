@@ -32,11 +32,11 @@ services:
     image: geopython/pygeoapi:latest
     environment:
       PYGEOAPI_CONFIG: /app-config/pygeoapi-config.yml
-      CONTAINER_PORT: ${SERVICES_PYGEOAPI_EXPOSED_PORT}
+      CONTAINER_PORT: ${SERVICES_PYGEOAPI_PORT}
     volumes:
       - ./:/app-config:ro
     ports:
-      - "${SERVICES_PYGEOAPI_EXPOSED_PORT}:${SERVICES_PYGEOAPI_EXPOSED_PORT}"
+      - "${SERVICES_PYGEOAPI_PORT}:${SERVICES_PYGEOAPI_PORT}"
     command: run-with-hot-reload
     depends_on:
       pygeowatch:

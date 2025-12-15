@@ -46,7 +46,7 @@ log = infdb.get_worker_logger()
 
 
 # ---------- derived configuration constants (centralized env reads) ----------
-PYGEOAPI_PORT: int = int(read_env("SERVICES_PYGEOAPI_EXPOSED_PORT", required=True))
+PYGEOAPI_PORT: int = int(read_env("SERVICES_PYGEOAPI_PORT", required=True))
 PYGEOAPI_HOST: Optional[str] = read_env("SERVICES_PYGEOAPI_BASE_HOST")
 
 POSTGRES_USER: str = read_env("SERVICES_POSTGRES_USER", required=True)

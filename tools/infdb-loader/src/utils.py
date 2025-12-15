@@ -1,19 +1,26 @@
 import multiprocessing
 import os
-import random
+import csv
 import time
-from pathlib import Path
+import random
+import subprocess
+import psycopg2
+import shlex
 from typing import Iterable, List, Optional
+from pathlib import Path
+
+import geopandas as gpd
+
+import requests
+from bs4 import BeautifulSoup
+from pySmartDL import SmartDL
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
 
 import chardet
-import geopandas as gpd
-import requests
-from bs4 import BeautifulSoup
-from infdb import InfDB
+
+from infdb import InfDB, InfdbConfig
 from infdb.utils import do_cmd as infdb_do_cmd
-from pySmartDL import SmartDL
 
 # ============================== Constants ==============================
 HTTP_TIMEOUT_SECONDS: int = 60
@@ -37,6 +44,77 @@ def _fetch_html(url: str) -> BeautifulSoup:
     resp = requests.get(url, timeout=HTTP_TIMEOUT_SECONDS)
     resp.raise_for_status()
     return BeautifulSoup(resp.content, "html.parser")
+
+def _pg_connstring_for_gdal(infdb: InfDB) -> str:
+    """
+    Build a GDAL/OGR PostgreSQL connection string.
+    ogr2ogr expects 'dbname', not 'db'.
+    """
+    # use InfDB helper that returns merged DB params
+    params = infdb.get_db_parameters_dict()
+    return (
+        f"PG:host={params['host']} "
+        f"port={params['exposed_port']} "
+        f"dbname={params['db']} "
+        f"user={params['user']} "
+        f"password={params['password']}"
+    )
+
+
+def _pg_connstring_for_psql(infdb: InfDB) -> str:
+    """
+    Build a PostgreSQL connection string for psql/libpq tools (URI format).
+    Used by: psql, raster2pgsql, pg_dump, pg_restore, etc.
+    """
+    params = infdb.get_db_parameters_dict()
+    return (
+        f"postgresql://{params['user']}:{params['password']}"
+        f"@{params['host']}:{params['exposed_port']}/{params['db']}"
+    )
+
+def _ogr2ogr(cmd_args, infdb, env_extra=None):
+    """
+    Execute ogr2ogr with environment tuned for speed:
+      - PG_USE_COPY=YES : streams via COPY (very fast)
+      - OGR_ENABLE_PARTIAL_REPROJECTION=TRUE : small perf boost
+    Handles spaces in arguments safely (no shell) and logs output line by line.
+    Raises RuntimeError if ogr2ogr exits with non-zero code.
+    """
+    log = infdb.get_worker_logger()
+
+    # Normalize input to a proper list of strings
+    if isinstance(cmd_args, str):
+        cmd_args = shlex.split(cmd_args)
+    elif not isinstance(cmd_args, (list, tuple)) or not cmd_args:
+        raise ValueError("ogr2ogr expects a non-empty list or command string")
+
+    # Build environment
+    env = os.environ.copy()
+    env["PG_USE_COPY"] = "YES"
+    env["OGR_ENABLE_PARTIAL_REPROJECTION"] = "TRUE"
+    if env_extra:
+        env.update(env_extra)
+
+    # Log the command for debugging (shell-escaped for readability only)
+    log.info("Executing ogr2ogr: %s", shlex.join(map(str, cmd_args)))
+
+    # Run safely (no shell), capture stdout/stderr merged
+    proc = subprocess.Popen(
+        list(map(str, cmd_args)),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env=env,
+    )
+
+    for line in proc.stdout or []:
+        log.info(line.rstrip())
+
+    rc = proc.wait()
+    if rc != 0:
+        raise RuntimeError(f"ogr2ogr failed with code {rc}")
+    log.info("ogr2ogr completed successfully.")
+
 
 
 # ======================== toggles & config helpers ========================
@@ -235,75 +313,74 @@ def unzip(zip_files, unzip_dir: str, infdb: InfDB) -> None:
         except BadZipFile as e:
             log.error("Error unzipping %s: %s", zip_file, e)
 
+def download_aria2c(
+    url: str,
+    output_dir: str | Path,
+    output_filename: str = None,
+    connections: int = 4,
+    max_connection_per_server: int = 4,
+    continue_download: bool = True,
+    allow_overwrite: bool = False,
+    auto_file_renaming: bool = False,
+    quiet: bool = True
+) -> None:
+    """
+    Download files using aria2c with configurable options.
+    """
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Build command
+    cmd_parts: list[str] = ["aria2c"]
+    
+    # Connection settings
+    if continue_download:
+        cmd_parts.append("-c")
+    
+    if connections > 1:
+        cmd_parts.extend(["-x", str(connections)])
+    
+    if max_connection_per_server > 1:
+        cmd_parts.extend(["-s", str(max_connection_per_server)])
+    
+    # Overwrite behavior
+    if not allow_overwrite:
+        cmd_parts.append("--allow-overwrite=false")
+    
+    if not auto_file_renaming:
+        cmd_parts.append("--auto-file-renaming=false")
+    
+    # Logging
+    if quiet:
+        cmd_parts.extend(["--summary-interval=60", "--console-log-level=warn"])
+    
+    # Output location
+    cmd_parts.extend(["-d", str(output_dir)])
+    
+    if output_filename:
+        cmd_parts.extend(["-o", output_filename])
+    
+    # URL (last argument) – no quotes here, just a normal arg
+    cmd_parts.append(url)
+    
+    # Execute: pass argv list so subprocess can find `aria2c`
+    do_cmd(cmd_parts)
+
+
+def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
+    """
+    Execute a shell command.
+
+    - If `cmd` is a string and shell=False: split into argv via shlex.split (safe).
+    - If `cmd` is a string and shell=True: pass directly to shell (needed for pipes, redirections).
+    - If `cmd` is a list: passed as-is.
+    """
+    if isinstance(cmd, str) and not shell:
+        cmd = shlex.split(cmd)
+    return infdb_do_cmd(cmd, is_shell_interpreted=shell)
 
 # =================== geospatial / DB import helpers ===================
-
-
-def import_layers(
-    input_file: str,
-    layers: List[str],
-    schema: str,
-    infdb: InfDB,
-    prefix: str = "",
-    layer_names: Optional[List[str]] = None,
-    scope: bool = True,
-    if_exists: str = "replace",
-    lowercase: bool = True,
-) -> None:
-    """Import vector data into PostGIS.
-
-    If the source supports multiple named layers (e.g., .gpkg/.gdb/.sqlite),
-    import each requested layer. Otherwise, import the file once with no
-    'layer' argument and store it under the target name.
-
-    Args:
-        input_file: Path/URL to a vector dataset.
-        layers: Source layer names to import (for multi-layer files).
-        schema: Target DB schema.
-        prefix: Optional prefix for target tables.
-        layer_names: Optional explicit target table names (aligned with layers).
-        scope: If True, spatially mask reads to the configured envelope.
-
-    Raises:
-        KeyError: If EPSG is missing in DB parameters.
-    """
-    log = infdb.get_worker_logger()
-    gdf_scope = get_envelop(infdb) if scope else None
-    epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
-    if epsg is None:
-        raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
-    engine = infdb.get_db_engine()
-
-    # Desired target table names
-    target_names = list(layer_names) if layer_names is not None else list(layers)
-    if prefix:
-        target_names = [f"{prefix}_{name}" for name in target_names]
-
-    # if lowercase, change all uppercase letters to lowercase letters
-    if lowercase:
-        target_names = [name.lower() for name in target_names]
-
-    # Detect if source is multi-layer
-    ext = Path(input_file).suffix.lower()
-    is_multilayer = ext in {GPKG_EXT, ".gdb", ".sqlite"}  # extend if needed
-
-    if not is_multilayer:
-        # Single-layer sources: read once and write under first target name (or fallback)
-        target_name = target_names[0] if target_names else (prefix or Path(input_file).stem)
-        log.info("Importing single-layer source into %s.%s", schema, target_name)
-        gdf = gpd.read_file(input_file, mask=gdf_scope)
-        gdf.to_crs(epsg=epsg, inplace=True)
-        gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
-        gdf.to_postgis(target_name, engine, if_exists=if_exists, schema=schema, index=False)
-        return
-
-    # Multi-layer path
-    for layer, layer_name in zip(layers, target_names, strict=True):
-        log.info("Importing layer: %s into %s.%s", layer, schema, layer_name)
-        gdf = gpd.read_file(input_file, layer=layer, mask=gdf_scope)
-        gdf.to_crs(epsg=epsg, inplace=True)
-        gdf = gdf.rename_geometry(SQL_SCHEMA_GEOMETRY_COL)
-        gdf.to_postgis(layer_name, engine, if_exists=if_exists, schema=schema, index=False)
 
 
 def get_envelop(infdb: InfDB):
@@ -337,6 +414,7 @@ def get_all_envelops(infdb: InfDB):
     for s in scope:
         envelop.append(gdf[gdf["AGS"].str.startswith(s)])
     return envelop
+
 
 
 # ============================== file helpers ==============================
@@ -429,19 +507,257 @@ def get_number_processes(infdb: InfDB) -> int:
     log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes
 
+# ======================= import / export to postgis =======================-----------------------------------------------------------------------------
 
-def do_cmd(cmd: str | List[str]) -> int:
+def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_names=None,
+                  scope=True, overwrite=True):
+    
+    epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
+    dst = _pg_connstring_for_gdal(infdb)
+    log = infdb.get_worker_logger()
+
+    # Prepare destination table names
+    if layer_names is None:
+        layer_names = layers
+    if prefix:
+        layer_names = [f"{prefix}_{name}" for name in layer_names]
+
+    # Get clipping geometry if requested
+    clipsrc_opt = []
+    tmp_gpkg = None
+    
+    if scope:
+        clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb)
+
+        if clip_wkt:
+            tmp_gpkg = os.path.splitext(os.path.abspath(input_file))[0] + "_clip_tmp.gpkg"
+            try:
+                from shapely import wkt as shapely_wkt
+                clip_geom = shapely_wkt.loads(clip_wkt)
+                clip_gdf = gpd.GeoDataFrame([{'geom': clip_geom}], geometry='geom', crs=f"EPSG:{epsg}")
+                clip_gdf.to_file(tmp_gpkg, layer="clip_boundary", driver="GPKG")
+                clipsrc_opt = ["-clipsrc", tmp_gpkg, "-clipsrclayer", "clip_boundary"]
+                log.info(f"Clipping enabled: {clip_method} method")
+            except Exception as e:
+                log.warning(f"Could not prepare clip geometry; proceeding without clip. Error: {e}")
+                clipsrc_opt = []
+
+    # Import each layer
+    first = True
+    for src_layer, dst_name in zip(layers, layer_names):
+        log.info(f"Importing '{src_layer}' → {schema}.{dst_name}")
+        
+        # Only the first layer uses -overwrite; subsequent ones append
+        layer_overwrite = overwrite and first
+        first = False
+
+        args = [
+            "ogr2ogr",
+            "-progress",
+            "-f", "PostgreSQL", dst,
+            input_file,
+            "-nln", f"{schema}.{dst_name}",
+            "-nlt", "PROMOTE_TO_MULTI",
+            "-lco", "GEOMETRY_NAME=geom",
+            "-t_srs", f"EPSG:{epsg}",
+            # "-makevalid",
+        ] + (["-overwrite"] if layer_overwrite else ["-append"]) \
+          + clipsrc_opt \
+          + [src_layer]
+        
+        _ogr2ogr(args, infdb)
+
+    # Cleanup temp file
+    if tmp_gpkg and os.path.exists(tmp_gpkg):
+        try:
+            os.remove(tmp_gpkg)
+        except Exception:
+            pass
+
+
+def fast_copy_points_csv(
+    infdb: InfDB,
+    csv_path: str,
+    schema: str,
+    table_name: str,
+    x_col: str,
+    y_col: str,
+    srid_src: int = 3035,
+    epsg: int = None,
+    drop_existing: bool = True,
+    create_spatial_index: bool = True,
+    clip_to_scope: bool = True,
+):
+    log = infdb.get_worker_logger()
+    params = infdb.get_db_parameters_dict()
+    epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
+
+    # Read CSV header
+    with open(csv_path, "r", encoding="utf-8", errors="replace", newline="") as f:
+        reader = csv.reader(f, delimiter=";")
+        header = [h.strip().lower() for h in next(reader)]
+
+    if x_col.lower() not in header or y_col.lower() not in header:
+        raise ValueError(f"Missing coordinate columns: {x_col}, {y_col}")
+
+    # Connect to database
+    conn = psycopg2.connect(
+        dbname=params["db"],
+        user=params["user"],
+        password=params["password"],
+        host=params["host"],
+        port=params["exposed_port"],
+    )
+    conn.autocommit = True
+    cur = conn.cursor()
+
+    staging = f"{table_name}__staging"
+
+    try:
+        # Step 1: Drop existing tables
+        if drop_existing:
+            cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{table_name}" CASCADE;')
+        cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{staging}" CASCADE;')
+
+        # Step 2: Create UNLOGGED staging table (all TEXT columns)
+        cols_sql = ", ".join(f'"{c}" text' for c in header)
+        cur.execute(f'CREATE UNLOGGED TABLE "{schema}"."{staging}" ({cols_sql});')
+
+        # Step 3: COPY data from CSV
+        log.info(f"Importing {csv_path} → staging table...")
+        with open(csv_path, "r", encoding="utf-8", errors="replace") as f:
+            cur.copy_expert(
+                f'COPY "{schema}"."{staging}" ({", ".join(f"""\"{c}\"""" for c in header)}) '
+                f"FROM STDIN WITH (FORMAT csv, DELIMITER ';', HEADER true);",
+                f
+            )
+
+        # Step 4: Build SELECT with type casts
+        select_cols = ", ".join(
+            f'"{c}"::double precision' if c in (x_col.lower(), y_col.lower()) else f'"{c}"'
+            for c in header
+        )
+
+        # Step 5: Get clipping WHERE clause
+        where_clause = ""
+        if clip_to_scope:
+            clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb)
+
+            if clip_wkt:
+                where_clause = f"""
+                    WHERE ST_Intersects(
+                        ST_Transform(
+                            ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
+                            {epsg}
+                        ),
+                        ST_GeomFromText('{clip_wkt}', {epsg})
+                    )
+                """
+                log.info(f"Clipping enabled: {clip_method} method")
+
+        # Step 6: Create final table with geometry + clipping in one SQL
+        log.info(f"Creating final table{' with clipping' if where_clause else ''}...")
+        cur.execute(f"""
+            CREATE TABLE "{schema}"."{table_name}" AS
+            SELECT
+                {select_cols},
+                ST_Transform(
+                    ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
+                    {epsg}
+                )::geometry(Point, {epsg}) AS geom
+            FROM "{schema}"."{staging}"
+            {where_clause};
+        """)
+
+        # Step 8: Create spatial index
+        if create_spatial_index:
+            log.info("Creating spatial index...")
+            cur.execute(f'CREATE INDEX "{table_name}_geom_gix" ON "{schema}"."{table_name}" USING GIST (geom);')
+
+    finally:
+        # Cleanup: Drop staging table
+        cur.execute(f'DROP TABLE IF EXISTS "{schema}"."{staging}" CASCADE;')
+        cur.close()
+        conn.close()
+
+
+def get_clip_geometry(target_crs: int, infdb: InfDB):
     """
-    Execute a shell command without shell interpretation.
+    Get clipping geometry for the configured scope.
+    
+    This is the single source of truth for spatial clipping used by both
+    import_layers() and fast_copy_points_csv().
+    
+    Parameters:
+        target_crs: Target EPSG code (e.g., 25832 for UTM32N)
+    
+    Returns:
+        tuple: (geometry_wkt, method_used, row_count_estimate) or (None, None, None) if no clipping
     """
-    return infdb_do_cmd(cmd)
+    gdf_envelope = get_envelop(infdb)
+    log = infdb.get_worker_logger()
+    
+    if gdf_envelope is None or gdf_envelope.empty:
+        log.info("Scope envelope is empty; no clipping applied.")
+        return None, None, None
+    
+    # Transform to target CRS
+    gdf_transformed = gdf_envelope.to_crs(epsg=target_crs)
+    
+    # Use actual boundary polygons (most accurate)
+    clip_geom = gdf_transformed.unary_union
+    clip_wkt = clip_geom.wkt
+    area_km2 = clip_geom.area / 1_000_000
+    log.info(f"Using exact geometry clip: {len(gdf_transformed)} polygons, {area_km2:.1f} km²")
+    return clip_wkt, 'exact', len(gdf_transformed)
 
 
-# def do_unsafe_cmd(cmd: str | List[str]) -> int:
-#     """
-#     Execute a shell command with shell interpretation.
-#
-#     Warning: Allowing shell interpretation is considered unsafe in general and should be used with caution!
-#     """
-#
-#     return infdb_do_cmd(cmd, is_shell_interpreted=True)
+def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
+    """
+    Return one exact clipping geometry per configured scope.
+
+    Returns a list of dicts:
+      {
+        "scope": "<AGS prefix from config>",
+        "landkreis": "<first 5 digits>",
+        "geom": shapely geometry (in target_crs),
+        "bbox": (minx, miny, maxx, maxy),
+      }
+    Intended for cases where you need to process each scope separately:
+    For DGM1: build a separate -te + -cutline + output raster for each AGS.
+    That avoids one huge raster with a lot of NoData; you get one small raster per municipality.
+    """
+    scope_cfg = infdb.get_config_value([infdb.get_toolname(), "scope"]) or []
+    log = infdb.get_worker_logger()
+
+    if isinstance(scope_cfg, str):
+        scope_cfg = [scope_cfg]
+
+    # get_all_envelops() already returns a list of GDFs per scope prefix, in the same order
+    envelopes = get_all_envelops(infdb)
+
+    results = []
+    for scope_prefix, gdf in zip(scope_cfg, envelopes):
+        if gdf is None or gdf.empty:
+            log.warning("No envelope polygons found for scope %s", scope_prefix)
+            continue
+
+        gdf_tr = gdf.to_crs(epsg=target_crs)
+        geom = gdf_tr.unary_union
+        minx, miny, maxx, maxy = geom.bounds
+
+        results.append({
+            "scope": scope_prefix,
+            "landkreis": scope_prefix[:5],
+            "geom": geom,
+            "bbox": (minx, miny, maxx, maxy),
+        })
+
+    if not results:
+        log.info("No valid per-scope clip geometries; no clipping will be applied.")
+    else:
+        log.info(
+            "Prepared %d per-scope clip geometries (exact).", len(results)
+        )
+
+    return results
