@@ -98,12 +98,12 @@ def load(infdb: InfDB) -> bool:
         df_layers.to_csv(os.path.join(base_path, "layers" + CSV_EXT), index=False)
         df_materials.to_csv(os.path.join(base_path, "materials" + CSV_EXT), index=False)
 
-        # Ensure schema exists via InfdbClient and grab an engine
-        schema: str = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "schema"])
-        with infdb.connect() as db:
-            db.execute_query(f"DROP SCHEMA IF EXISTS {schema} CASCADE;")
-            db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
-            engine = db.get_db_engine()
+        # # Ensure schema exists via InfdbClient and grab an engine
+        # schema: str = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "schema"])
+        # with infdb.connect() as db:
+        #     db.execute_query(f"DROP SCHEMA IF EXISTS {schema} CASCADE;")
+        #     db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+        #     engine = db.get_db_engine()
 
         # Prefix for table names
         prefix: str = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "prefix"])
