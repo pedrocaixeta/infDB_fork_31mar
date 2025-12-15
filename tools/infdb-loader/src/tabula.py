@@ -107,6 +107,8 @@ def load(infdb: InfDB) -> bool:
 
         # Prefix for table names
         prefix: str = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "prefix"])
+        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "tabula", "schema"])
+        engine = infdb.get_db_engine()
 
         # Export to Postgres
         df_elements.to_sql(f"{prefix}_type_elements", engine, schema=schema, if_exists="replace", index=False)

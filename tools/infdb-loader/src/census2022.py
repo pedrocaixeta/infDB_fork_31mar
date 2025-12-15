@@ -3,12 +3,10 @@ import os
 import sys
 from typing import Any, Dict, Iterable, List
 
-import geopandas as gpd
-import pandas as pd
-from charset_normalizer import from_path
 from infdb import InfDB
 
 from . import utils
+
 
 # ============================== Constants ==============================
 CLIPPED_PREFIX: str = "zensus-2022"
@@ -34,7 +32,10 @@ def load(infdb: InfDB) -> None:
             [infdb.get_toolname(), "sources", "zensus_2022", "datasets"]
         )
 
-        url = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "url"])
+        url = infdb.get_config_value(
+            [infdb.get_toolname(), "sources", "zensus_2022", "url"]
+        )
+
         zip_links: List[str] = utils.get_website_links(url, infdb)
 
         # validate links
@@ -57,7 +58,11 @@ def load(infdb: InfDB) -> None:
             db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
         # folders
-        zip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "zip"], type="loader")
+        zip_path = infdb.get_config_path(
+            [infdb.get_toolname(), "sources", "zensus_2022", "path", "zip"],
+            type="loader",
+        )
+
         os.makedirs(zip_path, exist_ok=True)
         unzip_path = infdb.get_config_path(
             [infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader"
@@ -129,13 +134,15 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         folder_path = os.path.join(unzip_dir, dataset["table_name"])
         utils.unzip(zip_file, folder_path, infdb)
         # Export to PostGIS for each configured resolution
-        resolutions : List[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "resolutions"])
+        resolutions: List[str] = infdb.get_config_value(
+            [infdb.get_toolname(), "sources", "zensus_2022", "resolutions"]
+        )
+
         prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "prefix"])
         schema = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "schema"])
         epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")  # target DB SRID
 
         # Export to PostGIS
-        resolutions: List[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "resolutions"])
         for resolution in resolutions:
             log.info("Processing %s with %s ...", dataset["name"], resolution)
 
@@ -176,10 +183,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         return True
 
     except Exception as err:
-        # if logger creation also fails, at least print
-        try:
-            log  # type: ignore[name-defined]
-        except NameError:
+        if "log" not in locals():
             print(f"Error in process_dataset({dataset.get('name')}): {err}")
         else:
             log.exception(

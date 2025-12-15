@@ -1,20 +1,18 @@
-import os
+import json
 import logging
 import subprocess
-import json
 from pathlib import Path
-from sqlalchemy import text
-from typing import Dict, List, Optional
-from shapely import wkt as shapely_wkt
-from shapely.geometry import mapping, Polygon
-import geopandas as gpd
-from shapely.ops import unary_union
+from typing import Dict, List
 
-from infdb import InfDB 
+import geopandas as gpd
+from sqlalchemy import text
+
+from infdb import InfDB
 from . import utils
 
 # Module logger
 log = logging.getLogger(__name__)
+
 
 
 # ====================================================================================

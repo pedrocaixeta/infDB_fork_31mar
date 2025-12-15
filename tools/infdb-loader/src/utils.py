@@ -1,26 +1,25 @@
+import csv
 import multiprocessing
 import os
-import csv
-import time
 import random
-import subprocess
-import psycopg2
 import shlex
-from typing import Iterable, List, Optional
+import subprocess
+import time
 from pathlib import Path
-
-import geopandas as gpd
-
-import requests
-from bs4 import BeautifulSoup
-from pySmartDL import SmartDL
+from typing import Iterable, List, Optional
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
 
 import chardet
+import geopandas as gpd
+import psycopg2
+import requests
+from bs4 import BeautifulSoup
+from pySmartDL import SmartDL
 
-from infdb import InfDB, InfdbConfig
+from infdb import InfDB
 from infdb.utils import do_cmd as infdb_do_cmd
+
 
 # ============================== Constants ==============================
 HTTP_TIMEOUT_SECONDS: int = 60
@@ -507,10 +506,19 @@ def get_number_processes(infdb: InfDB) -> int:
     log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes
 
-# ======================= import / export to postgis =======================-----------------------------------------------------------------------------
+# ======================= import / export to PostGIS =======================
+# --------------------------------------------------------------------------
 
-def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_names=None,
-                  scope=True, overwrite=True):
+def import_layers(
+    input_file,
+    layers,
+    schema,
+    infdb: InfDB,
+    prefix="",
+    layer_names=None,
+    scope=True,
+    overwrite=True,
+):
     
     epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
     dst = _pg_connstring_for_gdal(infdb)
@@ -544,7 +552,7 @@ def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_nam
 
     # Import each layer
     first = True
-    for src_layer, dst_name in zip(layers, layer_names):
+    for src_layer, dst_name in zip(layers, layer_names, strict=True):
         log.info(f"Importing '{src_layer}' → {schema}.{dst_name}")
         
         # Only the first layer uses -overwrite; subsequent ones append
@@ -647,7 +655,13 @@ def fast_copy_points_csv(
                 where_clause = f"""
                     WHERE ST_Intersects(
                         ST_Transform(
-                            ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
+                            ST_SetSRID(
+                                ST_MakePoint(
+                                    "{x_col}"::double precision,
+                                    "{y_col}"::double precision
+                                ),
+                                {srid_src}
+                            ),
                             {epsg}
                         ),
                         ST_GeomFromText('{clip_wkt}', {epsg})
@@ -662,7 +676,13 @@ def fast_copy_points_csv(
             SELECT
                 {select_cols},
                 ST_Transform(
-                    ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
+                    ST_SetSRID(
+                        ST_MakePoint(
+                            "{x_col}"::double precision,
+                            "{y_col}"::double precision
+                        ),
+                        {srid_src}
+                    ),
                     {epsg}
                 )::geometry(Point, {epsg}) AS geom
             FROM "{schema}"."{staging}"
@@ -737,7 +757,7 @@ def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
     envelopes = get_all_envelops(infdb)
 
     results = []
-    for scope_prefix, gdf in zip(scope_cfg, envelopes):
+    for scope_prefix, gdf in zip(scope_cfg, envelopes, strict=True):
         if gdf is None or gdf.empty:
             log.warning("No envelope polygons found for scope %s", scope_prefix)
             continue
@@ -746,13 +766,15 @@ def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
         geom = gdf_tr.unary_union
         minx, miny, maxx, maxy = geom.bounds
 
-        results.append({
-            "scope": scope_prefix,
-            "landkreis": scope_prefix[:5],
-            "geom": geom,
-            "bbox": (minx, miny, maxx, maxy),
-        })
-
+        results.append(
+            {
+                "scope": scope_prefix,
+                "landkreis": scope_prefix[:5],
+                "geom": geom,
+                "bbox": (minx, miny, maxx, maxy),
+            }
+        )
+        
     if not results:
         log.info("No valid per-scope clip geometries; no clipping will be applied.")
     else:
