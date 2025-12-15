@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import Dict, List
 
 import geopandas as gpd
+from infdb import InfDB
 from sqlalchemy import text
 
-from infdb import InfDB
 from . import utils
 
 # Module logger

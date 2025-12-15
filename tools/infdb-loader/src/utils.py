@@ -15,11 +15,9 @@ import geopandas as gpd
 import psycopg2
 import requests
 from bs4 import BeautifulSoup
-from pySmartDL import SmartDL
-
 from infdb import InfDB
 from infdb.utils import do_cmd as infdb_do_cmd
-
+from pySmartDL import SmartDL
 
 # ============================== Constants ==============================
 HTTP_TIMEOUT_SECONDS: int = 60

@@ -7,7 +7,6 @@ from infdb import InfDB
 
 from . import utils
 
-
 # ============================== Constants ==============================
 CLIPPED_PREFIX: str = "zensus-2022"
 
