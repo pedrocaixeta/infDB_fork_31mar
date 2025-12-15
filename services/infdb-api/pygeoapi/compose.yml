@@ -2,30 +2,17 @@ services:
   pygeowatch:
     profiles:
       - api
-    image: python:3.12-slim # migrate to ghcr.io/astral-sh/uv:python3.12-trixie-slim
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
-      - ./:/app
-      - ../../../src/infdb_package:/app/mnt/infdb_package
-      - ../../../configs/:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
-      - ./configs:/app/configs #:ro # for configs
-    environment:
-      - PYTHONUNBUFFERED=1
-      - SERVICES_PYGEOAPI_EXPOSED_PORT=${SERVICES_PYGEOAPI_PORT}
-      - SERVICES_POSTGRES_DB=${SERVICES_POSTGRES_DB}
-      - SERVICES_POSTGRES_USER=${SERVICES_POSTGRES_USER}
-      - SERVICES_POSTGRES_PASSWORD=${SERVICES_POSTGRES_PASSWORD}
-      - SERVICES_POSTGRES_EPSG=${SERVICES_POSTGRES_EPSG}
-      - SERVICES_POSTGRES_HOST=${SERVICES_POSTGRES_HOST}
-      - SERVICES_POSTGRES_EXPOSED_PORT=${SERVICES_POSTGRES_EXPOSED_PORT}
-
-    command:
-      - /bin/sh
-      - -lc
-      - >
-        python -m pip install --no-cache-dir /app/mnt/infdb_package pyyaml psycopg[binary] && echo "[entrypoint] starting watcher" && exec python -u /app/watch_and_generate_pygeoapi_config.py
+      - ./workspaces/pygeowatch/:/workspaces/pygeowatch # only for development
+      - infdb-pygeoapi-data:/workspaces/pygeoapi # shared volume with pygeoapi
+      - ../../../src/infdb_package:/workspaces/infdb_package # only for development and until infdb_package is published to PyPI
+    env_file:
+        - ./env_pygeowatch.list
     healthcheck:
-      test: [ "CMD-SHELL", "test -s /app/pygeoapi-config.yml" ]
+      test: [ "CMD-SHELL", "test -s /workspaces/pygeoapi/pygeoapi-config.yml" ]
       interval: 2s
       timeout: 2s
       retries: 120
@@ -38,11 +25,10 @@ services:
     profiles:
       - api
     image: geopython/pygeoapi:latest
-    environment:
-      - PYGEOAPI_CONFIG=/app-config/pygeoapi-config.yml
-      - CONTAINER_PORT=${SERVICES_PYGEOAPI_PORT}
+    env_file:
+        - ./env_pygeoapi.list
     volumes:
-      - ./:/app-config:ro
+      - infdb-pygeoapi-data:/workspaces/pygeoapi:ro
     ports:
       - "${SERVICES_PYGEOAPI_PORT}:${SERVICES_PYGEOAPI_PORT}"
     command: run-with-hot-reload
@@ -51,3 +37,8 @@ services:
         condition: service_healthy
     networks:
       - infdb_network
+
+volumes:
+  infdb-pygeoapi-data:
+    name: ${BASE_NAME}-pygeoapi-data
+    driver: local
