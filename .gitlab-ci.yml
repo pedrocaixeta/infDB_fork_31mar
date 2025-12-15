@@ -96,7 +96,7 @@ type-check:
     - uv pip install types-PyYAML types-psycopg2 types-greenlet pandas-stubs # additional dependencies for type checking
     - mypy src
     - mypy tests
-    #- mypy services/infdb-api/fastapi
+    - mypy services/infdb-api/fastapi
     - mypy services/infdb-init
     - mypy services/infdb-api/postgrest
     - mypy services/infdb-api/pygeoapi
