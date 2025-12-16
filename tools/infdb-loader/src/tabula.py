@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 
 import pandas as pd
 from infdb import InfDB
+from sqlalchemy import text
 
 from . import utils
 
@@ -107,8 +108,13 @@ def load(infdb: InfDB) -> bool:
 
         # Prefix for table names
         prefix: str = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "prefix"])
-        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "tabula", "schema"])
+        schema = infdb.get_config_value([TOOL_NAME, "sources", "tabula", "schema"])
         engine = infdb.get_db_engine()
+
+        # Ensure target schema exists (step 3)
+        with engine.connect() as conn:
+            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema};"))
+            conn.commit()
 
         # Export to Postgres
         df_elements.to_sql(f"{prefix}_type_elements", engine, schema=schema, if_exists="replace", index=False)
