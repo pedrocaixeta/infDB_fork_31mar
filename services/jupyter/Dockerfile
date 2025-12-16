@@ -7,8 +7,7 @@ COPY pyproject.toml /app/pyproject.toml
 COPY notebooks/ /app/notebooks/
 
 # Install JupyterLab
-RUN uv venv --seed
-RUN uv pip install -e .
+RUN uv sync
 
 # Expose Jupyter port
 EXPOSE 8888

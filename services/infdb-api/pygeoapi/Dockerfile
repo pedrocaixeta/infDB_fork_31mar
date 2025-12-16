@@ -8,11 +8,10 @@ COPY workspaces/pygeowatch/watch_and_generate_pygeoapi_config.py /workspaces/pyg
 COPY workspaces/pygeowatch/pyproject.toml /workspaces/pygeowatch/pyproject.toml
 
 # not possible at build time when using infdb only as mount. requires infdb in PyPI.
-# RUN uv venv
-# RUN uv pip install -e .
+# RUN uv sync
 
 
 # Set the default command to run the application
 #CMD echo "[pygeowatch] starting" && uv run python watch_and_generate_pygeoapi_config.py
 
-CMD uv venv && uv pip install -e . && echo "[pygeowatch] starting" && uv run python watch_and_generate_pygeoapi_config.py
+CMD uv sync && echo "[pygeowatch] starting" && uv run python watch_and_generate_pygeoapi_config.py

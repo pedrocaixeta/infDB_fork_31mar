@@ -9,10 +9,9 @@ COPY workspaces/pgrstwatch/watch_and_update_postgrest_conf.py /workspaces/pgrstw
 COPY workspaces/pgrstwatch/pyproject.toml /workspaces/pgrstwatch/pyproject.toml
 
 # not possible at build time when using infdb only as mount. requires infdb in PyPI.
-# RUN uv venv
-# RUN uv pip install -e .
+# RUN uv sync
 
 # Set the default command to run the application
 #CMD ["echo","[pgrstwatch] starting", "&&", "uv","run","python","watch_and_update_postgrest_conf.py"]
 
-CMD uv venv && uv pip install -e . && echo "[pgrstwatch] starting" && uv run python watch_and_update_postgrest_conf.py
+CMD uv sync && echo "[pgrstwatch] starting" && uv run python watch_and_update_postgrest_conf.py
