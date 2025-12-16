@@ -31,9 +31,7 @@ def load(infdb: InfDB) -> None:
             [infdb.get_toolname(), "sources", "zensus_2022", "datasets"]
         )
 
-        url = infdb.get_config_value(
-            [infdb.get_toolname(), "sources", "zensus_2022", "url"]
-        )
+        url = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "url"])
 
         zip_links: List[str] = utils.get_website_links(url, infdb)
 
@@ -133,9 +131,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         folder_path = os.path.join(unzip_dir, dataset["table_name"])
         utils.unzip(zip_file, folder_path, infdb)
         # Export to PostGIS for each configured resolution
-        resolutions: List[str] = infdb.get_config_value(
-            [infdb.get_toolname(), "sources", "zensus_2022", "resolutions"]
-        )
+        resolutions: List[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "resolutions"])
 
         prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "prefix"])
         schema = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "schema"])
@@ -169,12 +165,12 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
                 table_name=table_name,
                 x_col=x_col,
                 y_col=y_col,
-                srid_src=3035,                 # source X/Y are in EPSG:3035 in the Zensus CSV
-                epsg=epsg,                 # target SRID from DB config
-                drop_existing=True,            # matches old 'replace' behavior
-                create_spatial_index=True,     # gives you good query perf right away
+                srid_src=3035,  # source X/Y are in EPSG:3035 in the Zensus CSV
+                epsg=epsg,  # target SRID from DB config
+                drop_existing=True,  # matches old 'replace' behavior
+                create_spatial_index=True,  # gives you good query perf right away
                 clip_to_scope=True,  # Explicit clipping (default anyway)
-            )  
+            )
 
             log.info(f"Processed successfully {csv_path}")
 
