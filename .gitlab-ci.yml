@@ -25,8 +25,7 @@ cache:
 # Stages
 stages:
   - setup
-  - pre-commit-hook
-  - test
+#  - test
   - lint
 
 # Setup job
@@ -60,7 +59,7 @@ setup:
 #    expire_in: 1 week
 
 pre-commit-hook:
-  stage: pre-commit-hook
+  stage: lint
   dependencies:
     - setup
   script:

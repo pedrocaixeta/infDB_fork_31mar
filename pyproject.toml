@@ -37,7 +37,6 @@ dependencies = [
 [dependency-groups]
 dev = ["flake8==7.1.1"]
 lint = [
-  "bandit>=1.9.2",
   "mypy>=1.19.1",
   "pandas-stubs>=2.3.3",
   "ruff>=0.14.9",
@@ -48,9 +47,14 @@ lint = [
 precommit-hook = [
   "pre-commit>=4.5.1",
 ]
+security-lint = [
+  "bandit>=1.9.2",
+  "safety>=3.7.0",
+]
 test =[
+  {include-group = "precommit-hook"},
   {include-group = "lint"},
-  {include-group = "precommit-hook"}
+  {include-group = "security-lint"},
 ]
 docs = [
     "sphinx==7.3.7",
