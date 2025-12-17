@@ -3,8 +3,8 @@ import sys
 from typing import Dict
 
 from infdb import InfDB
-from . import utils
 
+from . import utils
 
 
 def load(infdb: InfDB) -> None:
@@ -17,12 +17,11 @@ def load(infdb: InfDB) -> None:
     """
     log = infdb.get_worker_logger()
     try:
-
         if not utils.if_active("need", infdb):
             return True
 
         # Dump input schema from source database
-        TOOL_NAME= infdb.get_toolname()
+        TOOL_NAME = infdb.get_toolname()
         source_host = infdb.get_config_value([TOOL_NAME, "sources", "need", "host"])
         source_port = infdb.get_config_value([TOOL_NAME, "sources", "need", "port"])
         source_db = infdb.get_config_value([TOOL_NAME, "sources", "need", "database"])

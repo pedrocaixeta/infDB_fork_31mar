@@ -1,20 +1,14 @@
-import logging
 import multiprocessing as mp
 import os
 import sys
 from typing import Any, Dict, Iterable, List
 
-import geopandas as gpd
-import pandas as pd
-from charset_normalizer import from_path
-
 from infdb import InfDB
-from . import utils
 
+from . import utils
 
 # ============================== Constants ==============================
 CLIPPED_PREFIX: str = "zensus-2022"
-
 
 
 def load(infdb: InfDB) -> None:
@@ -33,9 +27,12 @@ def load(infdb: InfDB) -> None:
         if not utils.if_active("zensus_2022", infdb):
             return
 
-        datasets: List[Dict[str, Any]] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "datasets"])
+        datasets: List[Dict[str, Any]] = infdb.get_config_value(
+            [infdb.get_toolname(), "sources", "zensus_2022", "datasets"]
+        )
 
         url = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "url"])
+
         zip_links: List[str] = utils.get_website_links(url, infdb)
 
         # validate links
@@ -58,9 +55,15 @@ def load(infdb: InfDB) -> None:
             db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
         # folders
-        zip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "zip"], type="loader")
+        zip_path = infdb.get_config_path(
+            [infdb.get_toolname(), "sources", "zensus_2022", "path", "zip"],
+            type="loader",
+        )
+
         os.makedirs(zip_path, exist_ok=True)
-        unzip_path = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader")
+        unzip_path = infdb.get_config_path(
+            [infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader"
+        )
         os.makedirs(unzip_path, exist_ok=True)
 
         number_processes = utils.get_number_processes(infdb)
@@ -69,8 +72,17 @@ def load(infdb: InfDB) -> None:
             # initializer=_init_logger_for_process,
             # initargs=(infdb,),
         ) as pool:
-            results = pool.starmap(process_dataset, [(dataset, infdb.get_toolname(),) for dataset in datasets])
-        
+            results = pool.starmap(
+                process_dataset,
+                [
+                    (
+                        dataset,
+                        infdb.get_toolname(),
+                    )
+                    for dataset in datasets
+                ],
+            )
+
         if not all(results):
             raise RuntimeError("Some datasets failed to process")
         else:
@@ -78,6 +90,7 @@ def load(infdb: InfDB) -> None:
     except Exception as err:
         log.exception("An error occurred while processing Census: %s", str(err))
         sys.exit(1)
+
 
 def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
     """Download, unzip, transform, and load one dataset to PostGIS.
@@ -92,15 +105,13 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         # Initialize InfDB in each worker process
         infdb = InfDB(tool_name=tool_name)
         log = infdb.get_worker_logger()
-        
+
         log.info("Working on %s", dataset["name"])
 
         # status gate
         if dataset["status"] != "active":
             log.info("%s skips, status not active", dataset["name"])
             return True
-
-        # fresh cfg (per-process)
 
         years: Iterable[int] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "years"])
         if dataset["year"] not in years:
@@ -114,74 +125,65 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
         zip_file = downloaded[0]
 
         # Unzip using the real file path
-        unzip_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader")
+        unzip_dir = infdb.get_config_path(
+            [infdb.get_toolname(), "sources", "zensus_2022", "path", "unzip"], type="loader"
+        )
         folder_path = os.path.join(unzip_dir, dataset["table_name"])
         utils.unzip(zip_file, folder_path, infdb)
+        # Export to PostGIS for each configured resolution
+        resolutions: List[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "resolutions"])
+
+        prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "prefix"])
+        schema = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "schema"])
+        epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")  # target DB SRID
 
         # Export to PostGIS
-        resolutions: List[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "resolutions"])
         for resolution in resolutions:
             log.info("Processing %s with %s ...", dataset["name"], resolution)
 
-            file = utils.get_file(folder_path, resolution, ".csv", infdb)
-            if not file:
-                log.warning("No file for %s with resolution %s found", dataset["name"], resolution)
+            # Search for corresponding CSV within the unzipped folder
+            csv_path = utils.get_file(folder_path, resolution, ".csv", infdb)
+            if not csv_path:
+                log.warning(f"No file for {dataset['name']} with resolution {resolution} found")
                 continue
 
-            encoding = from_path(file).best().encoding
-            log.debug("Detected encoding for file: %s", encoding)
-
-            df = pd.read_csv(
-                file,
-                sep=";",
-                decimal=",",
-                low_memory=True,
-                encoding=encoding,
-            )
-            df.fillna(0, inplace=True)
-            df.columns = df.columns.str.lower()
-
-            gdf = gpd.GeoDataFrame(
-                df,
-                geometry=gpd.points_from_xy(df[f"x_mp_{resolution}"], df[f"y_mp_{resolution}"]),
-                crs="EPSG:3035",
-            )
-
-            epsg = infdb.get_config_value(["services", "postgres", "epsg"])
-            if epsg is None:
-                raise KeyError("Missing 'epsg' in DB parameters for service 'postgres'")
-            gdf = gdf.to_crs(epsg=epsg)
-
-            # get engine via client (engine is independent)
-            with infdb.connect() as db:
-                engine = db.get_db_engine()
-
-            prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "prefix"])
-            schema = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "schema"])
-
-            gdf_envelope = utils.get_envelop(infdb)
-            gdf_clipped = gpd.clip(gdf, gdf_envelope) if not gdf_envelope.empty else gdf
-
+            # -------------------------
+            # FAST LOAD (NEW): COPY + server-side geometry creation
+            # This replaces: read CSV -> build GeoDataFrame -> gdf.to_postgis(...)
+            # Benefits:
+            #   * COPY is much faster than per-row inserts
+            #   * ST_MakePoint + ST_Transform happen inside PostGIS (C), not Python
+            # -------------------------
+            x_col = f"x_mp_{resolution}"  # Zensus CSV columns for X/Y per resolution
+            y_col = f"y_mp_{resolution}"
             table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
-            gdf_clipped = gdf_clipped.rename_geometry("geom")
-            gdf_clipped.to_postgis(table_name, engine, if_exists="replace", schema=schema, index=False)
 
-            save_local = infdb.get_config_value([infdb.get_toolname(), "sources", "zensus_2022", "save_local"])
-            if save_local == "active":
-                out_dir = infdb.get_config_path([infdb.get_toolname(), "sources", "zensus_2022", "path", "processed"], type="loader")
-                os.makedirs(out_dir, exist_ok=True)
-                gdf_clipped.to_file(
-                    os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}.gpkg"),
-                    layer=table_name,
-                    driver="GPKG",
-                )
-                gdf_clipped.to_csv(
-                    os.path.join(out_dir, f"{CLIPPED_PREFIX}_{resolution}_{table_name}.csv"),
-                    index=False,
-                )
+            utils.fast_copy_points_csv(
+                infdb,
+                csv_path=csv_path,
+                schema=schema,
+                table_name=table_name,
+                x_col=x_col,
+                y_col=y_col,
+                srid_src=3035,  # source X/Y are in EPSG:3035 in the Zensus CSV
+                epsg=epsg,  # target SRID from DB config
+                drop_existing=True,  # matches old 'replace' behavior
+                create_spatial_index=True,  # gives you good query perf right away
+                clip_to_scope=True,  # Explicit clipping (default anyway)
+            )
 
-            log.info("Processed sucessfully %s", file)
+            log.info(f"Processed successfully {csv_path}")
+
+        # if we reach here without exceptions, this dataset was processed OK
         return True
+
     except Exception as err:
-        log.exception("An error occurred while processing file: %s %s", dataset.get("name"), str(err))
+        if "log" not in locals():
+            print(f"Error in process_dataset({dataset.get('name')}): {err}")
+        else:
+            log.exception(
+                "An error occurred while processing file: %s %s",
+                dataset.get("name"),
+                str(err),
+            )
         return False

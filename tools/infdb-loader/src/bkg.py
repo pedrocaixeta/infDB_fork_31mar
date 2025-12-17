@@ -1,16 +1,13 @@
 # src/bkg.py
-import logging
-import multiprocessing as mp
 import os
-from logging.handlers import QueueHandler
-import sys
-from typing import List, Sequence, Union
+from typing import Sequence, Union
 
 from infdb import InfDB
+
 from . import utils
 
 
-def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_existing: bool = False) -> None:
+def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear_existing: bool = False) -> None:
     """Create (or update) a single geogitter table by inserting grid cells per resolution.
 
     Behavior preserved:
@@ -54,12 +51,12 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_
             ON {schema}.{table_name} USING GIST (geom);
         """
         db.execute_query(ddl)
-    
+
         all_envelops = utils.get_all_envelops(infdb)
         for envelop in all_envelops:
             log.debug("Envelop: %s", envelop)
-            
-            wkt = envelop.to_crs(3035).unary_union.wkt
+
+            wkt = envelop.to_crs(3035).unary_union.wkt  # Use LAEA (EPSG:3035) for grid generation
 
             # Ensure list
             if isinstance(resolutions, str):
@@ -75,7 +72,12 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb:InfDB, clear_
                     log.warning("Skipping resolution with unknown unit: %s", resolution)
                     continue
 
-                log.info("Generating grid cells for %s with resolution %s", "add_AGS", resolution_meters)
+                log.info(
+                    "Generating grid cells for %s (%s) with resolution %s",
+                    envelop["AGS"].item(),
+                    envelop["GEN"].item(),
+                    resolution_meters,
+                )
                 # todo: add_AGS parameter to identify the area from envelop
 
                 generate_grid_cells_sql = f"""
@@ -136,8 +138,8 @@ def load(infdb: InfDB) -> bool:
     """
     log = infdb.get_worker_logger()
 
-    # if not utils.if_active("bkg", infdb):
-    #     return
+    if not utils.if_active("bkg", infdb):
+        return
 
     # Paths
     try:

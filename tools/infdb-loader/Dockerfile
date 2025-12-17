@@ -1,45 +1,43 @@
 FROM 3dcitydb/citydb-tool
 
-WORKDIR /app
-
-## Install uv on Ubuntu
-# The installer requires curl (and certificates) to download the release archive
+WORKDIR /workspaces/infdb-loader
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install aria2 for downloading lod2 of bavaria
-RUN apt-get install -y aria2
+# Base tooling + GDAL + aria2 + unzip
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates \
+    aria2 unzip \
+    gdal-bin \
+ && rm -rf /var/lib/apt/lists/*
 
-# Install postgresql-client for pg_dump and psql commands
-RUN apt install curl ca-certificates &&\
-install -d /usr/share/postgresql-common/pgdg && \
-curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
-. /etc/os-release && \
-bash -c "echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $VERSION_CODENAME-pgdg main' > /etc/apt/sources.list.d/pgdg.list" && \
-apt update && \
-apt install -y postgresql-client-17
+# PostgreSQL client (PGDG) + PostGIS necessary for shp2pgsql / raster2pgsql
+RUN install -d /usr/share/postgresql-common/pgdg && \
+    curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+    . /etc/os-release && \
+    bash -c "echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $VERSION_CODENAME-pgdg main' > /etc/apt/sources.list.d/pgdg.list" && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+      postgresql-client-17 \
+      postgis \
+    && rm -rf /var/lib/apt/lists/*
 
-# Download the latest uv installer
+# Install uv
 ADD https://astral.sh/uv/install.sh /uv-installer.sh
-
-# Run the installer then remove it
 RUN sh /uv-installer.sh && rm /uv-installer.sh
-
-# Ensure the installed binary is on the `PATH`
 ENV PATH="/root/.local/bin/:$PATH"
 
-## Run python scripts with uv
-# COPY requiremets into the container
-COPY pyproject.toml /app/pyproject.toml
-#COPY config-loader.yml /app/config-loader.yml
-# RUN uv sync
+# Project files in WORKDIR so uv and InfDB can see them
+COPY pyproject.toml pyproject.toml
+COPY configs configs
 
-# Copy the source code into the container
-COPY src /app/src
-COPY main.py /app/main.py
+# Source code in WORKDIR
+COPY src src
+COPY sql sql
+COPY main.py main.py
 
 # Reset entrypoint to the default because of citydb-tool image
 ENTRYPOINT []
 
 # Run main.py with uv and environment defined in pyproject.toml
-CMD [ "uv", "run", "python", "main.py"]
+CMD ["uv", "run", "python", "main.py"]

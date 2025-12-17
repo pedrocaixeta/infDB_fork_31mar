@@ -1,41 +1,158 @@
+# Configuration file for infdb-loader
+#
+# This configuration file contains tool-specific settings and database connection parameters.
+#
+# Database Connection Parameters:
+# - Parameters set to 'None' will be automatically replaced with values from the central
+#   configuration file specified in 'config-infdb' (config-infdb.yml by default)
+# - This approach allows you to run locally using centralized database settings
+# - To connect to a remote infdb instance, replace 'None' values with your specific
+#   connection parameters (user, password, db, host, exposed_port, epsg)
+#
 infdb-loader:
-    name: "{base/name}"
+    name: "Sonthofen-Oberhausen-Neuburg"  # Name of the infdb-loader instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich
-        - "09780139"  # Sonthofen
+        # - "09780139"  # Sonthofen
         # - "09780116"  # Bolsterlang
-        # - "09162000" # M
-        # - "09474126" # FO
-        # - "09261000" # LA
-        - "05119000" # Oberhausen (NRW)
-        - "09185149" # Neuburg a.d. Donau (BY)
+        # - "09162000"  # Munich
+        # - "09474126"  # Forcheim
+        # - "09261000"  # Landshut
+        - "05119000"  # Oberhausen (NRW)
+        # - "09185149"  # Neuburg a.d. Donau (BY)
+        # --- Independent Cities (Kreisfreie Städte) ---
+        - "09162000"  # München (State Capital)
+        - "09564000"  # Nürnberg
+        - "09761000"  # Augsburg
+        - "09362000"  # Regensburg
+        - "09161000"  # Ingolstadt
+        - "09663000"  # Würzburg
+        - "09563000"  # Fürth
+        - "09562000"  # Erlangen
+        - "09461000"  # Bamberg
+        - "09462000"  # Bayreuth
+        - "09261000"  # Landshut
+        - "09661000"  # Aschaffenburg
+        - "09763000"  # Kempten (Allgäu)
+        - "09163000"  # Rosenheim
+        - "09662000"  # Schweinfurt
+        - "09262000"  # Passau
+        - "09361000"  # Amberg
+        - "09363000"  # Weiden i.d.OPf.
+        - "09463000"  # Coburg
+        - "09762000"  # Kaufbeuren
+        - "09764000"  # Memmingen
+        - "09464000"  # Hof
+        - "09263000"  # Straubing
+        - "09561000"  # Ansbach
+        - "09565000"  # Schwabach
+
+        # --- Upper Bavaria (Oberbayern) ---
+        - "09171111"  # Altötting
+        - "09172114"  # Bad Reichenhall
+        - "09173111"  # Bad Tölz
+        - "09174115"  # Dachau
+        - "09175118"  # Ebersberg
+        - "09176123"  # Eichstätt
+        - "09177117"  # Erding
+        - "09178124"  # Freising
+        - "09179121"  # Fürstenfeldbruck
+        - "09180117"  # Garmisch-Partenkirchen
+        - "09181130"  # Landsberg am Lech
+        - "09182125"  # Miesbach
+        - "09183128"  # Mühldorf a.Inn
+        - "09185149"  # Neuburg a.d. Donau
+        - "09186143"  # Pfaffenhofen a.d.Ilm
+        - "09188139"  # Starnberg
+        - "09189155"  # Traunstein
+        - "09190157"  # Weilheim i.OB
+
+        # --- Lower Bavaria (Niederbayern) ---
+        - "09271119"  # Deggendorf
+        - "09279112"  # Dingolfing
+        - "09272118"  # Freyung
+        - "09273137"  # Kelheim
+        - "09276138"  # Regen
+        - "09277140"  # Pfarrkirchen
+
+        # --- Upper Palatinate (Oberpfalz) ---
+        - "09371113"  # Amberg (District)
+        - "09372116"  # Cham
+        - "09373140"  # Neumarkt i.d.OPf.
+        - "09374139"  # Neustadt a.d.Waldnaab
+        - "09375180"  # Regensburg (District)
+        - "09376163"  # Schwandorf
+        - "09377154"  # Tirschenreuth
+
+        # --- Upper Franconia (Oberfranken) ---
+        - "09471111"  # Bamberg (District)
+        - "09472119"  # Bayreuth (District)
+        - "09473120"  # Coburg (District)
+        - "09474126"  # Forchheim
+        - "09475136"  # Hof (District)
+        - "09476145"  # Kronach
+        - "09477128"  # Kulmbach
+        - "09478139"  # Lichtenfels
+        - "09479169"  # Wunsiedel
+
+        # --- Middle Franconia (Mittelfranken) ---
+        - "09571113"  # Ansbach (District)
+        - "09572121"  # Erlangen-Höchstadt (Herzogenaurach)
+        - "09573114"  # Fürth (Zirndorf)
+        - "09574132"  # Lauf a.d.Pegnitz (Nürnberger Land)
+        - "09575112"  # Bad Windsheim
+        - "09576143"  # Roth
+        - "09577177"  # Weißenburg i.Bay.
+
+        # --- Lower Franconia (Unterfranken) ---
+        - "09671114"  # Aschaffenburg (District)
+        - "09672114"  # Bad Kissingen
+        - "09674147"  # Haßfurt
+        - "09675139"  # Kitzingen
+        - "09677148"  # Karlstadt (Main-Spessart)
+        - "09676139"  # Miltenberg
+        - "09673114"  # Bad Neustadt a.d.Saale
+        - "09678178"  # Schweinfurt (District)
+        - "09679169"  # Würzburg (District)
+
+        # --- Swabia (Schwaben) ---
+        - "09771113"  # Aichach
+        - "09772125"  # Augsburg (District)
+        - "09773125"  # Dillingen a.d.Donau
+        - "09779136"  # Donauwörth
+        - "09774135"  # Günzburg
+        - "09776116"  # Lindau (Bodensee)
+        - "09775135"  # Neu-Ulm
+        - "09780139"  # Sonthofen (Oberallgäu)
+        - "09780116"  # Bolsterlang
+        - "09777151"  # Marktoberdorf (Ostallgäu)
+        - "09778169"  # Mindelheim (Unterallgäu)
     multiproccesing: 
         status: not-active
         max_cores: 2    # max cores since of memory limitations to 2
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
-        base: "data" # only foldername - change path in ".env" file "LOADER_DATA_PATH"
-        opendata: "{infdb-loader/path/base}/opendata/"
-        processed: "{infdb-loader/path/base}/{infdb-loader/name}"
+        opendata: "opendata/"
+        processed: "{infdb-loader/name}"
     logging:
-        path: "{infdb-loader/path/base}/infdb-loader.log"
+        path: "infdb-loader.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
             user: None
             password: None
             db: None
-            host: None
+            host: None  # change to external IP if not running on local machine
             exposed_port: None
             epsg: None # 3035 (Europe)
         webdav:
             username: infdb
-            access_token: "stoop plus congenial dictation sleet shindig"
+            access_token: "letdown subscribe lily catchable landmine sphinx"
     sources:
         package:
             status: active
             url: http://ds1.need.energy:8123/opendata-neuburg-demo.zip
-            path: 
+            path:
                 base: "{infdb-loader/path/base}"
                 processed: "{infdb-loader/path/opendata}"
         need:
@@ -48,14 +165,33 @@ infdb-loader:
             schema_input: need
             path_dump: "{infdb-loader/path/opendata}/need/"
 
-        lod2:
+        opendata_bavaria:
             status: active
-            import-mode: skip # delete
-            url:
-                - "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4"    #scope placeholder for AGS
-            path:
-                lod2: "{infdb-loader/path/opendata}/lod2/"
-                gml: "{infdb-loader/path/opendata}/lod2/{infdb-loader/name}"
+            schema: opendata
+            prefix: bavaria
+            path: 
+                base: "{infdb-loader/path/opendata}/opendata_bavaria/"
+            datasets:
+                gelaendemodell_1m:
+                    status: not-active
+                    name: Geländemodell Bayern 1m
+                    table_name: gelaendemodell_1m
+                    # - Lower values (1-5m): High detail, large files, slower queries
+                    # - Medium values (10-20m): Good balance for most applications
+                    # - Higher values (50-100m): Coarse terrain, small files, fast queries
+                    target_resolution: 10.0
+                    url: "https://geodaten.bayern.de/odd/a/dgm/dgm1/meta/metalink/#scope.meta4"
+                building_lod2:
+                    status: active
+                    name: 3D-Gebäudemodelle (LoD2)
+                    table_name: building_lod2
+                    import-mode: skip
+                    url: "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4" 
+                tatsaechliche_nutzung:
+                    status: active
+                    name: Tatsächliche Nutzung (TN) 
+                    table_name: tatsaechliche_nutzung
+                    url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
         lod2-nrw:
             status: active
             import-mode: skip # delete
@@ -93,9 +229,9 @@ infdb-loader:
             geogitter:
                 table_name: grid_cells
                 resolutions:
-                    - 100m
-                    - 1km
-                    - 10km
+                    # - 100m
+                    # - 1km
+                    # - 10km
 
         basemap:
             status: active
@@ -110,43 +246,43 @@ infdb-loader:
             schema: opendata
             prefix: basemap
             layer:
-                - barrierenlinie
-                - bauwerksflaeche
-                - bauwerkslinie
-                - bauwerkspunkt
-                - besondere_flaeche
-                - besondere_linie
-                - besonderer_punkt
-                - gewaesserflaeche
-                - gewaesserlinie
-                - gewaesserpunkt
-                - grenze_flaeche
-                - grenze_linie
-                - grenze_punkt
-                - historische_flaeche
-                - historische_linie
-                - historischer_punkt
-                - name_flaeche
-                - name_punkt
-                - reliefflaeche
-                - relieflinie
-                - reliefpunkt
-                - siedlungsflaeche
-                - vegetationsflaeche
-                - vegetationslinie
-                - vegetationspunkt
-                - verkehrsflaeche
+                # - barrierenlinie
+                # - bauwerksflaeche
+                # - bauwerkslinie
+                # - bauwerkspunkt
+                # - besondere_flaeche
+                # - besondere_linie
+                # - besonderer_punkt
+                # - gewaesserflaeche
+                # - gewaesserlinie
+                # - gewaesserpunkt
+                # - grenze_flaeche
+                # - grenze_linie
+                # - grenze_punkt
+                # - historische_flaeche
+                # - historische_linie
+                # - historischer_punkt
+                # - name_flaeche
+                # - name_punkt
+                # - reliefflaeche
+                # - relieflinie
+                # - reliefpunkt
+                # - siedlungsflaeche
+                # - vegetationsflaeche
+                # - vegetationslinie
+                # - vegetationspunkt
+                # - verkehrsflaeche
                 - verkehrslinie
-                - verkehrspunkt
-                - versorgungslinie
-                - versorgungspunkt
-                - weitere_nutzung_flaeche
+                # - verkehrspunkt
+                # - versorgungslinie
+                # - versorgungspunkt
+                # - weitere_nutzung_flaeche
         plz:
             status: active
-            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/ea73c208-4fae-4ef3-a13e-7cb01a5e657a/plz-5stellig.geojson"
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$ea73c208-4fae-4ef3-a13e-7cb01a5e657a/plz-5stellig.geojson"
             protocol: webdav
-            username: "{loader/hosts/webdav/username}"
-            access_token: "{loader/hosts/webdav/access_token}"
+            username: "infdb"
+            access_token: "letdown subscribe lily catchable landmine sphinx"
             path:
                 base: "{infdb-loader/path/opendata}/plz/"
                 processed: "{infdb-loader/path/processed}/plz/"
@@ -520,3 +656,96 @@ infdb-loader:
               - temperature_2m
               - wind_speed_10m
               - precipitation
+        kwp-nrw:
+          status: not-active
+          schema: opendata
+          prefix: kwp_nrw
+          path:
+              base: "{infdb-loader/path/opendata}/kwp-nrw/"
+              zip: "{infdb-loader/sources/kwp-nrw/path/base}/zip/"
+              unzip: "{infdb-loader/sources/kwp-nrw/path/base}/unzip/"
+              processed: "{infdb-loader/path/processed}/kwp-nrw/"
+          datasets:
+              - name: Waermebedarf
+                status: active
+                table_name: waermebedarf
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Waermebedarf_EPSG25832_Geodatabase.zip
+                layer:
+                  - "Waermelinien"
+                  - "Raumwaermebedarf_ist"
+                  - "Gebaeude_Fortschreibung_moderat"
+                  - "Gebaeude_Fortschreibung_hoch"
+                  - "Gebaeude_Fortschreibung_erhoeht"
+              - name: Energietraeger
+                status: active
+                table_name: energietraeger
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Energietraeger-Sanierung-Baubloecke-Flure-NRW_EPSG25832_Geodatabase.zip
+                layer:
+                  - "Flur_Sanierung_Energietraeger_OpenData"
+                  - "Baublock_Sanierung_Energietraeger_OpenData"
+              - name: Waermelinien
+                status: active
+                table_name: waermelinien
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Waermelinien_EPSG25832_Geodatabase.zip
+                layer:
+                  - "Waermelinien"
+              - name: Tiefe Geothermie
+                status: active
+                table_name: geothermie_tief
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Potenzial_TG_Raster_EPSG25832_Geodatabase.zip
+                layer:
+                  - "MTG_TG_Raster_NRW"
+              - name: Oberflaechennahe Geothermie
+                status: active
+                table_name: geothermie_oberflaeche
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Potenzial_ONG_MTG_Baublock_EPSG25832_Geodatabase.zip
+                layer:
+                  - "Pot_ONG_MTG_NRW"
+              - name: Freiflaechen Solarthermie
+                status: active
+                table_name: solarthermie_freiflaeche
+                url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Potenzial_FF_Solarthermie_Flur_EPSG25832_Geodatabase.zip
+                layer:
+                  - "FF_Solarthermie_Flur_NRW"
+        gebaeude-neuburg:
+            status: active
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
+            protocol: webdav
+            username: "need"
+
+            path:
+                base: "{infdb-loader/path/opendata}/gebaeude-neuburg/"
+                processed: "{infdb-loader/path/processed}/gebaeude-neuburg/"
+            schema: need_intern
+            layer:
+                - "gebaeudedaten_neuburg"
+        waermeatlas-hessen-bensheim:
+            status: active
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/BensheimWaermeatlasHessen.gpkg"
+            protocol: webdav
+            username: "need"
+            path:
+                base: "{infdb-loader/path/opendata}/waermeatlas-hessen-bensheim/"
+                processed: "{infdb-loader/path/processed}/waermeatlas-hessen-bensheim/"
+            schema: need_intern
+            prefix: "waermeatlas_hessen_bensheim"
+            layer:
+                - "WAH_Punkte"
+                - "WAH_Strassenabschnitte"
+                - "WAH_Raster_1km"
+                - "WAH_Raster_100m"
+                - "WAH_Baubloecke"
+                - "Hausumringe"
+                - "Flurstuecke"
+        tudo-basemap-ways:
+            status: active
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/TUDO_Basemap_ways.geojson"
+            protocol: webdav
+            username: "need"
+            path:
+                base: "{infdb-loader/path/opendata}/tudo-basemap-ways/"
+                processed: "{infdb-loader/path/processed}/tudo-basemap-ways/"
+            schema: need_intern
+            layer: 
+                - "Basemap_Oberhausen_Neuburg_Sonthofen_Verkehrslinie"
+
