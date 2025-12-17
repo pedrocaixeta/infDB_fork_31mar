@@ -1,15 +1,12 @@
-import logging
 import multiprocessing as mp
 import os
 import sys
-from typing import Any, Dict, Iterable, List
-
-import geopandas as gpd
-import pandas as pd
-from charset_normalizer import from_path
+from typing import Any, Dict, List
 
 from infdb import InfDB
+
 from . import utils
+
 
 def load(infdb: InfDB) -> None:
     """Entry point to download, validate, and process KWP NRW datasets from heat atlas NRW.
@@ -26,11 +23,14 @@ def load(infdb: InfDB) -> None:
 
         if not utils.if_active("kwp-nrw", infdb):
             return
-        
-        datasets: List[Dict[str, Any]] = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "datasets"])
+
+        datasets: List[Dict[str, Any]] = infdb.get_config_value(
+            [infdb.get_toolname(), "sources", "kwp-nrw", "datasets"]
+        )
 
         # create schema (via package client)
         schema = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "schema"])
+        prefix = infdb.get_config_value([infdb.get_toolname(), "sources", "kwp-nrw", "prefix"])
         with infdb.connect() as db:
             db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {schema};")
 
@@ -46,8 +46,10 @@ def load(infdb: InfDB) -> None:
             # initializer=_init_logger_for_process,
             # initargs=(infdb,),
         ) as pool:
-            results = pool.starmap(process_dataset, [(dataset, infdb.get_toolname(), schema) for dataset in datasets])
-        
+            results = pool.starmap(
+                process_dataset, [(dataset, infdb.get_toolname(), schema, prefix) for dataset in datasets]
+            )
+
         if not all(results):
             raise RuntimeError("Some datasets failed to process")
         else:
@@ -56,7 +58,8 @@ def load(infdb: InfDB) -> None:
         log.exception("An error occurred while processing KWP-NRW: %s", str(err))
         sys.exit(1)
 
-def process_dataset(dataset: Dict[str, Any], tool_name: str, schema: str) -> bool:
+
+def process_dataset(dataset: Dict[str, Any], tool_name: str, schema: str, prefix: str) -> bool:
     """Download, unzip, transform, and load one dataset to PostGIS.
 
     Args:
@@ -69,7 +72,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str, schema: str) -> boo
         # Initialize InfDB in each worker process
         infdb = InfDB(tool_name=tool_name)
         log = infdb.get_worker_logger()
-        
+
         log.info("Working on %s", dataset["name"])
 
         # status gate
@@ -90,24 +93,20 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str, schema: str) -> boo
 
         # layers
         layers = dataset.get("layer", [])
-        
+
         if len(layers) > 1:
             layer_names = [
-                f'{dataset["table_name"]}_{layer}'.replace("_Energietraeger_OpenData", "")
-                for layer in layers
+                f"{dataset['table_name']}_{layer}".replace("_Energietraeger_OpenData", "") for layer in layers
             ]
         else:
-            layer_names = [
-                f'{dataset["table_name"]}'.replace("_Energietraeger_OpenData", "")
-                for layer in layers
-            ]
+            layer_names = [f"{dataset['table_name']}".replace("_Energietraeger_OpenData", "") for layer in layers]
 
         # Export to PostGIS
         log.info("Processing %s", dataset["name"])
 
-        gdb = utils.get_subdirectories_by_suffix(folder_path, suffix=".gdb")[0] # we expect exactly one .gdb folder
-        
-        utils.import_layers(gdb, layers, schema, infdb, "kwp-nrw", layer_names)
+        gdb = utils.get_subdirectories_by_suffix(folder_path, suffix=".gdb")[0]  # we expect exactly one .gdb folder
+
+        utils.import_layers(gdb, layers, schema, infdb, prefix, layer_names)
 
         log.info("Processed sucessfully %s", gdb)
         return True

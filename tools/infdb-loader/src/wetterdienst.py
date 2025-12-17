@@ -3,13 +3,11 @@ import multiprocessing as mp
 from datetime import datetime
 from logging.handlers import QueueHandler
 from typing import Final, Tuple
-
 from zoneinfo import ZoneInfo
+
 from wetterdienst.provider.dwd.observation import DwdObservationRequest
 
-import infdb as infdb
 from . import utils
-
 
 # ============================== Constants ==============================
 

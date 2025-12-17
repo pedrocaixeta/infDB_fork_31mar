@@ -1,8 +1,9 @@
 import os
 import sys
-from typing import List, Sequence
+from typing import Sequence
 
 from infdb import InfDB
+
 from . import utils
 
 
@@ -20,7 +21,9 @@ def load(infdb: InfDB) -> bool:
         if not utils.if_active("gebaeude-neuburg", infdb):
             return True
 
-        base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "gebaeude-neuburg", "path", "base"], type="loader")
+        base_path = infdb.get_config_path(
+            [infdb.get_toolname(), "sources", "gebaeude-neuburg", "path", "base"], type="loader"
+        )
         log.debug("base_path=%s", base_path)
         os.makedirs(base_path, exist_ok=True)
 
@@ -38,18 +41,14 @@ def load(infdb: InfDB) -> bool:
         access_token = None
         if protocol == "webdav":
             username = infdb.get_config_value([infdb.get_toolname(), "sources", "gebaeude-neuburg", "username"])
-            access_token = infdb.get_config_value([infdb.get_toolname(), "sources", "gebaeude-neuburg", "access_token"])
+            access_token = infdb.get_env_variable("WEBDAV_NEED_INTERNAL_ACCESS_TOKEN")
 
         filename, *_ = utils.get_file_from_url(url)
 
         file_path = os.path.join(base_path, filename)
         log.debug("Downloading Gebäude Daten data from %s to %s", url, file_path)
 
-        if os.path.exists(file_path):
-            log.info("File %s already exists.", file_path)
-        else:
-            log.info("File %s will be downloaded from %s", file_path, url)
-            utils.download_files(url, base_path, infdb, protocol, username=username, access_token=access_token)
+        utils.download_files(url, base_path, infdb, protocol, username=username, access_token=access_token)
 
         schema: str = infdb.get_config_value([infdb.get_toolname(), "sources", "gebaeude-neuburg", "schema"])
 

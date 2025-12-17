@@ -3,7 +3,7 @@
 -- ════════════════════════════════════════════════════════════════════════
 -- This script creates a table in the {output_schema} schema that contains
 -- a simplified and renamed copy of the postcode geometries from 
--- {input_schema}."plz_plz-5stellig", transformed to SRID {EPSG}.
+-- {input_schema}."postcode", transformed to SRID {EPSG}.
 -- ════════════════════════════════════════════════════════════════════════
 
 -- 1. Drop the table if it already exists to allow clean recreation
@@ -18,7 +18,7 @@ SELECT
     einwohner AS population,                  -- Number of inhabitants
     ST_Transform(geom, {EPSG}) AS geom      -- Geometry transformed to EPSG:{EPSG}
 FROM 
-    opendata."plz_plz-5stellig";    -- replace by {input_schema}
+    {input_schema}."postcodes_germany";
 
 -- 3. Add a spatial index to improve performance for spatial queries
 CREATE INDEX IF NOT EXISTS idx_postcode_geom 

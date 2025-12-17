@@ -4,19 +4,19 @@ This module is executed from main.py with:
     import process_streets
 """
 
-import geopandas as gpd
-import pandas as pd
-import numpy as np
-import networkx as nx
-from collections import Counter, defaultdict
-import os 
+import os
 import uuid
+from collections import Counter, defaultdict
+from typing import List, Optional, Tuple
 
-from typing import Optional, List, Tuple
-from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
-from shapely.ops import linemerge, split as shp_split
+import geopandas as gpd
+import networkx as nx
+import numpy as np
+import pandas as pd
+from shapely.geometry import LineString, MultiLineString, MultiPoint, Point
+from shapely.ops import linemerge
+from shapely.ops import split as shp_split
 from sqlalchemy import text
-
 
 GLOBAL_JUNCTION_DEGREE = 3
 ROUND_MERGE = 6
@@ -27,6 +27,7 @@ PHASEB_ALLOW_THROUGH = False
 # =========================================================
 # BASIC HELPERS
 # =========================================================
+
 
 def nodes_from_endpoints(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
     """Extract unique endpoints after final processing."""
@@ -46,15 +47,15 @@ def nodes_from_endpoints(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
 
     counts = Counter(pts)
 
-    recs = [
-        {"node_id": i + 1, "degree": counts[pt], "geom": Point(*pt)}
-        for i, pt in enumerate(sorted(counts))
-    ]
+    recs = [{"node_id": i + 1, "degree": counts[pt], "geom": Point(*pt)} for i, pt in enumerate(sorted(counts))]
 
     return gpd.GeoDataFrame(recs, geometry="geom", crs=gdf.crs)
+
+
 # =========================================================
 # CLASS 0 — FAST SPLITTING AT TRUE INTERSECTIONS
 # =========================================================
+
 
 def _query_bulk_pairs(geoms, sidx, predicate="intersects"):
     """
@@ -79,11 +80,7 @@ def _query_bulk_pairs(geoms, sidx, predicate="intersects"):
         return np.array(L), np.array(R)
 
 
-def split_lines_at_nodes_and_intersections_fast(
-    gdf: gpd.GeoDataFrame,
-    round_decimals: int = 6,
-    tol: float = 1.5
-):
+def split_lines_at_nodes_and_intersections_fast(gdf: gpd.GeoDataFrame, round_decimals: int = 6, tol: float = 1.5):
     """
     CLASS 0:
     Splits all LineStrings at real intersections.
@@ -112,8 +109,8 @@ def split_lines_at_nodes_and_intersections_fast(
     flat = gpd.GeoDataFrame(
         rows,
         columns=gdf.columns,
-        geometry=gdf.geometry.name,   # <--- EXPLICITLY SET GEOMETRY COLUMN
-        crs=gdf.crs
+        geometry=gdf.geometry.name,  # <--- EXPLICITLY SET GEOMETRY COLUMN
+        crs=gdf.crs,
     ).reset_index(drop=True)
     # ---------------------------------------------------------
     # 2. Build spatial index
@@ -126,7 +123,7 @@ def split_lines_at_nodes_and_intersections_fast(
     # ---------------------------------------------------------
     # 3. Detect intersection points
     # ---------------------------------------------------------
-    for i, j in zip(left, right):
+    for i, j in zip(left, right, strict=True):
         a = flat.at[i, geom_col]
         b = flat.at[j, geom_col]
         inter = a.intersection(b)
@@ -144,7 +141,7 @@ def split_lines_at_nodes_and_intersections_fast(
             inter_pts_per_line[j].extend(pts)
 
         elif inter.geom_type in ("LineString", "MultiLineString"):
-            for seg in (inter.geoms if inter.geom_type == "MultiLineString" else [inter]):
+            for seg in inter.geoms if inter.geom_type == "MultiLineString" else [inter]:
                 p0 = Point(seg.coords[0])
                 p1 = Point(seg.coords[-1])
                 inter_pts_per_line[i].extend([p0, p1])
@@ -162,14 +159,14 @@ def split_lines_at_nodes_and_intersections_fast(
 
         # Keep only interior intersection points
         pts = [
-            p for p in pts
+            p
+            for p in pts
             if (p.distance(s) > tol and p.distance(e) > tol)  # exclude endpoints
-            and ln.distance(p) <= tol                         # ensure on-line
+            and ln.distance(p) <= tol  # ensure on-line
         ]
 
         # unique by rounded coordinate
-        pts = list({(round(p.x, round_decimals), round(p.y, round_decimals)): p
-                    for p in pts}.values())
+        pts = list({(round(p.x, round_decimals), round(p.y, round_decimals)): p for p in pts}.values())
 
         if pts:
             pieces = shp_split(ln, MultiPoint(pts))
@@ -180,14 +177,13 @@ def split_lines_at_nodes_and_intersections_fast(
         else:
             out_rows.append(row)
 
-    return gpd.GeoDataFrame(
-        out_rows,
-        columns=flat.columns,
-        geometry=geom_col
-    )
+    return gpd.GeoDataFrame(out_rows, columns=flat.columns, geometry=geom_col)
+
+
 # =========================================================
 # CLASS 1 — CLASSIFY SEGMENTS BY ENDPOINT DEGREE
 # =========================================================
+
 
 def classify_by_endpoints(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
     """
@@ -213,10 +209,8 @@ def classify_by_endpoints(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
         for line in parts:
             if not line.is_ring:
                 cs = list(line.coords)
-                endpoints.append((round(cs[0][0], round_decimals),
-                                  round(cs[0][1], round_decimals)))
-                endpoints.append((round(cs[-1][0], round_decimals),
-                                  round(cs[-1][1], round_decimals)))
+                endpoints.append((round(cs[0][0], round_decimals), round(cs[0][1], round_decimals)))
+                endpoints.append((round(cs[-1][0], round_decimals), round(cs[-1][1], round_decimals)))
 
     # Count degrees
     counts = Counter(endpoints)
@@ -244,20 +238,15 @@ def classify_by_endpoints(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
             attrs["segment_type"] = seg_type
             recs.append({**attrs, geom_col: line})
 
-    return gpd.GeoDataFrame(
-        recs,
-        geometry=geom_col,
-        crs=gdf.crs
-)
+    return gpd.GeoDataFrame(recs, geometry=geom_col, crs=gdf.crs)
+
+
 # =========================================================
 # CLASS 1.5 — deadend-junction-iter DETECTION
 # =========================================================
 
-def mark_deadend_junction_iter(
-    gdf: gpd.GeoDataFrame,
-    round_dec: int = 6,
-    type_col: str = "segment_type"
-):
+
+def mark_deadend_junction_iter(gdf: gpd.GeoDataFrame, round_dec: int = 6, type_col: str = "segment_type"):
     """
     CLASS 1.5:
     Iteratives Finden von deadend-junction-iter:
@@ -272,18 +261,17 @@ def mark_deadend_junction_iter(
     work = gdf.copy()
 
     # Only junction-junction candidates
-    eligible = work.index[
-        (work[type_col] == "junction-junction")
-        & (work[geom_col].geom_type == "LineString")
-    ].tolist()
+    eligible = work.index[(work[type_col] == "junction-junction") & (work[geom_col].geom_type == "LineString")].tolist()
 
     if not eligible:
         return gdf
 
     def ends_key(ln: LineString):
         cs = ln.coords
-        return ((round(cs[0][0], round_dec), round(cs[0][1], round_dec)),
-                (round(cs[-1][0], round_dec), round(cs[-1][1], round_dec)))
+        return (
+            (round(cs[0][0], round_dec), round(cs[0][1], round_dec)),
+            (round(cs[-1][0], round_dec), round(cs[-1][1], round_dec)),
+        )
 
     dej_iter = set()
 
@@ -301,11 +289,11 @@ def mark_deadend_junction_iter(
         deg = Counter(endpoints)
 
         newly = [
-            idx for idx in eligible
+            idx
+            for idx in eligible
             if (
                 (deg.get(ends_cache[idx][0], 0) == 1 and deg.get(ends_cache[idx][1], 0) >= 2)
-                or
-                (deg.get(ends_cache[idx][1], 0) == 1 and deg.get(ends_cache[idx][0], 0) >= 2)
+                or (deg.get(ends_cache[idx][1], 0) == 1 and deg.get(ends_cache[idx][0], 0) >= 2)
             )
         ]
 
@@ -319,6 +307,7 @@ def mark_deadend_junction_iter(
         work.loc[list(dej_iter), type_col] = "deadend-junction-iter"
 
     return work
+
 
 # =========================================================
 # MERGE-ENGINE (allgemein, wie in basemap_full_pipeline.py)
@@ -358,6 +347,7 @@ def _merge_attribute_values(values):
     # Fall 4: mehrere verschiedene Werte -> mixed
     return "mixed"
 
+
 def _merge_ids(values):
     """
     Merged ID column:
@@ -376,6 +366,7 @@ def _merge_ids(values):
     collected = sorted(set(collected))
     return ";".join(collected) if collected else None
 
+
 def _flatten_multilines(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     rows = []
     geom_col = gdf.geometry.name
@@ -390,6 +381,7 @@ def _flatten_multilines(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             rows.append(r)
     return gpd.GeoDataFrame(rows, columns=gdf.columns, geometry=geom_col, crs=gdf.crs)
 
+
 def _snap_xy(x: float, y: float, eps: float):
     return (round(x / eps) * eps, round(y / eps) * eps) if eps and eps > 0 else (x, y)
 
@@ -400,33 +392,21 @@ def _ends_snapped(line: LineString, r: int, eps: float):
     e = _snap_xy(cs[-1][0], cs[-1][1], eps)
     return ((round(s[0], r), round(s[1], r)), (round(e[0], r), round(e[1], r)))
 
-def _build_graph_by_type(
-    sub: gpd.GeoDataFrame,
-    type_col: str,
-    round_decimals: int,
-    snap_eps: float
-):
+
+def _build_graph_by_type(sub: gpd.GeoDataFrame, type_col: str, round_decimals: int, snap_eps: float):
     geom_col = sub.geometry.name
     sub = sub.copy()
-    sub[["start", "end"]] = sub[geom_col].apply(
-        lambda g: pd.Series(_ends_snapped(g, round_decimals, snap_eps))
-    )
+    sub[["start", "end"]] = sub[geom_col].apply(lambda g: pd.Series(_ends_snapped(g, round_decimals, snap_eps)))
     G = nx.Graph()
     for idx, row in sub.iterrows():
         G.add_edge(row["start"], row["end"], index=idx, segtype=row.get(type_col))
     return sub, G
 
-def _node_context_alltypes(
-    gdf: gpd.GeoDataFrame,
-    round_decimals: int,
-    snap_eps: float,
-    type_col: str
-):
+
+def _node_context_alltypes(gdf: gpd.GeoDataFrame, round_decimals: int, snap_eps: float, type_col: str):
     flat = _flatten_multilines(gdf.copy())
     geom_col = flat.geometry.name
-    flat[["start", "end"]] = flat[geom_col].apply(
-        lambda g: pd.Series(_ends_snapped(g, round_decimals, snap_eps))
-    )
+    flat[["start", "end"]] = flat[geom_col].apply(lambda g: pd.Series(_ends_snapped(g, round_decimals, snap_eps)))
     deg_all = Counter(flat["start"].tolist() + flat["end"].tolist())
     types_at = defaultdict(set)
     for _, r in flat.iterrows():
@@ -434,6 +414,7 @@ def _node_context_alltypes(
         types_at[r["start"]].add(t)
         types_at[r["end"]].add(t)
     return deg_all, types_at
+
 
 def _merge_degree2_chains_fast(
     sub: gpd.GeoDataFrame,
@@ -443,7 +424,7 @@ def _merge_degree2_chains_fast(
     snap_eps: float,
     junction_degree: int = GLOBAL_JUNCTION_DEGREE,
     deg_all=None,
-    types_at_node=None
+    types_at_node=None,
 ) -> gpd.GeoDataFrame:
     if sub.empty:
         return sub
@@ -496,9 +477,7 @@ def _merge_degree2_chains_fast(
                 nxts = [n for n in G.neighbors(cur) if n != prev]
                 if not nxts:
                     break
-                nxt = nxts[0] if G[cur][nxts[0]]["index"] != idxs[-1] else (
-                    nxts[1] if len(nxts) > 1 else None
-                )
+                nxt = nxts[0] if G[cur][nxts[0]]["index"] != idxs[-1] else (nxts[1] if len(nxts) > 1 else None)
                 if nxt is None:
                     break
                 path.append(nxt)
@@ -552,13 +531,14 @@ def _merge_degree2_chains_fast(
 
 def _angle_deg(a, b, c):
     import math
+
     v1 = (a[0] - b[0], a[1] - b[1])
     v2 = (c[0] - b[0], c[1] - b[1])
     n1 = math.hypot(*v1)
     n2 = math.hypot(*v2)
     if n1 == 0 or n2 == 0:
         return 180.0
-    cosx = max(-1.0, min(1.0, (v1[0]*v2[0] + v1[1]*v2[1]) / (n1*n2)))
+    cosx = max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))
     return math.degrees(math.acos(cosx))
 
 
@@ -580,9 +560,7 @@ def merge_linear_chains_general(
 
     flat = _flatten_multilines(gdf)
     geom_col = flat.geometry.name
-    flat[["start", "end"]] = flat[geom_col].apply(
-        lambda g: pd.Series(_ends_snapped(g, round_decimals, snap_eps))
-    )
+    flat[["start", "end"]] = flat[geom_col].apply(lambda g: pd.Series(_ends_snapped(g, round_decimals, snap_eps)))
     sub = flat if focus_type is None else flat[flat[type_col] == focus_type].copy()
     if sub.empty:
         out = flat.copy()
@@ -602,8 +580,7 @@ def merge_linear_chains_general(
 
     def is_junction(n):
         mixed = len({x for x in types_at.get(n, set()) if x is not None}) > 1
-        return (degree_sub.get(n, 0) >= junction_degree) or \
-               (deg_all.get(n, 0) >= junction_degree) or mixed
+        return (degree_sub.get(n, 0) >= junction_degree) or (deg_all.get(n, 0) >= junction_degree) or mixed
 
     G = nx.Graph()
     for idx, row in sub.iterrows():
@@ -655,8 +632,7 @@ def merge_linear_chains_general(
                 idxs.append(next_idx)
                 prev, cur = cur, nxt
                 continue
-            nxts = [n for n in G.neighbors(cur)
-                    if n != prev and G[cur][n].get("segtype") == segtype]
+            nxts = [n for n in G.neighbors(cur) if n != prev and G[cur][n].get("segtype") == segtype]
             if len(nxts) != 1:
                 return path, idxs
             nxt = nxts[0]
@@ -677,7 +653,7 @@ def merge_linear_chains_general(
             if not path or len(path) < 2 or not idxs:
                 continue
             for i in range(len(path) - 1):
-                visited_edges.add(tuple(sorted((path[i], path[i+1]))))
+                visited_edges.add(tuple(sorted((path[i], path[i + 1]))))
             visited_idx.update(idxs)
             part = sub.loc[idxs]
             merged_geom = linemerge(list(part[geom_col]))
@@ -710,6 +686,7 @@ def merge_linear_chains_general(
     if length_col in final.columns:
         final[length_col] = final[length_col].astype(float)
     return final
+
 
 def merge_linear_chains(
     gdf: gpd.GeoDataFrame,
@@ -772,9 +749,11 @@ def merge_linear_chains(
         snap_eps=snap_eps,
     )
 
+
 # =========================================================
 # PHASE A — DEJ-FAMILY MERGE (deadend-junction + iter)
 # =========================================================
+
 
 def merge_dej_family(gdf: gpd.GeoDataFrame, round_dec=6):
     """
@@ -822,7 +801,7 @@ def merge_dej_family(gdf: gpd.GeoDataFrame, round_dec=6):
     # Merge via DFS walk
     visited = set()
     merged_rows = []
-  
+
     for start_idx in dej_df.index:
         if start_idx in visited:
             continue
@@ -871,18 +850,17 @@ def merge_dej_family(gdf: gpd.GeoDataFrame, round_dec=6):
 
     # Restore original types
     is_merged = merged_df["merged_from_count"].fillna(1) > 1
-    merged_df["segment_type"] = np.where(
-        is_merged,
-        "deadend-junction",
-        merged_df["_raw_type"]
-    )
+    merged_df["segment_type"] = np.where(is_merged, "deadend-junction", merged_df["_raw_type"])
 
     merged_df = merged_df.drop(columns=["_raw_type"], errors="ignore")
 
     return pd.concat([merged_df, others], ignore_index=True)
+
+
 # =========================================================
 # CLASS 2 — RE-CLASSIFY AFTER PHASE A MERGE
 # =========================================================
+
 
 def class2_reclassify(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
     """
@@ -894,10 +872,7 @@ def class2_reclassify(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
         - loop
     und length_m berechnen.
     """
-    out = classify_by_endpoints(
-        gdf.drop(columns=["segment_type"], errors="ignore"),
-        round_decimals=round_decimals
-    )
+    out = classify_by_endpoints(gdf.drop(columns=["segment_type"], errors="ignore"), round_decimals=round_decimals)
 
     geom_col = out.geometry.name
     out["length_m"] = out[geom_col].length.astype(float)
@@ -907,24 +882,25 @@ def class2_reclassify(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
 
     return out
 
+
 # =========================================================
 # DEADEND-JUNCTION LENGTH FILTER
 # =========================================================
+
 
 def apply_dej_length_filter(gdf, min_length):
     """
     Entfernt deadend-junction Segmente unterhalb der Mindestlänge.
     Entspricht dem Original-Skript (Step 7).
     """
-    mask = ~(
-        (gdf["segment_type"] == "deadend-junction") &
-        (gdf["length_m"] < min_length)
-    )
+    mask = ~((gdf["segment_type"] == "deadend-junction") & (gdf["length_m"] < min_length))
     return gdf[mask].copy()
+
 
 # =========================================================
 # CLASS 3 — FINAL CLASSIFICATION BEFORE PHASE B
 # =========================================================
+
 
 def class3_final_classify(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
     """
@@ -932,10 +908,7 @@ def class3_final_classify(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
     Finale Re-Klassification direkt vor PHASE B.
     Identisch zu CLASS 1 & CLASS 2.
     """
-    out = classify_by_endpoints(
-        gdf.drop(columns=["segment_type"], errors="ignore"),
-        round_decimals
-    )
+    out = classify_by_endpoints(gdf.drop(columns=["segment_type"], errors="ignore"), round_decimals)
 
     geom_col = out.geometry.name
     out["length_m"] = out[geom_col].length.astype(float)
@@ -944,9 +917,11 @@ def class3_final_classify(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
 
     return out
 
+
 # =========================================================
 # PHASE B — JUNCTION-JUNCTION MERGE
 # =========================================================
+
 
 def merge_junction_junction(gdf: gpd.GeoDataFrame, round_dec=6):
     """
@@ -978,19 +953,18 @@ def merge_junction_junction(gdf: gpd.GeoDataFrame, round_dec=6):
 
     return merged
 
+
 # =========================================================
 # FINAL RE-CLASS AFTER PHASE B
 # =========================================================
+
 
 def final_reclass(gdf: gpd.GeoDataFrame, round_decimals=6):
     """
     Final CLASSIFICATION after all merges (PHASE A & B).
     """
 
-    out = classify_by_endpoints(
-        gdf.drop(columns=["segment_type"], errors="ignore"),
-        round_decimals
-    )
+    out = classify_by_endpoints(gdf.drop(columns=["segment_type"], errors="ignore"), round_decimals)
 
     geom_col = out.geometry.name
     out["length_m"] = out[geom_col].length.astype(float)
@@ -998,9 +972,12 @@ def final_reclass(gdf: gpd.GeoDataFrame, round_decimals=6):
     out = mark_deadend_junction_iter(out, round_dec=round_decimals)
 
     return out
+
+
 # =========================================================
 # FINAL NODE GENERATION
 # =========================================================
+
 
 def generate_final_nodes(gdf: gpd.GeoDataFrame, round_decimals=6):
     geom_col = gdf.geometry.name
@@ -1020,16 +997,15 @@ def generate_final_nodes(gdf: gpd.GeoDataFrame, round_decimals=6):
 
     counts = Counter(pts)
 
-    recs = [
-        {"node_id": i + 1, "degree": counts[pt], "geom": Point(*pt)}
-        for i, pt in enumerate(sorted(counts))
-    ]
+    recs = [{"node_id": i + 1, "degree": counts[pt], "geom": Point(*pt)} for i, pt in enumerate(sorted(counts))]
 
     return gpd.GeoDataFrame(recs, geometry="geom", crs=gdf.crs)
+
 
 # =========================================================
 # MAIN FULL PIPELINE EXECUTION
 # =========================================================
+
 
 def run_process_streets(
     table_name: str,
@@ -1038,14 +1014,14 @@ def run_process_streets(
     min_length_deadend_junction: float,
     remove_deadend_deadend: bool,
     remove_loop: bool,
-    infdb
+    infdb,
 ):
     """
     InfDB-Version der Basemap-Pipeline mit exakt derselben Merge-Logik
     (inkl. ID-Handling und 'mixed'-Attributen).
     """
 
-    log = infdb.get_log()
+    log = infdb.get_logger()
     log.info("=== PROCESS-STREETS PIPELINE START (basemap-logic) ===")
 
     engine = infdb.get_db_engine()
@@ -1059,23 +1035,16 @@ def run_process_streets(
     if not isinstance(klasse_objektart_filter, dict):
         klasse_objektart_filter = {}
     if not table_name or str(table_name).strip().lower() in ("none", ""):
-        table_name = infdb.get_config_value(
-            ["process-streets", "data", "input", "table_name"]
-        )
+        table_name = infdb.get_config_value(["process-streets", "data", "input", "table_name"])
         log.info(f"table_name from config: {table_name}")
 
     full_table = f"{input_schema}.{table_name}"
     log.info(f"Loading input table: {full_table}")
 
-
     # ----------------------------------------------------------
     # LOAD INPUT
     # ----------------------------------------------------------
-    gdf = gpd.read_postgis(
-        sql=f"SELECT * FROM {full_table}",
-        con=engine,
-        geom_col="geom"
-    )
+    gdf = gpd.read_postgis(sql=f"SELECT * FROM {full_table}", con=engine, geom_col="geom")
 
     # 🔹 HIER: CRS direkt nach read_postgis setzen
     if gdf.crs is None:
@@ -1224,10 +1193,7 @@ def run_process_streets(
     # STEP 5 — CLASS 2 (Reclass + Länge)
     # ----------------------------------------------------------
     log.info("CLASS_2: reclassify + length...")
-    class2 = classify_by_endpoints(
-        after_phase_a.drop(columns=["segment_type"], errors="ignore"),
-        round_decimals=6
-    )
+    class2 = classify_by_endpoints(after_phase_a.drop(columns=["segment_type"], errors="ignore"), round_decimals=6)
     class2["length_m"] = class2[geom_col].length.astype(float)
     class2 = mark_deadend_junction_iter(class2, round_dec=6, type_col="segment_type")
 
@@ -1250,10 +1216,7 @@ def run_process_streets(
     # STEP 7 — CLASS 3 (nur Reclass, keine extra Länge-Logik)
     # ----------------------------------------------------------
     log.info("CLASS_3: final pre-merge reclassification...")
-    class3 = classify_by_endpoints(
-        filtered.drop(columns=["segment_type"], errors="ignore"),
-        round_decimals=6
-    )
+    class3 = classify_by_endpoints(filtered.drop(columns=["segment_type"], errors="ignore"), round_decimals=6)
     class3 = mark_deadend_junction_iter(class3, round_dec=6, type_col="segment_type")
     # ----------------------------------------------------------
     # STEP 7b — SECOND DEJ LENGTH FILTER (after CLASS_3)
@@ -1265,19 +1228,12 @@ def run_process_streets(
         if "length_m" not in class3.columns:
             class3["length_m"] = class3[geom_col].length.astype(float)
 
-        log.info(
-            f"Applying SECOND DEJ length filter after CLASS_3 "
-            f"(only 'deadend-junction' < {thr} m)..."
-        )
-        mask_dej_short2 = (
-            (class3["segment_type"] == "deadend-junction")
-            & (class3["length_m"] < thr)
-        )
+        log.info(f"Applying SECOND DEJ length filter after CLASS_3 (only 'deadend-junction' < {thr} m)...")
+        mask_dej_short2 = (class3["segment_type"] == "deadend-junction") & (class3["length_m"] < thr)
         removed2 = int(mask_dej_short2.sum())
         class3 = class3[~mask_dej_short2].copy()
         log.info(
-            f"Removed {removed2} additional short deadend-junction segments "
-            f"after CLASS_3; remaining {len(class3)}"
+            f"Removed {removed2} additional short deadend-junction segments after CLASS_3; remaining {len(class3)}"
         )
     else:
         log.info("No second DEJ length filter after CLASS_3 (apply_length_filter=False).")
@@ -1375,10 +1331,7 @@ def run_process_streets(
     # STEP 10 — FINAL_RECLASS (true reclassification)
     # ----------------------------------------------------------
     log.info("FINAL_RECLASS: true reclassification after all merges...")
-    final_true = classify_by_endpoints(
-        final.drop(columns=["segment_type"], errors="ignore"),
-        round_decimals=6
-    )
+    final_true = classify_by_endpoints(final.drop(columns=["segment_type"], errors="ignore"), round_decimals=6)
     final_true = mark_deadend_junction_iter(final_true, round_dec=6, type_col="segment_type")
     final_true["length_m"] = final_true[geom_col].length.astype(float)
 
@@ -1447,12 +1400,8 @@ def run_process_streets(
         log.info(f"Set CRS on nodes to {gdf.crs}")
 
     # STEP 12 – SAVE TO POSTGIS
-    segments_table_name = infdb.get_config_value(
-        ["process-streets", "data", "output", "segments_table"]
-    )
-    nodes_table_name = infdb.get_config_value(
-        ["process-streets", "data", "output",  "nodes_table"]
-    )
+    segments_table_name = infdb.get_config_value(["process-streets", "data", "output", "segments_table"])
+    nodes_table_name = infdb.get_config_value(["process-streets", "data", "output", "nodes_table"])
 
     # Falls in der YAML nichts gesetzt ist -> Fallback
     if not segments_table_name:
@@ -1467,16 +1416,11 @@ def run_process_streets(
     try:
         log.info(f"Ensuring schema '{output_schema}' exists...")
         with engine.begin() as conn:
-            conn.execute(
-                text(f'CREATE SCHEMA IF NOT EXISTS "{output_schema}"')
-            )
+            conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{output_schema}"'))
         log.info(f"Schema '{output_schema}' exists or was created.")
     except Exception as e:
-        log.warning(
-            f"Could not ensure schema '{output_schema}' exists "
-            f"(maybe missing rights): {e}"
-        )
-  
+        log.warning(f"Could not ensure schema '{output_schema}' exists (maybe missing rights): {e}")
+
     log.info(f"Writing segments to infdb → {seg_table}")
     final_out.to_postgis(
         segments_table_name,
@@ -1498,19 +1442,13 @@ def run_process_streets(
     # ----------------------------------------------------------
     # STEP 12b — OPTIONAL: write GeoJSON to local filesystem
     # ----------------------------------------------------------
-    file_export_status = infdb.get_config_value(
-        ["process-streets", "data", "output", "file_export", "status"]
-    )
-    output_dir = infdb.get_config_value(
-        ["process-streets", "data", "output", "file_export", "output_dir"]
-    )
+    file_export_status = infdb.get_config_value(["process-streets", "data", "output", "file_export", "status"])
+    output_dir = infdb.get_config_value(["process-streets", "data", "output", "file_export", "output_dir"])
 
     segments_geojson_name = infdb.get_config_value(
         ["process-streets", "data", "output", "file_export", "segments_geojson"]
     )
-    nodes_geojson_name = infdb.get_config_value(
-        ["process-streets", "data", "output", "file_export", "nodes_geojson"]
-    )
+    nodes_geojson_name = infdb.get_config_value(["process-streets", "data", "output", "file_export", "nodes_geojson"])
 
     # Falls nichts gesetzt ist, aus Tabellennamen ableiten (optional)
     if not segments_geojson_name:
@@ -1543,9 +1481,10 @@ def run_process_streets(
         "segments_out": len(final_out),
         "nodes_out": len(nodes),
         "segments_table": seg_table,
-        "nodes_table": node_table
+        "nodes_table": node_table,
     }
-  
+
+
 # =========================================================
 # WRAPPER CALLED FROM main.py
 # =========================================================
@@ -1553,6 +1492,7 @@ def run_process_streets(
 def main(table_name, klasse_filter, apply_length_filter,
          min_length_deadend_junction, remove_deadend_deadend, remove_loop, infdb):
 
+def main(table_name, klasse_filter, apply_length_filter, min_length_deadend_junction, remove_deadend_deadend, infdb):
     def to_bool(x):
         return str(x).strip().lower() in ("true", "1", "yes", "y", "ja")
 

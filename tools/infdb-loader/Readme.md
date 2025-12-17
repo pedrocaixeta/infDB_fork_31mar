@@ -52,3 +52,18 @@ processes.append(mp.Process(target=mydata.load, args=(infdb,), name="mydata"))
 ## After development
 1. Uncomment the lines you commented for development in `main.py`
 2. Test your changes
+
+# How to use bind-mount to load files directly into your host machine
+## When to use
+The current default setup creates a docker managed volume where all downloaded files are placed. 
+The data in docker managed volume are persistent unless the volume is removed.
+This default configuration allows to re-use downloaded files between runs of the infdb-loader container,
+but also a simple removal without enhanced user privilege.
+Volume and therefore downloaded data can be removed for example by:
+```bash
+docker compose down -v
+docker volume rm <volume_name>
+docker volume prune
+```
+and similar commands. 
+Also, as the volume management is done by the Docker engine, a de-installation or switch to other Docker engines can lead to loss of data in these volume.

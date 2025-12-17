@@ -3,8 +3,6 @@ from typing import Dict
 from infdb import InfDB
 
 
-
-
 def main() -> None:
     """Run the KWP SQL workflow.
 
@@ -15,16 +13,16 @@ def main() -> None:
       4) Execute all SQL files in the local ./sql directory with format parameters.
     """
     # Initialize InfDB (config + logging)
-    inf = InfDB(tool_name="kwp", config_path="configs")
-    log = inf.get_log()
+    infdb = InfDB(tool_name="kwp", config_path="configs")
+    log = infdb.get_logger()
 
-    log.info("Starting %s tool", inf.get_toolname())
+    log.info("Starting %s tool", infdb.get_toolname())
 
     # Gather parameters from config
     format_params: Dict[str, str] = {
-        "input_schema_basedata": inf.get_config_value([inf.get_toolname(),"data", "input_schema_basedata"]),
-        "input_schema_ro-heat": inf.get_config_value([inf.get_toolname(),"data", "input_schema_ro-heat"]),
-        "output_schema": inf.get_config_value([inf.get_toolname(),"data", "output_schema"]),
+        "input_schema_basedata": infdb.get_config_value([infdb.get_toolname(), "data", "input_schema_basedata"]),
+        "input_schema_ro-heat": infdb.get_config_value([infdb.get_toolname(), "data", "input_schema_ro-heat"]),
+        "output_schema": infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"]),
     }
 
     try:
@@ -33,7 +31,7 @@ def main() -> None:
         log.info("Output schema: %s", format_params["output_schema"])
 
         # DB work
-        with inf.connect() as db:
+        with infdb.connect() as db:
             db.execute_query(f"DROP SCHEMA IF EXISTS {format_params['output_schema']} CASCADE;")
             db.execute_query(f"CREATE SCHEMA IF NOT EXISTS {format_params['output_schema']};")
 
@@ -41,9 +39,10 @@ def main() -> None:
             db.execute_sql_files("sql", format_params=format_params)
 
         log.info("kwp successfully completed")
-
+        infdb.stop_logger()
     except Exception as e:
         log.error("Something went wrong: %s", str(e))
+        infdb.stop_logger()
         raise
 
 

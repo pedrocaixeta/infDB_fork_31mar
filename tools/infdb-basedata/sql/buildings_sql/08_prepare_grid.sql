@@ -88,14 +88,14 @@ WHERE buildings_grid.x_mp = bld.x_mp_100m
 
 -- Update with construction year data
 UPDATE {output_schema}.buildings_grid
-SET vor1919 = (CASE WHEN bauj.vor1919 IN ('-', '–') THEN 'NaN' ELSE bauj.vor1919 END)::double precision,
-    a1919bis1948 = (CASE WHEN bauj.a1919bis1948 IN ('-', '–') THEN 'NaN' ELSE bauj.a1919bis1948 END)::double precision,
-    a1949bis1978 = (CASE WHEN bauj.a1949bis1978 IN ('-', '–') THEN 'NaN' ELSE bauj.a1949bis1978 END)::double precision,
-    a1979bis1990 = (CASE WHEN bauj.a1979bis1990 IN ('-', '–') THEN 'NaN' ELSE bauj.a1979bis1990 END)::double precision,
-    a1991bis2000 = (CASE WHEN bauj.a1991bis2000 IN ('-', '–') THEN 'NaN' ELSE bauj.a1991bis2000 END)::double precision,
-    a2001bis2010 = (CASE WHEN bauj.a2001bis2010 IN ('-', '–') THEN 'NaN' ELSE bauj.a2001bis2010 END)::double precision,
-    a2011bis2019 = (CASE WHEN bauj.a2011bis2019 IN ('-', '–') THEN 'NaN' ELSE bauj.a2011bis2019 END)::double precision,
-    a2020undspaeter = (CASE WHEN bauj.a2020undspaeter IN ('-', '–') THEN 'NaN' ELSE bauj.a2020undspaeter END)::double precision
+SET vor1919 = (CASE WHEN bauj.vor1919 IN ('-', '–', '') THEN '0' ELSE bauj.vor1919 END)::double precision,
+    a1919bis1948 = (CASE WHEN bauj.a1919bis1948 IN ('-', '–', '') THEN '0' ELSE bauj.a1919bis1948 END)::double precision,
+    a1949bis1978 = (CASE WHEN bauj.a1949bis1978 IN ('-', '–', '') THEN '0' ELSE bauj.a1949bis1978 END)::double precision,
+    a1979bis1990 = (CASE WHEN bauj.a1979bis1990 IN ('-', '–', '') THEN '0' ELSE bauj.a1979bis1990 END)::double precision,
+    a1991bis2000 = (CASE WHEN bauj.a1991bis2000 IN ('-', '–', '') THEN '0' ELSE bauj.a1991bis2000 END)::double precision,
+    a2001bis2010 = (CASE WHEN bauj.a2001bis2010 IN ('-', '–', '') THEN '0' ELSE bauj.a2001bis2010 END)::double precision,
+    a2011bis2019 = (CASE WHEN bauj.a2011bis2019 IN ('-', '–', '') THEN '0' ELSE bauj.a2011bis2019 END)::double precision,
+    a2020undspaeter = (CASE WHEN bauj.a2020undspaeter IN ('-', '–', '') THEN '0' ELSE bauj.a2020undspaeter END)::double precision
 FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
 WHERE buildings_grid.x_mp = bauj.x_mp_100m
   AND buildings_grid.y_mp = bauj.y_mp_100m;

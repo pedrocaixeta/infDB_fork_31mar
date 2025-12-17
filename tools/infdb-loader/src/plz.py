@@ -1,9 +1,9 @@
 import os
-from logging.handlers import QueueHandler
 import sys
-from typing import List, Sequence
+from typing import Sequence
 
 from infdb import InfDB
+
 from . import utils
 
 
@@ -62,7 +62,7 @@ def load(infdb: InfDB) -> bool:
         layers: Sequence[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "layer"])
 
         log.info("Loading PLZ data from %s to %s", url, file_path)
-        utils.import_layers(file_path, layers, schema, infdb, prefix=prefix)
+        utils.import_layers(file_path, layers, schema, infdb, prefix=prefix, layer_names=["germany"])
 
         log.info("PLZ data loaded successfully")
         sys.exit(0)

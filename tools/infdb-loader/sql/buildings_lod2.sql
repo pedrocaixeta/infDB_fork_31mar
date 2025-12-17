@@ -97,9 +97,6 @@ WHERE b.feature_id = hd.feature_id;
 -- fill geom and floor_area columns
 --------------------------------------------------------------
 --------------------------------------------------------------
--- 05_fill_floor_area_geom.sql
--- Fill geometry, ground surface area, and centroid columns
--- 
 -- This query extracts building ground surfaces from the 3D City DB
 -- geometry hierarchy by:
 -- 1. Finding buildings (objectclass_id 901) and their objectids of their child surface geometries
