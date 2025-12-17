@@ -1,26 +1,23 @@
+import csv
 import multiprocessing
 import os
-import csv
-import time
 import random
-import subprocess
-import psycopg2
 import shlex
-from typing import Iterable, List, Optional
+import subprocess
+import time
 from pathlib import Path
-
-import geopandas as gpd
-
-import requests
-from bs4 import BeautifulSoup
-from pySmartDL import SmartDL
+from typing import Iterable, List, Optional
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
 
 import chardet
-
-from infdb import InfDB, InfdbConfig
+import geopandas as gpd
+import psycopg2
+import requests
+from bs4 import BeautifulSoup
+from infdb import InfDB
 from infdb.utils import do_cmd as infdb_do_cmd
+from pySmartDL import SmartDL
 
 # ============================== Constants ==============================
 HTTP_TIMEOUT_SECONDS: int = 60
@@ -45,6 +42,7 @@ def _fetch_html(url: str) -> BeautifulSoup:
     resp.raise_for_status()
     return BeautifulSoup(resp.content, "html.parser")
 
+
 def _pg_connstring_for_gdal(infdb: InfDB) -> str:
     """
     Build a GDAL/OGR PostgreSQL connection string.
@@ -68,9 +66,9 @@ def _pg_connstring_for_psql(infdb: InfDB) -> str:
     """
     params = infdb.get_db_parameters_dict()
     return (
-        f"postgresql://{params['user']}:{params['password']}"
-        f"@{params['host']}:{params['exposed_port']}/{params['db']}"
+        f"postgresql://{params['user']}:{params['password']}@{params['host']}:{params['exposed_port']}/{params['db']}"
     )
+
 
 def _ogr2ogr(cmd_args, infdb, env_extra=None):
     """
@@ -114,7 +112,6 @@ def _ogr2ogr(cmd_args, infdb, env_extra=None):
     if rc != 0:
         raise RuntimeError(f"ogr2ogr failed with code {rc}")
     log.info("ogr2ogr completed successfully.")
-
 
 
 # ======================== toggles & config helpers ========================
@@ -313,6 +310,7 @@ def unzip(zip_files, unzip_dir: str, infdb: InfDB) -> None:
         except BadZipFile as e:
             log.error("Error unzipping %s: %s", zip_file, e)
 
+
 def download_aria2c(
     url: str,
     output_dir: str | Path,
@@ -322,7 +320,7 @@ def download_aria2c(
     continue_download: bool = True,
     allow_overwrite: bool = False,
     auto_file_renaming: bool = False,
-    quiet: bool = True
+    quiet: bool = True,
 ) -> None:
     """
     Download files using aria2c with configurable options.
@@ -330,40 +328,40 @@ def download_aria2c(
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Build command
     cmd_parts: list[str] = ["aria2c"]
-    
+
     # Connection settings
     if continue_download:
         cmd_parts.append("-c")
-    
+
     if connections > 1:
         cmd_parts.extend(["-x", str(connections)])
-    
+
     if max_connection_per_server > 1:
         cmd_parts.extend(["-s", str(max_connection_per_server)])
-    
+
     # Overwrite behavior
     if not allow_overwrite:
         cmd_parts.append("--allow-overwrite=false")
-    
+
     if not auto_file_renaming:
         cmd_parts.append("--auto-file-renaming=false")
-    
+
     # Logging
     if quiet:
         cmd_parts.extend(["--summary-interval=60", "--console-log-level=warn"])
-    
+
     # Output location
     cmd_parts.extend(["-d", str(output_dir)])
-    
+
     if output_filename:
         cmd_parts.extend(["-o", output_filename])
-    
+
     # URL (last argument) – no quotes here, just a normal arg
     cmd_parts.append(url)
-    
+
     # Execute: pass argv list so subprocess can find `aria2c`
     do_cmd(cmd_parts)
 
@@ -379,6 +377,7 @@ def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
     if isinstance(cmd, str) and not shell:
         cmd = shlex.split(cmd)
     return infdb_do_cmd(cmd, is_shell_interpreted=shell)
+
 
 # =================== geospatial / DB import helpers ===================
 
@@ -414,7 +413,6 @@ def get_all_envelops(infdb: InfDB):
     for s in scope:
         envelop.append(gdf[gdf["AGS"].str.startswith(s)])
     return envelop
-
 
 
 # ============================== file helpers ==============================
@@ -507,11 +505,21 @@ def get_number_processes(infdb: InfDB) -> int:
     log.debug("Max processes: %s, Number of processes: %s", max_processes, number_processes)
     return number_processes
 
-# ======================= import / export to postgis =======================-----------------------------------------------------------------------------
 
-def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_names=None,
-                  scope=True, overwrite=True):
-    
+# ======================= import / export to PostGIS =======================
+# --------------------------------------------------------------------------
+
+
+def import_layers(
+    input_file,
+    layers,
+    schema,
+    infdb: InfDB,
+    prefix="",
+    layer_names=None,
+    scope=True,
+    overwrite=True,
+):
     epsg = (infdb.get_db_parameters_dict() or {}).get("epsg")
     dst = _pg_connstring_for_gdal(infdb)
     log = infdb.get_worker_logger()
@@ -525,7 +533,7 @@ def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_nam
     # Get clipping geometry if requested
     clipsrc_opt = []
     tmp_gpkg = None
-    
+
     if scope:
         clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb)
 
@@ -533,8 +541,9 @@ def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_nam
             tmp_gpkg = os.path.splitext(os.path.abspath(input_file))[0] + "_clip_tmp.gpkg"
             try:
                 from shapely import wkt as shapely_wkt
+
                 clip_geom = shapely_wkt.loads(clip_wkt)
-                clip_gdf = gpd.GeoDataFrame([{'geom': clip_geom}], geometry='geom', crs=f"EPSG:{epsg}")
+                clip_gdf = gpd.GeoDataFrame([{"geom": clip_geom}], geometry="geom", crs=f"EPSG:{epsg}")
                 clip_gdf.to_file(tmp_gpkg, layer="clip_boundary", driver="GPKG")
                 clipsrc_opt = ["-clipsrc", tmp_gpkg, "-clipsrclayer", "clip_boundary"]
                 log.info(f"Clipping enabled: {clip_method} method")
@@ -544,27 +553,36 @@ def import_layers(input_file, layers, schema, infdb: InfDB, prefix="", layer_nam
 
     # Import each layer
     first = True
-    for src_layer, dst_name in zip(layers, layer_names):
+    for src_layer, dst_name in zip(layers, layer_names, strict=True):
         log.info(f"Importing '{src_layer}' → {schema}.{dst_name}")
-        
+
         # Only the first layer uses -overwrite; subsequent ones append
         layer_overwrite = overwrite and first
         first = False
 
-        args = [
-            "ogr2ogr",
-            "-progress",
-            "-f", "PostgreSQL", dst,
-            input_file,
-            "-nln", f"{schema}.{dst_name}",
-            "-nlt", "PROMOTE_TO_MULTI",
-            "-lco", "GEOMETRY_NAME=geom",
-            "-t_srs", f"EPSG:{epsg}",
-            # "-makevalid",
-        ] + (["-overwrite"] if layer_overwrite else ["-append"]) \
-          + clipsrc_opt \
-          + [src_layer]
-        
+        args = (
+            [
+                "ogr2ogr",
+                "-progress",
+                "-f",
+                "PostgreSQL",
+                dst,
+                input_file,
+                "-nln",
+                f"{schema}.{dst_name}",
+                "-nlt",
+                "PROMOTE_TO_MULTI",
+                "-lco",
+                "GEOMETRY_NAME=geom",
+                "-t_srs",
+                f"EPSG:{epsg}",
+                # "-makevalid",
+            ]
+            + (["-overwrite"] if layer_overwrite else ["-append"])
+            + clipsrc_opt
+            + [src_layer]
+        )
+
         _ogr2ogr(args, infdb)
 
     # Cleanup temp file
@@ -629,13 +647,12 @@ def fast_copy_points_csv(
             cur.copy_expert(
                 f'COPY "{schema}"."{staging}" ({", ".join(f"""\"{c}\"""" for c in header)}) '
                 f"FROM STDIN WITH (FORMAT csv, DELIMITER ';', HEADER true);",
-                f
+                f,
             )
 
         # Step 4: Build SELECT with type casts
         select_cols = ", ".join(
-            f'"{c}"::double precision' if c in (x_col.lower(), y_col.lower()) else f'"{c}"'
-            for c in header
+            f'"{c}"::double precision' if c in (x_col.lower(), y_col.lower()) else f'"{c}"' for c in header
         )
 
         # Step 5: Get clipping WHERE clause
@@ -647,7 +664,13 @@ def fast_copy_points_csv(
                 where_clause = f"""
                     WHERE ST_Intersects(
                         ST_Transform(
-                            ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
+                            ST_SetSRID(
+                                ST_MakePoint(
+                                    "{x_col}"::double precision,
+                                    "{y_col}"::double precision
+                                ),
+                                {srid_src}
+                            ),
                             {epsg}
                         ),
                         ST_GeomFromText('{clip_wkt}', {epsg})
@@ -662,7 +685,13 @@ def fast_copy_points_csv(
             SELECT
                 {select_cols},
                 ST_Transform(
-                    ST_SetSRID(ST_MakePoint("{x_col}"::double precision, "{y_col}"::double precision), {srid_src}),
+                    ST_SetSRID(
+                        ST_MakePoint(
+                            "{x_col}"::double precision,
+                            "{y_col}"::double precision
+                        ),
+                        {srid_src}
+                    ),
                     {epsg}
                 )::geometry(Point, {epsg}) AS geom
             FROM "{schema}"."{staging}"
@@ -684,32 +713,32 @@ def fast_copy_points_csv(
 def get_clip_geometry(target_crs: int, infdb: InfDB):
     """
     Get clipping geometry for the configured scope.
-    
+
     This is the single source of truth for spatial clipping used by both
     import_layers() and fast_copy_points_csv().
-    
+
     Parameters:
         target_crs: Target EPSG code (e.g., 25832 for UTM32N)
-    
+
     Returns:
         tuple: (geometry_wkt, method_used, row_count_estimate) or (None, None, None) if no clipping
     """
     gdf_envelope = get_envelop(infdb)
     log = infdb.get_worker_logger()
-    
+
     if gdf_envelope is None or gdf_envelope.empty:
         log.info("Scope envelope is empty; no clipping applied.")
         return None, None, None
-    
+
     # Transform to target CRS
     gdf_transformed = gdf_envelope.to_crs(epsg=target_crs)
-    
+
     # Use actual boundary polygons (most accurate)
     clip_geom = gdf_transformed.unary_union
     clip_wkt = clip_geom.wkt
     area_km2 = clip_geom.area / 1_000_000
     log.info(f"Using exact geometry clip: {len(gdf_transformed)} polygons, {area_km2:.1f} km²")
-    return clip_wkt, 'exact', len(gdf_transformed)
+    return clip_wkt, "exact", len(gdf_transformed)
 
 
 def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
@@ -737,7 +766,7 @@ def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
     envelopes = get_all_envelops(infdb)
 
     results = []
-    for scope_prefix, gdf in zip(scope_cfg, envelopes):
+    for scope_prefix, gdf in zip(scope_cfg, envelopes, strict=True):
         if gdf is None or gdf.empty:
             log.warning("No envelope polygons found for scope %s", scope_prefix)
             continue
@@ -746,18 +775,18 @@ def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
         geom = gdf_tr.unary_union
         minx, miny, maxx, maxy = geom.bounds
 
-        results.append({
-            "scope": scope_prefix,
-            "landkreis": scope_prefix[:5],
-            "geom": geom,
-            "bbox": (minx, miny, maxx, maxy),
-        })
+        results.append(
+            {
+                "scope": scope_prefix,
+                "landkreis": scope_prefix[:5],
+                "geom": geom,
+                "bbox": (minx, miny, maxx, maxy),
+            }
+        )
 
     if not results:
         log.info("No valid per-scope clip geometries; no clipping will be applied.")
     else:
-        log.info(
-            "Prepared %d per-scope clip geometries (exact).", len(results)
-        )
+        log.info("Prepared %d per-scope clip geometries (exact).", len(results))
 
     return results

@@ -1,16 +1,13 @@
-import os
+import json
 import logging
 import subprocess
-import json
 from pathlib import Path
-from sqlalchemy import text
-from typing import Dict, List, Optional
-from shapely import wkt as shapely_wkt
-from shapely.geometry import mapping, Polygon
-import geopandas as gpd
-from shapely.ops import unary_union
+from typing import Dict, List
 
-from infdb import InfDB 
+import geopandas as gpd
+from infdb import InfDB
+from sqlalchemy import text
+
 from . import utils
 
 # Module logger
@@ -20,6 +17,7 @@ log = logging.getLogger(__name__)
 # ====================================================================================
 # HELPER FUNCTIONS - Utilities for GDAL/OGR operations and geometry calculations
 # ====================================================================================
+
 
 def _get_gpkg_layers(gpkg: Path) -> list[str]:
     """List layer names in a GPKG."""
@@ -32,18 +30,13 @@ def _get_gpkg_layers(gpkg: Path) -> list[str]:
         # Fallback: parse text output line by line
         # Expected format: "1: layer_name (Geometry Type)"
         out = subprocess.check_output(["ogrinfo", "-ro", "-q", str(gpkg)], text=True, stderr=subprocess.STDOUT)
-        return [
-            line.split(":", 1)[1].split("(")[0].strip()
-            for line in out.splitlines()
-            if ":" in line and "(" in line
-        ]
-
-
+        return [line.split(":", 1)[1].split("(")[0].strip() for line in out.splitlines() if ":" in line and "(" in line]
 
 
 # ====================================================================================
 # MAIN ORCHESTRATION - Entry point that coordinates all dataset loaders
 # ====================================================================================
+
 
 def load(infdb: InfDB) -> bool:
     """Main entry point for loading OpenData Bavaria datasets."""
@@ -71,15 +64,13 @@ def load(infdb: InfDB) -> bool:
         base_path.mkdir(parents=True, exist_ok=True)
 
         # Read dataset configurations
-        datasets = infdb.get_config_value(
-            [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets"]
-        ) or {}
+        datasets = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "datasets"]) or {}
 
         # -------------------- Database Connection Parameters --------------------
         db_params = infdb.get_db_parameters_dict()
         pgurl = (
-            f'postgresql://{db_params["user"]}:{db_params["password"]}'
-            f'@{db_params["host"]}:{db_params["exposed_port"]}/{db_params["db"]}'
+            f"postgresql://{db_params['user']}:{db_params['password']}"
+            f"@{db_params['host']}:{db_params['exposed_port']}/{db_params['db']}"
         )
         target_epsg = db_params["epsg"]
 
@@ -115,6 +106,7 @@ def load(infdb: InfDB) -> bool:
 # SIMPLE VERSION: just download all tiles per Landkreis and import into PostGIS
 # ====================================================================================
 
+
 def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
     """
     Load DGM1 (Geländemodell 1m) for each configured AGS scope.
@@ -134,19 +126,11 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
 
     url_template = infdb.get_config_value(dgm1_cfg + ["url"])
     schema = (
-        infdb.get_config_value(dgm1_cfg + ["schema"])
-        or infdb.get_config_value(source_cfg + ["schema"])
-        or "public"
+        infdb.get_config_value(dgm1_cfg + ["schema"]) or infdb.get_config_value(source_cfg + ["schema"]) or "public"
     )
-    table_base = (
-        infdb.get_config_value(dgm1_cfg + ["table_name"]) or "gelaendemodell_1m"
-    )
-    source_srid = int(
-        infdb.get_config_value(dgm1_cfg + ["srid"]) or (target_epsg or 25832)
-    )
-    target_res = float(
-        infdb.get_config_value(dgm1_cfg + ["target_resolution"]) or 1.0
-    )
+    table_base = infdb.get_config_value(dgm1_cfg + ["table_name"]) or "gelaendemodell_1m"
+    source_srid = int(infdb.get_config_value(dgm1_cfg + ["srid"]) or (target_epsg or 25832))
+    target_res = float(infdb.get_config_value(dgm1_cfg + ["target_resolution"]) or 1.0)
 
     log.info(
         "DGM1: schema=%s base_table=%s srid=%s target_res=%.2f",
@@ -260,7 +244,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
             "-srcnodata -9999 -dstnodata -9999 "
             f'-cutline "{mask_path}" -cl mask -crop_to_cutline '
         )
-        utils.do_cmd(f"gdalwarp {gdalwarp_opts} {src_files} \"{output_tif}\"")
+        utils.do_cmd(f'gdalwarp {gdalwarp_opts} {src_files} "{output_tif}"')
 
         # 3f) Basic validation
         try:
@@ -284,12 +268,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
             db.execute_query(f"DROP TABLE IF EXISTS {target_table};")
 
         import_pipeline = (
-            "raster2pgsql -q "
-            f"-s {source_srid} "
-            "-I -C -M "
-            "-N -9999 "
-            "-t 256x256 "
-            f'"{output_tif}" {target_table} | {psql_cmd}'
+            f'raster2pgsql -q -s {source_srid} -I -C -M -N -9999 -t 256x256 "{output_tif}" {target_table} | {psql_cmd}'
         )
 
         log.info("DGM1: importing scope %s into %s", ags, target_table)
@@ -301,13 +280,8 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
 # LAND USE (TN) LOADER - Vector Polygon Data for Actual Land Usage
 # ====================================================================================
 
-def _load_tatsaechliche_nutzung(
-    infdb: InfDB,
-    cfg: dict,
-    base_path: Path,
-    pgurl: str,
-    target_epsg: int
-):
+
+def _load_tatsaechliche_nutzung(infdb: InfDB, cfg: dict, base_path: Path, pgurl: str, target_epsg: int):
     """Load land use (TN) from Nutzung_kreis.gpkg into PostGIS."""
 
     url = cfg["url"]
@@ -372,12 +346,12 @@ def _load_tatsaechliche_nutzung(
 
     utils.import_layers(
         input_file=str(gpkg_path),
-        layers=layer_names,   # all source layers at once
+        layers=layer_names,  # all source layers at once
         schema=schema,
         infdb=infdb,
         layer_names=dest_names,  # each layer -> same table
-        scope=True,           # apply scope clipping
-        overwrite=True,       # overwrite existing table before import
+        scope=True,  # apply scope clipping
+        overwrite=True,  # overwrite existing table before import
     )
 
     # ==================== 7. FINALIZATION ====================
@@ -385,19 +359,12 @@ def _load_tatsaechliche_nutzung(
     total_rows_imported = 0
     with engine.connect() as conn:
         try:
-            total_rows_imported = conn.execute(
-                text(f"SELECT COUNT(*) FROM {schema}.{table}")
-            ).scalar() or 0
+            total_rows_imported = conn.execute(text(f"SELECT COUNT(*) FROM {schema}.{table}")).scalar() or 0
         except Exception:
             total_rows_imported = 0
 
         if total_rows_imported > 0:
-            conn.execute(
-                text(
-                    f"CREATE INDEX IF NOT EXISTS {table}_geom_gix "
-                    f"ON {schema}.{table} USING GIST(geom);"
-                )
-            )
+            conn.execute(text(f"CREATE INDEX IF NOT EXISTS {table}_geom_gix ON {schema}.{table} USING GIST(geom);"))
             conn.commit()
 
     if total_rows_imported > 0:
@@ -412,15 +379,14 @@ def _load_tatsaechliche_nutzung(
 
 
 # ==================== load lod2 ====================
-def _load_lod2(infdb: InfDB)  -> bool:
-    """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL.
-    """
+def _load_lod2(infdb: InfDB) -> bool:
+    """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL."""
     log = infdb.get_worker_logger()
 
     # Use the same activation logic as DGM1 / TN: based on the dataset config
-    lod2_cfg = infdb.get_config_value(
-        [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2"]
-    ) or {}
+    lod2_cfg = (
+        infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2"]) or {}
+    )
     if lod2_cfg.get("status") != "active":
         log.info("LoD2: building_lod2 dataset not active, skipping.")
         return True
@@ -468,11 +434,16 @@ def _load_lod2(infdb: InfDB)  -> bool:
 
     cmd_parts: List[str] = [
         "citydb import citygml",
-        "-H", params["host"],
-        "-d", params["db"],
-        "-u", params["user"],
-        "-p", params["password"],
-        "-P", str(params["exposed_port"]),
+        "-H",
+        params["host"],
+        "-d",
+        params["db"],
+        "-u",
+        params["user"],
+        "-p",
+        params["password"],
+        "-P",
+        str(params["exposed_port"]),
         f"--import-mode={import_mode}",
         str(gml_path),
     ]
