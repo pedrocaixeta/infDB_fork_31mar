@@ -1,11 +1,9 @@
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:python3.12-trixie-slim
 
-WORKDIR /app
+WORKDIR /workspaces/fastapi
+COPY pyproject.toml /workspaces/fastapi/pyproject.toml
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir fastapi uvicorn[standard] httpx shapely
+RUN uv sync
 
-COPY main.py /app/main.py
-
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY main.py /workspaces/fastapi/main.py
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000" ,"--log-level", "debug"]

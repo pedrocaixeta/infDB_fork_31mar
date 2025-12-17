@@ -1,21 +1,23 @@
 services:
-    jupyter:
-        profiles:
-            - notebook
-        build:
-            context: .
-            dockerfile: Dockerfile
-        working_dir: /app
-        restart: unless-stopped
-        ports:
-            - "${SERVICES_JUPYTER_EXPOSED_PORT}:8888"
-        environment:
-            SERVICES_JUPYTER_TOKEN: ${SERVICES_JUPYTER_TOKEN}
-        volumes:
-            - ../../configs:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
-            - infdb-data:/jupyter
-            - /app/.venv
-        networks:
-            - infdb_network
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
+  jupyter:
+    profiles:
+      - notebook
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${SERVICES_JUPYTER_EXPOSED_PORT}:8888"
+    environment:
+      SERVICES_JUPYTER_TOKEN: ${SERVICES_JUPYTER_TOKEN}
+    volumes:
+      - infdb-jupyter-data:/app/notebooks
+      - ./README.md:/app/README.md
+    networks:
+      - infdb_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  infdb-jupyter-data:
+    name: ${BASE_NAME}-jupyter-data

@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 from urllib.parse import urljoin
 
 import httpx
@@ -12,6 +12,12 @@ from shapely.geometry import mapping, shape
 # Internal URLs for pygeoapi and PostgREST services
 PYGEOAPI_URL = os.getenv("PYGEOAPI_INTERNAL")
 POSTGREST_URL = os.getenv("POSTGREST_INTERNAL")
+if PYGEOAPI_URL is None:
+    raise ValueError("Environment variable PYGEOAPI_INTERNAL is not set.")
+
+if POSTGREST_URL is None:
+    raise ValueError("Environment variable POSTGREST_INTERNAL is not set.")
+POSTGREST_URL_STRING = str(POSTGREST_URL)
 
 # FastAPI app setup
 app = FastAPI(title="infDB API Gateway", version="1.0.0")
@@ -74,7 +80,10 @@ async def _proxy(
     body = await req.body()
     headers = {k: v for k, v in req.headers.items() if k.lower() != "host"}
     timeout = httpx.Timeout(30.0, read=60.0)
-    params = list(override_params) if override_params is not None else dict(req.query_params)
+    # type check has issues with restriction to type: list[tuple[str, str]]
+    params: List[tuple[str, str | int | float | bool | None]] = (
+        list(override_params) if override_params is not None else list(req.query_params.items())
+    )
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.request(method, target, params=params, content=body, headers=headers)
     return resp
@@ -93,7 +102,8 @@ async def get_postgrest(
     tolerance: float = Query(100, description="Geometry simplification tolerance (units match your data)"),
 ):
     # Only pass allowed params to PostgREST, filter out internal params
-    passthrough = [
+    # type check has issues with restriction to type: list[tuple[str, str]]
+    passthrough: List[tuple[str, str | int | float | bool | None]] = [
         (k, v)
         for k, v in request.query_params.multi_items()
         if k not in {"schema", "table", "limit", "offset", "tolerance"}
@@ -103,14 +113,13 @@ async def get_postgrest(
 
     headers = dict(request.headers)
     headers["Accept-Profile"] = schema  # Specify schema for PostgREST
-
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(urljoin(POSTGREST_URL, table), params=passthrough, headers=headers)
+            resp = await client.get(urljoin(POSTGREST_URL_STRING, table), params=passthrough, headers=headers)
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=502,
-            detail=f"Cannot reach PostgREST at {POSTGREST_URL} -> {table}: {e.__class__.__name__}: {e}",
+            detail=f"Cannot reach PostgREST at {POSTGREST_URL_STRING} -> {table}: {e.__class__.__name__}: {e}",
         ) from e
 
     if resp.status_code >= 400:
@@ -145,10 +154,10 @@ async def post_postgrest(schema: str, table: str, row: dict):
     headers = {"Content-Type": "application/json", "Content-Profile": schema}
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.post(urljoin(POSTGREST_URL, table), json=row, headers=headers)
+            resp = await client.post(urljoin(POSTGREST_URL_STRING, table), json=row, headers=headers)
     except httpx.RequestError as e:
         raise HTTPException(
-            status_code=502, detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
+            status_code=502, detail=f"Cannot reach PostgREST at {POSTGREST_URL_STRING}: {e.__class__.__name__}: {e}"
         ) from e
     if resp.status_code not in (200, 201):
         raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
@@ -171,10 +180,10 @@ async def put_postgrest(
     params = {key_column: f"eq.{item_id}"}
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.patch(urljoin(POSTGREST_URL, table), params=params, json=row, headers=headers)
+            resp = await client.patch(urljoin(POSTGREST_URL_STRING, table), params=params, json=row, headers=headers)
     except httpx.RequestError as e:
         raise HTTPException(
-            status_code=502, detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
+            status_code=502, detail=f"Cannot reach PostgREST at {POSTGREST_URL_STRING}: {e.__class__.__name__}: {e}"
         ) from e
     if resp.status_code not in (200, 204):
         raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")
@@ -193,10 +202,10 @@ async def delete_postgrest(
     params = {key_column: f"eq.{item_id}"}
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.delete(urljoin(POSTGREST_URL, table), params=params, headers=headers)
+            resp = await client.delete(urljoin(POSTGREST_URL_STRING, table), params=params, headers=headers)
     except httpx.RequestError as e:
         raise HTTPException(
-            status_code=502, detail=f"Cannot reach PostgREST at {POSTGREST_URL}: {e.__class__.__name__}: {e}"
+            status_code=502, detail=f"Cannot reach PostgREST at {POSTGREST_URL_STRING}: {e.__class__.__name__}: {e}"
         ) from e
     if resp.status_code not in (200, 204):
         raise HTTPException(status_code=resp.status_code, detail=f"PostgREST error: {resp.text}")

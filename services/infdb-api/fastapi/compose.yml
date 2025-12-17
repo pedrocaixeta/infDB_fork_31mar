@@ -6,10 +6,9 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - ${SERVICES_PYGEOAPI_PORT}:${SERVICES_PYGEOAPI_PORT}
-    environment:
-      - PYGEOAPI_INTERNAL=http://pygeoapi:${SERVICES_PYGEOAPI_PORT}/
-      - POSTGREST_INTERNAL=http://postgrest:${SERVICES_POSTGREST_PORT}/
+      - "${SERVICES_API_PORT}:8000"
+    env_file:
+        - ./env_fastapi.list
     restart: unless-stopped
     networks:
       - infdb_network
