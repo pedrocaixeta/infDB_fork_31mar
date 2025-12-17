@@ -62,7 +62,8 @@ def load(infdb: InfDB) -> bool:
         layers: Sequence[str] = infdb.get_config_value([infdb.get_toolname(), "sources", "plz", "layer"])
 
         log.info("Loading PLZ data from %s to %s", url, file_path)
-        utils.import_layers(file_path, layers, schema, infdb, prefix=prefix)
+        layer_name = ["postcode"]
+        utils.import_layers(file_path, layers, schema, infdb, prefix=prefix, layer_names=layer_name)
 
         log.info("PLZ data loaded successfully")
         sys.exit(0)
