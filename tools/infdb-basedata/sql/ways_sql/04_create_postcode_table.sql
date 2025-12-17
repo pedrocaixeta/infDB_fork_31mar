@@ -18,7 +18,7 @@ SELECT
     einwohner AS population,                  -- Number of inhabitants
     ST_Transform(geom, {EPSG}) AS geom      -- Geometry transformed to EPSG:{EPSG}
 FROM 
-    {input_schema}."postcode";
+    {input_schema}."postcodes_germany";
 
 -- 3. Add a spatial index to improve performance for spatial queries
 CREATE INDEX IF NOT EXISTS idx_postcode_geom 
