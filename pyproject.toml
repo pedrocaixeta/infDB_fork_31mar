@@ -11,6 +11,7 @@ dependencies = [
   "beautifulsoup4",
   "bs4", # Alias, nicht zwingend notwendig
   "chardet",
+  "entise>=1.1.0",
   "fastapi==0.124.0",
   "fastapi_utils==0.8.0",
   "geoalchemy2==0.17.1",
@@ -35,6 +36,22 @@ dependencies = [
 
 [dependency-groups]
 dev = ["flake8==7.1.1"]
+lint = [
+  "bandit>=1.9.2",
+  "mypy>=1.19.1",
+  "pandas-stubs>=2.3.3",
+  "ruff>=0.14.9",
+  "types-psycopg2>=2.9.21",
+  "types-pyyaml>=6.0.12",
+  "types-shapely>=2.1.0",
+]
+precommit-hook = [
+  "pre-commit>=4.5.1",
+]
+test =[
+  {include-group = "lint"},
+  {include-group = "precommit-hook"}
+]
 docs = [
     "sphinx==7.3.7",
     "sphinx-rtd-theme==2.0.0",
