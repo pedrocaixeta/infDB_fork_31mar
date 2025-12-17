@@ -57,12 +57,15 @@ test =[
   {include-group = "security-lint"},
 ]
 docs = [
-    "sphinx==7.3.7",
-    "sphinx-rtd-theme==2.0.0",
-    "sphinx-autodoc-typehints==2.0.0",
-    "myst-parser==2.0.0",
-    "sphinx-material",
+"mkdocs-material",
+"mkdocs-material[imaging]",
+"mkdocs-glightbox",
+"mike",
+# Plugins
+"mkdocs-awesome-pages-plugin",
 ]
+
+
 
 #[build-system]
 #requires = ["hatchling"]
