@@ -287,7 +287,7 @@ infdb-loader:
                 base: "{infdb-loader/path/opendata}/plz/"
                 processed: "{infdb-loader/path/processed}/plz/"
             schema: opendata
-            prefix: plz
+            prefix: postcodes
             layer:
                 - plz-5stellig
         tabula:
