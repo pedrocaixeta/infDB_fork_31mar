@@ -6,7 +6,7 @@ CREATE TEMP TABLE IF NOT EXISTS temp_postcode_{EPSG}
 );
 INSERT INTO temp_postcode_{EPSG} (plz, geom)
 SELECT plz::int, ST_Transform(geom, {EPSG})
-FROM {input_schema}."postcode";
+FROM {input_schema}."postcodes_germany";
 -- FROM opendata."postcode";
 
 UPDATE {output_schema}.buildings b
