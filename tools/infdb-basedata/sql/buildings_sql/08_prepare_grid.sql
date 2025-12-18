@@ -56,14 +56,14 @@ ADD COLUMN a2020undspaeter double precision;
 
 -- Update with population data
 UPDATE {output_schema}.buildings_grid
-SET einwohner = pop.einwohner
+SET einwohner = pop.einwohner::bigint
 FROM {input_schema}.zensus_2022_100m_bevoelkerungszahl pop
 WHERE buildings_grid.x_mp = pop.x_mp_100m
   AND buildings_grid.y_mp = pop.y_mp_100m;
 
 -- Update with household size data
 UPDATE {output_schema}.buildings_grid
-SET durchschnhhgroesse = hh.durchschnhhgroesse,
+SET durchschnhhgroesse = hh.durchschnhhgroesse::double precision,
     werterlaeuternde_zeichen = hh.werterlaeuternde_zeichen
 FROM {input_schema}.zensus_2022_100m_durchschn_haushaltsgroesse hh
 WHERE buildings_grid.x_mp = hh.x_mp_100m
@@ -71,7 +71,7 @@ WHERE buildings_grid.x_mp = hh.x_mp_100m
 
 -- Update with building type data
 UPDATE {output_schema}.buildings_grid
-SET insgesamt_gebaeude = bld.insgesamt_gebaeude,
+SET insgesamt_gebaeude = bld.insgesamt_gebaeude::bigint,
     freiefh = (CASE WHEN bld.freiefh IN ('-', '–') THEN 'NaN' ELSE bld.freiefh END)::double precision,
     efh_dhh = (CASE WHEN bld.efh_dhh IN ('-', '–') THEN 'NaN' ELSE bld.efh_dhh END)::double precision,
     efh_reihenhaus = (CASE WHEN bld.efh_reihenhaus IN ('-', '–') THEN 'NaN' ELSE bld.efh_reihenhaus END)::double precision,
