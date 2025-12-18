@@ -23,17 +23,17 @@ COORDINATE SYSTEM:
 */
 
 CREATE TABLE IF NOT EXISTS {output_schema}.ways (
-    way_id                         SERIAL PRIMARY KEY,
-    verkehrslinie_id_basemap  TEXT,
-    clazz                      INTEGER,
-    source                     INTEGER,
-    target                     INTEGER,
-    cost                       DOUBLE PRECISION,
-    reverse_cost               DOUBLE PRECISION,
-    name  TEXT,
-    name_kurz  TEXT,
-    geom                       geometry,
-    postcode                 INTEGER
+    way_id                      SERIAL PRIMARY KEY,
+    verkehrslinie_id_basemap    TEXT,
+    clazz                       INTEGER,
+    source                      INTEGER,
+    target                      INTEGER,
+    cost                        DOUBLE PRECISION,
+    reverse_cost                DOUBLE PRECISION,
+    name                        TEXT,
+    name_kurz                   TEXT,
+    geom                        geometry(LineString, {EPSG}),
+    postcode                    INTEGER
 );
 
 /*
