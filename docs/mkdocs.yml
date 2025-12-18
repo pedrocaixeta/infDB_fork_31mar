@@ -1,0 +1,71 @@
+site_name: infDB Documentation
+theme:
+  name: material
+  site_url: https://example.com
+  logo: docs/img/logo_infdb_192x192.png
+  favicon: docs/img/logo_infdb_192x192.png
+  features:
+    - navigation.instant
+    - content.code.copy
+    - content.code.select
+    - content.code.annotate
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.instant.progress
+    - navigation.top
+
+plugins:
+  - search
+  - awesome-pages
+
+
+nav:
+  - Welcome: 
+    - Introduction: index.md
+    - Getting Started: getting-started.md
+  - Usage: 
+    - Introduction: usage/index.md
+    - Setup: usage/setup.md
+    - Deployment: usage/deployment.md
+    - Services: usage/services.md
+    - Tools: usage/tools.md
+
+  - infDB: 
+    - Overview: infdb/index.md
+    - Core: infdb/core.md
+    - Services: infdb/services.md
+    - Tools: infdb/tools.md
+  - API: 
+    - Overview: api/index.md
+    - FastAPI: api/fastapi.md
+    - PostgREST: api/postgrest.md
+    - pygeoapi: api/pygeoapi.md
+  - Linear Heat Density: 
+    - Overview: linear-heat-density/overview.md
+    - Toolchain: linear-heat-density/toolchain.md
+  - Development: 
+    - Repository: development/repository.md
+    - Workflow: development/index.md
+    - Guidelines: development/guidelines.md
+    - Documentation: development/docs.md
+
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
