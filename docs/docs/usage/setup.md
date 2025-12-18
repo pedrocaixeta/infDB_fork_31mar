@@ -1,81 +1,9 @@
 
-## Prequisites
-
-!!! info 
-    You can either use [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop ](https://docs.docker.com/desktop/) (for a Graphical User Interface).
-
-## Steps
-If you are happy with the preconfiguration and default passwords, then just follow these four steps (see detailed instructions in the corresponding sections below):
-
-1. [Prepare folder structure](#Suggested-folder-structure-for-infDB)   
-2. [Clone infDB](#clone-infdb)
-3. [Startup infDB](#startup-script)
-4. [Import data and run toolchain](#setup-infdb-loader)
-
-!!! warning
-    All commands need to be executed on **macOS or Linux**. 
-
-!!! tip "Tip - Windows Users"
-    Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) **and** [Ubuntu as Windows Subsystem for Linux (WSL)](https://documentation.ubuntu.com/wsl/stable/howto/install-ubuntu-wsl2/). After installation, launch the Linux terminal by searching for "Ubuntu" in your applications.
-
-## Folder Structure of infDB
-The infDB provides a modular folder structure that allows managing multiple database instances independently. Each instance represents a separate deployment with its own data, configuration, and services—ideal for handling different regions, projects, or environments.
-
-
-!!! example
-        infdb/
-        ├── infdb-demo/
-        ├── sonthofen/
-        ├── ...
-        └── muenchen/
-    The recommended structure places all instance data in docker managed volumes while keeping each instance's configuration and tools in separate directories (e.g., `infdb-demo/`, `sonthofen/`, `muenchen/`). This approach simplifies backups, migrations, and multi-instance management.
-
-First of all, create the main `infdb` directory and navigate into it:
-```bash
-mkdir infdb
-cd infdb
-```
-
-## Clone infDB
-Then, you can access the repository either with SSH or HTTPS as you like:
-
-
-!!! warning "Windows Users"
-    Clone the repository to your Ubuntu home directory:
-    ````
-    \\wsl.localhost\Ubuntu\home\[PC username]
-    ````
-    (in file explorer Windows shows \\wsl.localhost as Linux) and execute scripts from Linux terminal (search for Ubuntu in applications)
-
-You can either use **SSH** or **HTTPS**:
-
-- **SSH** (Secure Shell) uses cryptographic key pairs for authentication. Once set up, you won't need to enter credentials for each operation. Recommended for frequent Git operations. 
-- **HTTPS** uses username and password (or personal access token) for authentication. Simpler to set up initially but may require credentials for each operation unless you configure credential caching.
-
-=== "SSH"
-    ``` bash
-    # Replace "infdb-demo" by name of instance 
-    git clone git@git-ce.rwth-aachen.de:need/NEED-infdb.git infdb-demo 
-    ```
-
-=== "HTTPS"
-    ```bash
-    # Replace "infdb-demo" by name of instance
-    git clone https://git-ce.rwth-aachen.de/need/NEED-infdb.git infdb-demo
-    ```
-
-Both methods are secure and work identically for cloning, pushing, and pulling. Your choice depends on your workflow preferences and environment constraints.
-
-Navigate to the instance directory:
-```bash
-cd infdb-demo
-```
-
 
 ## Setup infDB Configuration
 
 !!! note
-    If you're using the default configuration, you can skip editing `.env` configuration file.
+    If you're using the default configuration, you can skip creating and editing `.env` configuration file.
 
 Before starting infDB, you need to configure the infDB, you need to create `.env` configuration file by copying from the template `.env.template`
 ```bash

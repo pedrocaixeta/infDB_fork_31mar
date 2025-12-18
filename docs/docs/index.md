@@ -1,6 +1,6 @@
-# Welcome to infDB - Infrastructure and Energy Database
+# Welcome to infDB
 
-**The infDB (Infrastructure and Energy Database) is a user-friendly, platform-independent, and open-source data infrastructure as a foundation for energy system analyses. It enables complex evaluations by combining various tools through standardized interfaces, fostering an open and interoperable ecosystem.**
+<!-- **The infDB (Infrastructure and Energy Database) is a user-friendly, platform-independent, and open-source data infrastructure as a foundation for energy system analyses. It enables complex evaluations by combining various tools through standardized interfaces, fostering an open and interoperable ecosystem.** -->
 
 
 <!-- ## Table of Contents
@@ -20,43 +20,41 @@
    - [Contribution and Code Quality](#contribution-and-code-quality)
 - [License and Citation](#license-and-citation) -->
 
-## Purpose
+<!-- ## Purpose -->
+<p align="center">
+  <img src="assets/img/logo_infdb_text.png" alt="infDB logo" width="150"/>
+</p>
 
-The infDB offers a flexible and easy-to-configure data infrastructure with essential services, minimizing the effort required for data management. By providing standardized interfaces and APIs, infDB streamlines collaboration in energy modeling and analysis, enabling users to focus on insights rather than data handling.
+The **infDB - Infrastructure and Energy Database** provides a modular and easy-to-configure open-source data and tool infrastructure equipped with essential services, designed to minimize the effort required for data management. Its primary mission is to empower the growth of an ecosystem by offering standardized interfaces and APIs. This platform-independent approach streamlines collaboration in energy modeling and analysis, allowing users to dedicate their focus to generating insights rather than handling data logistics.
 
+The key features of the infDB:
 
-## Applications
-The infDB is useful if you need to deal with geometric and time series data at the same time as for instance:
+- Supports geospatial, time series, and CityGML data
+- Platform independent
+- Modular and flexible
+- Open and standardized interfaces and APIs
+- Open Source - no limiting or restricting licenses
+
+![infDB Overview](assets/img/infdb-overview.png)
+
+## Why use it?
+The infDB can be used effectively wherever geospatial and time series information is required. Possible applications include:
+
 - Energy System Modeling
-- Infrastructure Planning
-- Scenario Analysis
-- Geospatial Analysis
+- Municipal Heat Planning and Infrastructure Planning in general
+- Scenario and Geospatial Analysis
 
-**Linear Heat Density**
+## How it works
+The core of the infDB is the relational database system PostgreSQL, extended by PostGIS, TimescaleDB, pgRouting, and 3D City DB to deal with geospatical, time series, and CityGML data efficiently. Preconfigured services provide base functionality and assist the user, for example, with visualization via QGIS Web Client or Jupyter Notebook. External tools can be connected through standardized interfaces and APIs.
 
-## How it works?
-The infDB architecture is composed of three coordinated layers as shown in the figure below:
+In summary, the infDB architecture is composed of three modules:
 
-1. **Core** – foundational geospatial and semantic infrastructure and energy database
-2. **Services** – preconfigured platform services (left & top)
-3. **Tools** – external connected software and scripts. (right)
+1. **Core** – PostgreSQL database for geospatial and time series data
+2. **Services** – Preconfigured open-source tools providing base functionality
+3. **Tools** – External tools and software interacting with the infDB
 
-The PostgreSQL database is the basis and extended by services and tools. More information of each layer is described below. 
-The PostgreSQL, all services and adopted tools are dockerized for a modular and flexible application.
-![alt text](img/infdb-overview.png)
+This architecture is shown in the figure above. More detailed information can be found in the [infDB section](infdb/index.md).
 
-More information in detail can be found on section infDB.
 
-## License and Citation
-
-The code of this repository is licensed under the **MIT License** (MIT).  
-See [LICENSE](LICENSE) for rights and obligations.  
-See the *Cite this repository* function or [CITATION.cff](CITATION.cff) for citation of this repository.  
-Copyright: [TU Munich - ENS](https://www.epe.ed.tum.de/en/ens/homepage/) | [MIT](LICENSE)
-
-## Contact
-Patrick Buchenberg
-
-Chair of Renewable and Sustainable Energy System - Technical University of Munich (TUM).
-Email: patrick.buchenberg@tum.de
-[https://www.epe.ed.tum.de/ens/staff/ensteam/patrick-buchenberg/](https://www.epe.ed.tum.de/ens/staff/ensteam/patrick-buchenberg/)
+## Feedback and contributions
+The content of this documentation is brand new! If you encounter a mistake, notice missing content, or have any other input, please get in touch on GitHub discussions, or submit an issue/pull request. For matters that should not be visible on GitHub, you can reach us at patrick.buchenberg@tum.de. We welcome any feedback or contribution to improve infDB, its components, and this documentation.

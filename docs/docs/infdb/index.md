@@ -1,5 +1,6 @@
 # infDB - Infrastructure and Energy Database
 
+![alt text](../img/infdb-structure.png)
 
 ## Core
 The foundation is a PostgreSQL database enhanced with TimescaleDB, PostGIS, PGRouting, and the 3D City Database:

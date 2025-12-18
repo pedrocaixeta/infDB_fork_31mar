@@ -1,3 +1,7 @@
+---
+icon: material/docker
+---
+
 ## Start infDB
 The startup script simplifies the startup process if you dont want to execute each single step as shown below separately and are happy with the default configurations and passwords:
 ```bash

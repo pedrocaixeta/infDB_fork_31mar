@@ -1,21 +1,25 @@
-site_name: infDB Documentation
+site_name: "infDB Documentation"
+site_description: "Documentation for the infDB - an open source infrastructure and energy data infrastructure."
+repo_name: "infDB/infDB"
+copyright: "2026, Patrick Buchenberg"
 theme:
   name: material
   site_url: https://example.com
-  logo: docs/img/logo_infdb_192x192.png
-  favicon: docs/img/logo_infdb_192x192.png
+  logo:  docs/assets/img/logo_infdb.png
+  favicon: docs/assets/img/logo_infdb_192x192.png
   features:
-    - navigation.instant
+    # - navigation.instant
     - content.code.copy
     - content.code.select
     - content.code.annotate
     - navigation.tabs
     - navigation.tabs.sticky
-    - navigation.sections
+    # - navigation.sections
     - navigation.expand
     - navigation.path
     - navigation.instant.progress
     - navigation.top
+    - navigation.indexes
 
 plugins:
   - search
@@ -25,32 +29,45 @@ plugins:
 nav:
   - Welcome: 
     - Introduction: index.md
-    - Getting Started: getting-started.md
+    # - Getting Started: getting-started.md
+    - License: license.md
+    - Citation: citation.md
+    - Contact: contact.md
   - Usage: 
     - Introduction: usage/index.md
+    - Requirements: usage/requirements.md
+    - Get Software: usage/get-software.md
     - Setup: usage/setup.md
     - Deployment: usage/deployment.md
     - Services: usage/services.md
     - Tools: usage/tools.md
 
   - infDB: 
-    - Overview: infdb/index.md
+    - Introduction: infdb/index.md
     - Core: infdb/core.md
     - Services: infdb/services.md
     - Tools: infdb/tools.md
   - API: 
-    - Overview: api/index.md
+    - Introduction: api/index.md
     - FastAPI: api/fastapi.md
     - PostgREST: api/postgrest.md
     - pygeoapi: api/pygeoapi.md
+  - Tools: 
+    - Introduction: tools/index.md
+    - infDB-loader: tools/infdb-loader.md
+    - infDB-basedata: tools/infdb-basedata.md
+    - ro-heat: tools/ro-heat.md
+    - KWP: tools/kwp.md
   - Linear Heat Density: 
-    - Overview: linear-heat-density/overview.md
+    - Introduction: linear-heat-density/index.md
     - Toolchain: linear-heat-density/toolchain.md
   - Development: 
     - Repository: development/repository.md
     - Workflow: development/index.md
     - Guidelines: development/guidelines.md
     - Documentation: development/docs.md
+    - Code of Conduct: development/code-of-conduct.md
+    - Contributing: development/contributing.md
 
 
 markdown_extensions:
