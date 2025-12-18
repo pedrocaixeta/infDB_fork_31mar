@@ -1,6 +1,9 @@
+---
+icon: material/cog
+---
+The modular strcuture of the infDB allows 
 
-
-## Setup infDB Configuration
+All configuration of the infDb are central in the environment file -env
 
 !!! note
     If you're using the default configuration, you can skip creating and editing `.env` configuration file.

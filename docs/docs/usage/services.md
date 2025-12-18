@@ -1,6 +1,33 @@
+---
+icon: material/cogs
+---
+
 The infDB provides you can preconfigured services:
 
 ![alt text](services.png)
+
+## Jupyter
+The relevant configuration in parameters for Jupyter Service
+``` bash title=".env"
+COMPOSE_PROFILES=...,notebook,...  # (1)
+SERVICES_JUPYTER_EXPOSED_PORT=8888 # (2)
+SERVICES_JUPYTER_TOKEN=infdb # (3)
+```
+
+1. Profile "notebook" must be within the list to activate Jupyter service
+2. Port on which the Jupyter is available 
+3. Token for identification to Jupyter Notebook
+
+Open in your browser the following address:
+=== "Local"
+    http://localhost/8888
+
+=== "Remote"
+    http://IP-ADDRESS-OF-HOST/8888
+
+
+
+## QGIS Webclient (QWC)
 
 ## pgAdmin
 

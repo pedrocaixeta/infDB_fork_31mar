@@ -185,6 +185,12 @@
   },
   "active": "fb34477255bc0eea",
   "lastOpenFiles": [
+    "docs/infdb/core.md",
+    "docs/infdb/database.md",
+    "docs/infdb/architecture.md",
+    "docs/tools/template.md",
+    "docs/tools/devcontainer.md",
+    "docs/api/fastapi.md",
     "docs/assets/img/logo_infdb_text.png.sb-dc67c100-sZZS1G",
     "docs/development/contributing.md",
     "docs/development/index.md",

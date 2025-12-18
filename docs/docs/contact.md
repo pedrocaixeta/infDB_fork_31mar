@@ -1,3 +1,7 @@
+---
+icon: material/card-account-mail
+---
+
 Patrick Buchenberg
 
 Chair of Renewable and Sustainable Energy System - Technical University of Munich (TUM).

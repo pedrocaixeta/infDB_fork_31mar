@@ -44,7 +44,9 @@ nav:
 
   - infDB: 
     - Introduction: infdb/index.md
+    - Architecture: infdb/architecture.md
     - Core: infdb/core.md
+    - Database: infdb/database.md
     - Services: infdb/services.md
     - Tools: infdb/tools.md
   - API: 
@@ -52,8 +54,10 @@ nav:
     - FastAPI: api/fastapi.md
     - PostgREST: api/postgrest.md
     - pygeoapi: api/pygeoapi.md
+    - pypackage: api/pypackage.md
   - Tools: 
     - Introduction: tools/index.md
+    - Template: tools/template.md
     - infDB-loader: tools/infdb-loader.md
     - infDB-basedata: tools/infdb-basedata.md
     - ro-heat: tools/ro-heat.md
@@ -62,8 +66,8 @@ nav:
     - Introduction: linear-heat-density/index.md
     - Toolchain: linear-heat-density/toolchain.md
   - Development: 
+    - Introduction: development/index.md
     - Repository: development/repository.md
-    - Workflow: development/index.md
     - Guidelines: development/guidelines.md
     - Documentation: development/docs.md
     - Code of Conduct: development/code-of-conduct.md
@@ -73,7 +77,6 @@ nav:
 markdown_extensions:
   - abbr
   - admonition
-  - attr_list
   - def_list
   - pymdownx.details
   - pymdownx.superfences
@@ -86,3 +89,11 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+        permalink: true      # Adds a paragraph symbol (¶) to headers for linking
+        toc_depth: 2-3       # Only show levels 2 through 3 (## and ###)
+        title: Content  # Rename the TOC title (Material theme only)

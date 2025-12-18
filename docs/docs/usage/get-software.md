@@ -1,6 +1,9 @@
-<!-- ---
+---
 icon: material/download
---- -->
+---
+
+!!! warning
+    All commands need to be executed on **macOS or Linux**. 
 
 ## Local Folder Structure
 The infDB provides a modular folder structure that allows managing multiple database instances independently. Each instance represents a separate deployment with its own data, configuration, and services—ideal for handling different regions, projects, or environments.
