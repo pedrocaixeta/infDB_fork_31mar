@@ -27,6 +27,7 @@ stages:
   - setup
 #  - test
   - lint
+  - docs
 
 # Setup job
 setup:
@@ -118,3 +119,19 @@ security:
     - bandit -r **/*.py --severity-level medium --exclude build --skip "B608"
     - safety check
   allow_failure: true
+
+
+create-pages:
+  stage: docs
+  dependencies:
+    - setup
+  script:
+    - source .venv/bin/activate
+    - mkdocs build --site-dir public.
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - ~/.cache/ 
+  artifacts:
+    paths:
+      - public

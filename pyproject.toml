@@ -51,11 +51,6 @@ security-lint = [
   "bandit>=1.9.2",
   "safety>=3.7.0",
 ]
-test =[
-  {include-group = "precommit-hook"},
-  {include-group = "lint"},
-  {include-group = "security-lint"},
-]
 docs = [
 "mkdocs-material",
 "mkdocs-material[imaging]",
@@ -65,7 +60,12 @@ docs = [
 "mkdocs-awesome-pages-plugin",
 "watchdog",
 ]
-
+test =[
+  {include-group = "precommit-hook"},
+  {include-group = "lint"},
+  {include-group = "security-lint"},
+  {include-group = "docs"},
+]
 
 
 #[build-system]
