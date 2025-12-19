@@ -62,4 +62,4 @@ Install all required Python packages using UV and the provided `requirements.txt
    # Install requirements (only once)
    uv pip install -r requirements.txt
 
-These packages include libraries needed to run the Data Loader, manage configurations, and interact with the backend services such as TimescaleDB and 3DCityDB.
+These packages include libraries needed to run the Data Loader, manage configurations, and interact with the backend services such as TimescaleDB and infDB.

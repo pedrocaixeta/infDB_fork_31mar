@@ -6,7 +6,7 @@ This chapter outlines the architecture of **InfDB**.
 System Overview
 ----------------
 
-InfDB combines static **3D city models** with dynamic **time-series** information. It acts as a bridge between **3DCityDB** and **TimescaleDB** by introducing a raster-based resolutions.
+InfDB combines static **3D city models** with dynamic **time-series** information. It acts as a bridge between **infDB** and **TimescaleDB** by introducing a raster-based resolutions.
 
 .. note::
 
@@ -21,7 +21,7 @@ Components
 +---------------------+-----------------------------------------------------------------------------------------------------+
 | **Component**       | **Role**                                                                                            |
 +=====================+=====================================================================================================+
-| **3DCityDB**        | PostgreSQL/PostGIS database storing the static CityGML city model                                   |
+| **infDB**        | PostgreSQL/PostGIS database storing the static CityGML city model                                   |
 |                     | (buildings, terrain, geometry).                                                                     |
 +---------------------+-----------------------------------------------------------------------------------------------------+
 | **TimescaleDB**     | PostgreSQL extension optimised for high-volume time-series data                                     |
@@ -33,7 +33,7 @@ Components
 Database Schema
 ---------------
 
-3DCityDB
+infDB
 ^^^^^^^^^
 
 +------------------------+-----------------------------------------------------------------------------------------+

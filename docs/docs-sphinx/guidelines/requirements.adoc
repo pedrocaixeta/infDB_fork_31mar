@@ -9,7 +9,7 @@ This document defines the foundational needs for the database and its associated
 
 == Must-Have Requirements
 
-1. The database must support comprehensive infrastructure and energy network topology modeling to extend the 3DCityDB:
+1. The database must support comprehensive infrastructure and energy network topology modeling to extend the infDB:
    - Electrical grid components (transformers, substations, power lines, switches)
    - Heating networks (pipes, heat exchangers, district heating plants)
    - Gas networks (pipelines, compressor stations, storage facilities)
@@ -141,7 +141,7 @@ This document defines the foundational needs for the database and its associated
 
 == Should-Have Requirements
 
-1. The system should include support for projecting infrastructure data onto external maps (e.g., OpenStreetMap, 3DCityDB, CESIUMJS).
+1. The system should include support for projecting infrastructure data onto external maps (e.g., OpenStreetMap, infDB, CESIUMJS).
 2. The system should support real-time data updates and visualization in tools like CesiumJS as a future capability.
 3. The database should be interoperable with simulation tools such as pandapower, PowerFactory, OpenDSS, MATPOWER, or other energy grid tools.
 4. The system should use modular deployment with containerization (e.g., Docker) to allow scalable and independent scaling of the API, database, and visualization modules.

@@ -10,7 +10,7 @@ When the solar pipeline runs:
 2. Sunlight exposure is simulated using predefined parameters.
 3. Results are exported and stored in the **CityDB v5** schema for long-term use.
 
-You can enable this module **after the Data Loader setup is complete** and all 3DCityDB services are up and running.
+You can enable this module **after the Data Loader setup is complete** and all infDB services are up and running.
 
 Step 1: Generate the `.env` File for Sunpot
 -------------------------------------------

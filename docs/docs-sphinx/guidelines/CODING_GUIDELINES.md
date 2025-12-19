@@ -59,7 +59,7 @@ infDB (infrastructure DataBase) is designed to create comprehensive digital twin
 - **Extensions**: 
   - PostGIS for geospatial data
   - TimescaleDB for time-series data
-  - 3DCityDB for urban modeling
+  - infDB for urban modeling
 
 ### Deployment
 - **Containerization**: Docker
@@ -352,7 +352,7 @@ def env(name: str, default: Optional[str] = None, *, required: bool = False) -> 
 
 - Test interactions between different components of the system
 - Verify data flow between API endpoints and database repositories
-- Test integration between different database components (TimescaleDB, PostGIS, 3DCityDB)
+- Test integration between different database components (TimescaleDB, PostGIS, infDB)
 - Use Docker Compose for creating isolated test environments
 - Implement end-to-end tests for critical user workflows
 - Test error handling and recovery across component boundaries
@@ -562,9 +562,9 @@ class ExampleClass:
 - Optimize **spatial joins** to minimize computational overhead
 - Consider **simplifying geometries** for performance when appropriate
 
-### 3DCityDB
+### infDB
 
-- Follow the **3DCityDB schema** for urban modeling
+- Follow the **infDB schema** for urban modeling
 - Use **appropriate LOD (Level of Detail)** for different use cases
 - Implement **proper integration** with other database components
 - Optimize **3D queries** for performance

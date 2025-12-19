@@ -3,10 +3,10 @@
 InfDB is designed as a comprehensive database system for creating digital twins of energy infrastructure with integrated geospatial and
 time-series capabilities. The system architecture follows a layered approach with clear separation of concerns.
 
-The core of the system consists of a PostgreSQL database with specialized extensions (TimescaleDB, PostGIS, 3DCityDB) to handle
+The core of the system consists of a PostgreSQL database with specialized extensions (TimescaleDB, PostGIS, infDB) to handle
 different types of data. The application layer is built with FastAPI, providing a RESTful interface to interact with the database.
 
-InfDB is a data integration platform that combines **static 3D city models** with **dynamic time-series data**. It connects **3DCityDB** and **TimescaleDB** through a raster-based spatial resolution approach.
+InfDB is a data integration platform that combines **static 3D city models** with **dynamic time-series data**. It connects **infDB** and **TimescaleDB** through a raster-based spatial resolution approach.
 
 Raster grids are generated at specified resolutions (e.g., 100 m, 1 000 m), using official grid IDs from the [Federal Agency for Cartography and Geodesy(BKG)]
 (https://gdz.bkg.bund.de/index.php/default/open-data/geographische-gitter-fur-deutschland-in-lambert-projektion-geogitter-inspire.html).
@@ -20,7 +20,7 @@ InfDB is composed of the following main components:
 1.  **Database Layer** PostgreSQL with extensions for specialized data types:
     -   TimescaleDB: Handles time-series data efficiently
     -   PostGIS: Provides geospatial capabilities
-    -   3DCityDB: Supports urban modeling and 3D city data
+    -   infDB: Supports urban modeling and 3D city data
 2.  **API Layer** FastAPI-based RESTful interface:
     -   City Router: Handles geospatial data and building information
     -   Weather Router: Manages time-series weather data
@@ -40,7 +40,7 @@ InfDB is composed of the following main components:
 
 The data flow in InfDB follows these general patterns:
 
-1.  **Geospatial Data Flow**: External GIS data → 3DCityDB → CityDB
+1.  **Geospatial Data Flow**: External GIS data → infDB → CityDB
     Repository → CityDB Service → API
 2.  **Time-Series Data Flow**: External Weather API → Weather Service →
     Weather Repository → TimescaleDB → API
@@ -67,7 +67,7 @@ InfDB:
 
 ## Database Schema
 
-InfDB separates data modeling across two databases: **3DCityDB** and
+InfDB separates data modeling across two databases: **infDB** and
 **TimescaleDB**, each initialized independently using SQLModel with a
 dedicated base class.
 
@@ -99,7 +99,7 @@ Defined in `src/db/connection.py`:
     CityDBBase.metadata.create_all(citydb_engine)
 ```
 
-### 3DCityDB Schema
+### infDB Schema
 
 InfDB extends the CityGML schema with two application-specific tables:
 

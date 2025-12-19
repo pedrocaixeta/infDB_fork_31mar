@@ -32,7 +32,7 @@ This folder helps new developers set up and run InfDB on their local machines. I
   Step-by-step instructions to spin up the entire system using Docker.
 
 - **`solar_pipeline.md`**  
-  Explains how to run the solar potential analysis pipeline using SunPot and 3DCityDB.
+  Explains how to run the solar potential analysis pipeline using SunPot and infDB.
 
 - **`testing.md`**  
   Describes how to run unit, integration, and end-to-end tests.

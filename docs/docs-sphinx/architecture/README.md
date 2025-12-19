@@ -9,7 +9,7 @@ The `architecture/` folder helps developers, analysts, and maintainers understan
 ## Contents
 
 - [**System Overview**](SYSTEM_OVERVIEW.md)  
-  Describes the high-level architecture of InfDB, including the layered design (database, API, services, models) and how geospatial and time-series data are combined using raster-based resolution. It also covers key technologies such as PostgreSQL, 3DCityDB, TimescaleDB, and FastAPI.
+  Describes the high-level architecture of InfDB, including the layered design (database, API, services, models) and how geospatial and time-series data are combined using raster-based resolution. It also covers key technologies such as PostgreSQL, infDB, TimescaleDB, and FastAPI.
 
 - [**Data Loader**](DATA_LOADER.md)  
   Explains how infrastructure and datasets are configured and provisioned through a modular, Docker-based system. Includes architecture for the loader, how datasets are defined via configuration, and how new sources can be added through modular Python scripts.

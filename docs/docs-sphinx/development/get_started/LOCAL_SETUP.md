@@ -178,7 +178,7 @@ Each data source can be toggled using status: active or inactive.
 This reads config-services.yml and writes a docker-compose.yml
 for only the active services.
 
-### 8. Start Database Services (TimescaleDB + 3DCityDB)
+### 8. Start Database Services (TimescaleDB + infDB)
 ```bash
     docker-compose -f docker-compose.yml --env-file .env up --build
 ```

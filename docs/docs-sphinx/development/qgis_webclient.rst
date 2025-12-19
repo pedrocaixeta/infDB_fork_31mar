@@ -2,7 +2,7 @@
 QGIS Web Client Documentation for ENS:
 --------------------------------------
 
-We use the docker images of the QGIS Web Client (QWC) and qwc-services for visualization of geodata from the 3DCityDB.
+We use the docker images of the QGIS Web Client (QWC) and qwc-services for visualization of geodata from the infDB.
 Once QWC is set up onthe server, one can create QGIS projects on a local machine with QGIS Desktop and upload them to the server.
 The server generates a “theme” from every added project and makes it visible on a web interface.
 There is an official GitHub repo for the QWC docker containers, but we use a slightly adjusted version of it with some configuration changes.

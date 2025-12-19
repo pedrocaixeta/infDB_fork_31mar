@@ -1,7 +1,7 @@
 Data Loader
 ===========
 
-InfDB includes a Data Loader that prepares your datasets, sets up the required services (e.g., 3DCityDB, TimescaleDB), and organizes your project files.
+InfDB includes a Data Loader that prepares your datasets, sets up the required services (e.g., infDB, TimescaleDB), and organizes your project files.
 
 When the loader runs:
 

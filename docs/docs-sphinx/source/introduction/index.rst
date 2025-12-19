@@ -10,7 +10,7 @@ Overview
 
 InfDB is built on two main technologies:
 
-- **3DCityDB** – to store and manage detailed 3D models of cities.
+- **infDB** – to store and manage detailed 3D models of cities.
 - **TimescaleDB** – to store time-series data like weather or energy measurements.
 
 This platform helps planners and researchers understand how buildings and infrastructure are affected by changing data over time. It supports better decisions in energy planning and city management.
@@ -36,7 +36,7 @@ InfDB is built on a modern technology stack:
 - **Database Layer**: PostgreSQL with specialized extensions:
   - TimescaleDB for efficient time-series data storage and querying
   - PostGIS for geospatial data handling
-  - 3DCityDB for urban modeling
+  - infDB for urban modeling
 
 - **API Layer**: FastAPI-based RESTful interface with two main routes:
   - /city - For accessing 3D city model data, including buildings and spatial attributes
