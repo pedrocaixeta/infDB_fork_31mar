@@ -594,6 +594,28 @@ infdb-loader:
                 url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW-Potenzial_FF_Solarthermie_Flur_EPSG25832_Geodatabase.zip
                 layer:
                   - "FF_Solarthermie_Flur_NRW"
+        kwp-nrw-oberhausen:
+          status: active
+          url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW_05119000_Oberhausen_EPSG25832_Shape.zip
+          schema: opendata
+          prefix: kwp_nrw_oberhausen
+          path:
+              base: "{infdb-loader/path/opendata}/kwp-nrw-oberhausen/"
+              zip: "{infdb-loader/sources/kwp-nrw-oberhausen/path/base}/zip/"
+              unzip: "{infdb-loader/sources/kwp-nrw-oberhausen/path/base}/unzip/"
+              processed: "{infdb-loader/path/processed}/kwp-nrw-oberhausen/"
+          layer:
+            - "WBM-NRW"
+            - "WBM-NRW-erhoeht"
+            - "WBM-NRW-hoch"
+            - "WBM-NRW-moderat"
+            - "WBM-NRW-Waermelinien"
+            - "Sanierung_Energietraeger_Flure"
+            - "Sanierung_Energietraeger_Baublock"
+            - "Potenzial_TG_Raster"
+            - "Potenzial_ONG_MTG_Baublock"
+            - "Potenzial_FF_Solarthermie_Flur"
+
         gebaeude-neuburg:
             status: active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
