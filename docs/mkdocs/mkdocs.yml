@@ -28,11 +28,11 @@ plugins:
 
 nav:
   - Welcome: 
-    - Introduction: index.md
+    - Introduction: welcome/index.md
     # - Getting Started: getting-started.md
-    - License: license.md
-    - Citation: citation.md
-    - Contact: contact.md
+    - License: welcome/license.md
+    - Citation: welcome/citation.md
+    - Contact: welcome/contact.md
   - Usage: 
     - Introduction: usage/index.md
     - Requirements: usage/requirements.md

@@ -185,6 +185,8 @@
   },
   "active": "fb34477255bc0eea",
   "lastOpenFiles": [
+    "docs/assets/img/infdb-overview.png",
+    "docs/assets/img/image.png",
     "docs/infdb/core.md",
     "docs/infdb/database.md",
     "docs/infdb/architecture.md",
@@ -211,7 +213,6 @@
     "docs/assets/img/logo_infdb.png",
     "docs/assets/img/linear-heat-density.jpg",
     "docs/assets/img/infdb-structure.png",
-    "docs/assets/img/infdb-overview.png",
     "docs/assets/img",
     "docs/assets",
     "docs/usage/requirements.md",

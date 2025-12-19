@@ -1,7 +1,7 @@
 ---
 icon: material/cog
 ---
-The modular strcuture of the infDB allows 
+All central configurations of the infDB are stored in the environment file .env in project root. The modular structure of the infDB allows to run services 
 
 All configuration of the infDb are central in the environment file -env
 
@@ -30,16 +30,16 @@ Edit the environment file `.env` to customize your infDB instance settings (data
 # Select profiles to activate
 
 # Base profiles
-COMPOSE_PROFILES=core
+COMPOSE_PROFILES=core # (1)
 
 # All profiles
-# COMPOSE_PROFILES=core,admin,notebook,qwc,api
+# COMPOSE_PROFILES=core,admin,notebook,qwc,api # (2)
 
 # ==============================================================================
 # BASE CONFIGURATION
 # ==============================================================================
 # Base name for the project (used in network names and data paths)
-BASE_NAME=infdb-demo
+BASE_NAME=infdb-demo # (3)
 
 # ==============================================================================
 # POSTGRESQL DATABASE (Core Service)
@@ -47,18 +47,18 @@ BASE_NAME=infdb-demo
 # Profile: core
 
 # Database name
-SERVICES_POSTGRES_DB=infdb
+SERVICES_POSTGRES_DB=infdb  # (4)
 
 # Database credentials
-SERVICES_POSTGRES_USER=infdb_user
-SERVICES_POSTGRES_PASSWORD=infdb
+SERVICES_POSTGRES_USER=infdb_user   # (5)
+SERVICES_POSTGRES_PASSWORD=infdb    # (6)
 
 # Host:Port address from which a container is able to reach the Postgres database
-SERVICES_POSTGRES_HOST=host.docker.internal
-SERVICES_POSTGRES_EXPOSED_PORT=54328
+SERVICES_POSTGRES_HOST=host.docker.internal # (7)
+SERVICES_POSTGRES_EXPOSED_PORT=54328    # (8)
 
 # EPSG code for spatial reference system (25832 = ETRS89 / UTM zone 32N)
-SERVICES_POSTGRES_EPSG=25832
+SERVICES_POSTGRES_EPSG=25832    # (9)
 
 
 # ==============================================================================
@@ -67,11 +67,11 @@ SERVICES_POSTGRES_EPSG=25832
 # Profile: admin
 
 # Default login credentials for pgAdmin
-SERVICES_PGADMIN_DEFAULT_EMAIL=admin@need.energy
-SERVICES_PGADMIN_DEFAULT_PASSWORD=infdb
+SERVICES_PGADMIN_DEFAULT_EMAIL=admin@need.energy # (10)
+SERVICES_PGADMIN_DEFAULT_PASSWORD=infdb # (11)
 
 # Port to expose pgAdmin on the host machine
-SERVICES_PGADMIN_EXPOSED_PORT=82
+SERVICES_PGADMIN_EXPOSED_PORT=82    # (12)
 
 
 # ==============================================================================
@@ -80,7 +80,7 @@ SERVICES_PGADMIN_EXPOSED_PORT=82
 # Profile: api
 
 # Port for the FastAPI service
-SERVICES_API_PORT=8000
+SERVICES_API_PORT=8000  # (13)
 
 
 # ==============================================================================
@@ -89,10 +89,10 @@ SERVICES_API_PORT=8000
 # Profile: api
 
 # Port for the PyGeoAPI service
-SERVICES_PYGEOAPI_PORT=8001
+SERVICES_PYGEOAPI_PORT=8001 # (14)
 
 # Host IP to run PyGeoAPI on (e.g., localhost or 10.162.28.144)
-SERVICES_PYGEOAPI_BASE_HOST=localhost
+SERVICES_PYGEOAPI_BASE_HOST=localhost   # (15)
 
 
 # ==============================================================================
@@ -101,7 +101,7 @@ SERVICES_PYGEOAPI_BASE_HOST=localhost
 # Profile: api
 
 # Port for the PostgREST service
-SERVICES_POSTGREST_PORT=8002
+SERVICES_POSTGREST_PORT=8002    # (16)
 
 
 # ==============================================================================
@@ -139,3 +139,19 @@ SERVICES_QWC_POSTGRES_PASSWORD=infdb
 # JWT secret key for QWC (change this for production!)
 JWT_SECRET_KEY=change-me-in-production
 ```
+
+1. By default only the core is activated. You can activate services by adding the needed profile name to this list.
+2. If you uncomment this line, all services will be activated
+3. Change the name to the purpose of your work so that the instance can clearly recognized. This name needs to be unique.
+4. name of base postgres database
+5. Admin user of postgres database
+6. Admin password of postgres database
+7. we do not need this
+8. Port that exposes outside of docker and used to communicate with other applications.
+9. Default coordinate reference system (CRS) for postgres database
+10. Admin user of pgAdmin web interface
+11. Admin password of pgAdmin web interface
+12. Port that exposes outside of docker and used to access via browser.
+13. Port that exposes outside of docker and used to communicate with other applications.
+14. Port that exposes outside of docker and used to communicate with other applications.
+15. Base url for pygeoAPI local: "localhost", remote: "DOMAIN" or "IP-ADDRESS-OF-REMOTE-HOST"
