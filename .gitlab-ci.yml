@@ -121,7 +121,7 @@ security:
   allow_failure: true
 
 
-create-pages:
+pages:
   stage: docs
   dependencies:
     - setup
