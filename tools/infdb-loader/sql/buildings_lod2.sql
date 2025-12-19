@@ -44,34 +44,44 @@ CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_
 -- 03_fill_id_object_id_building.sql
 -- Fill buildings with corresponding identifier (id, feature_id, objectid and building_function_code columns)
 --------------------------------------------------------------
-INSERT INTO {output_schema}.buildings_lod2 (feature_id, objectclass_id, objectid, building_function_code)
+WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
+                           FROM property
+                           WHERE name = 'Gemeindeschluessel')
+
+INSERT INTO {output_schema}.buildings_lod2 (feature_id, objectclass_id, objectid, gemeindeschluessel, building_function_code)
 SELECT f.id AS 
        feature_id,
        f.objectclass_id,
        f.objectid,
+       gsd.val_string as gemeindeschluessel,
     --    {output_schema}.classify_building_use(p.val_string) as building_use,
        p.val_string                                     as building_function_code
 FROM feature f
          JOIN property p ON f.id = p.feature_id
+JOIN gemeindeschluessel_data gsd ON f.id = gsd.feature_id
 WHERE f.objectclass_id = 901 -- =building
   AND p.name = 'function'
   AND p.val_string LIKE '31001_%'  -- only allow buildings
   -- AND p.val_string <> '31001_2463' -- exclude garages
   -- AND p.val_string <> '31001_2513' -- exclude water containers
 -- ORDER BY f.id
+AND gsd.val_string IN ({gemeindeschluessel})  -- filter by gemeindeschluessel
 ;
 
------------------------------------------------------------------
--- 0X_fill_gemeindeschluessel.sql
--- fill gemeindeschluessel column
------------------------------------------------------------------
-WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
-                           FROM property
-                           WHERE name = 'Gemeindeschluessel')
-UPDATE {output_schema}.buildings_lod2 b
-SET gemeindeschluessel = fnd.val_string
-FROM gemeindeschluessel_data fnd
-WHERE b.feature_id = fnd.feature_id;
+-- -----------------------------------------------------------------
+-- -- 0X_fill_gemeindeschluessel.sql
+-- -- fill gemeindeschluessel column
+-- -----------------------------------------------------------------
+-- -- depricated, now done in 03_fill_id_object_id_building.sql
+-- -- just kept for reference
+-- -- Patrick Buchenberg 2024-12-19
+-- WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
+--                            FROM property
+--                            WHERE name = 'Gemeindeschluessel')
+-- UPDATE {output_schema}.buildings_lod2 b
+-- SET gemeindeschluessel = fnd.val_string
+-- FROM gemeindeschluessel_data fnd
+-- WHERE b.feature_id = fnd.feature_id;
 
 --------------------------------------------------------------
 -- 04_fill_height.sql

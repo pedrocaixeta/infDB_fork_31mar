@@ -65,7 +65,8 @@ def load(infdb: InfDB) -> bool:
         utils.do_cmd(cmd_parts)
 
         # Post-import SQL (e.g., create LOD2 building table/view)
-        format_params = {"output_schema": "opendata"}
+        formatted_scope = ",".join(f"'{s}'" for s in (scope or []))
+        format_params = {"output_schema": "opendata", "gemeindeschluessel": formatted_scope}
         with infdb.connect() as db:
             db.execute_sql_file("sql/buildings_lod2.sql", format_params)
 
