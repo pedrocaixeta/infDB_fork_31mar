@@ -127,6 +127,7 @@ create-pages:
     - setup
   script:
     - source .venv/bin/activate
+    - cd docs
     - mkdocs build --site-dir public.
   cache:
     key: ${CI_COMMIT_REF_SLUG}
