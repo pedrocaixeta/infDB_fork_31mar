@@ -15,5 +15,6 @@ FROM {input_schema}.buildings_lod2 b
 WHERE building_function_code LIKE '31001_%'  -- only allow buildings
   AND building_function_code <> '31001_2463' -- exclude garages
   AND building_function_code <> '31001_2513' -- exclude water containers
+  AND b.geom IS NOT NULL                     -- only include buildings with geometry
   -- AND gemeindeschluessel IS IN {list_gemeindeschluessel} -- todo
 ORDER BY b.id;
