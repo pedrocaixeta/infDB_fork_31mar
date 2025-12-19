@@ -5,6 +5,7 @@ This module is executed from main.py with:
 """
 
 import os
+import uuid
 from collections import Counter, defaultdict
 from typing import List, Optional, Tuple
 
@@ -27,28 +28,33 @@ PHASEB_ALLOW_THROUGH = False
 # BASIC HELPERS
 # =========================================================
 
+# NOTE:
+# This helper is currently not used in the main pipeline.
+# Final node generation is done via `generate_final_nodes()`.
+# Kept for clarity and potential reuse.
 
-def nodes_from_endpoints(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
-    """Extract unique endpoints after final processing."""
-    pts = []
-    r = round_decimals
 
-    for geom in gdf.geometry:
-        if geom is None or geom.is_empty:
-            continue
+# def nodes_from_endpoints(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
+#     """Extract unique endpoints after final processing."""
+#     pts = []
+#     r = round_decimals
 
-        geoms = geom.geoms if isinstance(geom, MultiLineString) else [geom]
+#     for geom in gdf.geometry:
+#         if geom is None or geom.is_empty:
+#             continue
 
-        for ln in geoms:
-            cs = list(ln.coords)
-            pts.append((round(cs[0][0], r), round(cs[0][1], r)))
-            pts.append((round(cs[-1][0], r), round(cs[-1][1], r)))
+#         geoms = geom.geoms if isinstance(geom, MultiLineString) else [geom]
 
-    counts = Counter(pts)
+#         for ln in geoms:
+#             cs = list(ln.coords)
+#             pts.append((round(cs[0][0], r), round(cs[0][1], r)))
+#             pts.append((round(cs[-1][0], r), round(cs[-1][1], r)))
 
-    recs = [{"node_id": i + 1, "degree": counts[pt], "geom": Point(*pt)} for i, pt in enumerate(sorted(counts))]
+#     counts = Counter(pts)
 
-    return gpd.GeoDataFrame(recs, geometry="geom", crs=gdf.crs)
+#     recs = [{"node_id": i + 1, "degree": counts[pt], "geom": Point(*pt)} for i, pt in enumerate(sorted(counts))]
+
+#     return gpd.GeoDataFrame(recs, geometry="geom", crs=gdf.crs)
 
 
 # =========================================================
@@ -309,7 +315,7 @@ def mark_deadend_junction_iter(gdf: gpd.GeoDataFrame, round_dec: int = 6, type_c
 
 
 # =========================================================
-# MERGE-ENGINE (allgemein, wie in basemap_full_pipeline.py)
+# MERGE-ENGINE
 # =========================================================
 def _merge_attribute_values(values):
     """
@@ -876,7 +882,7 @@ def class2_reclassify(gdf: gpd.GeoDataFrame, round_decimals: int = 6):
     geom_col = out.geometry.name
     out["length_m"] = out[geom_col].length.astype(float)
 
-    # iterativ deadend-junction-iter wie in Original
+    # iterativ deadend-junction-iter
     out = mark_deadend_junction_iter(out, round_dec=round_decimals)
 
     return out
@@ -1012,6 +1018,7 @@ def run_process_streets(
     apply_length_filter: bool,
     min_length_deadend_junction: float,
     remove_deadend_deadend: bool,
+    remove_loop: bool,
     infdb,
 ):
     """
@@ -1025,6 +1032,11 @@ def run_process_streets(
     engine = infdb.get_db_engine()
     input_schema = infdb.get_config_value(["process-streets", "data", "input", "schema"])
     output_schema = infdb.get_config_value(["process-streets", "data", "output", "schema"])
+
+    # NEU: objektart-Filter aus der YAML lesen
+    klasse_objektart_filter = infdb.get_config_value(["process-streets", "klasse_objektart_filter"])
+    if not isinstance(klasse_objektart_filter, dict):
+        klasse_objektart_filter = {}
     if not table_name or str(table_name).strip().lower() in ("none", ""):
         table_name = infdb.get_config_value(["process-streets", "data", "input", "table_name"])
         log.info(f"table_name from config: {table_name}")
@@ -1064,7 +1076,7 @@ def run_process_streets(
         log.warning("Input table EMPTY!")
         return {"status": "no_input_rows"}
 
-    # Sicherstellen, dass es eine 'id'-Spalte gibt (wie in basemap_full_pipeline)
+    # Sicherstellen, dass es eine 'id'-Spalte gibt
     if "id" not in gdf.columns:
         gdf["id"] = gdf.index.astype(str)
         log.info("No 'id' column in input -> created from index.")
@@ -1075,14 +1087,42 @@ def run_process_streets(
     geom_col = gdf.geometry.name
 
     # ----------------------------------------------------------
-    # STEP 1 — Klasse-Filter (wie bisher)
+    # STEP 1 — Klasse-Filter + optional objektart-Filter
     # ----------------------------------------------------------
     if klasse_filter:
         log.info(f"Applying klasse_filter: {klasse_filter}")
         if "klasse" in gdf.columns:
+            # 1) Nach Klasse filtern
             gdf = gdf[gdf["klasse"].isin(klasse_filter)].copy()
+
+            # 2) Optional: objektart-Filter pro Klasse aus der config
+            if klasse_objektart_filter:
+                if "objektart" not in gdf.columns:
+                    log.warning("Column 'objektart' missing – skipping klasse_objektart_filter.")
+                else:
+                    # Klassen, für die ein spezieller objektart-Filter existiert
+                    classes_with_obj_filter = set(klasse_objektart_filter.keys())
+
+                    # Basis: alle Zeilen ohne speziellen objektart-Filter bleiben drin
+                    mask = ~gdf["klasse"].isin(classes_with_obj_filter)
+
+                    # Für jede Klasse mit definierter objektart-Liste
+                    for klasse_name, allowed_objektarten in klasse_objektart_filter.items():
+                        mask |= (gdf["klasse"] == klasse_name) & gdf["objektart"].isin(allowed_objektarten)
+
+                    gdf = gdf[mask].copy()
         else:
-            log.warning("Column 'klasse' missing — skipping filter.")
+            log.warning("Column 'klasse' missing – skipping klasse_filter.")
+    else:
+        log.info("No klasse_filter configured – skipping STEP 1.")
+
+    # Debug nach STEP 1:
+    if "klasse" in gdf.columns:
+        log.info(f"Unique klassen after STEP 1: {gdf['klasse'].unique()}")
+    if "klasse" in gdf.columns and "objektart" in gdf.columns:
+        bundes = gdf[gdf["klasse"] == "Bundesstraße"]
+        if not bundes.empty:
+            log.info("Objektart for Bundesstraße after STEP 1:\n%s", bundes["objektart"].value_counts().to_string())
 
     # ----------------------------------------------------------
     # STEP 2 — Split Lines (echte Schnittpunkte)
@@ -1123,8 +1163,16 @@ def run_process_streets(
         snap_eps=SNAP_EPS,
     )
 
-    is_mergedA = dej_family_merged.get("merged_from_count", 1).fillna(1).astype(int) > 1
+    # robust: merged_from_count kann fehlen (== kein Merge)
+    mfc = dej_family_merged.get("merged_from_count")
+
+    if isinstance(mfc, pd.Series):
+        is_mergedA = mfc.fillna(1).astype(int) > 1
+    else:
+        is_mergedA = pd.Series(False, index=dej_family_merged.index)
+
     dej_family_merged["segment_type"] = np.where(is_mergedA, "deadend-junction", dej_family_merged["_raw_type"])
+
     dej_family_merged = dej_family_merged.drop(columns=["_raw_type"], errors="ignore")
 
     others_class1 = class1[~dej_mask].copy()
@@ -1140,7 +1188,7 @@ def run_process_streets(
 
     # ----------------------------------------------------------
     # STEP 6 — Deadend-Junction Length Filter
-    #          (nur deadend-junction, wie im Original)
+    #          (nur deadend-junction)
     # ----------------------------------------------------------
     filtered = class2.copy()
     if apply_length_filter:
@@ -1204,8 +1252,15 @@ def run_process_streets(
         snap_eps=SNAP_EPS,
     )
 
-    is_mergedA2 = dej_family_merged2.get("merged_from_count", 1).fillna(1).astype(int) > 1
+    mfc2 = dej_family_merged2.get("merged_from_count")
+
+    if isinstance(mfc2, pd.Series):
+        is_mergedA2 = mfc2.fillna(1).astype(int) > 1
+    else:
+        is_mergedA2 = pd.Series(False, index=dej_family_merged2.index)
+
     dej_family_merged2["segment_type"] = np.where(is_mergedA2, "deadend-junction", dej_family_merged2.get("seg_raw"))
+
     dej_family_merged2 = dej_family_merged2.drop(columns=["seg_raw"], errors="ignore")
 
     othersA = class3[~dej_family_mask].copy()
@@ -1236,8 +1291,15 @@ def run_process_streets(
         snap_eps=SNAP_EPS,
     )
 
-    is_mergedB = jj_merged.get("merged_from_count", 1).fillna(1).astype(int) > 1
+    mfcB = jj_merged.get("merged_from_count")
+
+    if isinstance(mfcB, pd.Series):
+        is_mergedB = mfcB.fillna(1).astype(int) > 1
+    else:
+        is_mergedB = pd.Series(False, index=jj_merged.index)
+
     jj_merged["segment_type"] = np.where(is_mergedB, "junction-junction", jj_merged.get("seg_raw"))
+
     jj_merged = jj_merged.drop(columns=["seg_raw"], errors="ignore")
 
     othersB = after_A[~jj_family_mask].copy()
@@ -1254,12 +1316,52 @@ def run_process_streets(
     final_true = mark_deadend_junction_iter(final_true, round_dec=6, type_col="segment_type")
     final_true["length_m"] = final_true[geom_col].length.astype(float)
 
-    # Optional: deadend-deadend entfernen
+    # Optional: deadend-deadend und loop entfernen
+    final_out = final_true.copy()
+
     if remove_deadend_deadend:
         log.info("Removing 'deadend-deadend' segments in final output...")
-        final_out = final_true[final_true["segment_type"] != "deadend-deadend"].copy()
+        before = len(final_out)
+        final_out = final_out[final_out["segment_type"] != "deadend-deadend"].copy()
+        removed = before - len(final_out)
+        log.info("Removed %d deadend-deadend segments in final output.", removed)
+
+    # loop-Segmente entfernen
+    if remove_loop:
+        log.info("Removing 'loop' segments in final output...")
+        before = len(final_out)
+        final_out = final_out[final_out["segment_type"] != "loop"].copy()
+        removed = before - len(final_out)
+        log.info("Removed %d loop segments in final output.", removed)
+    # ----------------------------------------------------------
+    # STEP 10.a — origin_id + neue UUID id
+    # ----------------------------------------------------------
+
+    if "id" in final_out.columns:
+        final_out = final_out.rename(columns={"id": "origin_id"})
+        log.info("Renamed 'id' column to 'origin_id' to preserve original IDs.")
     else:
-        final_out = final_true
+        final_out["origin_id"] = None
+        log.info("No 'id' column present in final_out; created empty 'origin_id'.")
+
+    # neue UUID-basierte id für jede Zeile
+    final_out["id"] = [str(uuid.uuid4()) for _ in range(len(final_out))]
+    log.info("Assigned new UUIDs to 'id' column in final_out.")
+
+    # ----------------------------------------------------------
+    # STEP 10.b — Hilfsspalten entfernen & Spaltenreihenfolge
+    # ----------------------------------------------------------
+    # Unnötige Spalten wie id_0 o.ä. entfernen
+    for col in ["id_0", "index"]:
+        if col in final_out.columns:
+            final_out = final_out.drop(columns=[col])
+            log.info(f"Dropped helper column '{col}' from final_out.")
+
+    # Sicherstellen, dass 'id' und 'origin_id' ganz vorne stehen
+    front_cols = [c for c in ["id", "origin_id"] if c in final_out.columns]
+    other_cols = [c for c in final_out.columns if c not in front_cols]
+    final_out = final_out[front_cols + other_cols]
+    log.info(f"Reordered columns so that {front_cols} are at the beginning.")
 
     # CRS für final_out sicherstellen
     if final_out.crs is None:
@@ -1368,18 +1470,27 @@ def run_process_streets(
 # =========================================================
 
 
-def main(table_name, klasse_filter, apply_length_filter, min_length_deadend_junction, remove_deadend_deadend, infdb):
-    def to_bool(x):
-        return str(x).strip().lower() in ("true", "1", "yes", "y", "ja")
+def to_bool(x):
+    return str(x).strip().lower() in ("true", "1", "yes", "y", "ja")
 
+
+def main(
+    table_name,
+    klasse_filter,
+    apply_length_filter,
+    min_length_deadend_junction,
+    remove_deadend_deadend,
+    remove_loop,
+    infdb,
+):
     apply_length_filter = to_bool(apply_length_filter)
     remove_deadend_deadend = to_bool(remove_deadend_deadend)
+    remove_loop = to_bool(remove_loop)
 
-    # NEU: sicherstellen, dass es ein float ist
+    # sicherstellen, dass es ein float ist
     try:
         min_length_deadend_junction = float(min_length_deadend_junction)
     except Exception:
-        # notfalls Default, damit es nicht crasht
         min_length_deadend_junction = 10.0
 
     if isinstance(klasse_filter, str):
@@ -1390,5 +1501,11 @@ def main(table_name, klasse_filter, apply_length_filter, min_length_deadend_junc
         klasse_list = None
 
     return run_process_streets(
-        table_name, klasse_list, apply_length_filter, min_length_deadend_junction, remove_deadend_deadend, infdb
+        table_name,
+        klasse_list,
+        apply_length_filter,
+        min_length_deadend_junction,
+        remove_deadend_deadend,
+        remove_loop,
+        infdb,
     )
