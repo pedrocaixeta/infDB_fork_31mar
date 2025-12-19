@@ -37,66 +37,25 @@ engine = infdb.get_db_engine("postgres")
 with engine.connect() as conn:
     print(conn.execute("SELECT 1").scalar())
 ```
+---
+## Functionality documentation
 
-## Config shape
+The core package documentation is generated automatically as Markdown pages.  
+These pages describe the public API and behavior of each main module in the
+`infdb` package.
 
-`configs/config-mytool.yml`:
+- **InfDB facade**: [documentation/api/infdb.md](documentation/api/infdb.md)
+- **Client**: [documentation/api/client.md](documentation/api/client.md)
+- **Config**: [documentation/api/config.md](documentation/api/config.md)
+- **Logger**: [documentation/api/logger.md](documentation/api/logger.md)
+- **Utils**: [documentation/api/utils.md](documentation/api/utils.md)
 
-```yaml
-mytool:
-  logging:
-    path: logs/mytool/infdb.log
-    level: INFO
-  hosts:
-    postgres:
-      host: localhost
-      exposed_port: 5432
-      db: appdb
-      user: appuser
-      password: secret
+### How this documentation is generated
 
-services:  # optional global defaults
-  postgres:
-    host: host.docker.internal
-    exposed_port: 5432
-    db: appdb
-    user: appuser
-    password: secret
-```
+These “functionality” pages are not maintained manually. They are produced by
+the documentation automation scripts (API markdown generation → MkDocs build →
+export).
 
-How it picks DB params:
-- start with `services.<name>` (if present)
-- override with `<tool>.hosts.<name>`
-- if tool host is set → force to `host.docker.internal`
+The steps and commands to generate/update them are documented here:
 
-## Running SQL files
-
-```python
-with infdb.connect() as db:
-    db.execute_sql_files("sql/boot", format_params={"schema": "public"})
-```
-- runs `*.sql` in order
-- empty files are skipped
-- on error: rollback + re-raise
-
-## Logging
-
-```python
-log = infdb.get_logger()
-log.info("hi")
-worker_log = infdb.get_worker_logger()
-worker_log.info("from worker")
-```
-
-## Utilities (quick)
-
-```python
-from infdb.utils import build_dsn_from_env, atomic_write_text, do_sql_query
-from infdb.config import InfdbConfig
-
-cfg = InfdbConfig("mytool")
-do_sql_query("SELECT 1", cfg)  # one-off query
-```
-
-That’s it. Keep configs small, call `InfDB` everywhere, and let the client do the DB wiring.
-
+- [scripts/README.md](scripts/README.md)
