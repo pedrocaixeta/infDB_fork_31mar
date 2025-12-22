@@ -5,8 +5,9 @@ copyright: "2026, Patrick Buchenberg"
 theme:
   name: material
   site_url: https://example.com
-  logo:  docs/assets/img/logo_infdb.png
-  favicon: docs/assets/img/logo_infdb_192x192.png
+  logo:  assets/img/logo_infdb.png
+  favicon: assets/img/logo_infdb.png
+  # repo_url: https://github.com/squidfunk/mkdocs-material
   features:
     # - navigation.instant
     - content.code.copy
@@ -28,7 +29,7 @@ plugins:
 
 nav:
   - Welcome: 
-    - Introduction: welcome/index.md
+    - Introduction: index.md
     # - Getting Started: getting-started.md
     - License: welcome/license.md
     - Citation: welcome/citation.md

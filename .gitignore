@@ -183,3 +183,5 @@ src/infdb_package/docs
 src/infdb_package/site
 
 .env
+
+docs/mkdocs/site
