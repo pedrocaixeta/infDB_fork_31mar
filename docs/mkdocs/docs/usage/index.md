@@ -1,21 +1,15 @@
-# Getting Started
+# Usage Guide
 
-This section describes how to use the infDB from a user perspective. 
+Welcome to the infDB usage guide. This section provides step-by-step instructions getting up and running with the **infDB**.
 
-!!! hint
-    Check if all the requirments are fullfiled
+## Quick Start Overview
 
+To get started with infDB, you will generally follow this path:
 
-If all requirements are fullfilled, you can execute the following steps in order to configure and to use the infDB:
+1.  **Check Requirements**: Ensure your system has the necessary prerequisites (Docker, Git).
+2.  **Get Software**: Clone the repository.
+3.  **Setup**: Configure the environment variables.
+4.  **Deployment**: Launch the stack using Docker Compose.
+5.  **Access Services**: Connect to the various tools and interfaces.
 
-1. Download the repository
-2. Configure the infDB and the services
-3. Deploy the infDB and activated services
-4. Use Services and Tools
-
-All the single steps are described in detail on navigation left.
-
-
-
-
-
+Select a topic from the navigation menu to begin.

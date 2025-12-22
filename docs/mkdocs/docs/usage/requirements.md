@@ -1,20 +1,21 @@
-The infDB runs as a docker container and there need docker installed on your system.
+# Requirements
 
+Before installing infDB, ensure your capabilities meet the following requirements.
 
-!!! info 
-    You can either use [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop ](https://docs.docker.com/desktop/) (for a Graphical User Interface).
+## System Requirements
 
-<!-- ## Steps
-If you are happy with the preconfiguration and default passwords, then just follow these four steps (see detailed instructions in the corresponding sections below):
+-   **Operating System**: Linux (recommended), macOS, or Windows (via WSL2).
+-   **Hardware**:
+    -   Minimum 8GB RAM (16GB recommended for heavy geospatial workloads).
+    -   20GB+ free disk space (depending on data volume).
 
-1. [Prepare folder structure](#Suggested-folder-structure-for-infDB)   
-2. [Clone infDB](#clone-infdb)
-3. [Startup infDB](#startup-script)
-4. [Import data and run toolchain](#setup-infdb-loader) -->
+## Software Prerequisites
 
-## Windows Users
-For Windows Users we strongly recommend to use Ubuntu as Windows Subsystem for Linux since docker for Windows need WSL anyway.
+The infDB runs primarily on containerized infrastructure. You need:
 
+1.  **[Git](https://git-scm.com/)**: To clone the repository.
+2.  **[Docker](https://docs.docker.com/get-docker/)**: Engine version 20.10+ recommended.
+3.  **[Docker Compose](https://docs.docker.com/compose/install/)**: Version 2.0+ (usually included with modern Docker Desktop/Engine).
 
-!!! tip "Tip - Windows Users"
-    Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) **and** [Ubuntu as Windows Subsystem for Linux (WSL)](https://documentation.ubuntu.com/wsl/stable/howto/install-ubuntu-wsl2/). After installation, launch the Linux terminal by searching for "Ubuntu" in your applications.
+!!! note "Windows Users"
+    If you are on Windows, we strongly recommend using [WSL2 (Windows Subsystem for Linux)](https://learn.microsoft.com/en-us/windows/wsl/install) to run Docker, as it offers significantly better performance for file system operations compared to the legacy Hyper-V backend.
