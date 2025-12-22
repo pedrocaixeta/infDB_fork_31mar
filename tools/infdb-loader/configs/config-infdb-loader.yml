@@ -210,6 +210,8 @@ infdb-loader:
                   table_name: bevoelkerungszahl
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Bevoelkerungszahl.zip
+                  types:
+                    einwohner: bigint
 
                 - name: Deutsche Staatsangehoerige 18+
                   status: not-active

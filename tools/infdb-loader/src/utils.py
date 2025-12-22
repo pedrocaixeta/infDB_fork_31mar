@@ -605,6 +605,7 @@ def fast_copy_points_csv(
     drop_existing: bool = True,
     create_spatial_index: bool = True,
     clip_to_scope: bool = True,
+    column_types: dict | None = None
 ):
     log = infdb.get_worker_logger()
     params = infdb.get_db_parameters_dict()
@@ -650,10 +651,41 @@ def fast_copy_points_csv(
                 f,
             )
 
-        # Step 4: Build SELECT with type casts
-        select_cols = ", ".join(
-            f'"{c}"::double precision' if c in (x_col.lower(), y_col.lower()) else f'"{c}"' for c in header
-        )
+        # Step 4: Build SELECT with type casts (x/y + YAML-driven types)
+        x_l = x_col.lower()
+        y_l = y_col.lower()
+
+        column_types = column_types or {}
+        # make keys lowercase and types lowercase
+        column_types = {k.strip().lower(): v.strip().lower() for k, v in column_types.items()}
+
+        def cast_expr(c: str) -> str:
+            # Always cast coordinates
+            if c in (x_l, y_l):
+                return f"\"{c}\"::double precision AS \"{c}\""
+
+            # Cast columns defined in YAML
+            t = column_types.get(c)
+            if not t:
+                return f"\"{c}\""  # keep text (already named)
+
+            if t in ("bigint", "integer", "int"):
+                pg_t = "bigint" if t == "bigint" else "integer"
+                # strip everything except digits and minus
+                return f"regexp_replace(\"{c}\", '[^0-9-]', '', 'g')::{pg_t} AS \"{c}\""
+
+            if t in ("double precision", "numeric", "real"):
+                pg_t = "double precision" if t == "double precision" else t
+                # allow comma decimals
+                return f"replace(\"{c}\", ',', '.')::{pg_t} AS \"{c}\""
+
+            if t in ("text", "varchar"):
+                return f"\"{c}\""  # keep as text
+
+            # fallback: plain cast
+            return f"\"{c}\"::{t} AS \"{c}\""
+
+        select_cols = ", ".join(cast_expr(c) for c in header)
 
         # Step 5: Get clipping WHERE clause
         where_clause = ""

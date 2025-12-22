@@ -158,6 +158,11 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
             y_col = f"y_mp_{resolution}"
             table_name = f"{prefix}_{dataset['year']}_{resolution}_{dataset['table_name']}"
 
+            # column types from config
+            column_types = dataset.get("types", {}) or {}
+            # normalize keys to lowercase (safe)
+            column_types = {k.strip().lower(): v.strip().lower() for k, v in column_types.items()}
+
             utils.fast_copy_points_csv(
                 infdb,
                 csv_path=csv_path,
@@ -170,6 +175,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
                 drop_existing=True,  # matches old 'replace' behavior
                 create_spatial_index=True,  # gives you good query perf right away
                 clip_to_scope=True,  # Explicit clipping (default anyway)
+                column_types=column_types, # custom column types from config
             )
 
             log.info(f"Processed successfully {csv_path}")
