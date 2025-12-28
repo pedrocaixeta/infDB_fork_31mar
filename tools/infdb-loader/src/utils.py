@@ -660,29 +660,37 @@ def fast_copy_points_csv(
         column_types = {k.strip().lower(): v.strip().lower() for k, v in column_types.items()}
 
         def cast_expr(c: str) -> str:
-            # Always cast coordinates
+            # Always cast coordinates (usually safe)
             if c in (x_l, y_l):
                 return f"\"{c}\"::double precision AS \"{c}\""
 
-            # Cast columns defined in YAML
             t = column_types.get(c)
             if not t:
-                return f"\"{c}\""  # keep text (already named)
+                return f"\"{c}\""
 
             if t in ("bigint", "integer", "int"):
                 pg_t = "bigint" if t == "bigint" else "integer"
-                # strip everything except digits and minus
-                return f"regexp_replace(\"{c}\", '[^0-9-]', '', 'g')::{pg_t} AS \"{c}\""
+                # treat '-' as NULL, then strip non-digits, then cast
+                return (
+                    f"NULLIF(regexp_replace("
+                    f"NULLIF(NULLIF(NULLIF(\"{c}\", '-'), '–'), '—'),"
+                    f"'[^0-9-]', '', 'g'), '')"
+                    f"::{pg_t} AS \"{c}\""
+                )
 
             if t in ("double precision", "numeric", "real"):
                 pg_t = "double precision" if t == "double precision" else t
-                # allow comma decimals
-                return f"replace(\"{c}\", ',', '.')::{pg_t} AS \"{c}\""
+                # treat '-' as NULL, convert comma decimals, then cast
+                return (
+                    f"NULLIF(replace("
+                    f"NULLIF(NULLIF(NULLIF(\"{c}\", '-'), '–'), '—'),"
+                    f"',', '.'), '')"
+                    f"::{pg_t} AS \"{c}\""
+                )
 
             if t in ("text", "varchar"):
-                return f"\"{c}\""  # keep as text
+                return f"\"{c}\""
 
-            # fallback: plain cast
             return f"\"{c}\"::{t} AS \"{c}\""
 
         select_cols = ", ".join(cast_expr(c) for c in header)
