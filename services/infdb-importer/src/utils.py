@@ -6,9 +6,10 @@ import shlex
 import subprocess
 import time
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Union
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
+
 
 import chardet
 import geopandas as gpd
@@ -381,38 +382,140 @@ def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
 
 # =================== geospatial / DB import helpers ===================
 
+def resolve_scope_patterns(scope: Union[str, Iterable[str], None]) -> List[str]:
+    """
+    Turn config scope into a list of SQL LIKE patterns.
 
-def get_envelop(infdb: InfDB):
-    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
-    log = infdb.get_worker_logger()
+    Backward compatible behavior:
+      - "05"        -> "05%"
+      - "09474126"  -> "09474126%"
+      - "05%"       -> "05%"   (already a LIKE pattern)
+      - "09_"       -> "09_"   (already a LIKE pattern)
+    """
+    if scope is None:
+        return []
+
     if isinstance(scope, str):
-        scope = [scope]
-    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
-    log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
-    log.debug("Envelop Path (file): %s", path)
-    gdf = gpd.read_file(path, layer="vg5000_gem")
-    gdf_scope = gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
-    gdf_scope.to_postgis("scope", infdb.get_db_engine(), if_exists="replace", schema="opendata", index=False)
+        items = [scope]
+    else:
+        items = list(scope)
+
+    patterns: List[str] = []
+    for s in items:
+        s = str(s).strip()
+        if not s:
+            continue
+        if "%" in s or "_" in s:
+            patterns.append(s)
+        else:
+            patterns.append(f"{s}%")
+    return patterns
+
+
+def fetch_scope_ags_from_db(infdb: InfDB) -> List[str]:
+    """
+    Resolve configured scope into the concrete list of municipality AGS values
+    by querying opendata.bkg_vg5000_gem.
+
+    Returns a list of AGS strings (unique, stable order).
+    """
+    log = infdb.get_worker_logger()
+    params = infdb.get_db_parameters_dict() or {}
+
+    scope_raw = infdb.get_config_value([infdb.get_toolname(), "scope"])
+    patterns = resolve_scope_patterns(scope_raw)
+
+    if not patterns:
+        log.warning("No scope configured; returning empty AGS list.")
+        return []
+
+    # Build: ags LIKE %s OR ags LIKE %s ...
+    where_sql = " OR ".join(["ags LIKE %s"] * len(patterns))
+    sql = f"""
+        SELECT DISTINCT ags
+        FROM opendata.bkg_vg5000_gem
+        WHERE {where_sql}
+        ORDER BY ags;
+    """
+
+    log.info("Resolving scope -> AGS via DB (patterns=%s)", patterns)
+
+    conn = psycopg2.connect(
+        dbname=params["db"],
+        user=params["user"],
+        password=params["password"],
+        host=params["host"],
+        port=params["exposed_port"],
+    )
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, patterns)
+            rows = cur.fetchall()
+            return [str(r[0]) for r in rows]
+    finally:
+        conn.close()
+
+def get_envelop(infdb: InfDB) -> gpd.GeoDataFrame:
+    """
+    Return ONE combined GeoDataFrame for the configured scope, loaded from DB.
+    Also writes opendata.scope (replace).
+    """
+    log = infdb.get_worker_logger()
+    engine = infdb.get_db_engine()
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    if not ags_list:
+        log.warning("Scope resolved to 0 AGS rows. Returning empty GeoDataFrame.")
+        return gpd.GeoDataFrame()
+
+    # Use = ANY(%s) to pass a list safely.
+    sql = """
+        SELECT *
+        FROM opendata.bkg_vg5000_gem
+        WHERE ags = ANY(%s)
+    """
+
+    # geopandas.read_postgis works with SQLAlchemy engine too (you already use it elsewhere)
+    gdf_scope = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
+
+    # Persist canonical selection
+    gdf_scope.to_postgis(
+        "scope",
+        engine,
+        schema="opendata",
+        if_exists="replace",
+        index=False,
+    )
     return gdf_scope
 
 
-def get_all_envelops(infdb: InfDB):
-    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
+def get_all_envelops(infdb: InfDB) -> List[gpd.GeoDataFrame]:
+    """
+    Return list[GeoDataFrame], one per municipality AGS in resolved scope.
+    Perfect for your create_geogitter loop.
+    """
     log = infdb.get_worker_logger()
-    if isinstance(scope, str):
-        scope = [scope]
-    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
-    log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
-    log.debug("Envelop Path (file): %s", path)
-    gdf = gpd.read_file(path, layer="vg5000_gem")
-    envelop = []
-    for s in scope:
-        envelop.append(gdf[gdf["AGS"].str.startswith(s)])
-    return envelop
+    engine = infdb.get_db_engine()
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    if not ags_list:
+        log.warning("Scope resolved to 0 AGS rows. Returning empty list.")
+        return []
+
+    sql = """
+        SELECT *
+        FROM opendata.bkg_vg5000_gem
+        WHERE ags = ANY(%s)
+        ORDER BY ags
+    """
+
+    gdf = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
+    if gdf.empty:
+        return []
+
+    envelops = [sub for _, sub in gdf.groupby("ags", sort=False)]
+    log.info("Scope resolved to %d municipalities", len(envelops))
+    return envelops
 
 
 # ============================== file helpers ==============================

@@ -72,10 +72,16 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
                     log.warning("Skipping resolution with unknown unit: %s", resolution)
                     continue
 
+                ags_col = "AGS" if "AGS" in envelop.columns else "ags"
+                gen_col = "GEN" if "GEN" in envelop.columns else ("gen" if "gen" in envelop.columns else None)
+
+                ags_val = envelop[ags_col].iloc[0]
+                gen_val = envelop[gen_col].iloc[0] if gen_col else ""
+
                 log.info(
                     "Generating grid cells for %s (%s) with resolution %s",
-                    envelop["AGS"].item(),
-                    envelop["GEN"].item(),
+                    ags_val,
+                    gen_val,
                     resolution_meters,
                 )
                 # todo: add_AGS parameter to identify the area from envelop
