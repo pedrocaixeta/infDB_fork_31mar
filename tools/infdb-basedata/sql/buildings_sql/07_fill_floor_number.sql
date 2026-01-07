@@ -15,6 +15,7 @@ WITH floor_number_data AS (
         END AS validated_floors
     FROM {output_schema}.buildings b
     LEFT JOIN {input_schema}.buildings_lod2 l ON b.feature_id = l.feature_id
+-- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
 )
 UPDATE {output_schema}.buildings b
 SET floor_number = fnd.validated_floors

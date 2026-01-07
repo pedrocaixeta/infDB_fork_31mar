@@ -40,7 +40,7 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
         log.info("Creating %s table schema if needed...", table_name)
         ddl = f"""
             CREATE TABLE IF NOT EXISTS {schema}.{table_name} (
-                id TEXT,
+                id TEXT PRIMARY KEY,
                 x_mp INTEGER,
                 y_mp INTEGER,
                 name TEXT,

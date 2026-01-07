@@ -8,9 +8,13 @@ SELECT b.id AS building_id,
        d.durchschnhhgroesse
 FROM {output_schema}.buildings b
          JOIN {output_schema}.buildings_grid d
-              ON ST_Contains(d.geom, ST_Centroid(b.geom))
+             ON d.geom && b.geom AND
+             ST_Contains(d.geom, ST_Centroid(b.geom))
+-- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE b.occupants IS NOT NULL
   AND b.building_use = 'Residential'; -- already ensured by above clause
+
+CREATE INDEX ON temp_building_hh_grid (building_id);
 
 -- Step 2: Compute households per building
 DROP TABLE IF EXISTS temp_building_households;
@@ -18,6 +22,8 @@ CREATE TEMP TABLE temp_building_households AS
 SELECT building_id,
        GREATEST(ROUND(occupants / durchschnhhgroesse)::int, 1) AS estimated_households
 FROM temp_building_hh_grid;
+
+CREATE INDEX ON temp_building_households (building_id);
 
 -- Step 3: Update original building table
 UPDATE {output_schema}.buildings b
@@ -28,6 +34,7 @@ WHERE b.id = bh.building_id;
 -- Handle buildings without occupants using nearest neighbor
 -- Step 4: Find nearest grid cell with occupancy data for each unassigned building
 DROP TABLE IF EXISTS temp_nearest_grid_households;
+
 CREATE TEMP TABLE temp_nearest_grid_households AS
 SELECT
     b.id AS building_id,
@@ -45,4 +52,5 @@ CROSS JOIN LATERAL (
 ) nearest
 JOIN temp_building_occupants bo ON b.id = bo.building_id
 JOIN temp_cell_weights cw ON nearest.bevoelkerungszahl_id = cw.bevoelkerungszahl_id
+-- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE b.occupants IS NULL AND b.building_use = 'Residential';
