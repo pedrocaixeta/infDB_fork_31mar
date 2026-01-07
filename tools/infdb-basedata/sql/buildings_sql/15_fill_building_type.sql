@@ -1,47 +1,78 @@
 -- fill building_type
 -- Step 1: Apartment Buildings (AB):
 -- Typically have <4+ floors and many neighbors> or <3+ floors and 3+ neighbors> or <floor area > 1500>
-UPDATE {output_schema}.buildings
+UPDATE {output_schema}.buildings b
 SET building_type = 'AB'
-WHERE building_use = 'Residential'
-  AND building_type IS NULL
-  AND (floor_number >= 4
-    OR (
-           floor_number >= 3 AND
-           EXISTS (SELECT 1
-                   FROM temp_touching_neighbor_counts
-                   WHERE temp_touching_neighbor_counts.id = {output_schema}.buildings.id
-                     AND count >= 3)
-           )
-    OR floor_area > 1500);
+FROM temp_touching_neighbor_counts tnc
+WHERE b.building_use = 'Residential'
+  AND b.building_type IS NULL
+  AND (
+        b.floor_number >= 4
+     OR b.floor_area > 1500
+     OR (
+            b.floor_number >= 3
+        AND tnc.id = b.id
+        AND tnc.count >= 3
+        )
+      )
+;
 
 -- Buildings adjacent to AB with 3+ floors and similar height become AB
-DO
-$$
-    DECLARE
-        updated_count INTEGER := 1;
-    BEGIN
-        WHILE updated_count > 0
-            LOOP
-                WITH candidates AS (SELECT DISTINCT n.a_id
-                                    FROM temp_touching_neighbors n
-                                             JOIN {output_schema}.buildings nb ON n.b_id = nb.id
-                                             JOIN {output_schema}.buildings b1 ON n.a_id = b1.id
-                                    WHERE nb.building_type = 'AB'
-                                      --AND b1.floor_number >= 3
-                                      --AND ABS(b1.height - nb.height)/GREATEST(b1.height, nb.height) < 0.2
-                                      AND b1.building_use = 'Residential'
-                                      AND b1.building_type IS NULL)
-                UPDATE {output_schema}.buildings b
-                SET building_type = 'AB'
-                FROM candidates
-                WHERE b.id = candidates.a_id;
+-- DO
+-- $$
+--     DECLARE
+--         updated_count INTEGER := 1;
+--     BEGIN
+--         WHILE updated_count > 0
+--             LOOP
+--                 WITH candidates AS (SELECT DISTINCT n.a_id
+--                                     FROM temp_touching_neighbors n
+--                                              JOIN {output_schema}.buildings nb ON n.b_id = nb.id
+--                                              JOIN {output_schema}.buildings b1 ON n.a_id = b1.id
+--                                     WHERE nb.building_type = 'AB'
+--                                       --AND b1.floor_number >= 3
+--                                       --AND ABS(b1.height - nb.height)/GREATEST(b1.height, nb.height) < 0.2
+--                                       AND b1.building_use = 'Residential'
+--                                     -- AND nb.gemeindeschluessel IN ({list_gemeindeschluessel})
+--                                     -- AND b1.gemeindeschluessel IN ({list_gemeindeschluessel})
+--                                       AND b1.building_type IS NULL
+--                                     )
+--                 UPDATE {output_schema}.buildings b
+--                 SET building_type = 'AB'
+--                 FROM candidates
+--                 WHERE b.id = candidates.a_id;
+--
+--                 GET DIAGNOSTICS updated_count = ROW_COUNT;
+--                 -- RAISE NOTICE 'Rule 1 iteration: % buildings updated', updated_count;
+--             END LOOP;
+--     END
+-- $$;
+WITH RECURSIVE ab_propagation AS (
+    -- Seed: existing AB buildings
+    SELECT id
+    FROM {output_schema}.buildings
+    WHERE building_type = 'AB'
 
-                GET DIAGNOSTICS updated_count = ROW_COUNT;
-                -- RAISE NOTICE 'Rule 1 iteration: % buildings updated', updated_count;
-            END LOOP;
-    END
-$$;
+    UNION
+
+    -- Propagate AB to residential neighbors
+    SELECT n.a_id
+    FROM ab_propagation ab
+    JOIN temp_touching_neighbors n
+        ON n.b_id = ab.id
+    JOIN {output_schema}.buildings b1
+        ON b1.id = n.a_id
+    WHERE b1.building_use = 'Residential'
+      AND b1.building_type IS NULL
+      AND b1.gemeindeschluessel = n.b_gemeindeschluessel
+)
+UPDATE {output_schema}.buildings b
+SET building_type = 'AB'
+FROM ab_propagation p
+WHERE b.id = p.id
+  AND b.building_type IS NULL
+;
+
 
 -- Step 2: Single Family Houses (SFH):
 -- Typically have larger floor area, 1-2 floors, and few or no neighbors

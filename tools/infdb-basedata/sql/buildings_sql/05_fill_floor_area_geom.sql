@@ -7,7 +7,8 @@ WITH ground_data AS (
     FROM {input_schema}.buildings_lod2 b
     --       JOIN geometry_data gd ON f.id = gd.feature_id
     --       JOIN property p ON gd.feature_id = p.feature_id
-    -- WHERE f.objectclass_id = 710 -- GroundSurface
+    -- WHERE  b.gemeindeschluessel IN ({list_gemeindeschluessel})
+    -- AND f.objectclass_id = 710 -- GroundSurface
     -- AND p.name = 'Flaeche'
 )
 UPDATE {output_schema}.buildings b
@@ -15,9 +16,11 @@ SET floor_area = gd.area,
     geom       = gd.geom,
     centroid   = ST_Centroid(gd.geom)
 FROM ground_data gd
+-- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE b.feature_id = gd.feature_id;
 
 -- delete buildings below an area threshold
 DELETE
-FROM {output_schema}.buildings
-WHERE buildings.floor_area < 12;
+FROM {output_schema}.buildings b
+-- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
+WHERE b.floor_area < 12;

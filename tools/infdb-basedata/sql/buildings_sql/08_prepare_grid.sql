@@ -1,58 +1,52 @@
--- Create a temporary table with transformed geometry and spatial index
-DROP TABLE IF EXISTS temp_grid_transformed;
-CREATE TEMPORARY TABLE temp_grid_transformed AS
-SELECT
-    id,
-    x_mp,
-    y_mp,
-    ST_Transform(geom, {EPSG}) as geom
-FROM {input_schema}.grid_cells
-WHERE name='DE_Grid_ETRS89_LAEA_100m';
-
--- Create spatial index on transformed geometry (fixed column name)
-CREATE INDEX temp_grid_geom_idx ON temp_grid_transformed USING GIST (geom);
-
--- Create table joining grid cells with buildings based on geometry
+-- Create temp table joining grid cells with buildings based on geometry
 -- Only keeps grid cells that contain at least one building centroid
 -- Optimized for later joins on x_mp and y_mp coordinates
-DROP TABLE IF EXISTS {output_schema}.buildings_grid;
-CREATE TABLE IF NOT EXISTS {output_schema}.buildings_grid AS
-SELECT DISTINCT g.*
-FROM temp_grid_transformed g
-INNER JOIN {input_schema}.buildings_lod2 b ON ST_Contains(g.geom, ST_Centroid(b.geom));
+DROP TABLE IF EXISTS temp_grid_transformed;
+CREATE TEMP TABLE temp_grid_transformed AS
+SELECT
+    g.id,
+    g.x_mp,
+    g.y_mp,
+    g.geom
+FROM (
+    SELECT
+        id,
+        x_mp,
+        y_mp,
+        ST_Transform(geom, {EPSG}) as geom
+    FROM {input_schema}.grid_cells
+    WHERE name='DE_Grid_ETRS89_LAEA_100m'
+) AS g
+WHERE EXISTS (
+    SELECT 1
+    FROM {input_schema}.buildings_lod2 b
+    WHERE g.geom && b.geom -- prefilter with bounding box &&
+      AND ST_Contains(g.geom, ST_Centroid(b.geom))
+--        AND b.gemeindeschluessel IN ({list_gemeindeschluessel});
+);
+CREATE INDEX ON temp_grid_transformed (id);
 
--- Create composite index on x_mp and y_mp for efficient joins
-CREATE INDEX grid_buildings_spatial_coords_idx
-    ON {output_schema}.buildings_grid (x_mp, y_mp);
+DELETE FROM {output_schema}.buildings_grid target
+--WHERE target.gemeindeschluessel IN ({list_gemeindeschluessel})
+  WHERE target.id NOT IN (
+    SELECT src.id
+    FROM temp_grid_transformed src
+  );
 
--- Add all census columns to the existing buildings_grid table
-ALTER TABLE {output_schema}.buildings_grid
--- zensus_2022_100m_bevoelkerungszahl
-ADD COLUMN einwohner bigint,
--- zensus_2022_100m_durchschn_haushaltsgroesse
-ADD COLUMN durchschnhhgroesse double precision,
-ADD COLUMN werterlaeuternde_zeichen text,
--- zensus_2022_100m_gebaeude_typ_groesse
-ADD COLUMN insgesamt_gebaeude bigint,
-ADD COLUMN freiefh bigint,
-ADD COLUMN efh_dhh bigint,
-ADD COLUMN efh_reihenhaus bigint,
-ADD COLUMN freist_zfh bigint,
-ADD COLUMN zfh_dhh bigint,
-ADD COLUMN zfh_reihenhaus bigint,
-ADD COLUMN mfh_3bis6wohnungen bigint,
-ADD COLUMN mfh_7bis12wohnungen bigint,
-ADD COLUMN mfh_13undmehrwohnungen bigint,
-ADD COLUMN anderergebaeudetyp bigint,
--- zensus_2022_100m_gebaeude_baujahr_mikrozensus
-ADD COLUMN vor1919 bigint,
-ADD COLUMN a1919bis1948 bigint,
-ADD COLUMN a1949bis1978 bigint,
-ADD COLUMN a1979bis1990 bigint,
-ADD COLUMN a1991bis2000 bigint,
-ADD COLUMN a2001bis2010 bigint,
-ADD COLUMN a2011bis2019 bigint,
-ADD COLUMN a2020undspaeter bigint;
+INSERT INTO {output_schema}.buildings_grid (id, x_mp, y_mp, geom)
+SELECT
+    src.id,
+    src.x_mp,
+    src.y_mp,
+    src.geom
+FROM temp_grid_transformed src
+LEFT JOIN {output_schema}.buildings_grid target
+       ON target.geom = src.geom
+WHERE target.geom IS NULL
+ON CONFLICT (id) DO UPDATE
+SET id   = EXCLUDED.id,
+    x_mp = EXCLUDED.x_mp,
+    y_mp = EXCLUDED.y_mp;
 
 -- Update with population data
 UPDATE {output_schema}.buildings_grid
@@ -83,6 +77,7 @@ SET insgesamt_gebaeude = (CASE WHEN bld.insgesamt_gebaeude IN ('-', '–', '') T
     mfh_13undmehrwohnungen = (CASE WHEN bld.mfh_13undmehrwohnungen IN ('-', '–', '') THEN '0' ELSE bld.mfh_13undmehrwohnungen END)::bigint,
     anderergebaeudetyp = (CASE WHEN bld.anderergebaeudetyp IN ('-', '–', '') THEN '0' ELSE bld.anderergebaeudetyp END)::bigint
 FROM {input_schema}.zensus_2022_100m_gebaeude_typ_groesse bld
+-- WHERE buildings_grid.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE buildings_grid.x_mp = bld.x_mp_100m
   AND buildings_grid.y_mp = bld.y_mp_100m;
 
@@ -97,5 +92,6 @@ SET vor1919 = (CASE WHEN bauj.vor1919 IN ('-', '–', '') THEN '0' ELSE bauj.vor
     a2011bis2019 = (CASE WHEN bauj.a2011bis2019 IN ('-', '–', '') THEN '0' ELSE bauj.a2011bis2019 END)::bigint,
     a2020undspaeter = (CASE WHEN bauj.a2020undspaeter IN ('-', '–', '') THEN '0' ELSE bauj.a2020undspaeter END)::bigint
 FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
+-- WHERE buildings_grid.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE buildings_grid.x_mp = bauj.x_mp_100m
   AND buildings_grid.y_mp = bauj.y_mp_100m;
