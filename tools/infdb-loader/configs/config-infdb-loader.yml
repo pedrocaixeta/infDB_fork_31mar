@@ -545,7 +545,7 @@ infdb-loader:
               - wind_speed_10m
               - precipitation
         kwp-nrw:
-          status: active
+          status: not-active
           schema: opendata
           prefix: kwp_nrw
           path:
