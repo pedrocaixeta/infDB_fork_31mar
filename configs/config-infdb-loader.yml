@@ -13,7 +13,12 @@ infdb-loader:
     name: "forchheim"  # Name of the infdb-loader instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich
-        - "09474126"  # Forcheim
+        - "09780139"  # Sonthofen
+        # - "09780116"  # Bolsterlang
+        # - "09162000" # M
+        # - "09185149" # ND
+        # - "09474126" # FO
+        # - "09261000" # LA
     multiproccesing: 
         status: not-active
         max_cores: 2    # max cores since of memory limitations to 2
@@ -75,12 +80,12 @@ infdb-loader:
                     import-mode: skip
                     url: "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4" 
                 tatsaechliche_nutzung:
-                    status: active
+                    status: not-active
                     name: Tatsächliche Nutzung (TN) 
                     table_name: tatsaechliche_nutzung
                     url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
         lod2-nrw:
-            status: active
+            status: not-active
             import-mode: skip # delete
             url:
                 - "http://ds1.need.energy:8123/3d-gm_lod2_kacheln.zip"    #scope placeholder for AGS

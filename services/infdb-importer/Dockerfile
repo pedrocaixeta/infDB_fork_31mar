@@ -29,7 +29,6 @@ ENV PATH="/root/.local/bin/:$PATH"
 
 # Project files in WORKDIR so uv and InfDB can see them
 COPY pyproject.toml pyproject.toml
-COPY configs configs
 
 # Source code in WORKDIR
 COPY src src
