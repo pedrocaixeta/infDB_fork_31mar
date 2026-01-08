@@ -78,3 +78,7 @@ SET occupants = ngo.assigned_occupants
 FROM temp_nearest_grid_occupants ngo
 -- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE b.id = ngo.building_id;
+
+-- release memory
+DROP TABLE IF EXISTS temp_building_weights;
+DROP TABLE IF EXISTS temp_nearest_grid_occupants;

@@ -54,3 +54,12 @@ JOIN temp_building_occupants bo ON b.id = bo.building_id
 JOIN temp_cell_weights cw ON nearest.bevoelkerungszahl_id = cw.bevoelkerungszahl_id
 -- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE b.occupants IS NULL AND b.building_use = 'Residential';
+
+-- release memory
+DROP TABLE IF EXISTS temp_building_hh_grid;
+DROP TABLE IF EXISTS temp_building_households;
+DROP TABLE IF EXISTS temp_nearest_grid_households;
+
+-- from 09_fill_occupants.sql
+DROP TABLE IF EXISTS temp_cell_weights;
+DROP TABLE IF EXISTS temp_building_occupants;

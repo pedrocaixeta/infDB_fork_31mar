@@ -1,27 +1,32 @@
 -- fill floor_number column
 -- Step 1: Use storeysAboveGround from LOD2 data where available and reasonable
-WITH floor_number_data AS (
-    SELECT
-        b.feature_id,
-        b.height,
-        l.storeysAboveGround AS source_floors,
-        -- Calculate if the source floors make sense given the height
-        -- Typical floor height should be between 2.5m and 5m
-        CASE
-            WHEN l.storeysAboveGround IS NULL OR l.storeysAboveGround = 0 THEN NULL
-            WHEN b.height / l.storeysAboveGround < 2.0 THEN NULL  -- Too short per floor, suspicious
-            WHEN b.height / l.storeysAboveGround > 6.0 THEN NULL  -- Too tall per floor, suspicious
-            ELSE l.storeysAboveGround
-        END AS validated_floors
-    FROM {output_schema}.buildings b
-    LEFT JOIN {input_schema}.buildings_lod2 l ON b.feature_id = l.feature_id
--- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
-)
+
+-- Use temp table because original table is not indexed
+DROP TABLE IF EXISTS temp_floor_number_data;
+CREATE TEMP TABLE temp_floor_number_data AS
+SELECT
+    b.feature_id,
+    b.height,
+    l.storeysAboveGround AS validated_floors
+    -- Calculate if the source floors make sense given the height
+    -- Typical floor height should be between 2.5m and 5m
+FROM {output_schema}.buildings b
+LEFT JOIN {input_schema}.buildings_lod2 l ON b.feature_id = l.feature_id
+;
+CREATE INDEX ON temp_floor_number_data (feature_id);
+CREATE INDEX ON temp_floor_number_data (validated_floors);
+
+DELETE FROM temp_floor_number_data
+WHERE validated_floors = 0
+   OR validated_floors IS NULL
+    OR height  < 2.0 * validated_floors-- Too short per floor, suspicious
+    OR height  > 6.0 * validated_floors; -- Too tall per floor, suspicious
+
+
 UPDATE {output_schema}.buildings b
 SET floor_number = fnd.validated_floors
-FROM floor_number_data fnd
-WHERE b.feature_id = fnd.feature_id
-  AND fnd.validated_floors IS NOT NULL;
+FROM temp_floor_number_data fnd
+WHERE b.feature_id = fnd.feature_id;
 
 -- Step 2: Calculate average floor height per building use from validated data
 -- This gives us reliable floor heights to use for estimation
@@ -44,23 +49,19 @@ WHERE b.floor_number IS NULL
 
 -- Step 3: For remaining buildings, use overall median floor height by building use
 -- Residential: ~3.0m, Commercial: ~3.5m, Public: ~3.5m
-WITH fallback_floor_height AS (
-    SELECT
-        CASE
-            WHEN building_use = 'Residential' THEN 3.0
-            WHEN building_use = 'Commercial' THEN 3.5
-            WHEN building_use = 'Public' THEN 3.5
-            ELSE 3
-        END as default_height_per_floor,
-        building_use
-    FROM {output_schema}.buildings
-    WHERE floor_number IS NULL
-)
 UPDATE {output_schema}.buildings b
-SET floor_number = GREATEST(ROUND(b.height / ffh.default_height_per_floor), 1)
-FROM fallback_floor_height ffh
-WHERE b.floor_number IS NULL
-  AND b.building_use = ffh.building_use;
+SET floor_number = GREATEST(
+    ROUND(
+        b.height /
+        CASE
+            WHEN b.building_use = 'Residential' THEN 3.0
+            WHEN b.building_use IN ('Commercial', 'Public') THEN 3.5
+            ELSE 3.0
+        END
+    ),
+    1
+)
+WHERE b.floor_number IS NULL;
 
 -- Step 4: Final fallback for any remaining buildings (use 3.2m average)
 UPDATE {output_schema}.buildings
@@ -72,3 +73,5 @@ WHERE floor_number IS NULL
 UPDATE {output_schema}.buildings
 SET floor_number = 1
 WHERE floor_number IS NULL;
+
+DROP TABLE IF EXISTS temp_floor_number_data;
