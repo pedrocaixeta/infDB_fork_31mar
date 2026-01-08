@@ -7,7 +7,7 @@ The infDB can be easily deployed using the provided bash scripts, which simplify
     Ensure that Docker is running. If you use Docker Desktop, start the application first.
 
 ## Start infDB
-
+To start the configured infDB services, use the following startup script:
 ```bash
 bash infdb-startup.sh
 ```
@@ -30,7 +30,7 @@ bash infdb-remove.sh
 !!! danger
     All stored data gets removed
 
-## Import data
+## Import Open Data
 To import open data into the infDB, execute:
 
 ```bash
@@ -40,7 +40,7 @@ bash infdb-import.sh
 !!! info
     Downloaded data is stored centrally on each host as a persistent docker volume. This data persists even if the `infdb-importer` container is removed.
 
-## Remove infdb-importer data
+## Remove Infdb-importer Data
 To remove the downloaded open data, execute:
 
 ```bash

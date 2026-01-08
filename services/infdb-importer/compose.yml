@@ -1,5 +1,7 @@
 services:
     infdb-loader:
+        profiles:
+            - opendata
         build:
             context: .
             dockerfile: Dockerfile

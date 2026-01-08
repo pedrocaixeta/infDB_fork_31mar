@@ -1,8 +1,9 @@
 ---
 icon: material/tools
 ---
-The external tools adopted to the infDb are in the folder tools/
 
-Already integrated tool can be found here [Tools](../tools/index.md)
+Tools are software that interacts with the infDB and process data. A list of already integrated tools and more information can be found in the chapter [Tools](../tools/index.md).
 
-If you want to integrate your own tool, please refer to section [Development](../tools/index.md)
+<p align="center">
+  <img src="/usage/tools.png" alt="infDB logo" width="200"/>
+</p>
