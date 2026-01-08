@@ -6,7 +6,6 @@ from infdb import InfDB
 
 from . import utils
 
-
 def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear_existing: bool = False) -> None:
     """Create (or update) a single geogitter table by inserting grid cells per resolution.
 
@@ -62,6 +61,14 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
             if isinstance(resolutions, str):
                 resolutions = [resolutions]
 
+    
+            ags_col = "AGS" if "AGS" in envelop.columns else "ags"
+            gen_col = "GEN" if "GEN" in envelop.columns else ("gen" if "gen" in envelop.columns else None)
+
+            ags_val = str(envelop[ags_col].iloc[0])
+            gen_val = str(envelop[gen_col].iloc[0]) if gen_col else ""
+
+
             # Insert per resolution, skipping existing ids
             for resolution in resolutions or []:
                 if resolution.endswith("km"):
@@ -71,12 +78,6 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
                 else:
                     log.warning("Skipping resolution with unknown unit: %s", resolution)
                     continue
-
-                ags_col = "AGS" if "AGS" in envelop.columns else "ags"
-                gen_col = "GEN" if "GEN" in envelop.columns else ("gen" if "gen" in envelop.columns else None)
-
-                ags_val = envelop[ags_col].iloc[0]
-                gen_val = envelop[gen_col].iloc[0] if gen_col else ""
 
                 log.info(
                     "Generating grid cells for %s (%s) with resolution %s",
@@ -126,11 +127,16 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
                             g.geom
                         FROM grid g, params p
                     )
-                    SELECT * FROM id_named
-                    WHERE id NOT IN (SELECT id FROM {schema}.{table_name});
+                    SELECT id, x_mp, y_mp, name, resolution_meters, geom
+                    FROM id_named
                 """
 
-                insert_sql = f"INSERT INTO {schema}.{table_name} {generate_grid_cells_sql};"
+                insert_sql = f"""
+                INSERT INTO {schema}.{table_name} (id, x_mp, y_mp, name, resolution_meters, geom)
+                {generate_grid_cells_sql}
+                ON CONFLICT (id) DO NOTHING;
+                """
+
                 db.execute_query(insert_sql)
 
 
