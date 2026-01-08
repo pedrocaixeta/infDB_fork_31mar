@@ -7,8 +7,9 @@ set -e
 
 echo "Loading environment variables from .env file..."
 set -a
-[ -f $(dirname "$0")/../../.env ] && . $(dirname "$0")/../../.env
+[ -f .env ] && . .env
 set +a
 
-echo "Starting docker compose..."
-docker compose -f "$(dirname "$0")/compose.yml" "$@"
+
+# Run the importer script
+bash services/infdb-importer/run.sh up --build

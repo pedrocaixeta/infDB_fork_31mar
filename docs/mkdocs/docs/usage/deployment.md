@@ -30,21 +30,21 @@ bash infdb-remove.sh
 !!! danger
     All stored data gets removed
 
-## Run infdb-loader
-To run the data loader, execute:
+## Import data
+To import open data into the infDB, execute:
 
 ```bash
-bash infdb-loader-run.sh
+bash infdb-import.sh
 ```
 
 !!! info
-    Downloaded data is stored centrally on each host as a persistent docker volume. This data persists even if the `infdb-loader` container is removed.
+    Downloaded data is stored centrally on each host as a persistent docker volume. This data persists even if the `infdb-importer` container is removed.
 
-## Remove infdb-loader data
-To remove the downloaded `infdb-loader` data, execute:
+## Remove infdb-importer data
+To remove the downloaded open data, execute:
 
 ```bash
-bash infdb-loader-remove.sh
+docker volume rm infdb-loader-data
 ```
 !!! danger
     All downloaded data gets removed

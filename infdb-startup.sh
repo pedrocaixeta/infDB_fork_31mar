@@ -22,7 +22,7 @@ echo "=== Pull latest docker images ==="
 docker compose pull
 
 echo "=== Starting infDB ==="
-docker compose up -d
+docker compose up -d --build
 
 echo "=== Successfully started InfDB. ==="
 

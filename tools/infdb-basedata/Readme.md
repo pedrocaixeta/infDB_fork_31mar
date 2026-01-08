@@ -21,7 +21,5 @@ CONFIG_INFDB_PATH=../../configs/  # Path to the configs directory of infDB
 Settings in configs/config-preprocessor.yml
 ```bash
     # on linux and macos
-    docker compose -f compose.yml up
-
-    # on windows
+    bash run.sh
 ```

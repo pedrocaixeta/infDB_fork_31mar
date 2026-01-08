@@ -6,20 +6,19 @@
 # ----------------------------------------------------------------------
 echo "Loading environment variables from .env file..."
 set -a
-[ -f .env ] && . .env
+[ -f $(dirname "$0")/../.env ] && . $(dirname "$0")/../.env
 set +a
 
 echo "=== Run infDB-loader ==="
-mkdir -p ../data/infdb-loader
-docker compose -f tools/infdb-loader/compose.yml up
+bash infdb-import.sh
 
 echo "=== Run infdb-basedata ==="
-docker compose -f tools/infdb-basedata/compose.yml up
+bash tools/infdb-basedata/run.sh up
 
 echo "=== Run ro-heat ==="
-docker compose -f tools/ro-heat/compose.yml up
+bash tools/ro-heat/run.sh up
 
 echo "=== Run kwp ==="
-docker compose -f tools/kwp/compose.yml up
+bash tools/kwp/run.sh up
 
 echo "=== Done! InfDB with linear heat density is ready. ==="
