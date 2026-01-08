@@ -10,10 +10,11 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-loader:
-    name: "forchheim"  # Name of the infdb-loader instance
+    name: "oberhausen" #"forchheim"  # Name of the infdb-loader instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich
-        - "09474126"  # Forcheim
+        # - "09474126"  # Forcheim
+        - "05119000"
     multiproccesing: 
         status: not-active
         max_cores: 2    # max cores since of memory limitations to 2
@@ -544,7 +545,7 @@ infdb-loader:
               - wind_speed_10m
               - precipitation
         kwp-nrw:
-          status: not-active
+          status: active
           schema: opendata
           prefix: kwp_nrw
           path:
@@ -601,20 +602,20 @@ infdb-loader:
           prefix: kwp_nrw_oberhausen
           path:
               base: "{infdb-loader/path/opendata}/kwp-nrw-oberhausen/"
-              zip: "{infdb-loader/sources/kwp-nrw-oberhausen/path/base}/zip/"
+              zip: "{infdb-loader/sources/kwp-nrw-oberhausen/path/base}/"
               unzip: "{infdb-loader/sources/kwp-nrw-oberhausen/path/base}/unzip/"
               processed: "{infdb-loader/path/processed}/kwp-nrw-oberhausen/"
           layer:
-            - "WBM-NRW"
+            - "WBM-NRW_"
             - "WBM-NRW-erhoeht"
             - "WBM-NRW-hoch"
             - "WBM-NRW-moderat"
             - "WBM-NRW-Waermelinien"
-            - "Sanierung_Energietraeger_Flure"
-            - "Sanierung_Energietraeger_Baublock"
-            - "Potenzial_TG_Raster"
-            - "Potenzial_ONG_MTG_Baublock"
-            - "Potenzial_FF_Solarthermie_Flur"
+            - "Sanierung-Energietraeger-Flure"
+            - "Sanierung-Energietraeger-Baublock"
+            - "Potenzial-TG-Raster"
+            - "Potenzial-ONG-MTG-Baublock"
+            - "Potenzial-FF-Solarthermie-Flur"
 
         gebaeude-neuburg:
             status: active
