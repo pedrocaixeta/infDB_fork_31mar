@@ -1,4 +1,7 @@
-CREATE OR REPLACE FUNCTION {output_schema}.classify_building_use(funktion TEXT)
+--liquibase formatted sql
+--changeset marvin.huang:1.0.1.1 labels:infdb-basedata,infdb-basedata-buildings endDelimiter:@@ rollbackEndDelimiter:@@
+-- CreateFunction rollback is not automatically supported and requires custom rollback (Drop)
+CREATE OR REPLACE FUNCTION ${output_schema}.classify_building_use(funktion TEXT)
     RETURNS TEXT AS
 $$
 BEGIN
@@ -326,8 +329,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE
                     STRICT;
+@@
+--rollback DROP FUNCTION IF EXISTS ${output_schema}.classify_building_use(TEXT);
+@@
 
-CREATE OR REPLACE FUNCTION {output_schema}.assign_weighted_year(
+--changeset marvin.huang:1.0.1.2 labels:infdb-basedata,infdb-basedata-buildings endDelimiter:@@ rollbackEndDelimiter:@@
+-- Allow replace if it database already has it
+CREATE OR REPLACE FUNCTION ${output_schema}.assign_weighted_year(
     vor1919 double precision,
     a1919bis1948 double precision,
     a1949bis1978 double precision,
@@ -389,3 +397,6 @@ BEGIN
     RETURN '2020-';
 END;
 $$ LANGUAGE plpgsql;
+@@
+--rollback DROP FUNCTION IF EXISTS ${output_schema}.assign_weighted_year(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision);
+@@
