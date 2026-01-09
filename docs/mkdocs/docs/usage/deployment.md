@@ -31,8 +31,7 @@ bash infdb-remove.sh
     All stored data gets removed
 
 ## Import Open Data
-To import open data into the infDB, execute:
-
+The opendata is imported automatically by starting the infDB. If you want to add further opendata without restarting the infDB, execute:
 ```bash
 bash infdb-import.sh
 ```

@@ -913,6 +913,6 @@ If you activate the service, the documentation (Swagger UI) should be available 
 
 
 ## OpenCloud :material-cloud:
-OpenCloud is a self-hosted file share and communication platform. It allows users to store files, contacts, calendars, and more on the server, providing an easy way to manage data needed for import or export processes within the infDB ecosystem. More information can be found on the official [Website](https://opencloud.eu/).
+OpenCloud is a self-hosted file share platform. It allows users to store files on the server, providing an easy way to manage data needed for import or export processes within the infDB ecosystem. More information can be found on the official [Website](https://opencloud.eu/).
 
-The OpenCloud service need to be started manually. A comprehensive Readme can be found in `services/opencloud/Readme.md`
+The OpenCloud service need to be started manually. A comprehensive Readme can be found in `services/opencloud/Readme.md`.

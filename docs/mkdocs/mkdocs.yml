@@ -47,7 +47,7 @@ nav:
   - infDB: 
     - Introduction: infdb/index.md
     - Architecture: infdb/architecture.md
-    - Core: infdb/core.md
+    # - Core: infdb/core.md
     - Database: infdb/database.md
     - Services: infdb/services.md
     - Tools: infdb/tools.md
@@ -61,7 +61,7 @@ nav:
     - Introduction: tools/index.md
     - Template: tools/template.md
     - infDB-basedata: tools/infdb-basedata.md
-    - ro-heat: tools/ro-heat.md
+    # - ro-heat: tools/ro-heat.md
   - Linear Heat Density: 
     - Introduction: linear-heat-density/index.md
     - Toolchain: linear-heat-density/toolchain.md
