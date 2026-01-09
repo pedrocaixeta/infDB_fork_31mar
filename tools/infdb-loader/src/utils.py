@@ -605,7 +605,7 @@ def fast_copy_points_csv(
     drop_existing: bool = True,
     create_spatial_index: bool = True,
     clip_to_scope: bool = True,
-    column_types: dict | None = None
+    column_types: dict | None = None,
 ):
     log = infdb.get_worker_logger()
     params = infdb.get_db_parameters_dict()
@@ -662,11 +662,11 @@ def fast_copy_points_csv(
         def cast_expr(c: str) -> str:
             # Always cast coordinates (usually safe)
             if c in (x_l, y_l):
-                return f"\"{c}\"::double precision AS \"{c}\""
+                return f'"{c}"::double precision AS "{c}"'
 
             t = column_types.get(c)
             if not t:
-                return f"\"{c}\""
+                return f'"{c}"'
 
             if t in ("bigint", "integer", "int"):
                 pg_t = "bigint" if t == "bigint" else "integer"
@@ -675,23 +675,20 @@ def fast_copy_points_csv(
                     f"NULLIF(regexp_replace("
                     f"NULLIF(NULLIF(NULLIF(\"{c}\", '-'), '–'), '—'),"
                     f"'[^0-9-]', '', 'g'), '')"
-                    f"::{pg_t} AS \"{c}\""
+                    f'::{pg_t} AS "{c}"'
                 )
 
             if t in ("double precision", "numeric", "real"):
                 pg_t = "double precision" if t == "double precision" else t
                 # treat '-' as NULL, convert comma decimals, then cast
                 return (
-                    f"NULLIF(replace("
-                    f"NULLIF(NULLIF(NULLIF(\"{c}\", '-'), '–'), '—'),"
-                    f"',', '.'), '')"
-                    f"::{pg_t} AS \"{c}\""
+                    f"NULLIF(replace(NULLIF(NULLIF(NULLIF(\"{c}\", '-'), '–'), '—'),',', '.'), '')::{pg_t} AS \"{c}\""
                 )
 
             if t in ("text", "varchar"):
-                return f"\"{c}\""
+                return f'"{c}"'
 
-            return f"\"{c}\"::{t} AS \"{c}\""
+            return f'"{c}"::{t} AS "{c}"'
 
         select_cols = ", ".join(cast_expr(c) for c in header)
 
