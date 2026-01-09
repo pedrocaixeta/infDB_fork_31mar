@@ -16,8 +16,7 @@ services:
         extra_hosts:
             - "host.docker.internal:host-gateway"
         env_file:
-            - ../../.env 
-            - .env
+            - ../../.env
         environment:
             - UV_LINK_MODE=copy
 

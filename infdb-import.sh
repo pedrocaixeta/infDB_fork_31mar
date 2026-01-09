@@ -5,11 +5,11 @@
 # e.g.: bash run.sh up, bash run.sh up --build, bash run.sh down, bash run.sh stop, ...
 set -e
 
-echo "Loading environment variables from .env file..."
+# Load environment variables from .env file
 set -a
 [ -f .env ] && . .env
 set +a
 
 
 # Run the importer script
-bash services/infdb-importer/run.sh up --build
+docker compose --profile "opendata" up --build
