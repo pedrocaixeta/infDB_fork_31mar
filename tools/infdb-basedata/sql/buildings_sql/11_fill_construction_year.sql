@@ -12,6 +12,7 @@ FROM {output_schema}.buildings b
 -- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE g.id IS NOT NULL;
 
+CREATE INDEX ON temp_building_with_grid_year(building_id);
 
 -- Step 2: Assign construction year using weighted random distribution
 -- Note: This version uses a WITH clause to prepare weights and cumulative ranges.

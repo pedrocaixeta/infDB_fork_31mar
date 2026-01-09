@@ -95,3 +95,7 @@ FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
 -- WHERE buildings_grid.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE buildings_grid.x_mp = bauj.x_mp_100m
   AND buildings_grid.y_mp = bauj.y_mp_100m;
+
+
+-- release memory
+DROP TABLE IF EXISTS temp_grid_transformed;
