@@ -147,3 +147,8 @@ Docker Compose service definition:
 7. **Document your code:**
    - Add docstrings and comments to your code
    - Update Readme_template.md for user of your tool
+
+## Known issues
+
+- **Devcontainer Python interpreter not used:** If the venv from `.devcontainer/devcontainer.json` (`python defaultInterpreterPath`) isn’t active, check VS Code **User/Remote** settings for `python.defaultInterpreterPath` (may override). Reopen the devcontainer and run **Python: Select Interpreter**.
+

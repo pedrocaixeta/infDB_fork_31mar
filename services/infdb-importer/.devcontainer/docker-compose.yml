@@ -21,6 +21,10 @@ services:
     # security_opt:
     #   - seccomp:unconfined
 
+    env_file:
+      - .env        # infdb-loader/.env
+      - ../../.env  # repo root .env (dev only)
+
     # Overrides default command so things don't shut down after the process ends.
     command: ["/bin/sh", "-c", "uv sync && exec sleep infinity"]
  
