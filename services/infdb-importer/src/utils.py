@@ -605,6 +605,7 @@ def fast_copy_points_csv(
     drop_existing: bool = True,
     create_spatial_index: bool = True,
     clip_to_scope: bool = True,
+    column_types: dict | None = None,
 ):
     log = infdb.get_worker_logger()
     params = infdb.get_db_parameters_dict()
@@ -650,10 +651,46 @@ def fast_copy_points_csv(
                 f,
             )
 
-        # Step 4: Build SELECT with type casts
-        select_cols = ", ".join(
-            f'"{c}"::double precision' if c in (x_col.lower(), y_col.lower()) else f'"{c}"' for c in header
-        )
+        # Step 4: Build SELECT with type casts (x/y + YAML-driven types)
+        x_l = x_col.lower()
+        y_l = y_col.lower()
+
+        column_types = column_types or {}
+        # make keys lowercase and types lowercase
+        column_types = {k.strip().lower(): v.strip().lower() for k, v in column_types.items()}
+
+        def cast_expr(c: str) -> str:
+            # Always cast coordinates (usually safe)
+            if c in (x_l, y_l):
+                return f'"{c}"::double precision AS "{c}"'
+
+            t = column_types.get(c)
+            if not t:
+                return f'"{c}"'
+
+            if t in ("bigint", "integer", "int"):
+                pg_t = "bigint" if t == "bigint" else "integer"
+                # treat '-' as NULL, then strip non-digits, then cast
+                return (
+                    f"NULLIF(regexp_replace("
+                    f"NULLIF(NULLIF(NULLIF(\"{c}\", '-'), '–'), '—'),"
+                    f"'[^0-9-]', '', 'g'), '')"
+                    f'::{pg_t} AS "{c}"'
+                )
+
+            if t in ("double precision", "numeric", "real"):
+                pg_t = "double precision" if t == "double precision" else t
+                # treat '-' as NULL, convert comma decimals, then cast
+                return (
+                    f"NULLIF(replace(NULLIF(NULLIF(NULLIF(\"{c}\", '-'), '–'), '—'),',', '.'), '')::{pg_t} AS \"{c}\""
+                )
+
+            if t in ("text", "varchar"):
+                return f'"{c}"'
+
+            return f'"{c}"::{t} AS "{c}"'
+
+        select_cols = ", ".join(cast_expr(c) for c in header)
 
         # Step 5: Get clipping WHERE clause
         where_clause = ""

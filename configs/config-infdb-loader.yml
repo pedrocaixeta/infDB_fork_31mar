@@ -215,6 +215,8 @@ infdb-loader:
                   table_name: bevoelkerungszahl
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Bevoelkerungszahl.zip
+                  types:
+                    einwohner: bigint
 
                 - name: Deutsche Staatsangehoerige 18+
                   status: not-active
@@ -311,6 +313,9 @@ infdb-loader:
                   table_name: durchschn_haushaltsgroesse
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Durchschnittliche_Haushaltsgroesse_in_Gitterzellen.zip
+                  types:
+                    durchschnhhgroesse: double precision
+                    werterlaeuternde_zeichen: text
 
                 - name: Haushaltsgroesse
                   status: not-active
@@ -365,6 +370,9 @@ infdb-loader:
                   table_name: eigentuemerquote
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Eigentuemerquote_in_Gitterzellen.zip
+                  types:
+                    eigentuemerquote: double precision
+                    werterlaeuternde_zeichen: text
 
                 - name: Leerstandsquote
                   status: not-active
@@ -389,6 +397,10 @@ infdb-loader:
                   table_name: wohnflaeche_wohnung
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Durchschnittliche_Flaeche_je_Wohnung_in_Gitterzellen.zip
+                  types:
+                    durchschnflaechejewohn: double precision
+                    werterlaeuternde_zeichen: text
+
 
                 - name: Flaeche Wohnung 10m2 Intervalle
                   status: not-active
@@ -419,42 +431,115 @@ infdb-loader:
                   table_name: gebaeude_baujahr_mikrozensus
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_nach_Baujahr_in_Mikrozensus_Klassen.zip
+                  types:
+                    insgesamt_gebaeude: bigint
+                    vor1919: bigint
+                    a1919bis1948: bigint
+                    a1949bis1978: bigint
+                    a1979bis1990: bigint
+                    a1991bis2000: bigint
+                    a2001bis2010: bigint
+                    a2011bis2019: bigint
+                    a2020undspaeter: bigint
 
                 - name: Gebaeude nach Anzahl Wohnungen
                   status: active
                   table_name: gebaeude_anzahl_wohnungen
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_nach_Anzahl_der_Wohnungen_im_Gebaeude.zip
+                  types:
+                    insgesamt_gebaeude: bigint
+                    1_wohnung: bigint
+                    2_wohnungen: bigint
+                    3bis6_wohnungen: bigint
+                    7bis12_wohnungen: bigint
+                    13undmehr_wohnungen: bigint
+
 
                 - name: Gebaeude nach Typ und Groesse
                   status: active
                   table_name: gebaeude_typ_groesse
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_Gebaeudetyp_Groesse.zip
+                  types:
+                    insgesamt_gebaeude: bigint
+                    freieh: bigint
+                    efh_dhh: bigint
+                    efh_reihenhaus: bigint
+                    freist_zfh: bigint
+                    zfh_dhh: bigint
+                    zfh_reihenhaus: bigint
+                    mfh_3bis6wohnungen: bigint
+                    mfh_7bis12wohnungen: bigint
+                    mfh_13undmehrwohnungen: bigint
+                    anderergebaeudetyp: bigint
+
 
                 - name: Heizungsart
                   status: active
                   table_name: heizungsart
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Heizungsart.zip
+                  types:
+                    insgesamt_heizungsart: bigint
+                    fernheizung: bigint
+                    etagenheizung: bigint
+                    blockheizung: bigint
+                    zentralheizung: bigint
+                    einzel_mehrraumoefen: bigint
+                    keine_heizung: bigint
+
 
                 - name: Heizungsart (ueberwiegend)
                   status: active
                   table_name: heizungsart_ueberwiegend
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_ueberwiegender_Heizungsart.zip
+                  types:
+                    insgesamt_heizungsart: bigint
+                    fernheizung: bigint
+                    etagenheizung: bigint
+                    blockheizung: bigint
+                    zentralheizung: bigint
+                    einzel_mehrraumoefen: bigint
+                    keine_heizung: bigint
+
 
                 - name: Energietraeger
                   status: active
                   table_name: energietraeger
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Energietraeger.zip
+                  types:
+                    insgesamt_energietraeger: bigint
+                    gas: bigint
+                    heizoel: bigint
+                    holz_holzpellets: bigint
+                    biomasse_biogas: bigint
+                    solar_geothermie_waermepumpen: bigint
+                    strom: bigint
+                    kohle: bigint
+                    fernwaerme: bigint
+                    kein_energietraeger: bigint
+
 
                 - name: Energietraeger der Heizung
                   status: active
                   table_name: energietraeger_heizung
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_Energietraeger_der_Heizung.zip
+                  types:
+                    insgesamt_energietraeger: bigint
+                    gas: bigint
+                    heizoel: bigint
+                    holz_holzpellets: bigint
+                    biomasse_biogas: bigint
+                    solar_geothermie_waermepumpen: bigint
+                    strom: bigint
+                    kohle: bigint
+                    fernwaerme: bigint
+                    kein_energietraeger: bigint
+
 
                 - name: Auslaenderanteil EU/nichtEU
                   status: not-active
