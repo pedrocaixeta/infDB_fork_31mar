@@ -64,7 +64,7 @@ nav:
     # - ro-heat: tools/ro-heat.md
   - Linear Heat Density: 
     - Introduction: linear-heat-density/index.md
-    - Toolchain: linear-heat-density/toolchain.md
+    - Tools: linear-heat-density/tools.md
   - Development: 
     - Introduction: development/index.md
     - Repository: development/repository.md
