@@ -25,7 +25,7 @@ echo "=== Starting infDB ==="
 docker compose up -d --build
 
 # echo "=== Importing data infDB ==="
-bash infdb-import.sh
+# bash infdb-import.sh
 
 echo "=== Successfully started InfDB. ==="
 
