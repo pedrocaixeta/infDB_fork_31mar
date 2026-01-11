@@ -9,6 +9,8 @@ services:
         volumes:
             - ./liquibase/changelog/:/liquibase/changelog:ro # only for development
             - ./liquibase/changelog/changelog-master.yml:/liquibase/changelog-master.yml:ro # only for development
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
 
     infdb-basedata:
         build:

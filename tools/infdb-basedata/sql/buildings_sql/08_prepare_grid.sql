@@ -50,49 +50,47 @@ SET id   = EXCLUDED.id,
 
 -- Update with population data
 UPDATE {output_schema}.buildings_grid
-SET einwohner = pop.einwohner::bigint
+SET einwohner = pop.einwohner
 FROM {input_schema}.zensus_2022_100m_bevoelkerungszahl pop
 WHERE buildings_grid.x_mp = pop.x_mp_100m
   AND buildings_grid.y_mp = pop.y_mp_100m;
 
 -- Update with household size data
 UPDATE {output_schema}.buildings_grid
-SET durchschnhhgroesse = REPLACE(hh.durchschnhhgroesse, ',', '.')::double precision,
-    werterlaeuternde_zeichen = hh.werterlaeuternde_zeichen::text
+SET durchschnhhgroesse = hh.durchschnhhgroesse,
+    werterlaeuternde_zeichen = hh.werterlaeuternde_zeichen
 FROM {input_schema}.zensus_2022_100m_durchschn_haushaltsgroesse hh
 WHERE buildings_grid.x_mp = hh.x_mp_100m
   AND buildings_grid.y_mp = hh.y_mp_100m;
 
 -- Update with building type data
 UPDATE {output_schema}.buildings_grid
-SET insgesamt_gebaeude = (CASE WHEN bld.insgesamt_gebaeude IN ('-', '–', '') THEN '0' ELSE bld.insgesamt_gebaeude END)::bigint,
-    freiefh = (CASE WHEN bld.freiefh IN ('-', '–', '') THEN '0' ELSE bld.freiefh END)::bigint,
-    efh_dhh = (CASE WHEN bld.efh_dhh IN ('-', '–', '') THEN '0' ELSE bld.efh_dhh END)::bigint,
-    efh_reihenhaus = (CASE WHEN bld.efh_reihenhaus IN ('-', '–', '') THEN '0' ELSE bld.efh_reihenhaus END)::bigint,
-    freist_zfh = (CASE WHEN bld.freist_zfh IN ('-', '–', '') THEN '0' ELSE bld.freist_zfh END)::bigint,
-    zfh_dhh = (CASE WHEN bld.zfh_dhh IN ('-', '–', '') THEN '0' ELSE bld.zfh_dhh END)::bigint,
-    zfh_reihenhaus = (CASE WHEN bld.zfh_reihenhaus IN ('-', '–', '') THEN '0' ELSE bld.zfh_reihenhaus END)::bigint,
-    mfh_3bis6wohnungen = (CASE WHEN bld.mfh_3bis6wohnungen IN ('-', '–', '') THEN '0' ELSE bld.mfh_3bis6wohnungen END)::bigint,
-    mfh_7bis12wohnungen = (CASE WHEN bld.mfh_7bis12wohnungen IN ('-', '–', '') THEN '0' ELSE bld.mfh_7bis12wohnungen END)::bigint,
-    mfh_13undmehrwohnungen = (CASE WHEN bld.mfh_13undmehrwohnungen IN ('-', '–', '') THEN '0' ELSE bld.mfh_13undmehrwohnungen END)::bigint,
-    anderergebaeudetyp = (CASE WHEN bld.anderergebaeudetyp IN ('-', '–', '') THEN '0' ELSE bld.anderergebaeudetyp END)::bigint
+SET insgesamt_gebaeude = bld.insgesamt_gebaeude,
+  freiefh = bld.freiefh,
+  efh_dhh = bld.efh_dhh,
+  efh_reihenhaus = bld.efh_reihenhaus,
+  freist_zfh = bld.freist_zfh,
+  zfh_dhh = bld.zfh_dhh,
+  zfh_reihenhaus = bld.zfh_reihenhaus,
+  mfh_3bis6wohnungen = bld.mfh_3bis6wohnungen,
+  mfh_7bis12wohnungen = bld.mfh_7bis12wohnungen,
+  mfh_13undmehrwohnungen = bld.mfh_13undmehrwohnungen,
+  anderergebaeudetyp = bld.anderergebaeudetyp
 FROM {input_schema}.zensus_2022_100m_gebaeude_typ_groesse bld
--- WHERE buildings_grid.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE buildings_grid.x_mp = bld.x_mp_100m
   AND buildings_grid.y_mp = bld.y_mp_100m;
 
 -- Update with construction year data
 UPDATE {output_schema}.buildings_grid
-SET vor1919 = (CASE WHEN bauj.vor1919 IN ('-', '–', '') THEN '0' ELSE bauj.vor1919 END)::bigint,
-    a1919bis1948 = (CASE WHEN bauj.a1919bis1948 IN ('-', '–', '') THEN '0' ELSE bauj.a1919bis1948 END)::bigint,
-    a1949bis1978 = (CASE WHEN bauj.a1949bis1978 IN ('-', '–', '') THEN '0' ELSE bauj.a1949bis1978 END)::bigint,
-    a1979bis1990 = (CASE WHEN bauj.a1979bis1990 IN ('-', '–', '') THEN '0' ELSE bauj.a1979bis1990 END)::bigint,
-    a1991bis2000 = (CASE WHEN bauj.a1991bis2000 IN ('-', '–', '') THEN '0' ELSE bauj.a1991bis2000 END)::bigint,
-    a2001bis2010 = (CASE WHEN bauj.a2001bis2010 IN ('-', '–', '') THEN '0' ELSE bauj.a2001bis2010 END)::bigint,
-    a2011bis2019 = (CASE WHEN bauj.a2011bis2019 IN ('-', '–', '') THEN '0' ELSE bauj.a2011bis2019 END)::bigint,
-    a2020undspaeter = (CASE WHEN bauj.a2020undspaeter IN ('-', '–', '') THEN '0' ELSE bauj.a2020undspaeter END)::bigint
+SET vor1919 = bauj.vor1919,
+  a1919bis1948 = bauj.a1919bis1948,
+  a1949bis1978 = bauj.a1949bis1978,
+  a1979bis1990 = bauj.a1979bis1990,
+  a1991bis2000 = bauj.a1991bis2000,
+  a2001bis2010 = bauj.a2001bis2010,
+  a2011bis2019 = bauj.a2011bis2019,
+  a2020undspaeter = bauj.a2020undspaeter
 FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
--- WHERE buildings_grid.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE buildings_grid.x_mp = bauj.x_mp_100m
   AND buildings_grid.y_mp = bauj.y_mp_100m;
 

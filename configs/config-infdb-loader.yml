@@ -463,7 +463,7 @@ infdb-loader:
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Gebaeude_mit_Wohnraum_nach_Gebaeudetyp_Groesse.zip
                   types:
                     insgesamt_gebaeude: bigint
-                    freieh: bigint
+                    freiefh: bigint
                     efh_dhh: bigint
                     efh_reihenhaus: bigint
                     freist_zfh: bigint
