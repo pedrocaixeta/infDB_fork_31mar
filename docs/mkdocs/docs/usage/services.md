@@ -876,7 +876,7 @@ COMPOSE_PROFILES=...,api,...  # (1)
 # Profile: api
 
 # Port for the FastAPI service
-SERVICES_API_PORT=8000
+SERVICES_API_PORT=6000
 
 
 # ==============================================================================
@@ -885,7 +885,7 @@ SERVICES_API_PORT=8000
 # Profile: api
 
 # Port for the PyGeoAPI service
-SERVICES_PYGEOAPI_PORT=8001
+SERVICES_PYGEOAPI_PORT=6001
 
 # Host IP to run PyGeoAPI on (e.g., localhost or 10.162.28.144)
 SERVICES_PYGEOAPI_BASE_HOST=localhost
@@ -897,18 +897,18 @@ SERVICES_PYGEOAPI_BASE_HOST=localhost
 # Profile: api
 
 # Port for the PostgREST service
-SERVICES_POSTGREST_PORT=8002
+SERVICES_POSTGREST_PORT=6002
 ```
 
 1. Profile "api" must be within the list to activate the API service
 2. Port on which the API endpoints are available
 
-If you activate the service, the documentation (Swagger UI) should be available on the default port `SERVICES_API_EXPOSED_PORT=8000` via your browser:
+If you activate the service, the documentation (Swagger UI) should be available on the default port `SERVICES_API_EXPOSED_PORT=6000` via your browser:
 === "Local"
-    http://localhost:8000/docs
+    http://localhost:6000/docs
 
 === "Remote"
-    http://IP-ADDRESS-OF-HOST/8000/docs
+    http://IP-ADDRESS-OF-HOST/6000/docs
 
 
 
