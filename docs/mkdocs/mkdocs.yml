@@ -21,6 +21,7 @@ theme:
     - navigation.instant.progress
     - navigation.top
     - navigation.indexes
+    - navigation.footer
 
 plugins:
   - search
@@ -46,7 +47,7 @@ nav:
   - infDB: 
     - Introduction: infdb/index.md
     - Architecture: infdb/architecture.md
-    - Core: infdb/core.md
+    # - Core: infdb/core.md
     - Database: infdb/database.md
     - Services: infdb/services.md
     - Tools: infdb/tools.md
@@ -59,13 +60,11 @@ nav:
   - Tools: 
     - Introduction: tools/index.md
     - Template: tools/template.md
-    - infDB-loader: tools/infdb-loader.md
     - infDB-basedata: tools/infdb-basedata.md
-    - ro-heat: tools/ro-heat.md
-    - KWP: tools/kwp.md
+    # - ro-heat: tools/ro-heat.md
   - Linear Heat Density: 
     - Introduction: linear-heat-density/index.md
-    - Toolchain: linear-heat-density/toolchain.md
+    - Tools: linear-heat-density/tools.md
   - Development: 
     - Introduction: development/index.md
     - Repository: development/repository.md

@@ -7,9 +7,9 @@ The infDB can be easily deployed using the provided bash scripts, which simplify
     Ensure that Docker is running. If you use Docker Desktop, start the application first.
 
 ## Start infDB
-
+To start the configured infDB services, use the following startup script:
 ```bash
-bash infdb-startup.sh
+bash infdb-start.sh
 ```
 !!! info
     infDB will continue running until you stop it manually as described below, even if the machine is restarted.
@@ -30,21 +30,20 @@ bash infdb-remove.sh
 !!! danger
     All stored data gets removed
 
-## Run infdb-loader
-To run the data loader, execute:
-
+## Import Open Data
+The opendata is imported automatically by starting the infDB. If you want to add further opendata without restarting the infDB, execute:
 ```bash
-bash infdb-loader-run.sh
+bash infdb-import.sh
 ```
 
 !!! info
-    Downloaded data is stored centrally on each host as a persistent docker volume. This data persists even if the `infdb-loader` container is removed.
+    Downloaded data is stored centrally on each host as a persistent docker volume. This data persists even if the `infdb-importer` container is removed.
 
-## Remove infdb-loader data
-To remove the downloaded `infdb-loader` data, execute:
+## Remove Infdb-importer Data
+To remove the downloaded open data, execute:
 
 ```bash
-bash infdb-loader-remove.sh
+docker volume rm infdb-loader-data
 ```
 !!! danger
     All downloaded data gets removed

@@ -50,7 +50,9 @@ PYGEOAPI_PORT_STRING: str = str(read_env("SERVICES_PYGEOAPI_PORT", required=True
 if PYGEOAPI_PORT_STRING is None:
     raise ValueError("SERVICES_PYGEOAPI_PORT is required but not provided.")
 PYGEOAPI_PORT: int = int(PYGEOAPI_PORT_STRING)
-PYGEOAPI_HOST: Optional[str] = read_env("SERVICES_PYGEOAPI_BASE_HOST")
+PYGEOAPI_HOST: str = read_env("SERVICES_PYGEOAPI_BASE_HOST")
+if PYGEOAPI_HOST is None:
+    raise ValueError("SERVICES_PYGEOAPI_BASE_HOST is required but not provided.")
 
 POSTGRES_USER: str = str(read_env("SERVICES_POSTGRES_USER", required=True))
 POSTGRES_PASSWORD: str = str(read_env("SERVICES_POSTGRES_PASSWORD", required=True))
