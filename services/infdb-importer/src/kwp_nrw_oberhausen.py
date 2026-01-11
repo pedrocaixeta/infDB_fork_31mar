@@ -1,7 +1,6 @@
-import multiprocessing as mp
 import os
 import sys
-from typing import Any, Dict, List, Sequence
+from typing import List, Sequence
 
 from infdb import InfDB
 
