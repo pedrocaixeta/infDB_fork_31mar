@@ -574,6 +574,8 @@ def import_layers(
                 "PROMOTE_TO_MULTI",
                 "-lco",
                 "GEOMETRY_NAME=geom",
+                "-lco",
+                "PRECISION=NO",
                 "-t_srs",
                 f"EPSG:{epsg}",
                 # "-makevalid",

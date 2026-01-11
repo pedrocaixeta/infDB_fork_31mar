@@ -9,6 +9,7 @@ from src import (
     census2022,
     gebaeude_neuburg,
     kwp_nrw,
+    kwp_nrw_oberhausen,
     lod2_nrw,
     need,
     opendata_bavaria,
@@ -68,6 +69,7 @@ def main() -> None:
     processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
     processes.append(mp.Process(target=openmeteo.load, args=(infdb,), name="openmeteo"))
     processes.append(mp.Process(target=kwp_nrw.load, args=(infdb,), name="kwp_nrw"))
+    processes.append(mp.Process(target=kwp_nrw_oberhausen.load, args=(infdb,), name="kwp_nrw_oberhausen"))
     processes.append(mp.Process(target=gebaeude_neuburg.load, args=(infdb,), name="gebaeude-neuburg"))
     processes.append(
         mp.Process(target=waermeatlas_hessen_bensheim.load, args=(infdb,), name="waermeatlas_hessen_bensheim")
