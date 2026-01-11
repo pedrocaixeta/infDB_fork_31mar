@@ -9,6 +9,7 @@ from . import utils
 
 NAME = "kwp-nrw-oberhausen"
 
+
 def load(infdb: InfDB) -> None:
     """Entry point to download, validate, and process KWP NRW datasets from heat atlas NRW.
 
@@ -23,7 +24,7 @@ def load(infdb: InfDB) -> None:
         log = infdb.get_worker_logger()
         if not utils.if_active(NAME, infdb):
             return
-        
+
         # create data folders if not existent
         # Zip path
         zip_path = infdb.get_config_path([infdb.get_toolname(), "sources", NAME, "path", "zip"], type="loader")
@@ -42,7 +43,7 @@ def load(infdb: InfDB) -> None:
         # Download INTO the zip directory and use the returned file path
         zip_file = os.path.join(zip_path, filename)
         log.debug(f"Downloading {NAME} data from %s to %s", url, zip_file)
-        utils.download_files(url, zip_path, infdb) 
+        utils.download_files(url, zip_path, infdb)
 
         # Unzip using the real file path
         unzip_dir = infdb.get_config_path([infdb.get_toolname(), "sources", NAME, "path", "unzip"], type="loader")
@@ -70,7 +71,7 @@ def load(infdb: InfDB) -> None:
 
         log.info(f"{NAME} data loaded successfully")
         sys.exit(0)
-        
+
     except Exception as err:
         log.exception("An error occurred while processing KWP-NRW-Oberhausen: %s", str(err))
         sys.exit(1)
