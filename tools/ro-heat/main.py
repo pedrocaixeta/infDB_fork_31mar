@@ -20,7 +20,7 @@ schema = "ro_heat"
 
 def main():
     # Load InfDB handler
-    infdbhandler = InfDB(tool_name="ro-heat",  config_path="configs")
+    infdbhandler = InfDB(tool_name="ro-heat", config_path="configs")
 
     # Database connection
     infdbclient_citydb = infdbhandler.connect()
