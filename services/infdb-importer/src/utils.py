@@ -19,6 +19,7 @@ from bs4 import BeautifulSoup
 from infdb import InfDB
 from infdb.utils import do_cmd as infdb_do_cmd
 from pySmartDL import SmartDL
+import tempfile
 
 # ============================== Constants ==============================
 HTTP_TIMEOUT_SECONDS: int = 60
@@ -641,7 +642,11 @@ def import_layers(
         clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb)
 
         if clip_wkt:
-            tmp_gpkg = os.path.splitext(os.path.abspath(input_file))[0] + "_clip_tmp.gpkg"
+            tmp_gpkg = tempfile.NamedTemporaryFile(
+                prefix="clip_boundary_",
+                suffix=".gpkg",
+                delete=False, 
+            ).name
             try:
                 from shapely import wkt as shapely_wkt
 
