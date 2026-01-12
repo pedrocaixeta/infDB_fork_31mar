@@ -13,4 +13,4 @@ infdb-basedata:
             epsg: None # 3035 (Europe)
     data:
         input_schema: opendata
-        output_schema: basedata
+        output_schema: basedata #also needs to be changed in env_changelog.list if other than basedata

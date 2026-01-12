@@ -7,7 +7,7 @@ from .logger import InfdbLogger
 
 # ============================== Constants ==============================
 
-DEFAULT_CONFIG_DIR: str = "configs"
+DEFAULT_CONFIG_DIR: str = "../configs"
 DEFAULT_LOG_FILE: str = "infdb.log"
 DEFAULT_LOG_LEVEL: str = "INFO"
 

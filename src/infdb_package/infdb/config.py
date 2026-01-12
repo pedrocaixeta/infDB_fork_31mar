@@ -8,7 +8,6 @@ import yaml
 
 # ============================== Constants ==============================
 
-DEFAULT_CONFIG_DIR: str = "configs"
 CONFIG_FILE_TEMPLATE: str = "config-{tool}.yml"
 DATA_BASE_DIR: str = os.path.join("..", "data")
 SETUP_BASE_DIR: str = "."
@@ -18,7 +17,7 @@ FILE_ENCODING: str = "utf-8"
 class InfdbConfig:
     """Read and resolve tool-specific YAML config with optional InfDB base merge."""
 
-    def __init__(self, tool_name: str, config_basedir: Optional[str] = DEFAULT_CONFIG_DIR) -> None:
+    def __init__(self, tool_name: str, config_basedir: str) -> None:
         """Initialize configuration for a tool.
 
         Args:
@@ -28,7 +27,7 @@ class InfdbConfig:
         self.tool_name: str = tool_name
         self.log: logging.Logger = logging.getLogger(__name__)
         self.config_path: str = os.path.join(
-            config_basedir or DEFAULT_CONFIG_DIR,
+            config_basedir,
             CONFIG_FILE_TEMPLATE.format(tool=tool_name),
         )
         self._CONFIG: Dict[str, Any] = self._merge_configs(self.config_path)

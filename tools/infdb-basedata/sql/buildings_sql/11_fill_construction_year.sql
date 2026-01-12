@@ -6,10 +6,13 @@ SELECT b.id   AS building_id,
        b.geom AS building_geom,
        g.*
 FROM {output_schema}.buildings b
-         JOIN {output_schema}.buildings_grid g
-             ON ST_Contains(g.geom, b.centroid)
+    JOIN {output_schema}.buildings_grid g
+    ON g.geom && b.centroid
+        AND ST_Contains(g.geom, b.centroid)
+-- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE g.id IS NOT NULL;
 
+CREATE INDEX ON temp_building_with_grid_year(building_id);
 
 -- Step 2: Assign construction year using weighted random distribution
 -- Note: This version uses a WITH clause to prepare weights and cumulative ranges.
@@ -39,7 +42,9 @@ FROM (SELECT building_id,
                    a2020undspaeter,
                    random() AS r
             FROM temp_building_with_grid_year) year_probs) sub
+-- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
 WHERE b.id = sub.building_id;
+
 
 -- Handle buildings without construction_year using nearest neighbor
 -- Step 3: Find nearest grid cell with construction year data for each unassigned building
