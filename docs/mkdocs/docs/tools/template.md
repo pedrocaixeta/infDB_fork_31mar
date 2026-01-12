@@ -1,8 +1,6 @@
-# InfDB Dev Container Template
+# Dev Container Template
 
 A reusable template for creating Docker-based development containers that interact with the InfDB infrastructure. This template provides a standardized structure for importing (eg. infdb-laoder) data,  processing tools (eg infdb-basedata), and analysis scripts (kwp) that work with the InfDB PostgreSQL/PostGIS database.
-
-## Overview
 
 This template enables you to:
 
@@ -53,7 +51,7 @@ Prerequisites:
 **Option A — Docker Compose:**
 Start tool
 ```bash
-docker compose -f tools/choose-a-name/compose.yml up
+docker bash tools/choose-a-name/run.sh
 ```
 
 **Option B — VS Code Dev Containers:**
@@ -72,23 +70,24 @@ docker compose -f tools/choose-a-name/compose.yml down
 ## Project Structure
 
 ```
-choose-a-name/
-├── src/                                    # Python source modules
-│   └── demo.py                             # Example database operations
-│   └── template.py                         # Template python file for your own code
-├── sql/                                    # SQL scripts (alphabetical order)
-│   └── 00_cleanup.sql                      # Schema initialization
-│   └── 01_template.sql                     # Template sql file for your own code
-├── configs/                                # Configuration files
-│   └── config-choose-a-name.yml            # Tool-specific config
-├── main.py                                 # Entry point - starts here
-├── pyproject.toml                          # Python dependencies
-├── compose.yml                             # Docker Compose definition
-├── create_new_tool.yml                     # Creates new tool based on infdb-template
-├── Dockerfile                              # Docker image build
-├── .env                                    # Environment variables
-├── Readme_template.md                      # Readme for tool users
-└── Readme.md                               # Readme for tool developers
+tools/
+└── choose-a-name/
+    ├── src/                                    # Python source modules
+    │   └── demo.py                             # Example database operations
+    │   └── template.py                         # Template python file for your own code
+    ├── sql/                                    # SQL scripts (alphabetical order)
+    │   └── 00_cleanup.sql                      # Schema initialization
+    │   └── 01_template.sql                     # Template sql file for your own code
+    ├── configs/                                # Configuration files
+    │   └── config-choose-a-name.yml            # Tool-specific config
+    ├── main.py                                 # Entry point - starts here
+    ├── pyproject.toml                          # Python dependencies
+    ├── compose.yml                             # Docker Compose definition
+    ├── create_new_tool.yml                     # Creates new tool based on infdb-template
+    ├── Dockerfile                              # Docker image build
+    ├── .env                                    # Environment variables
+    ├── Readme_template.md                      # Readme for tool users
+    └── Readme.md                               # Readme for tool developers
 ```
 
 ### Key Files
