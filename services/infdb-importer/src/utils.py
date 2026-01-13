@@ -368,6 +368,41 @@ def download_aria2c(
     do_cmd(cmd_parts)
 
 
+def download_aria2c_many(
+    urls: List[str],
+    output_dir: str | Path,
+    connections: int = 8,
+    max_connection_per_server: int = 8,
+    continue_download: bool = True,
+    quiet: bool = True,
+) -> None:
+    """
+    Download many URLs using aria2c in one shot (-i input_file).
+    Much faster than calling aria2c once per file.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # write URL list
+    url_file = output_dir / "_aria2_urls.txt"
+    with open(url_file, "w", encoding="utf-8") as f:
+        for u in urls:
+            f.write(u.strip() + "\n")
+
+    cmd_parts: list[str] = ["aria2c"]
+
+    if continue_download:
+        cmd_parts.append("-c")
+    cmd_parts.extend(["-x", str(connections), "-s", str(max_connection_per_server)])
+
+    if quiet:
+        cmd_parts.extend(["--summary-interval=60", "--console-log-level=warn"])
+
+    cmd_parts.extend(["-d", str(output_dir), "-i", str(url_file)])
+
+    do_cmd(cmd_parts)
+
+
 def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
     """
     Execute a shell command.
