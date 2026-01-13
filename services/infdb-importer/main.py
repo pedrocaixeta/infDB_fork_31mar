@@ -16,7 +16,6 @@ from src import (
     openmeteo,
     plz,
     tabula,
-    tudo_basemap_ways,
     utils,
     waermeatlas_hessen_bensheim,
     # wetterdienst,
@@ -74,7 +73,6 @@ def main() -> None:
     processes.append(
         mp.Process(target=waermeatlas_hessen_bensheim.load, args=(infdb,), name="waermeatlas_hessen_bensheim")
     )
-    processes.append(mp.Process(target=tudo_basemap_ways.load, args=(infdb,), name="tudo-basemap-ways"))
     # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
     processes.append(mp.Process(target=opendata_bavaria.load, args=(infdb,), name="opendata_bavaria"))
 
