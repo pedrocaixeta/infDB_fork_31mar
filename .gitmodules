@@ -1,3 +1,7 @@
+[submodule "services/opencloud/opencloud-compose"]
+	path = services/opencloud/opencloud-compose
+	url = https://github.com/opencloud-eu/opencloud-compose.git
+
 [submodule "tools/pylovo-generation/src/pylovo"]
 	path = tools/pylovo-generation/src/pylovo
 	url = https://github.com/tum-ens/pylovo.git
