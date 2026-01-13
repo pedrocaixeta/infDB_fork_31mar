@@ -97,13 +97,12 @@ infdb-loader:
             status: active
             import-mode: skip # delete
             base_url: "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/lod2_gml/"
-            index_url: "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/lod2_gml/index.json"
             tile_size_m: 1000
             # Template uses km-grid indices (not meters)
             filename_template: "LoD2_32_{e_km}_{n_km}_1_NW.gml"
             path:
                 lod2: "{infdb-loader/path/opendata}/lod2-nrw/"
-                gml: "{infdb-loader/path/opendata}/lod2-nrw/{infdb-loader/name}"
+                gml: "{infdb-loader/path/opendata}/lod2-nrw/{infdb-loader/scope}"
 
         bkg:
             status: active
