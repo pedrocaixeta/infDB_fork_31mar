@@ -1,6 +1,24 @@
 #!/bin/bash
 set -e
 
+# ==============================================================================
+# Map root .env variables to pylovo expected variables
+# ==============================================================================
+export DBNAME="${SERVICES_POSTGRES_DB}"
+export DBUSER="${SERVICES_POSTGRES_USER}"
+export HOST="${SERVICES_POSTGRES_HOST}"
+export PORT="${SERVICES_POSTGRES_EXPOSED_PORT}"
+export PASSWORD="${SERVICES_POSTGRES_PASSWORD}"
+export TARGET_SCHEMA="${SERVICES_POSTGRES_TARGET_SCHEMA}"
+
+echo "Database connection settings:"
+echo "  DBNAME: $DBNAME"
+echo "  DBUSER: $DBUSER"
+echo "  HOST: $HOST"
+echo "  PORT: $PORT"
+echo "  TARGET_SCHEMA: $TARGET_SCHEMA"
+echo ""
+
 # Extract AGS (municipality code) from pylovo config
 echo "Getting AGS from pylovo config..."
 AGS=$(grep 'ags:' /app/configs/config-pylovo-generation.yml | sed -E 's/.*ags:[[:space:]]*"?([0-9]+)"?.*/\1/')

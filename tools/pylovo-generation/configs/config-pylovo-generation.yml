@@ -18,4 +18,4 @@
     data:
         input_schema: basedata
         output_schema: pylovo_generation   # needs to be snake_case
-        ags: "9162000"  # Municipality code (AGS) without leading zero
+        ags: "9185149"  # Municipality code (AGS) without leading zero
