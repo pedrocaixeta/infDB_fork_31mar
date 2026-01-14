@@ -7,14 +7,12 @@ import pandas as pd
 from entise.core.generator import TimeSeriesGenerator  # type: ignore
 from infdb import InfDB
 
-from src import basic_refurbishment, timedata, rc_calculation
+from src import basic_refurbishment, rc_calculation, timedata
 
 # Parameters
 rng = np.random.default_rng(seed=42)
-end_of_simulation_year = 2025
 simulation_year = 2024
 construction_year_col = "construction_year"
-schema = "ro_heat"
 
 
 def main():
@@ -58,7 +56,7 @@ def main():
         infdblog.debug(buildings.head())
 
         buildings[construction_year_col] = basic_refurbishment.sample_construction_year(buildings,
-                                                                                        end_of_simulation_year,
+                                                                                        simulation_year,
                                                                                         construction_year_col, rng)
 
         refurbishment_parameters = {
@@ -79,7 +77,7 @@ def main():
         infdblog.debug("Starting refurbishment simulation")
         refurbed_df = basic_refurbishment.simulate_refurbishment(
             buildings,
-            end_of_simulation_year,
+            simulation_year,
             refurbishment_parameters,
             rng,
             age_column=construction_year_col,
@@ -90,7 +88,7 @@ def main():
         infdblog.debug(refurbed_df.head())
 
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
-        refurbed_df.to_sql("buildings_rc", engine, if_exists="replace", schema=schema, index=False)
+        refurbed_df.to_sql("buildings_rc", engine, if_exists="replace", schema=output_schema, index=False)
         infdblog.debug("Refurbished data writing to database")
 
         infdblog.debug("Starting construction of building elements")
