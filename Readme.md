@@ -1,5 +1,5 @@
 <p align="center">
-   <img src="docs/mkdocs/docs/assets/logo_infdb_text.png" alt="Repo logo" width="250"/>
+   <img src="docs/mkdocs/docs/assets/img/logo_infdb_text.png" alt="Repo logo" width="250"/>
 </p>
 
 # infDB - Infrastructure and Energy Database
