@@ -6,11 +6,9 @@ import pandas as pd
 from entise.core.generator import TimeSeriesGenerator
 from infdb import InfDB
 
-# entise package has to type stubs
-from entise.core.generator import TimeSeriesGenerator  # type: ignore
-from infdb import InfDB
-
-from src import basic_refurbishment, rc_calculation, timedata
+from src import basic_refurbishment
+from src import rc_calculation
+from src import timedata
 
 # Parameters
 rng = np.random.default_rng(seed=42)
@@ -25,13 +23,13 @@ def main():
     infdbhandler = InfDB(tool_name="ro-heat")
 
     # Database connection
-    infdbclient_citydb = infdbhandler.connect()
+    infdbclient_citydb = infdbhandler.connect("postgres")
 
     # Logger setup
-    log = infdbhandler.get_logger()
+    infdblog = infdbhandler.get_log()
 
     # Start message
-    log.info(f"Starting {infdbhandler.get_toolname()} tool")
+    infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
 
     # Setup database engine
     engine = infdbclient_citydb.get_db_engine()
@@ -41,24 +39,25 @@ def main():
     output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output_schema"])
 
     try:
+
         sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
         infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         infdbclient_citydb.execute_query(sql)
-        log.info(f"output schema: {output_schema} created successfully")
+        infdblog.info(f"output schema: {output_schema} created successfully")
 
         # TODO: Refactor with InfdbClient method when available
         full_path = os.path.join("sql", "01_get_building_surface_data.sql")
         with open(full_path, "r", encoding="utf-8") as file:
             sql_content = file.read()
         format_params = {
-            'input_schema': input_schema,
+            "input_schema": input_schema,
         }
         sql_content = sql_content.format(**format_params)
         buildings = pd.read_sql(sql_content, engine)
 
-        log.debug(f"Loaded {len(buildings)} buildings from the database.")
-        log.debug(buildings.head())
+        infdblog.debug(f"Loaded {len(buildings)} buildings from the database.")
+        infdblog.debug(buildings.head())
 
         buildings[construction_year_col] = basic_refurbishment.sample_construction_year(buildings,
                                                                                         end_of_simulation_year,
@@ -79,7 +78,7 @@ def main():
             },
         }
 
-        log.debug("Starting refurbishment simulation")
+        infdblog.debug("Starting refurbishment simulation")
         refurbed_df = basic_refurbishment.simulate_refurbishment(
             buildings,
             end_of_simulation_year,
@@ -88,40 +87,36 @@ def main():
             age_column=construction_year_col,
             provide_last_refurb_only=True,
         )
-        log.debug("Refurbishment simulation completed")
-        log.debug(refurbed_df.info())
-        log.debug(refurbed_df.head())
+        infdblog.debug("Refurbishment simulation completed")
+        infdblog.debug(refurbed_df.info())
+        infdblog.debug(refurbed_df.head())
 
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
-        refurbed_df.to_sql("buildings_rc", engine, if_exists="replace", schema=schema, index=False)
-        log.debug("Refurbished data writing to database")
+        refurbed_df.to_sql(
+            "buildings_rc", engine, if_exists="replace", schema=schema, index=False
+        )
+        infdblog.debug("Refurbished data writing to database")
 
-        log.debug("Starting construction of building elements")
+        infdblog.debug("Starting construction of building elements")
         # Run SQL: 02_create_layer_view
         infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
 
-        elements = pd.read_sql(
-            """SELECT *
-                                  FROM v_element_layer_data""",
-            engine,
-        )
+        elements = pd.read_sql("""SELECT *
+                                  FROM v_element_layer_data""", engine)
 
         # TODO: sort by layer_index according to EUReCA specification
         # TODO: Handling of windows
-        log.debug("Starting construction of building elements")
+        infdblog.debug("Starting construction of building elements")
         elements = elements[elements["element_name"] != "Window"]
 
         rc_values = rc_calculation.calculate_rc_values(elements)
 
         bld2ts = timedata.get_bld2ts(database_connection=engine)
 
-        all_ts_df = timedata.get_all_timeseries_data(
-            database_connection=engine,
-            start=pd.Timestamp(f"{simulation_year}-01-01"),
-            end=pd.Timestamp(f"{simulation_year}-12-31"),
-        )
+        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine,
+                                                     start=pd.Timestamp(f"{simulation_year}-01-01"),
+                                                     end=pd.Timestamp(f"{simulation_year}-12-31"))
         all_ts_df.index.name = "datetime"
-        all_ts_df.index.name = 'datetime'
         all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
         data = {x: y.sort_index().reset_index() for x, y in all_ts_df.groupby("ts_metadata_id")}
 
@@ -162,15 +157,16 @@ def main():
             index=True,
             method="multi",
         )
-        log.info(summary.head())
+
+        infdblog.info(summary.head())
 
         # Time Series
         write_timeseries = False
         if not write_timeseries:
-            log.info("Skipping EnTiSe output time series writing to database as per configuration")
+            infdblog.info("Skipping EnTiSe output time series writing to database as per configuration")
             return
 
-        log.debug("Writing EnTiSe output time series to database")
+        infdblog.debug("Writing EnTiSe output time series to database")
 
         # Create metadata table if not exists
         metadata_sql = f"""
@@ -189,7 +185,7 @@ def main():
         try:
             infdbclient_citydb.execute_query(metadata_sql)
         except Exception as e:
-            log.error("Failed to create metadata table: %s", e)
+            infdblog.error("Failed to create metadata table: %s", e)
 
         # Ensure unique constraint for metadata upserts
         try:
@@ -199,7 +195,7 @@ def main():
             """
             infdbclient_citydb.execute_query(unique_idx_sql)
         except Exception as e:
-            log.error("Failed to create unique index on metadata: %s", e)
+            infdblog.error("Failed to create unique index on metadata: %s", e)
 
         # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
 
@@ -209,7 +205,7 @@ def main():
         try:
             infdbclient_citydb.execute_query("CREATE EXTENSION IF NOT EXISTS timescaledb;")
         except Exception as e:
-            log.warning("Could not ensure timescaledb extension (continuing): %s", e)
+            infdblog.warning("Could not ensure timescaledb extension (continuing): %s", e)
 
         create_sql = f"""
         CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
@@ -219,14 +215,14 @@ def main():
         )
         WITH (
             timescaledb.hypertable,
-            timescaledb.partition_column='time',
-            timescaledb.segmentby='ts_metadata_id'
+            timescaledb.partition_column="time",
+            timescaledb.segmentby="ts_metadata_id"
         );
         """
         try:
             infdbclient_citydb.execute_query(create_sql)
         except Exception as e:
-            log.error("Failed to create timeseries table with Timescale hypertable syntax: %s", e)
+            infdblog.error("Failed to create timeseries table with Timescale hypertable syntax: %s", e)
             # Fallback: create as a plain Postgres table
             try:
                 create_sql_plain = f"""
@@ -237,9 +233,9 @@ def main():
                 );
                 """
                 infdbclient_citydb.execute_query(create_sql_plain)
-                log.info("Created plain Postgres timeseries table as fallback (no TimescaleDB features).")
+                infdblog.info("Created plain Postgres timeseries table as fallback (no TimescaleDB features).")
             except Exception as e2:
-                log.error("Failed to create plain timeseries table: %s", e2)
+                infdblog.error("Failed to create plain timeseries table: %s", e2)
                 raise
 
         # Upload using baseline
@@ -249,18 +245,16 @@ def main():
             output_schema=output_schema,
             table_name=table_name,
             dict_df=dict_df,
-            infdblog=log,
+            infdblog=infdblog,
         )
         upload_dt = time.perf_counter() - upload_start
-        log.info(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
+        infdblog.info(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
         print(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
 
-        log.info("Ro-heat successfully completed")
-        infdbhandler.stop_logger()
+        infdblog.info("Ro-heat successfully completed")
 
     except Exception as e:
-        log.error(f"Something went wrong: {str(e)}")
-        infdbhandler.stop_logger()
+        infdblog.error(f"Something went wrong: {str(e)}")
         raise e
 
 
