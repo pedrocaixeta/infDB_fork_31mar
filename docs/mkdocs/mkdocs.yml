@@ -56,9 +56,6 @@ nav:
   - API: 
     - Introduction: api/index.md
     - pypackage: api/pypackage.md
-    - FastAPI: api/fastapi.md
-    - PostgREST: api/postgrest.md
-    - pygeoapi: api/pygeoapi.md
   - Tools: 
     - Introduction: tools/index.md
     - Template: tools/template.md
@@ -74,7 +71,7 @@ nav:
     - Guidelines: development/guidelines.md
     - Documentation: development/documentation.md
     - Code of Conduct: development/code-of-conduct.md
-    
+
     - Tips & Tricks: development/tips-and-tricks.md
 
 

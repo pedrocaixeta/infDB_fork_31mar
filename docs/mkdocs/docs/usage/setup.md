@@ -159,7 +159,7 @@ JWT_SECRET_KEY=change-me-in-production
 
 
 ## Opendata Configuration
-The configuration for the opendata import is done via the following YAML file. For detailed configuration options, refer to the [Services](infdb/services.md) documentation 
+The configuration for the opendata import is done via the following YAML file. For detailed configuration options, refer to the [Services](../infdb/services.md) documentation 
 under the **infdb-importer** section.
 
 ```yaml title="configs/config-infdb-loader.yml"

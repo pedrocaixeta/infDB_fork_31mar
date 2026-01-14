@@ -10,8 +10,8 @@ The infDB is a modular and flexible data platform built on dockerized services t
 
 Its architecture is composed of two main components:
 
-: :fontawesome-solid-gears: **[Services](infdb/services.md)** – Dockerized open-source software providing base functionality.
-: :material-tools: **[Tools](infdb/tools.md)** – Software interacting with the infDB.
+: :fontawesome-solid-gears: **[Services](services.md)** – Dockerized open-source software providing base functionality.
+: :material-tools: **[Tools](../tools/index.md)** – Software interacting with the infDB.
 
 ## Services
 infDB services follow microservice architecture principles, enabling independent development and deployment while improving modularity, scalability, and adaptability.
@@ -32,3 +32,6 @@ More details of available services can be found at **[infdb -> Services](service
 The infDB ecosystem includes a variety of tools designed to handle different aspects of data workflows. These so called tools are software that interact with infDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains.
 
 For a comprehensive list of integrated tools and additional information, see **[Tools](../tools/index.md)**.
+
+## Python Package
+Moreover, there is a python package `infdb` that can be used to interact with the infDB database and services. It provides functionalities for database connections, logging, configuration management, and utility functions. You can find more information about the package in the **[API -> pypackage](../api/pypackage.md)**.
