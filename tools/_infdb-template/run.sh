@@ -11,5 +11,5 @@ set -a
 set +a
 
 
-echo "Starting docker compose..."
-docker compose -f "$(dirname "$0")/compose.yml" "$@"
+# echo "Starting docker compose..."
+docker compose -f "$(dirname "$0")/compose.yml" up

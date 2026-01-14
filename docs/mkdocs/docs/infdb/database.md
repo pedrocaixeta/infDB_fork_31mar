@@ -2,33 +2,31 @@
 icon: material/database-edit
 ---
 
-# Database Management
+# infDB Database
+The infDB database is built on PostgreSQL with PostGIS, TimescaleDB, and pgRouting extensions to support spatial, time-series, and routing functionalities.
 
-This section covers how the infDB manages its data schemas and extensions.
+## Database Structure
 
-## Schema Organization
+The infDB database is organized into multiple schemas to separate different types of data and functionalities:
 
-The infDB uses multiple schemas to organize data logically:
-
--   `public`: Default schema (try to avoid populating this with business logic).
--   `citydb`: Dedicated schema for 3DCityDB data.
--   `api`: Exposed views and functions for the PostgREST API.
--   `timeseries`: Optimized tables for time-series data.
+- `public`: Default schema for extensions and general-purpose tables.
+- `citydb`: Dedicated schema for 3DCityDB data.
+- `opendata`: Imported open datasets in their raw format.
+- `need`: Retrieved data from the NEED platform.
+- `choose_a_name`: Each infDB tool uses its own schema to store processed data, views, and functions.
 
 ## Extensions
+The following extensions are installed to enhance database capabilities:
 
-The database is initialized with the following extensions enabled:
-
-```sql
-CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXISTS timescaledb;
-CREATE EXTENSION IF NOT EXISTS pgrouting;
--- and others managed by initialization scripts
-```
+- **PostGIS**: Adds support for geographic objects, enabling spatial queries and operations.
+- **TimescaleDB**: Provides time-series data management with features like hypertables and continuous aggregates.
+- **3DCityDB**: Manages 3D city models based on the CityGML standard.
+- **pgRouting**: Offers routing and network analysis functionalities.
 
 ## Connection Details
 
 By default, the database is accessible at:
+
 -   **Host**: `localhost` (or `db` within Docker network)
--   **Port**: `5432`
+-   **Port**: `5432` (internal) btw. `54328` (external) (or as configured in `.env`)
 -   **User**: `postgres` (or as configured in `.env`)

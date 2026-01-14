@@ -1,7 +1,7 @@
 # Welcome to infDB :simple-rocket:
 
 <p align="center">
-  <img src="assets/img/logo_infdb_text.png" alt="infDB logo" width="300"/>
+  <img src="assets/img/logo_infdb_text.png" alt="infDB logo" width="200"/>
 </p>
 
 The **infDB - Infrastructure and Energy Database** provides a modular and easy-to-configure open-source data and tool infrastructure equipped with essential services, designed to minimize the effort required for data management. Its primary mission is to empower the growth of an ecosystem by offering standardized interfaces and APIs. This platform-independent approach streamlines collaboration in energy modeling and analysis, allowing users to dedicate their focus to generating insights rather than handling data logistics.
@@ -12,6 +12,7 @@ The **infDB - Infrastructure and Energy Database** provides a modular and easy-t
 : :material-plus-circle: **Platform Independent**: Containerized with Docker.
 : :material-plus-circle: **Modular**: extensible via standardized APIs.
 : :material-plus-circle: **Open Source**: permissive licensing.
+: :material-plus-circle: **Open Data**: Automatized import of common opendata sources.
 
 ## Why use it?
 

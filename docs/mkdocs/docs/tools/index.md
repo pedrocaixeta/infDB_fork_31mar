@@ -3,11 +3,15 @@ icon: material/tools
 ---
 
 # Tools
+The infDB ecosystem includes a variety of tools designed to handle different aspects of data workflows. These so called tools are software that interact with infDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains.
 
-Tools are software that interacts with the infDB and process data.
+<p align="center">
+  <img src="/usage/tools.png" alt="infDB logo" width="100"/>
+</p>
+
 
 ## Template
-If you want to integrate your software or scripts into the infDB ecosystem, you can use the template for a devContainer provided by infDB.
+If you want to or create or integrate your own software or scripts into the infDB ecosystem, you can use the template for a devContainer provided by the infDB. A more detailed description can be found under Tools -> [infdb-template](template.md).
 
 ## Currently Integrated Tools
 The following tools are currently integrated with infDB:
@@ -17,6 +21,3 @@ The following tools are currently integrated with infDB:
 - **[EnTiSe](https://github.com/tum-ens/EnTiSe)**: Python tool for energy time series generation and management
 
 
-<p align="center">
-  <img src="/usage/tools.png" alt="infDB logo" width="200"/>
-</p>

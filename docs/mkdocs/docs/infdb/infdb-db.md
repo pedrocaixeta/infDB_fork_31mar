@@ -1,5 +1,5 @@
 ---
-icon: material/tools
+icon: material/cogs
 ---
 
 # External Tools Integration
