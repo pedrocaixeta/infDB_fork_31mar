@@ -56,7 +56,7 @@ If you want to use the infDB with the default settings just use the [Quick Start
  - Docker Engine: https://docs.docker.com/engine/install/
  - Docker Desktop: https://docs.docker.com/desktop/
 
-### Quick Start
+### Folder Structure
 The infDB uses the following folder structure:
   ```
   infdb/
@@ -65,6 +65,9 @@ The infDB uses the following folder structure:
   ├── ...
   └── muenchen/
 ```
+
+### Quick Start
+You can quickly start an infDB with default configuration and credentials by following these steps:
 
 #### Create Folder for infDB
 ```bash
