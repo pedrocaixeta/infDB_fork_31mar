@@ -69,11 +69,13 @@ nav:
     - Tools: linear-heat-density/tools.md
   - Development: 
     - Introduction: development/index.md
+    - Workflow: development/workflow.md
     - Repository: development/repository.md
     - Guidelines: development/guidelines.md
-    - Documentation: development/docs.md
+    - Documentation: development/documentation.md
     - Code of Conduct: development/code-of-conduct.md
-    - Contributing: development/contributing.md
+    
+    - Tips & Tricks: development/tips-and-tricks.md
 
 
 markdown_extensions:
