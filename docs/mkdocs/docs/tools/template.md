@@ -144,6 +144,7 @@ Docker Compose service definition:
     - Run `uv sync` in order to update virtual environment with new packages or (re-start) docker via `docker compose -f tools/choose-a-name/compose.yml up`
 
 6. **Implement your code:**
+    - **pypackage**: You can use the preinstalled infdb python package to interact with the infDB database and services. See [API -> pypackage](../api/pypackage.md) for more information.
     - **Python:** Add your code to `src/`
     - **SQL:** Add your scripts to `sql/` - We recommend adding numbers according to the execution order (executed in alphabetical order)
     - **Execution:** Start your added python code btw. sql scripts in `main.py`. The sql files can be easily executed as shown in `src/demo.py`. This spllting ensures clarity and easy overview what is executed.

@@ -1,87 +1,10 @@
 # Workflow
+Please follow the development workflow outlined below when contributing to the infDB project:
 
-### Local development environment for InfDB for developers
-```bash
-# on linux and macos by installation script
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# or by pip
-pip install uv
-```
-
-### Create environment (only once)
-```bash
-# linux and macos
-uv sync
-```
-
-### Activate environment
-```bash
-# linux and macos
-source .venv/bin/activate
-# windows
-venv\Scripts\activate
-```
-### Clean repo
-```bash
-git fetch origin
-git reset --hard
-git clean -fdx
-```
-
-### Stop and remove all docker containers and volumes
-```bash
-# 1. Stop all containers
-docker stop $(docker ps -a -q)
-
-# 2. Remove all containers (breaks the link to the volumes)
-docker rm $(docker ps -a -q)
-
-# 3. Delete all volumes
-docker volume rm $(docker volume ls -q)
-```
-
-### Clean docker
-```bash
-docker system prune -a --volume
-```
-
-### Tree with permission
-```bash
-tree -pug
-# -p permissions
-# -u user
-# -g group
-```
-
-## Repository Structure
-
-- **src/**: Main application package
-  - **infdb_package/**: Business logic services
-  - **main.py**: Application entry point
-- **docs/**: Documentation
-  - **architecture/**: System architecture documentation
-  - **contributing/**: Contribution guidelines and code of conduct
-  - **development/**: Developer guides and workflows
-  - **guidelines/**: Project guidelines and standards
-  - **operations/**: Operational guides and CI/CD documentation
-  - **source/**: Source files for documentation
-  - **img/**: Images used in documentation
-- **dockers/**: Docker configuration files
-- **tools/**: External tools and scripts that interact with infDB
-  - Individual tool directories with their own configurations
-  - **Readme.md**: Detailed documentation for all tools
-- **configs/**: Configuration files for infDB initialization
-- **tests/**: Test suite
-  - **unit/**: Unit tests for individual components
-  - **integration/**: Tests for component interactions
-  - **e2e/**: End-to-end tests for the application
-
-
-## Development Workflow
-
+0. **Set up the environment** following the installation instructions in [Usage -> Get Software](../usage/get-software.md).
 1. **Open an issue** to discuss new features, bugs, or changes.
 2. **Create a new branch** for each feature or bug fix based on an issue.
-3. **Implement the changes** following the coding guidelines.
+3. **Implement the changes** following the [coding guidelines](../development/guidelines.md).
 4. **Write tests** for new functionality or bug fixes.
 5. **Run tests** to ensure the code works as expected.
 6. **Create a merge request** to integrate your changes.
@@ -89,52 +12,81 @@ tree -pug
 8. **Merge the changes** after approval.
 
 
-## CI/CD Workflow
+## Developing in a Container
+We recommend using Visual Studio Code with the Remote - Containers extension for development. This allows you to work in a consistent environment that matches the production setup.
 
-The CI/CD workflow is set up using GitLab CI/CD. The workflow runs tests, checks code style, and builds the documentation on every push to the repository. You can view workflow results directly in the repository's CI/CD section. For detailed information about the CI/CD workflow, see the [CI/CD Guide](docs/operations/CI_CD_Guide.md).
+1. Install the [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) in Visual Studio Code.
+2. Open the infDB project folder btw. corresponding tool folder in Visual Studio Code.
+3. Click on the green icon in the bottom-left corner and select "Reopen in Container".
+4. The development container will be built and launched, providing you with a ready-to-use environment for development.
+!!! hint
+    If you want to develop a tool, you need to open the specific tool folder (e.g., `services/infdb-api/`) instead of the root project folder.
 
-## Development Resources
+<!-- ## CI/CD Workflow
 
-The following resources are available to help developers understand and contribute to the project:
+The CI/CD workflow is set up using GitLab CI/CD. The workflow runs tests, checks code style, and builds the documentation on every push to the repository. You can view workflow results directly in the repository's CI/CD section. For detailed information about the CI/CD workflow, see the [CI/CD Guide](docs/operations/CI_CD_Guide.md). -->
 
-### Coding Guidelines
+!!! warning "Troubleshooting on Windows"
+    To open the repository in Visual Studio Code (VSC) click the two arrowheads in the lower left corner of VSC and select "Connect to WSL". Then you can open the repository folder from for Linux home directory.
 
-The [Coding Guidelines](docs/guidelines/CODING_GUIDELINES.md) document outlines the coding standards and best practices for the project. Start here when trying to understand the project as a developer.
+This section summarizes some problems encountered during the first installation and startup of infDB on Windows, along with their solutions.
 
-### Architecture Documentation
+**1.Ubuntu Opened as root instead of Normal User**
 
-The [Architecture Documentation](docs/architecture/index.rst) provides an overview of the system architecture, including the database schema, components, and integration points.
+- Problem: WSL launched Ubuntu as the root user. May lead to problems while executing commands.
+- Cause: No default user was configured during first installation.
+- Solution:
+```bash
+adduser username
+```
 
-### Developer Guides
+Set the default user:
+```bash
+#ubuntu 
+config --default-user username
+```
 
-- [Development Setup Guide](docs/development/setup.md): Comprehensive instructions for setting up a development environment
-- [Contribution Workflow](docs/development/workflow.md): Step-by-step process for contributing to the project
-- [API Development Guide](docs/development/api_guide.md): Information for developers who want to use or extend the API
-- [Database Schema Documentation](docs/development/database_schema.md): Detailed information about the database schema
+Restart WSL:
+```bash
+wsl --shutdown
+```
 
-### Contribution Guidelines
+**2.Docker Command Not Found in WSL2**
 
-- [Contributing Guide](docs/contributing/CONTRIBUTING.md): Guidelines for contributing to the project
-- [Code of Conduct](docs/contributing/CODE_OF_CONDUCT.md): Community standards and expectations
-- [Release Procedure](docs/contributing/RELEASE_PROCEDURE.md): Process for creating new releases
+-Problem:
+The command 'docker' could not be found in this WSL2 distro.
 
-### Operations Documentation
+-Cause:
+Docker Desktop installed, but WSL integration disabled.
 
-- [CI/CD Guide](docs/operations/CI_CD_Guide.md): Detailed information about the CI/CD workflow
+-Fix:
+Enable Docker & WSL integration:
 
-## Contribution and Code Quality
+Docker Desktop → Settings → Resources → WSL Integration
 
-Everyone is invited to develop this repository with good intentions. Please follow the workflow described in the [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md).
+Enable integration with Ubuntu.
+After enabling, check via:
+```bash
+#ubuntu 
 
-### Coding Standards
+docker –version
+```
+**3. Docker Permission Denied**
 
-This repository follows consistent coding styles. Refer to [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) and the [Coding Guidelines](docs/guidelines/CODING_GUIDELINES.md) for detailed standards.
+-Problem:
+permission denied while trying to connect to the Docker daemon socket
 
-### Pre-commit Hooks
+-Cause:
+Logged in user was not part of the docker group.
 
-Pre-commit hooks are configured to check code quality before commits, helping enforce standards.
-
-### Changelog
-
-The changelog is maintained in the [CHANGELOG.md](CHANGELOG.md) file. It lists all changes made to the repository. Follow instructions there to document any updates.
+-Fix:
+```bash
+#ubuntu 
+sudo usermod -aG docker username
+```
+Restart WSL:
+```bash
+#ubuntu 
+wsl –shutdown
+```
 

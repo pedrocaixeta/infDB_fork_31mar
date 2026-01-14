@@ -6,14 +6,9 @@ authors:
     alias: "@pbuchenberg"
     affiliation: "Technical University of Munich"
     orcid: "https://orcid.org/0000-0001-7683-8422"
-  - family-names: "Doepfert"
-    given-names: "Markus"
-    alias: "@mdoepfert"
-    affiliation: "Technical University of Munich"
-    orcid: "https://orcid.org/0000-0001-8720-2585"
-title: "infDB - Infrastructure and Energy Database"
+title: "choose-a-name"
 type: software
-license: Apache License Version 2.0
+license: MIT
 version: 0.2.0
 doi: 
 date-released: 2025-13-05

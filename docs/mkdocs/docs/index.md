@@ -1,7 +1,7 @@
 # Welcome to infDB :simple-rocket:
 
 <p align="center">
-  <img src="assets/img/logo_infdb_text.png" alt="infDB logo" width="200"/>
+  <img src="assets/img/logo_infdb_text.png" alt="infDB logo" width="100"/>
 </p>
 
 The **infDB - Infrastructure and Energy Database** provides a modular and easy-to-configure open-source data and tool infrastructure equipped with essential services, designed to minimize the effort required for data management. Its primary mission is to empower the growth of an ecosystem by offering standardized interfaces and APIs. This platform-independent approach streamlines collaboration in energy modeling and analysis, allowing users to dedicate their focus to generating insights rather than handling data logistics.
@@ -27,8 +27,8 @@ The infDB can be used effectively wherever geospatial and time series informatio
 The infDB architecture is composed of two main components:
 
 <!-- : :material-database: **[infdb-db](infdb/core.md)** – PostgreSQL database for geospatial and time series data. -->
-: :fontawesome-solid-gears: **[Services](infdb/services.md)** – Preconfigured dockerized open-source tools providing base functionality.
-: :material-tools: **[Tools](infdb/tools.md)** – Software interacting with the infDB.
+: :fontawesome-solid-gears: **[Services](usage/services.md)** – Dockerized open-source software providing base functionality.
+: :material-tools: **[Tools](tools/index.md)** – Software interacting with the infDB.
 
 ![infDB Overview](assets/img/infdb-overview.png)
 
@@ -36,9 +36,13 @@ The infDB architecture is composed of two main components:
 
 Check out the **[Usage Guide](usage/index.md)** to install, configure and run your instance.
 
+## Demo
+The **[Linear Heat Density](linear-heat-density/index.md)** use case showcases the capabilities of infDB in the context of municipal heat planning. 
+<!-- It provides a practical example of how to utilize the platform for analyzing and visualizing linear heat density data within a city environment. -->
+
 ## Contribution
 
-Check out the **[Developer Guide](develop/index.md)** to learn how to contribute.
+Check out the **[Developer Guide](development/index.md)** to learn how to contribute.
 
 ## Feedback and contributions
 

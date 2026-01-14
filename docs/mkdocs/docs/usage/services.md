@@ -5,21 +5,24 @@ The infDB platform provides a suite of essential services designed to facilitate
 
 ![alt text](services.png)
 
-## Overview:
+## Available Services
 
-- [infdb-db](#infdb-db-material-database): Core PostgreSQL database with PostGIS, timescaledb, and pgrouting extensions; handles all central storage and queries.
-- [infdb-importer](#infdb-importer-material-cloud-download): Automates the ingestion, structuring, and integration of external open data formats into the platform.
-- [pgAdmin](https://www.pgadmin.org/): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
-- [FastAPI](https://fastapi.tiangolo.com/): REST endpoints (/city, /weather) with OpenAPI docs and validated access to 3D, geospatial, and time-series data.
-- [Jupyter](https://jupyter.org/): Notebook environment (dependencies and env vars preloaded) for exploratory queries, ETL prototypes, reproducible analysis.
-- [QWC2](https://github.com/qwc-services/qwc2): Web mapping client for 2D/3D visualization, layer styling, spatial inspection, quick dataset validation.
-- [PostgREST](https://postgrest.org/): Auto-generated REST API over PostgreSQL schemas (tables, views, RPC) using DB roles for auth; rapid, lightweight data access without extra backend code.
-- [pygeoapi](https://pygeoapi.io/): OGC API (Features/Coverages/Processes) server exposing PostGIS data via standards-based JSON & HTML endpoints for interoperable geospatial discovery and querying.
+The infDB platform includes several integrated services to support different workflows:
+
+- **[infdb-db](#infdb-db)** — Central database storing all spatial, time-series, and 3D data.
+- **[infdb-importer](#infdb-importer)** — Automatically downloads, validates, and integrates open datasets.
+- **[pgAdmin](#pgadmin)** — Easy-to-use interface for exploring data, running queries, and managing user permissions without technical knowledge.
+- **[Jupyter Notebooks](#jupyter-notebook)** — Interactive environment for exploring data, creating reports, and testing analyses with pre-configured access.
+- **[QWC2](#qgis-webclient-qwc)** — Visual map interface for viewing, analyzing, and validating spatial data directly in your browser.
+- **[FastAPI](#api)** — Secure access to data through simple web requests (e.g., city information, weather data).
+- **[PostgREST](#api)** — Automatic data access layer for reading tables and running queries without building custom code.
+- **[pygeoapi](#api)** — Standards-based interface for sharing spatial data with external GIS tools and web applications.
+- **[OpenCloud](#opencloud)** — Self-hosted file share platform for managing data imports and exports.
 
 ## infdb-db :material-database:
 The core service **infdb-db** hosts the PostgreSQL database with extensions for geospatial, time series and graph data, serving as the central database within the platform. It handles data storage, retrieval, and management, ensuring integrity and high availability for connected services and tools.
 
-The configuration:
+The system configuration:
 ``` bash title=".env"
 # ==============================================================================
 # SERVICE ACTIVATION
@@ -61,7 +64,7 @@ SERVICES_POSTGRES_EPSG=25832    # (9)
 ## infdb-importer :material-cloud-download:
 The infdb-importer service facilitates the ingestion of external data into the infDB platform. It automates the process of importing various open data formats, ensuring that new datasets are properly structured and integrated into the core database for immediate use.
 
-The configuration:
+The configuration of the infdb-importer service is controlled via environment variables:
 ``` bash title=".env"
 # ==============================================================================
 # SERVICE ACTIVATION
@@ -87,7 +90,7 @@ The imported opendata sources can be configured in a YAML file. The following so
 - Administrative areas by BKG
 - Postcodes from OpenStreetMap
 
-The configuration:
+The configuration of the imported opendata sources can be controlled via the YAML configuration file:
 
 ``` yaml title="configs/config-infdb-loader.yml"
 # Configuration file for infdb-loader

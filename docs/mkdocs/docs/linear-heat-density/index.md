@@ -1,4 +1,4 @@
-# Linear Heat Density Documentation
+# Linear Heat Density Use Case
 
 The underlying linear heat density toolchain estimates the linear heat density of streets in a given area. The linear heat density is a key metric for assessing the feasibility and efficiency of district heating systems. It is defined as the amount of heat demand per unit length of a street.
 
