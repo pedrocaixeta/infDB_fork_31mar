@@ -37,7 +37,7 @@ The infDB architecture is composed of three coordinated layers as shown in the f
 
 The PostgreSQL database is the basis and extended by services and tools. More information of each layer is described below. 
 The PostgreSQL, all services and adopted tools are dockerized for a modular and flexible application.
-![infDB overview](docs/mkdocs/docs/assets/infdb-overview.png)
+![infDB overview](docs/mkdocs/docs/assets/img/infdb-overview.png)
 
 ### Services
 The infDB platform provides a suite of essential services designed to facilitate database operation and administration, data handling and visualization, and connectivity. Each preconfigured service can be activated individually to tailor the environment to your specific requirements. This section provides a brief description and configuration options for each available service.
