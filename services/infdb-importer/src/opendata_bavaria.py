@@ -451,7 +451,8 @@ def _load_lod2(infdb: InfDB) -> bool:
 
     # ==================== 5. POST-PROCESSING ====================
     # Execute SQL to create simplified building table/view from 3DCityDB schema
-    formatted_scope = ",".join(f"'{s}'" for s in (scope or []))
+    ags_list = utils.fetch_scope_ags_from_db(infdb) #support state placeholder to work with buildings_lod2.sql
+    formatted_scope = ",".join(f"'{a}'" for a in ags_list)
     format_params = {"output_schema": "opendata", "gemeindeschluessel": formatted_scope}
     with infdb.connect() as db:
         db.execute_sql_file("sql/buildings_lod2.sql", format_params)
