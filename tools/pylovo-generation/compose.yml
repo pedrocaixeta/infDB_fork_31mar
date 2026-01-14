@@ -3,6 +3,8 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
+        env_file:
+            - .env
         volumes:
             - ${CONFIG_INFDB_PATH}:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
             - ./configs:/app/configs #:ro # for configs

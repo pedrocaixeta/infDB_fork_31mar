@@ -19,6 +19,8 @@ ENV PATH="/root/.local/bin/:$PATH"
 # Copy and install pylovo package
 COPY src/pylovo /app/pylovo
 WORKDIR /app/pylovo
+
+# Install pylovo in editable mode using uv
 RUN uv sync
 
 # Copy entrypoint script
