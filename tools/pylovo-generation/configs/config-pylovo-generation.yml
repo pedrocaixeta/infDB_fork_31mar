@@ -7,12 +7,6 @@
 # - To connect to a remote infdb instance, replace 'None' values with your specific
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
-pylovo-generation:
-    scope: "{base/scope}"
-    config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
-    logging:
-        path: "pylovo-generation.log"
-        level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
             user: "{services/postgres/user}"
@@ -24,3 +18,4 @@ pylovo-generation:
     data:
         input_schema: basedata
         output_schema: pylovo_generation   # needs to be snake_case
+        ags: "9162000"  # Municipality code (AGS) without leading zero
