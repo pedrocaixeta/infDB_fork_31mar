@@ -15,6 +15,12 @@ include:
   # PostgreSQL Database (includes 3DCityDB initialization)
   - path: services/infdb-db/compose.yml
 
+    # ==============================================================================
+  # DATABASE SERVICES (Profile: opendata)
+  # ==============================================================================
+  # infdB Data Importer and Loader
+  - path: services/infdb-importer/compose.yml
+
   # ==============================================================================
   # ADMIN SERVICES (Profile: admin)
   # ==============================================================================

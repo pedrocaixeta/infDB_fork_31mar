@@ -47,7 +47,6 @@ def get_distinct_building_ids(database_connection):
     return df["objectid"].tolist()
 
 
-
 def get_all_timeseries_data(database_connection, start, end):
     query = f"""
         SELECT *

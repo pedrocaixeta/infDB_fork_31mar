@@ -3,12 +3,11 @@ import time
 
 import numpy as np
 import pandas as pd
-from entise.core.generator import TimeSeriesGenerator
+# entise package has to type stubs
+from entise.core.generator import TimeSeriesGenerator  # type: ignore
 from infdb import InfDB
 
-from src import basic_refurbishment
-from src import rc_calculation
-from src import timedata
+from src import basic_refurbishment, timedata, rc_calculation
 
 # Parameters
 rng = np.random.default_rng(seed=42)
@@ -20,7 +19,7 @@ schema = "ro_heat"
 
 def main():
     # Load InfDB handler
-    infdbhandler = InfDB(tool_name="ro-heat")
+    infdbhandler = InfDB(tool_name="ro-heat", config_path="configs")
 
     # Database connection
     infdbclient_citydb = infdbhandler.connect("postgres")
@@ -39,7 +38,6 @@ def main():
     output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output_schema"])
 
     try:
-
         sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
         infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
@@ -92,17 +90,18 @@ def main():
         infdblog.debug(refurbed_df.head())
 
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
-        refurbed_df.to_sql(
-            "buildings_rc", engine, if_exists="replace", schema=schema, index=False
-        )
+        refurbed_df.to_sql("buildings_rc", engine, if_exists="replace", schema=schema, index=False)
         infdblog.debug("Refurbished data writing to database")
 
         infdblog.debug("Starting construction of building elements")
         # Run SQL: 02_create_layer_view
         infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
 
-        elements = pd.read_sql("""SELECT *
-                                  FROM v_element_layer_data""", engine)
+        elements = pd.read_sql(
+            """SELECT *
+               FROM v_element_layer_data""",
+            engine,
+        )
 
         # TODO: sort by layer_index according to EUReCA specification
         # TODO: Handling of windows
@@ -113,9 +112,11 @@ def main():
 
         bld2ts = timedata.get_bld2ts(database_connection=engine)
 
-        all_ts_df = timedata.get_all_timeseries_data(database_connection=engine,
-                                                     start=pd.Timestamp(f"{simulation_year}-01-01"),
-                                                     end=pd.Timestamp(f"{simulation_year}-12-31"))
+        all_ts_df = timedata.get_all_timeseries_data(
+            database_connection=engine,
+            start=pd.Timestamp(f"{simulation_year}-01-01"),
+            end=pd.Timestamp(f"{simulation_year}-12-31"),
+        )
         all_ts_df.index.name = "datetime"
         all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
         data = {x: y.sort_index().reset_index() for x, y in all_ts_df.groupby("ts_metadata_id")}
@@ -252,9 +253,11 @@ def main():
         print(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
 
         infdblog.info("Ro-heat successfully completed")
+        infdbhandler.stop_logger()
 
     except Exception as e:
         infdblog.error(f"Something went wrong: {str(e)}")
+        infdbhandler.stop_logger()
         raise e
 
 

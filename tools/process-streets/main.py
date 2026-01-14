@@ -33,6 +33,7 @@ def main():
     apply_length_filter = infdb.get_config_value(["process-streets", "apply_length_filter"])
     min_length_deadend_junction = infdb.get_config_value(["process-streets", "min_length_deadend_junction"])
     remove_deadend_deadend = infdb.get_config_value(["process-streets", "remove_deadend_deadend"])
+    remove_loop = infdb.get_config_value(["process-streets", "remove_loop"])
 
     log.info(f"Table: {table_name}")
     log.info(f"Klasse Filter: {klasse_filter}")
@@ -49,6 +50,7 @@ def main():
             apply_length_filter=apply_length_filter,
             min_length_deadend_junction=min_length_deadend_junction,
             remove_deadend_deadend=remove_deadend_deadend,
+            remove_loop=remove_loop,
             infdb=infdb,
         )
 

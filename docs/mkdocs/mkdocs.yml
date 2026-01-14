@@ -1,0 +1,101 @@
+site_name: "infDB Documentation"
+site_description: "Documentation for the infDB - an open source infrastructure and energy data infrastructure."
+repo_name: "infDB/infDB"
+copyright: "2026, Patrick Buchenberg"
+theme:
+  name: material
+  site_url: https://example.com
+  logo:  assets/img/logo_infdb.png
+  favicon: assets/img/logo_infdb.png
+  # repo_url: https://github.com/squidfunk/mkdocs-material
+  features:
+    # - navigation.instant
+    - content.code.copy
+    - content.code.select
+    - content.code.annotate
+    - navigation.tabs
+    - navigation.tabs.sticky
+    # - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.instant.progress
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+
+plugins:
+  - search
+  - awesome-pages
+  - glightbox
+
+nav:
+  - Welcome: 
+    - Introduction: index.md
+    # - Getting Started: getting-started.md
+    - License: welcome/license.md
+    - Citation: welcome/citation.md
+    - Contact: welcome/contact.md
+  - Usage: 
+    - Introduction: usage/index.md
+    - Requirements: usage/requirements.md
+    - Get Software: usage/get-software.md
+    - Setup: usage/setup.md
+    - Deployment: usage/deployment.md
+    - Services: usage/services.md
+    - Tools: usage/tools.md
+
+  - infDB: 
+    - Introduction: infdb/index.md
+    - Architecture: infdb/architecture.md
+    # - Core: infdb/core.md
+    - Database: infdb/database.md
+    - Services: infdb/services.md
+    # - Tools: usage/tools.md
+    # - infdb-db: infdb/infdb-db.md
+    - infdb-importer: infdb/infdb-importer.md
+  - API: 
+    - Introduction: api/index.md
+    - pypackage: api/pypackage.md
+    - FastAPI: api/fastapi.md
+    - PostgREST: api/postgrest.md
+    - pygeoapi: api/pygeoapi.md
+  - Tools: 
+    - Introduction: tools/index.md
+    - Template: tools/template.md
+    - infdb-basedata: tools/infdb-basedata.md
+    # - ro-heat: tools/ro-heat.md
+  - Linear Heat Density: 
+    - Introduction: linear-heat-density/index.md
+    - Tools: linear-heat-density/tools.md
+  - Development: 
+    - Introduction: development/index.md
+    - Repository: development/repository.md
+    - Guidelines: development/guidelines.md
+    - Documentation: development/docs.md
+    - Code of Conduct: development/code-of-conduct.md
+    - Contributing: development/contributing.md
+
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - def_list
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+        permalink: true      # Adds a paragraph symbol (¶) to headers for linking
+        toc_depth: 2-3       # Only show levels 2 through 3 (## and ###)
+        title: Content  # Rename the TOC title (Material theme only)

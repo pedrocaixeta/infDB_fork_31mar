@@ -1,1 +1,0 @@
-\echo 'The 3DCityDB instance is already up to date. No upgrade required.'

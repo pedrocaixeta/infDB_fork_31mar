@@ -21,7 +21,12 @@ CONFIG_INFDB_PATH=../../configs/  # Path to the configs directory of infDB
 Settings in configs/config-preprocessor.yml
 ```bash
     # on linux and macos
-    docker compose -f compose.yml up
-
-    # on windows
+    bash run.sh up
 ```
+
+### Resetting tables / basedata-schema
+To remove the tables created by infdb-basedata, run the following command:
+```SQL
+DELETE FROM public.databasechangelog WHERE labels like '%infdb-basedata%';
+```
+Then, the next run of infdb-basedata triggers liquibase to drop the basedata-schema and recreate all tables, index and constraints.

@@ -48,13 +48,31 @@ process-streets:
       - "Landesstraße, Staatsstraße"
       #- "Eisenbahn"
       - "Bundesstraße"
+      - "Bundesautobahn"
       #- "Radweg"
       #- "Furt"
       #- "Zurollbahn, Taxiway"
       #- "Startbahn, Landebahn"
       - "Kreisstraße"
       #- "(Kletter-)Steig im Gebirge"
+      #- "Stadtbahn"
+      #- "Güterverkehr"
+      #- "Personenverkehr"
+      #- "S-bahn"
+      #- "Ski-, Schlepplift"
+      #- ["Personenverkehr", "Güterverkehr"]
+
+    
+
+    klasse_objektart_filter:
+      "Bundesstraße":
+        - "Strassenachse"
+        - "Fahrbahnachse"   
+      "Bundesautobahn":
+        - "Strassenachse"
+        #- "Fahrbahnachse" 
 
     apply_length_filter: True
     min_length_deadend_junction: 100
     remove_deadend_deadend: True
+    remove_loop: True

@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Any, Dict
 
 from infdb import InfDB
@@ -36,20 +37,28 @@ def main() -> None:
     CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
     # Database work (context-managed)
     with infdb.connect() as db:
-        # Drop output schema if exists (dev convenience)
-        db.execute_query("DROP SCHEMA IF EXISTS {output_schema} CASCADE".format(**format_params))
-
         # Execute WAYS scripts
+        start_time = time.time()
         log.info("Running WAYS SQL scripts")
         db.execute_sql_files(WAYS_SQL_DIR, format_params=format_params)
+        end_time = time.time()
+        log.info("WAYS SQL scripts completed in %.2f seconds", end_time - start_time)
 
         # Execute BUILDINGS scripts
+        # if you wish to fully reset buildings table, use the following line:
+        # DELETE FROM public.databasechangelog WHERE labels like '%buildings%';
+        start_time = time.time()
         log.info("Running BUILDINGS SQL scripts")
         db.execute_sql_files(BUILDINGS_SQL_DIR, format_params=format_params)
+        end_time = time.time()
+        log.info("BUILDINGS SQL scripts completed in %.2f seconds", end_time - start_time)
 
         # Execute CONNECTIONS scripts
+        start_time = time.time()
         log.info("Executing connections SQL scripts")
         db.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
+        end_time = time.time()
+        log.info("CONNECTIONS SQL scripts completed in %.2f seconds", end_time - start_time)
 
     log.info("Successfully finished %s tool", infdb.get_toolname())
     infdb.stop_logger()

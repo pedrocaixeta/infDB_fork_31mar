@@ -7,7 +7,8 @@ variables:
 
 # Default tags for all jobs
 default:
-  image: python:3.12-slim
+  image: ghcr.io/astral-sh/uv:python3.12-trixie-slim
+
   tags:
     - infdb-feature
     - docker
@@ -24,23 +25,15 @@ cache:
 # Stages
 stages:
   - setup
-  - pre-commit-hook
-  - test
+#  - test
   - lint
-
-# Install uv and dependencies
-.install_uv: &install_uv
-  before_script:
-    - pip install uv
+  - docs
 
 # Setup job
 setup:
   stage: setup
-  <<: *install_uv
   script:
-    - uv venv
-    - source .venv/bin/activate
-    - uv pip install -e .
+    - uv sync --group=test
     - uv pip install entise
   artifacts:
     paths:
@@ -68,47 +61,38 @@ setup:
 #    expire_in: 1 week
 
 pre-commit-hook:
-  stage: pre-commit-hook
-  <<: *install_uv
+  stage: lint
   dependencies:
     - setup
   script:
     - apt-get update && apt-get install -y git
     - source .venv/bin/activate
-    - uv pip install pre-commit
     - pre-commit run --all-files
   allow_failure: true
 
 # Linting job
 lint:
   stage: lint
-  <<: *install_uv
   dependencies:
     - setup
   script:
     - source .venv/bin/activate
-    - uv pip install ruff
     - ruff check .
     - ruff format --check .
-    # - mypy src/
   allow_failure: true
 
 # Type checking
 type-check:
   stage: lint
-  <<: *install_uv
   dependencies:
     - setup
   script:
     - source .venv/bin/activate
-    - uv pip install mypy
-    - uv pip install types-PyYAML types-psycopg2 types-greenlet pandas-stubs # additional dependencies for type checking
     - mypy src
     - mypy tests
-    #- mypy services/infdb-api/fastapi
-    - mypy services/infdb-init
+    - mypy services/infdb-api/fastapi
     - mypy services/infdb-api/postgrest
-    #- mypy services/infdb-api/pygeoapi
+    - mypy services/infdb-api/pygeoapi
     - mypy tools/infdb-basedata
     #- mypy tools/infdb-loader
     #- mypy tools/infdb-metadata
@@ -128,12 +112,26 @@ type-check:
 
 security:
   stage: lint
-  <<: *install_uv
   dependencies:
     - setup
   script:
     - source .venv/bin/activate
-    - uv pip install bandit safety
     - bandit -r **/*.py --severity-level medium --exclude build --skip "B608"
     - safety check
   allow_failure: true
+
+
+pages:
+  stage: docs
+  dependencies:
+    - setup
+  script:
+    - source .venv/bin/activate
+    - mkdocs build -f docs/mkdocs/mkdocs.yml --site-dir ../../public
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - ~/.cache/ 
+  artifacts:
+    paths:
+      - public

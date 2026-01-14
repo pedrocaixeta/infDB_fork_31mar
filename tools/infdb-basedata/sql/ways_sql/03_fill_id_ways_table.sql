@@ -53,12 +53,13 @@ INSERT INTO {output_schema}.ways (
 SELECT
     v.id AS verkehrslinie_id_basemap,
     c.clazz,
-    ST_Transform(v.geom, {EPSG}) AS geom, 
-    ST_Length(ST_Transform(v.geom, {EPSG})) / 1000.0 / NULLIF(c.kmh, 0) AS cost,
+    ST_Transform(dump.geom, {EPSG}) AS geom,
+    ST_Length(ST_Transform(dump.geom, {EPSG})) / 1000.0 / NULLIF(c.kmh, 0) AS cost,
     v.name AS name,
     v.name_kurz AS name_kurz
-FROM {input_schema}.basemap_verkehrslinie v,
-     LATERAL {output_schema}.map_strasse_klasse_to_class_kmh(v.klasse) AS c
+FROM {input_schema}.basemap_verkehrslinie v
+CROSS JOIN LATERAL (SELECT (ST_Dump(v.geom)).geom AS geom) AS dump,
+LATERAL {output_schema}.map_strasse_klasse_to_class_kmh(v.klasse) AS c
 WHERE v.geom IS NOT NULL AND c.clazz NOT IN (99);
 
 -- ─────────────────────────────────────────────

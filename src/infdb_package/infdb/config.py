@@ -8,7 +8,6 @@ import yaml
 
 # ============================== Constants ==============================
 
-DEFAULT_CONFIG_DIR: str = "configs"
 CONFIG_FILE_TEMPLATE: str = "config-{tool}.yml"
 DATA_BASE_DIR: str = os.path.join("..", "data")
 SETUP_BASE_DIR: str = "."
@@ -18,7 +17,7 @@ FILE_ENCODING: str = "utf-8"
 class InfdbConfig:
     """Read and resolve tool-specific YAML config with optional InfDB base merge."""
 
-    def __init__(self, tool_name: str, config_basedir: Optional[str] = DEFAULT_CONFIG_DIR) -> None:
+    def __init__(self, tool_name: str, config_basedir: str) -> None:
         """Initialize configuration for a tool.
 
         Args:
@@ -28,7 +27,7 @@ class InfdbConfig:
         self.tool_name: str = tool_name
         self.log: logging.Logger = logging.getLogger(__name__)
         self.config_path: str = os.path.join(
-            config_basedir or DEFAULT_CONFIG_DIR,
+            config_basedir,
             CONFIG_FILE_TEMPLATE.format(tool=tool_name),
         )
         self._CONFIG: Dict[str, Any] = self._merge_configs(self.config_path)
@@ -141,13 +140,13 @@ class InfdbConfig:
         """Return the project root path (two levels up from this file)."""
         return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    def get_db_parameters(self, db_name="postgres") -> Dict[str, str]:
+    def get_db_parameters(self, db_name: str = "postgres") -> Dict[str, str]:
         """Return database connection parameters for a given service from config-toolname.yml.
            Adopt it from environment variables if set to "None".
            Host is set to "host.docker.internal" if "None".
 
         Args:
-            service_name: Name of the DB service section to read.
+            db_name: Name of the DB service section to read.
 
         Returns:
             Final parameters dictionary for the requested service.
@@ -166,8 +165,15 @@ class InfdbConfig:
     def get_env_parameters(self, key, infdb) -> Optional[str]:
         """Return a dictionary of environment variables for this tool.
 
+        Args:
+            key: Environment variable name (case-insensitive).
+            infdb: An InfDB object used for logging.
+
         Returns:
             A dictionary of environment variables.
+
+        Raises:
+            ValueError: If the environment variable ``key.upper()`` is not set.
         """
 
         env_param = os.getenv(key.upper())
