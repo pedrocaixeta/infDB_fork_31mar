@@ -10,7 +10,7 @@
 |----------|--------|
 | License | [![License](https://img.shields.io/badge/license-Apache%202-blue)](LICENSE) |
 | Documentation | [![Documentation](https://img.shields.io/badge/docs-available-brightgreen)](https://need.pages.git-ce.rwth-aachen.de/NEED-infdb) |
-| Community | [![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://need.pages.git-ce.rwth-aachen.de/NEED-infdb/development/contributing/) [![Contributors](https://img.shields.io/badge/contributors-0-orange)](#) [![Repo Count](https://img.shields.io/badge/repo-count-brightgreen)](#) |
+| Community | [![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://need.pages.git-ce.rwth-aachen.de/NEED-infdb/development) [![Contributors](https://img.shields.io/badge/contributors-0-orange)](#) [![Repo Count](https://img.shields.io/badge/repo-count-brightgreen)](#) |
 
 ## Table of Contents
 
