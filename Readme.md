@@ -50,7 +50,7 @@ Tools are software that interact with infDB and process data through standardize
 More information, a list of integrated tools and additional information, see [Tools](docs/mkdocs/docs/tools/index.md).
 
 ## Getting Started
-If you want to use the infDB with the default settings just use the [Quick Start](#Quick-Start-Guide) below. For more information in detail read the [Usage Guide](https://need.pages.git-ce.rwth-aachen.de/NEED-infdb/usage/) of the official documentation.
+If you want to use the infDB with the default settings just use the [Quick Start](#Quick-Start) below. For more information in detail read the [Usage Guide](https://need.pages.git-ce.rwth-aachen.de/NEED-infdb/usage/) of the official documentation.
 
 ### Prequisites
  - Docker Engine: https://docs.docker.com/engine/install/
@@ -94,9 +94,9 @@ bash infdb-import.sh
 bash infdb-stop.sh
 ```
 
-# Changelog
+<!-- # Changelog
 
-The changelog is maintained in the [CHANGELOG.md](CHANGELOG.md) file. It lists all changes made to the repository. Follow instructions there to document any updates.
+The changelog is maintained in the [CHANGELOG.md](CHANGELOG.md) file. It lists all changes made to the repository. Follow instructions there to document any updates. -->
 
 # License and Citation
 
