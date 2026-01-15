@@ -5,12 +5,12 @@ infdb-basedata:
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
-            user: "None"           # Uses SERVICES_POSTGRES_USER from env
-            password: "None"       # Uses SERVICES_POSTGRES_PASSWORD from env
-            db: "None"             # Uses SERVICES_POSTGRES_DB from env
-            host: "None"           # Uses host.docker.internal by default
-            exposed_port: "None"   # Uses SERVICES_POSTGRES_EXPOSED_PORT from env
-            epsg: "None"           # Uses SERVICES_POSTGRES_EPSG from env
+            user: None
+            password: None
+            db: None
+            host: None
+            exposed_port: None
+            epsg: None # 3035 (Europe)
     data:
         input_schema: opendata
         output_schema: basedata #also needs to be changed in env_changelog.list if other than basedata
