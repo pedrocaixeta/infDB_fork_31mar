@@ -11,9 +11,6 @@ services:
             # Pylovo configuration
             USE_INFDB: "True"
             CONFIG_INFDB_PATH: /app/mnt/configs-infdb
-            # Optional: Override AGS selection for automation (comma-separated, e.g., "9185149,9185150")
-            # If not set, will prompt interactively after showing available AGS from opendata.scope table
-            # PYLOVO_AGS: "9185149"
         volumes:
             - ../../configs:/app/mnt/configs-infdb #:ro # for root *.yml configs
             - ./configs:/app/configs #:ro # for local pylovo config
