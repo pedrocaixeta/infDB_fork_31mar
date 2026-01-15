@@ -1,4 +1,4 @@
-pylovo:
+pylovo-generation:
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     logging:
         path: "pylovo-generation.log"
