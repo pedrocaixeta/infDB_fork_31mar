@@ -6,13 +6,14 @@ services:
         env_file:
             - ../../.env  # Use root .env file with database credentials
         environment:
-            # Additional configuration
-            - USE_INFDB=True
-            - CONFIG_INFDB_PATH=/app/mnt/configs-infdb
+            # Pylovo-specific schema configuration
+            TARGET_SCHEMA: pylovo
+            INFDB_SOURCE_SCHEMA: basedata
+            USE_INFDB: "True"
+            CONFIG_INFDB_PATH: /app/mnt/configs-infdb
         volumes:
             - ../../configs:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
             - ./configs:/app/configs #:ro # for configs
-#            - .:/app/ #:ro # for source code # for development only
             - ../../src/infdb-package:/app/mnt/infdb-package
             - /app/.venv # Exclude .venv from volume mount
         extra_hosts:

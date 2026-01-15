@@ -1,21 +1,4 @@
 # Configuration file for pylovo-generation
-#
-# This configuration file contains tool-specific settings and database connection parameters.
-#
-# Database Connection Parameters:
-# - This approach allows you to run locally using centralized database settings
-# - To connect to a remote infdb instance, replace 'None' values with your specific
-#   connection parameters (user, password, db, host, exposed_port, epsg)
-#
-    hosts:
-        postgres:
-            user: "{services/postgres/user}"
-            password: "{services/postgres/password}"
-            db: "{services/postgres/db}"
-            host: "{services/postgres/host}"
-            exposed_port: "{services/postgres/exposed_port}"
-            epsg: "{services/postgres/epsg}"
+
     data:
-        input_schema: basedata
-        output_schema: pylovo_generation   # needs to be snake_case
         ags: "9185149"  # Municipality code (AGS) without leading zero
