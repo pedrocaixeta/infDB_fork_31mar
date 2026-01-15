@@ -9,7 +9,7 @@ The infDB can be easily deployed using the provided bash scripts, which simplify
 ## Start infDB
 To start the configured infDB services, use the following startup script:
 ```bash
-bash infdb-start.sh
+bash infdb-start.sh up -d --build
 ```
 !!! info
     infDB will continue running until you stop it manually as described below, even if the machine is restarted.

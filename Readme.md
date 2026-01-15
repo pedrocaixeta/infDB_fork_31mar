@@ -81,7 +81,7 @@ cd infdb-demo
 
 #### Start infDB
 ```bash
-bash infdb-start.sh
+bash infdb-start.sh up -d --build
 ```
 
 #### Import Opendata
