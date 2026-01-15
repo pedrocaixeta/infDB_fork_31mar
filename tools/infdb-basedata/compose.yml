@@ -26,4 +26,5 @@ services:
         extra_hosts:
             - "host.docker.internal:host-gateway"
         env_file:
+            - ../../.env  # Load root environment variables first
             - env_infdb_basedata.list
