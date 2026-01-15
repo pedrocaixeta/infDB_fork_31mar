@@ -40,7 +40,7 @@ def load(infdb: InfDB) -> bool:
         template = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2-nrw", "filename_template"])
 
         # 1) Get scope geometry in UTM32
-        clip_wkt, _, _ = utils.get_clip_geometry(target_crs=25832, infdb=infdb)
+        clip_wkt, _, _ = utils.get_clip_geometry(target_crs=25832, infdb=infdb, state_prefix="05")
         if not clip_wkt:
             log.warning("No scope geometry resolved; skipping NRW LoD2.")
             return True
@@ -59,7 +59,7 @@ def load(infdb: InfDB) -> bool:
         if urls:
             utils.download_aria2c_many(urls, output_dir=gml_path)
 
-        # 4) Import (unchanged)
+        # 4) Import
         params = infdb.get_db_parameters_dict()
         import_mode = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2-nrw", "import-mode"])
         cmd_parts = [
@@ -74,15 +74,7 @@ def load(infdb: InfDB) -> bool:
         ]
         utils.do_cmd(cmd_parts)
 
-        # 5) Post-import SQL
-        ags_list = utils.fetch_scope_ags_from_db(infdb)
-        formatted_scope = ",".join(f"'{s}'" for s in ags_list)
-        with infdb.connect() as db:
-            db.execute_sql_file(
-                "sql/buildings_lod2.sql",
-                {"output_schema": "opendata", "gemeindeschluessel": formatted_scope},
-            )
-
+       
         log.info("LOD2-NRW data loaded successfully")
         sys.exit(0)
     except Exception:

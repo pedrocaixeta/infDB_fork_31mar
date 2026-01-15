@@ -491,10 +491,42 @@ def fetch_scope_ags_from_db(infdb: InfDB) -> List[str]:
     finally:
         conn.close()
 
+def materialize_scope_table(infdb: InfDB) -> None:
+    """
+    Create `opendata.scope` once from the resolved AGS selection.
+
+    This is run before multiprocessing to avoid race conditions where multiple processes
+    try to `replace` (drop/create) the `opendata.scope` table at the same time.
+    """
+    log = infdb.get_worker_logger()
+    engine = infdb.get_db_engine()
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    if not ags_list:
+        log.warning("Scope resolved to 0 AGS rows. Skipping opendata.scope materialization.")
+        return
+
+    sql = """
+        SELECT *
+        FROM opendata.bkg_vg5000_gem
+        WHERE ags = ANY(%s)
+    """
+    gdf_scope = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
+
+    gdf_scope.to_postgis(
+        "scope",
+        engine,
+        schema="opendata",
+        if_exists="replace",
+        index=False,
+    )
+    log.info("Materialized opendata.scope (%d rows).", len(gdf_scope))
+
+
+
 def get_envelop(infdb: InfDB) -> gpd.GeoDataFrame:
     """
     Return ONE combined GeoDataFrame for the configured scope, loaded from DB.
-    Also writes opendata.scope (replace).
     """
     log = infdb.get_worker_logger()
     engine = infdb.get_db_engine()
@@ -513,15 +545,6 @@ def get_envelop(infdb: InfDB) -> gpd.GeoDataFrame:
 
     # geopandas.read_postgis works with SQLAlchemy engine too (you already use it elsewhere)
     gdf_scope = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
-
-    # Persist canonical selection
-    gdf_scope.to_postgis(
-        "scope",
-        engine,
-        schema="opendata",
-        if_exists="replace",
-        index=False,
-    )
     return gdf_scope
 
 
@@ -892,7 +915,7 @@ def fast_copy_points_csv(
         conn.close()
 
 
-def get_clip_geometry(target_crs: int, infdb: InfDB):
+def get_clip_geometry(target_crs: int, infdb: InfDB, state_prefix: Optional[str] = None):
     """
     Get clipping geometry for the configured scope.
 
@@ -907,6 +930,11 @@ def get_clip_geometry(target_crs: int, infdb: InfDB):
     """
     gdf_envelope = get_envelop(infdb)
     log = infdb.get_worker_logger()
+
+    if state_prefix:
+        p = str(state_prefix).strip().replace("%", "").replace("_", "")
+        # if they pass "05" => keep "05"; if "05780139" => keep full string
+        gdf_envelope = gdf_envelope[gdf_envelope["ags"].astype(str).str.startswith(p)]
 
     if gdf_envelope is None or gdf_envelope.empty:
         log.info("Scope envelope is empty; no clipping applied.")

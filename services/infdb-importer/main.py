@@ -89,6 +89,19 @@ def main() -> None:
         status = "OK" if process.exitcode == 0 else "FAILED"
         log.info("Process %s done (%d out of %d) - status: %s", process.name, cnt, len(processes), status)
 
+    # Run buildings_lod2.sql ONCE here (after all joins to prevent race conditions)
+    try:
+        ags_list = utils.fetch_scope_ags_from_db(infdb)
+        formatted_scope = ",".join(f"'{s}'" for s in ags_list)
+        with infdb.connect() as db:
+            db.execute_sql_file(
+                "sql/buildings_lod2.sql",
+                {"output_schema": "opendata", "gemeindeschluessel": formatted_scope},
+            )
+        log.info("buildings_lod2.sql finished successfully")
+    except Exception:
+        log.exception("buildings_lod2.sql failed")
+
     # Summarize successes and failures
     successful = [p.name for p in processes if p.exitcode == 0]
     failed = [p.name for p in processes if p.exitcode != 0]

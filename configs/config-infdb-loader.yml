@@ -10,7 +10,7 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-loader:
-    name: "forchheim"  # Name of the infdb-loader instance
+    name: "by-nrw"  # Name of the infdb-loader instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel) state prefix
       # - "01"  # Schleswig-Holstein
       # - "02"  # Hamburg
@@ -102,7 +102,7 @@ infdb-loader:
             filename_template: "LoD2_32_{e_km}_{n_km}_1_NW.gml"
             path:
                 lod2: "{infdb-loader/path/opendata}/lod2-nrw/"
-                gml: "{infdb-loader/path/opendata}/lod2-nrw/{infdb-loader/scope}"
+                gml: "{infdb-loader/path/opendata}/lod2-nrw/{infdb-loader/name}"
 
         bkg:
             status: active

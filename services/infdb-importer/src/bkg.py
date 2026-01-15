@@ -51,6 +51,7 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
         """
         db.execute_query(ddl)
 
+        utils.materialize_scope_table(infdb) # Ensure opendata.scope exists
         all_envelops = utils.get_all_envelops(infdb)
         for envelop in all_envelops:
             log.debug("Envelop: %s", envelop)

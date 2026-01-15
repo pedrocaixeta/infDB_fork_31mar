@@ -316,7 +316,7 @@ def _load_tatsaechliche_nutzung(infdb: InfDB, cfg: dict, base_path: Path, pgurl:
 
     # ==================== 4. SCOPE GEOMETRY CHECK ====================
     # Verify we have a scope polygon for spatial filtering
-    clip_wkt, _, _ = utils.get_clip_geometry(target_crs=target_epsg, infdb=infdb)
+    clip_wkt, _, _ = utils.get_clip_geometry(target_crs=target_epsg, infdb=infdb, state_prefix="09")
     if not clip_wkt:
         log.warning("TN: No scope geometry found; skipping TN import.")
         return
@@ -404,9 +404,11 @@ def _load_lod2(infdb: InfDB) -> bool:
     gml_path.mkdir(parents=True, exist_ok=True)
 
     # ==================== 3. SCOPE PROCESSING ====================
-    scope = infdb.get_config_value([tool, "scope"])
-    if isinstance(scope, str):
-        scope = [scope]
+    # Resolve municipality AGS from DB and keep only Bavaria ("09...")
+    scope = [a for a in utils.fetch_scope_ags_from_db(infdb) if str(a).startswith("09")]
+    if not scope:
+        log.info("LoD2 (Bavaria): no Bavaria municipalities in scope; skipping.")
+        return True
 
     # --- FIX 2: use URL from building_lod2 dataset config ---
     url_cfg = lod2_cfg.get("url")
@@ -449,13 +451,6 @@ def _load_lod2(infdb: InfDB) -> bool:
     ]
     utils.do_cmd(" ".join(str(a) for a in cmd_parts))
 
-    # ==================== 5. POST-PROCESSING ====================
-    # Execute SQL to create simplified building table/view from 3DCityDB schema
-    ags_list = utils.fetch_scope_ags_from_db(infdb) #support state placeholder to work with buildings_lod2.sql
-    formatted_scope = ",".join(f"'{a}'" for a in ags_list)
-    format_params = {"output_schema": "opendata", "gemeindeschluessel": formatted_scope}
-    with infdb.connect() as db:
-        db.execute_sql_file("sql/buildings_lod2.sql", format_params)
-
+    
     log.info("LOD2 data loaded successfully")
     return True
