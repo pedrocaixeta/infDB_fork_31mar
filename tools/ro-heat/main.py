@@ -7,7 +7,7 @@ import pandas as pd
 from entise.core.generator import TimeSeriesGenerator  # type: ignore
 from infdb import InfDB
 
-from src import basic_refurbishment, rc_calculation, timedata
+from src import refurbishment, rc_calculation, timedata
 
 # Parameters
 rng = np.random.default_rng(seed=42)
@@ -55,44 +55,57 @@ def main():
         infdblog.debug(f"Loaded {len(buildings)} buildings from the database.")
         infdblog.debug(buildings.head())
 
-        buildings[construction_year_col] = basic_refurbishment.sample_construction_year(buildings,
-                                                                                        simulation_year,
-                                                                                        construction_year_col, rng)
+        buildings[construction_year_col] = refurbishment.sample_construction_year(buildings, simulation_year,
+                                                                                  construction_year_col, rng)
 
-        refurbishment_parameters = {
+        refurbishment_simulation_parameters = {
             "outer_wall": {
                 "distribution": lambda gen, parameters: gen.normal(**parameters),
                 "distribution_parameters": {"loc": 40, "scale": 10},
-                "refurbed_buildings": 0.33,
             },
             "rooftop": {
                 "distribution": lambda gen, parameters: gen.normal(**parameters),
                 "distribution_parameters": {"loc": 50, "scale": 10},
-                "refurbed_buildings": 0.63,
             },
             "window": {
                 "distribution": lambda gen, parameters: gen.normal(**parameters),
                 "distribution_parameters": {"loc": 30, "scale": 10},
-                "refurbed_buildings": 0.9,
             },
         }
 
         infdblog.debug("Starting refurbishment simulation")
-        refurbed_df = basic_refurbishment.simulate_refurbishment(
+        refurbed_df = refurbishment.simulate_refurbishment(
             buildings,
             simulation_year,
-            refurbishment_parameters,
+            refurbishment_simulation_parameters,
             rng,
-            infdblog,
             age_column=construction_year_col,
         )
         infdblog.debug("Refurbishment simulation completed")
         infdblog.debug(refurbed_df.info())
         infdblog.debug(refurbed_df.head())
 
+        refurbishment_quotas = {
+            "outer_wall": {
+                "refurbed_fraction": 0.33,
+            },
+            "rooftop": {
+                "refurbed_fraction": 0.63,
+            },
+            "window": {
+                "refurbed_fraction": 0.9,
+            },
+        }
+
+        infdblog.debug("Starting harmonization with refurbishment quotas")
+        harmonized_df = refurbishment.harmonize_with_quota(refurbed_df, refurbishment_quotas, rng, infdblog,
+                                                           age_column=construction_year_col, )
+        infdblog.debug(harmonized_df.info())
+        infdblog.debug("Harmonization with refurbishment quotas completed")
+
+        infdblog.debug("Writing harmonized refurbishment data to database")
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
-        refurbed_df.to_sql("buildings_rc", engine, if_exists="replace", schema=output_schema, index=False)
-        infdblog.debug("Refurbished data writing to database")
+        harmonized_df.to_sql("buildings_rc", engine, if_exists="replace", schema=output_schema, index=False)
 
         infdblog.debug("Starting construction of building elements")
         # Run SQL: 02_create_layer_view

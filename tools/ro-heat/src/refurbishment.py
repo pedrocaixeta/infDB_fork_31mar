@@ -35,21 +35,17 @@ def simulate_refurbishment(
         until_year: int,
         parameters: Dict[str, Dict[str, Any]],
         random_number_generator: Generator,
-        logger,
         fill_value: int = 0,
         age_column: str = "age",
 ) -> DataFrame:
     """
     Simulate component refurbishments by drawing inter-refurbishment intervals from
     user-provided distributions until the given cutoff year.
-    First simulate the refurbishment of all buildings, then discard refurbishments to reach a given percentage of
-    refurbished components
 
     parameters format (per component):
       {
         "distribution": callable(gen, params_dict) -> np.ndarray,
         "distribution_parameters": { ... }  # without 'size'; added automatically
-        "refurbed_buildings": float; describes the percentage of actually refurbed components
       }
     """
     assert age_column in df.columns, (
@@ -60,8 +56,6 @@ def simulate_refurbishment(
         distribution = cfg.get("distribution")
         dist_params = dict(cfg["distribution_parameters"])
         dist_params["size"] = df.shape[0]
-        # If no refurbed_building_percentage is provided, all buildings will be refurbished
-        refurbed_building_percentage = cfg.get("refurbed_buildings", 1)
 
         refurbishment_offsets = DataFrame(index=df.index)
         n_refurbs = 0
@@ -88,8 +82,27 @@ def simulate_refurbishment(
                                                        df[age_column], axis=0)
         df[component] = refurb_years_masked.max(axis=1)
 
-        # Refurbishment of all buildings was simulated, now we discard refurbishments to reach a given percentage of
-        # refurbished components
+    return df
+
+
+def harmonize_with_quota(
+        df: DataFrame,
+        parameters: Dict[str, Dict[str, Any]],
+        random_number_generator: Generator,
+        logger,
+        age_column: str = "age",
+) -> DataFrame:
+    """
+    Enforce that at most target_fraction of buildings are refurbished
+    by reverting excess refurbishments to construction year.
+    """
+    assert age_column in df.columns, (
+        f"Column '{age_column}' not in DataFrame, specify the correct column name via the age_column parameter"
+    )
+
+    for component, cfg in parameters.items():
+        # If no refurbed_building_percentage is provided, all buildings will be refurbished
+        refurbed_building_percentage = cfg.get("refurbed_fraction", 1)
 
         n_refurbishment_target = round(refurbed_building_percentage * df.shape[0])
         # Some buildings might not have been refurbished as they are too young, i.e., their components end of life was
