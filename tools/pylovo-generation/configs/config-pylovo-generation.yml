@@ -3,7 +3,15 @@ pylovo:
     logging:
         path: "pylovo-generation.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
+    hosts:
+        postgres:
+            user: "None"           # Uses SERVICES_POSTGRES_USER from env
+            password: "None"       # Uses SERVICES_POSTGRES_PASSWORD from env
+            db: "None"             # Uses SERVICES_POSTGRES_DB from env
+            host: "None"           # Uses host.docker.internal by default
+            exposed_port: "None"   # Uses SERVICES_POSTGRES_EXPOSED_PORT from env
+            epsg: "None"           # Uses SERVICES_POSTGRES_EPSG from env
     data:
-        ags_list: "None" # Optional: Predefined ags instead of interactive selection (e.g., "9185149,9185150")
+        ags_list: "None" # Optional: Predefined AGS instead of interactive selection (e.g., "9185149,9185150")
         input_schema: basedata  # Schema where input data is stored (for INFDB_SOURCE_SCHEMA)
         output_schema: pylovo   # Schema where pylovo results will be stored (for TARGET_SCHEMA)

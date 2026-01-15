@@ -86,7 +86,7 @@ def run_pylovo_generate(infdb: InfDB, ags_list: str) -> None:
 def main() -> None:
     """Main entry point for pylovo-generation tool."""
     # Load InfDB facade (config + logging)
-    infdb = InfDB(tool_name="pylovo", config_path="configs")
+    infdb = InfDB(tool_name="pylovo-generation", config_path="configs")
     # Logger
     log = infdb.get_logger()
     log.info("Starting %s tool", infdb.get_toolname())
@@ -105,15 +105,19 @@ def main() -> None:
     os.environ['PASSWORD'] = db_params['password']
     os.environ['TARGET_SCHEMA'] = output_schema
     os.environ['INFDB_SOURCE_SCHEMA'] = input_schema
-    # Check if AGS is provided via environment variable
-    ags_list = infdb.get_config_value([infdb.get_toolname(), "data", "ags_list"])
-    if ags_list== "None":
-        log.info("Using AGS from PYLOVO_AGS environment variable: %s", ags_list)
-        ags_selection = ags_list
+
+    # Check AGS selection: config file or interactive
+    config_ags = infdb.get_config_value([infdb.get_toolname(), "data", "ags_list"])
+
+    if config_ags and config_ags != "None":
+        # Use AGS from config file
+        log.info("Using AGS from config file: %s", config_ags)
+        ags_selection = config_ags
     else:
         # Interactive mode: query database and prompt user
         available_ags = get_available_ags(infdb)
         ags_selection = prompt_user_selection(infdb, available_ags)
+
     # Run pylovo
     run_pylovo_setup(infdb)
     run_pylovo_generate(infdb, ags_selection)

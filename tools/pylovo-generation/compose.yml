@@ -14,7 +14,7 @@ services:
         volumes:
             - ../../configs:/app/mnt/configs-infdb #:ro # for root *.yml configs
             - ./configs:/app/configs #:ro # for local pylovo config
-            - ../../src/infdb-package:/app/mnt/infdb-package
+            - ../../src/infdb_package:/app/mnt/infdb_package
             - /app/.venv # Exclude .venv from volume mount
         extra_hosts:
             - "host.docker.internal:host-gateway"

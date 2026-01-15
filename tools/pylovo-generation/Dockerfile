@@ -28,8 +28,8 @@ RUN uv sync
 WORKDIR /app
 COPY main.py /app/main.py
 
-# Install PyYAML for config parsing (infdb-package will be mounted and installed at runtime)
+# Install PyYAML for config parsing (infdb_package will be mounted and installed at runtime)
 RUN pip install --no-cache-dir PyYAML
 
 # Run main.py directly
-CMD ["sh", "-c", "pip install -q /app/mnt/infdb-package && python3 /app/main.py"]
+CMD ["sh", "-c", "pip install -q /app/mnt/infdb_package && python3 /app/main.py"]
