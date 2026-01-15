@@ -1,0 +1,8 @@
+pylovo:
+    config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
+    logging:
+        path: "pylovo-generation.log"
+        level: "INFO" # ERROR, WARNING, INFO, DEBUG
+    data:
+        input_schema: basedata  # Schema where input data is stored (for INFDB_SOURCE_SCHEMA)
+        output_schema: pylovo   # Schema where pylovo results will be stored (for TARGET_SCHEMA)

@@ -2,6 +2,15 @@
 set -e
 
 # ==============================================================================
+# Load schema configuration from config-pylovo-generation.yml
+# ==============================================================================
+CONFIG_FILE="/app/configs/config-pylovo-generation.yml"
+# Extract input_schema and output_schema from config file
+INPUT_SCHEMA=$(grep -A 5 'data:' "$CONFIG_FILE" | grep 'input_schema:' | sed 's/.*input_schema:[[:space:]]*//' | sed 's/#.*//' | tr -d '"' | xargs)
+OUTPUT_SCHEMA=$(grep -A 5 'data:' "$CONFIG_FILE" | grep 'output_schema:' | sed 's/.*output_schema:[[:space:]]*//' | sed 's/#.*//' | tr -d '"' | xargs)
+
+
+# ==============================================================================
 # Map root .env variables to pylovo expected variables BEFORE Python runs
 # The env_file in compose.yml loads SERVICES_POSTGRES_* variables from ../../.env
 # We must export them before any Python code runs that imports pylovo modules
@@ -11,8 +20,8 @@ export DBUSER="${SERVICES_POSTGRES_USER}"
 export HOST="${SERVICES_POSTGRES_HOST}"
 export PORT="${SERVICES_POSTGRES_EXPOSED_PORT}"
 export PASSWORD="${SERVICES_POSTGRES_PASSWORD}"
-export TARGET_SCHEMA="${TARGET_SCHEMA:-pylovo}"
-export INFDB_SOURCE_SCHEMA="${INFDB_SOURCE_SCHEMA:-basedata}"
+export TARGET_SCHEMA="${OUTPUT_SCHEMA}"
+export INFDB_SOURCE_SCHEMA="${INPUT_SCHEMA}"
 
 echo "Database connection settings:"
 echo "  DBNAME: $DBNAME"
