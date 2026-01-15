@@ -16,12 +16,12 @@ choose-a-name:
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
-            user: "{services/postgres/user}"
-            password: "{services/postgres/password}"
-            db: "{services/postgres/db}"
-            host: "{services/postgres/host}"
-            exposed_port: "{services/postgres/exposed_port}"
-            epsg: "{services/postgres/epsg}"
+            user: None
+            password: None
+            db: None
+            host: None
+            exposed_port: None
+            epsg: None
     data:
         input_schema: basedata
         output_schema: choose_a_name   # needs to be snake_case
