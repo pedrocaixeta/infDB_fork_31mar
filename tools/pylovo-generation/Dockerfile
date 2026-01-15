@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdal-bin \
     build-essential \
     python3-dev \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv package manager

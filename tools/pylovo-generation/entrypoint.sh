@@ -22,26 +22,74 @@ echo "  PORT: $PORT"
 echo "  TARGET_SCHEMA: $TARGET_SCHEMA"
 echo ""
 
-# Extract AGS (municipality code) from pylovo config
-echo "Getting AGS from pylovo config..."
-AGS=$(grep 'ags:' /app/configs/config-pylovo-generation.yml | sed -E 's/.*ags:[[:space:]]*"?([0-9]+)"?.*/\1/')
+# ==============================================================================
+# Get AGS codes - either from environment variable or interactive selection
+# ==============================================================================
 
-if [ -z "$AGS" ]; then
-    echo "Error: Could not extract AGS from config file"
-    exit 1
+# Option 1: User-specified AGS via environment variable (for automation)
+if [ -n "$PYLOVO_AGS" ]; then
+    echo "Using AGS from PYLOVO_AGS environment variable: $PYLOVO_AGS"
+    AGS_LIST="$PYLOVO_AGS"
+
+# Option 2: Interactive selection from database
+else
+    echo "Fetching available AGS codes from opendata.scope table..."
+    # Get all available AGS codes from database (disable set -e to handle errors)
+    set +e
+    AVAILABLE_AGS=$(psql "postgresql://$DBUSER:$PASSWORD@$HOST:$PORT/$DBNAME" -t -c "SELECT \"AGS\" FROM opendata.scope WHERE \"AGS\" IS NOT NULL" 2>&1)
+    QUERY_EXIT_CODE=$?
+    set -e
+
+    # Clean up the result
+    AVAILABLE_AGS=$(echo "$AVAILABLE_AGS" | tr -d ' ' | grep -v '^$')
+
+
+
+    # Prompt user for selection
+    echo "Enter AGS codes to process as follows:"
+    echo "  - Single AGS: AGS"
+    echo "  - Multiple AGS (comma-separated): AGS1,AGS2"
+    echo "  - All available: all"
+    # Display available AGS codes
+    echo "=========================================="
+    echo "Available municipalities (AGS codes):"
+    echo "$AVAILABLE_AGS"
+    echo "=========================================="
+    echo ""
+    read -p "Your selection: " USER_INPUT
+
+    # Process user input
+    if [ "$USER_INPUT" = "all" ]; then
+        AGS_LIST=$(echo "$AVAILABLE_AGS" | tr '\n' ',' | sed 's/,$//')
+        echo "Selected: All municipalities ($AGS_LIST)"
+    elif [ -n "$USER_INPUT" ]; then
+        AGS_LIST="$USER_INPUT"
+        echo "Selected: $AGS_LIST"
+    else
+        echo "Error: No AGS codes entered."
+        exit 1
+    fi
 fi
-
-echo "AGS from config: $AGS"
 
 # Change to pylovo directory where package is installed
 cd /app/pylovo
 
-# Ensure pylovo-setup has been run (in case it failed during build)
-echo "Set up pylovo database..."
+# Ensure pylovo-setup has been run
+echo ""
+echo "=========================================="
+echo "Setting up pylovo database..."
+echo "=========================================="
 uv run pylovo-setup
 
-# Generate synthetic grids for the municipality
-echo "Generating synthetic grids for AGS: $AGS..."
-uv run pylovo-generate --ags $AGS
+# Generate synthetic grids for all municipalities (pylovo handles the list internally)
+echo ""
+echo "=========================================="
+echo "Generating synthetic grids for AGS: $AGS_LIST"
+echo "=========================================="
+uv run pylovo-generate --ags "$AGS_LIST"
 
-echo "Grid generation completed successfully!"
+echo ""
+echo "=========================================="
+echo "Grid generation completed!"
+echo "=========================================="
+

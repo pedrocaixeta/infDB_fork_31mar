@@ -1,4 +1,0 @@
-# Configuration file for pylovo-generation
-
-    data:
-        ags: "9185149"  # Municipality code (AGS) without leading zero

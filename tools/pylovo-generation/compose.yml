@@ -3,6 +3,8 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
+        stdin_open: true  # Enable stdin for interactive input
+        tty: true         # Allocate a pseudo-TTY
         env_file:
             - ../../.env  # Use root .env file with database credentials
         environment:
@@ -11,9 +13,11 @@ services:
             INFDB_SOURCE_SCHEMA: basedata
             USE_INFDB: "True"
             CONFIG_INFDB_PATH: /app/mnt/configs-infdb
+            # Optional: Override AGS selection for automation (comma-separated, e.g., "9185149,9185150")
+            # If not set, will prompt interactively after showing available AGS from opendata.scope table
+            # PYLOVO_AGS: "9185149"
         volumes:
             - ../../configs:/app/mnt/configs-infdb #:ro # for *.yml configs and generated files
-            - ./configs:/app/configs #:ro # for configs
             - ../../src/infdb-package:/app/mnt/infdb-package
             - /app/.venv # Exclude .venv from volume mount
         extra_hosts:
