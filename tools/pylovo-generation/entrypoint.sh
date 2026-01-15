@@ -40,8 +40,8 @@ else
     QUERY_EXIT_CODE=$?
     set -e
 
-    # Clean up the result
-    AVAILABLE_AGS=$(echo "$AVAILABLE_AGS" | tr -d ' ' | grep -v '^$')
+    # Clean up the result and remove leading zeros
+    AVAILABLE_AGS=$(echo "$AVAILABLE_AGS" | tr -d ' ' | grep -v '^$' | sed 's/^0*//')
 
 
 
@@ -50,7 +50,7 @@ else
     echo "  - Single AGS: AGS"
     echo "  - Multiple AGS (comma-separated): AGS1,AGS2"
     echo "  - All available: all"
-    # Display available AGS codes
+    # Display available AGS codes (without leading zeros)
     echo "=========================================="
     echo "Available municipalities (AGS codes):"
     echo "$AVAILABLE_AGS"
