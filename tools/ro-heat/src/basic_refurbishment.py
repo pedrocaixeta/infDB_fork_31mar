@@ -1,11 +1,8 @@
-import logging
 from typing import Any, Dict
 
 import numpy as np
 from numpy.random import Generator
 from pandas import DataFrame
-
-log = logging.getLogger(__name__)
 
 
 def sample_construction_year(buildings: DataFrame, end_of_simulation_year: int, construction_year_col: str,
@@ -38,6 +35,7 @@ def simulate_refurbishment(
         until_year: int,
         parameters: Dict[str, Dict[str, Any]],
         random_number_generator: Generator,
+        logger,
         fill_value: int = 0,
         age_column: str = "age",
 ) -> DataFrame:
@@ -99,17 +97,20 @@ def simulate_refurbishment(
         actually_refurbished_buildings = df[df[component] != df[age_column]]
         n_actually_refurbed = actually_refurbished_buildings.shape[0]
 
-        n_to_drop = n_actually_refurbed - n_refurbishment_target
-        if 0 <= n_to_drop <= n_actually_refurbed:
-            # Sample n_to_drop indices to drop from the actually_refurbished_buildings
-            idx_to_drop = actually_refurbished_buildings.sample(n_to_drop, random_state=random_number_generator).index
-            # Drop the refurbishment by setting the components age to the building age
-            df.loc[idx_to_drop, component] = df.loc[idx_to_drop, age_column]
-        elif n_to_drop < 0:
-            # log
-            pass
-        elif n_to_drop > n_actually_refurbed:
-            # log
-            pass
+        n_to_keep = min(n_refurbishment_target, n_actually_refurbed)
+        n_to_drop = n_actually_refurbed - n_to_keep
+
+        logger.info(
+            f"Harmonizing refurbishment simulation with quotes for component {component}: "
+            f"target={n_refurbishment_target}, actually={n_actually_refurbed}, to_drop={n_to_drop}"
+        )
+        if n_refurbishment_target > n_actually_refurbed:
+            logger.warning(
+                f"Refurbishment quota for component {component} cannot be met; keeping all refurbishments."
+            )
+        # Sample n_to_drop indices to drop from the actually_refurbished_buildings
+        idx_to_drop = actually_refurbished_buildings.sample(n_to_drop, random_state=random_number_generator).index
+        # Drop the refurbishment by setting the components age to the building age
+        df.loc[idx_to_drop, component] = df.loc[idx_to_drop, age_column]
 
     return df

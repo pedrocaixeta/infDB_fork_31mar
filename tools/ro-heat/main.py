@@ -83,6 +83,7 @@ def main():
             simulation_year,
             refurbishment_parameters,
             rng,
+            infdblog,
             age_column=construction_year_col,
         )
         infdblog.debug("Refurbishment simulation completed")
