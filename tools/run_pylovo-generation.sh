@@ -1,21 +1,24 @@
 #!/usr/bin/env bash
-# set -euo pipefail
 
 # ----------------------------------------------------------------------
-# infDB with Linear Heat Density Setup Script
+# infDB with pylovo generation
 # ----------------------------------------------------------------------
+
+set -e
+
+# Get the script directory
+SCRIPT_DIR="$(dirname "$0")"
+
+# Load environment variables from root .env file
 echo "Loading environment variables from .env file..."
 set -a
-[ -f $(dirname "$0")/../.env ] && . $(dirname "$0")/../.env
+[ -f "$SCRIPT_DIR/../.env" ] && . "$SCRIPT_DIR/../.env"
 set +a
 
-# echo "=== Run infDB-loader ==="
-# bash infdb-import.sh
-
 echo "=== Run infdb-basedata ==="
-bash $(dirname "$0")/infdb-basedata/run.sh
+docker compose -f "$SCRIPT_DIR/infdb-basedata/compose.yml" up --build
 
-echo "=== Run kwp ==="
-bash $(dirname "$0")/pylovo-generation/run.sh
+echo "=== Run pylovo-generation ==="
+docker compose -f "$SCRIPT_DIR/pylovo-generation/compose.yml" run --rm --build pylovo-generation
 
 echo "=== Done! InfDB with pylovo grids is ready. ==="
