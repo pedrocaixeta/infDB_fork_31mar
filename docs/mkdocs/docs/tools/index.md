@@ -13,6 +13,12 @@ The infDB ecosystem includes a variety of tools designed to handle different asp
 ## Template
 If you want to or create or integrate your own software or scripts into the infDB ecosystem, you can use the template for a devContainer provided by the infDB. A more detailed description can be found under Tools -> [infdb-template](template.md).
 
+## Python Package
+
+Moreover, there is a python package `infdb` that can be used to interact with the infDB database and services. It provides functionalities for database connections, logging, configuration management, and utility functions. You can find more information about the package in the [API -> pypackage](../api/pypackage.md).
+
+
+
 ## Currently Integrated Tools
 The following tools are currently integrated with infDB:
 

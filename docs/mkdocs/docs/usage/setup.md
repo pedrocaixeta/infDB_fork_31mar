@@ -2,7 +2,7 @@
 icon: material/cog
 ---
 All central configurations of the infDB services are stored in the environment file .env in project root. This enables due to the modular structure of the infDB allows to run services according to user requirements. The configuration of the imported open data is done via a YAML file because of its complexity.
-For detailed configuration options, refer to the [Services](infdb/services.md).
+For detailed configuration options, refer to the [Services](../infdb/services.md).
 
 ## Environment Variables File
 
@@ -159,7 +159,7 @@ JWT_SECRET_KEY=change-me-in-production
 
 
 ## Opendata Configuration
-The configuration for the opendata import is done via the following YAML file. For detailed configuration options, refer to the [Services](infdb/services.md) documentation 
+The configuration for the opendata import is done via the following YAML file. For detailed configuration options, refer to the [Services](../infdb/services.md) documentation 
 under the **infdb-importer** section.
 
 ```yaml title="configs/config-infdb-loader.yml"

@@ -2,12 +2,8 @@
 icon: material/database-edit
 ---
 
-# infDB Database
-The infDB database is built on PostgreSQL with PostGIS, TimescaleDB, and pgRouting extensions to support spatial, time-series, and routing functionalities.
-
-## Database Structure
-
-The infDB database is organized into multiple schemas to separate different types of data and functionalities:
+# Database Structure
+The infDB database as service infdb-db is organized into multiple schemas to separate different types of data and functionalities:
 
 - `public`: Default schema for extensions and general-purpose tables.
 - `citydb`: Dedicated schema for 3DCityDB data.
@@ -27,6 +23,6 @@ The following extensions are installed to enhance database capabilities:
 
 By default, the database is accessible at:
 
--   **Host**: `localhost` (or `db` within Docker network)
--   **Port**: `5432` (internal) btw. `54328` (external) (or as configured in `.env`)
--   **User**: `postgres` (or as configured in `.env`)
+-  **Host**: `localhost` (or `db` within Docker network)
+-  **Port**: `5432` (internal) btw. `54328` (external) (or as configured in `.env`)
+-  **User**: `postgres` (or as configured in `.env`)
