@@ -1,9 +1,10 @@
 -- Create building to grid cell mapping
 DELETE FROM {output_schema}.bld2grid target
-WHERE target.objectid NOT IN (
-    SELECT src.objectid
+WHERE NOT EXISTS (
+    SELECT 1
     FROM {input_schema}.buildings_lod2 src
---    WHERE src.gemeindeschluessel IN {list_gemeindeschluessel}
+    WHERE src.objectid = target.objectid
+--      AND src.gemeindeschluessel IN {list_gemeindeschluessel}
 );
 
 INSERT INTO {output_schema}.bld2grid (objectid, id, resolution_meters)
@@ -18,10 +19,11 @@ SET resolution_meters = EXCLUDED.resolution_meters;
 
 
 DELETE FROM {output_schema}.bld2ts target
-WHERE target.bld_objectid NOT IN (
-    SELECT src.objectid
+WHERE NOT EXISTS (
+    SELECT 1
     FROM {input_schema}.buildings_lod2 src
---    WHERE src.gemeindeschluessel IS IN {list_gemeindeschluessel}
+    WHERE src.objectid = target.bld_objectid
+--      AND src.gemeindeschluessel IS IN {list_gemeindeschluessel}
 );
 
 -- Find nearest time series for each building
