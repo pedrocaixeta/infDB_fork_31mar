@@ -37,29 +37,35 @@ def get_available_ags(infdb: InfDB) -> List[str]:
     ags_list = [line.strip().lstrip('0') for line in result.split('\n') if line.strip()]
     return ags_list
 
+
 def prompt_user_selection(infdb: InfDB, available_ags: List[str]) -> str:
     """Display available AGS codes and prompt user for selection."""
     log = infdb.get_logger()
+    # Blue color for the ags prompt
+    BLUE = '\033[94m'
+    RESET = '\033[0m'
 
-    print("Available municipalities (AGS codes):")
+    log.info("Enter AGS codes to generate low voltage grids: Single AGS ➜ 9185149 | Multiple AGS ➜ 9185149,9185150 | All AGS ➜ all")
+    log.info(f"{BLUE}Available municipalities (AGS codes):{RESET}")
     for ags in available_ags:
-        print(ags)
-    print("Enter AGS codes to process:")
-    print("  - Single AGS: 9185149")
-    print("  - Multiple AGS (comma-separated): 9185149,9185150")
-    print("  - All available: all")
-    selection = input("Your selection: ").strip()
+        log.info(f"{BLUE}{ags}{RESET}")
+
+    selection = input(f"{BLUE}➜ Your selection: {RESET}").strip()
+
     if not selection:
         log.error("No AGS codes entered")
         sys.exit(1)
+
     if selection.lower() == 'all':
         ags_list = ','.join(available_ags)
-        log.info(f"Selected: All municipalities ({ags_list})")
+        log.info("Selected: All municipalities (%s)", ags_list)
     else:
         # Remove leading zeros from user input (in case they copy from database)
         ags_list = ','.join([ags.strip().lstrip('0') for ags in selection.split(',')])
-        log.info(f"Selected: {ags_list}")
+        log.info("Selected: %s", ags_list)
+
     return ags_list
+
 
 def run_pylovo_setup(infdb: InfDB) -> None:
     """Run pylovo-setup to initialize the database schema."""
