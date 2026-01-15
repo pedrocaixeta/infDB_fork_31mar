@@ -63,14 +63,17 @@ def main():
             "outer_wall": {
                 "distribution": lambda gen, parameters: gen.normal(**parameters),
                 "distribution_parameters": {"loc": 40, "scale": 10},
+                "refurbed_buildings": 0.33,
             },
             "rooftop": {
                 "distribution": lambda gen, parameters: gen.normal(**parameters),
                 "distribution_parameters": {"loc": 50, "scale": 10},
+                "refurbed_buildings": 0.63,
             },
             "window": {
                 "distribution": lambda gen, parameters: gen.normal(**parameters),
                 "distribution_parameters": {"loc": 30, "scale": 10},
+                "refurbed_buildings": 0.9,
             },
         }
 
@@ -81,7 +84,6 @@ def main():
             refurbishment_parameters,
             rng,
             age_column=construction_year_col,
-            provide_last_refurb_only=True,
         )
         infdblog.debug("Refurbishment simulation completed")
         infdblog.debug(refurbed_df.info())

@@ -2,9 +2,8 @@ import logging
 from typing import Any, Dict
 
 import numpy as np
-import pandas as pd
 from numpy.random import Generator
-from pandas import DataFrame, Series
+from pandas import DataFrame
 
 log = logging.getLogger(__name__)
 
@@ -41,16 +40,18 @@ def simulate_refurbishment(
         random_number_generator: Generator,
         fill_value: int = 0,
         age_column: str = "age",
-        provide_last_refurb_only: bool = False,
 ) -> DataFrame:
     """
     Simulate component refurbishments by drawing inter-refurbishment intervals from
     user-provided distributions until the given cutoff year.
+    First simulate the refurbishment of all buildings, then discard refurbishments to reach a given percentage of
+    refurbished components
 
     parameters format (per component):
       {
         "distribution": callable(gen, params_dict) -> np.ndarray,
         "distribution_parameters": { ... }  # without 'size'; added automatically
+        "refurbed_buildings": float; describes the percentage of actually refurbed components
       }
     """
     assert age_column in df.columns, (
@@ -58,21 +59,22 @@ def simulate_refurbishment(
     )
 
     for component, cfg in parameters.items():
-        distribution = cfg["distribution"]
+        distribution = cfg.get("distribution")
         dist_params = dict(cfg["distribution_parameters"])
         dist_params["size"] = df.shape[0]
+        # If no refurbed_building_percentage is provided, all buildings will be refurbished
+        refurbed_building_percentage = cfg.get("refurbed_buildings", 1)
 
         refurbishment_offsets = DataFrame(index=df.index)
         n_refurbs = 0
 
         # Keep sampling while at least one object is still <= until_year
         while any(df[age_column] + refurbishment_offsets.sum(axis=1) <= until_year):
-            samples = Series(
-                distribution(random_number_generator, dist_params).round().astype(int),
-                index=df.index,
-                name=f"{component}_{n_refurbs}",
+            refurbishment_offsets[f"{component}_{n_refurbs}"] = (
+                distribution(random_number_generator, dist_params)
+                .round()
+                .astype(int)
             )
-            refurbishment_offsets = pd.concat([refurbishment_offsets, samples], axis=1)
             n_refurbs += 1
 
         refurb_cum_sum = refurbishment_offsets.cumsum(axis=1).astype(int)
@@ -83,11 +85,31 @@ def simulate_refurbishment(
         zero_cols = refurb_years_masked.columns[(refurb_years_masked.T == fill_value).all(axis=1)]
         refurb_years_masked = refurb_years_masked.drop(columns=zero_cols)
 
-        if provide_last_refurb_only:
-            # If never refurbished, take the original construction year
-            refurb_years_masked = refurb_years_masked.mask(refurb_years_masked == fill_value, df[age_column], axis=0)
-            df[component] = refurb_years_masked.max(axis=1)
-        else:
-            df = pd.concat([df, refurb_years_masked], axis=1)
+        # If never refurbished, take the original construction year
+        refurb_years_masked = refurb_years_masked.mask(refurb_years_masked == fill_value,
+                                                       df[age_column], axis=0)
+        df[component] = refurb_years_masked.max(axis=1)
+
+        # Refurbishment of all buildings was simulated, now we discard refurbishments to reach a given percentage of
+        # refurbished components
+
+        n_refurbishment_target = round(refurbed_building_percentage * df.shape[0])
+        # Some buildings might not have been refurbished as they are too young, i.e., their components end of life was
+        # not reached. We exclude those from the percentage calculation.
+        actually_refurbished_buildings = df[df[component] != df[age_column]]
+        n_actually_refurbed = actually_refurbished_buildings.shape[0]
+
+        n_to_drop = n_actually_refurbed - n_refurbishment_target
+        if 0 <= n_to_drop <= n_actually_refurbed:
+            # Sample n_to_drop indices to drop from the actually_refurbished_buildings
+            idx_to_drop = actually_refurbished_buildings.sample(n_to_drop, random_state=random_number_generator).index
+            # Drop the refurbishment by setting the components age to the building age
+            df.loc[idx_to_drop, component] = df.loc[idx_to_drop, age_column]
+        elif n_to_drop < 0:
+            # log
+            pass
+        elif n_to_drop > n_actually_refurbed:
+            # log
+            pass
 
     return df
