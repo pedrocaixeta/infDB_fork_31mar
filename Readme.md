@@ -3,7 +3,6 @@
 </p>
 
 # infDB - Infrastructure and Energy Database
-
 **The infDB is a user-friendly, platform-independent, and open-source data infrastructure as a foundation for energy system analyses. It enables complex evaluations by combining various tools through standardized interfaces, fostering an open and interoperable ecosystem.**
 
 | Category | Badges |
@@ -14,20 +13,30 @@
 
 ## Table of Contents
 
-- [Purpose](#purpose)
+- [Why use it?](#why-use-it)
 - [How it works?](#how-it-works)
 - [Getting Started](#getting-started)
 - [License and Citation](#license-and-citation)
 
-## Purpose
 
+## Why use it?
+
+The infDB platform addresses common challenges in energy system modeling and analysis, particularly those related to data management. By providing a standardized and modular infrastructure, infDB reduces the time and effort required to set up and maintain data systems. This allows researchers, analysts, and planners to focus on their core tasks of modeling and analysis, rather than being bogged down by data logistics.
+
+The infDB can be used effectively wherever geospatial and time series information is required. Possible applications include:
+
+-   Energy System Modeling
+-   Municipal Heat Planning and Infrastructure Planning
+-   Scenario and Geospatial Analysis
+
+<!-- ## Purpose
 **infDB (Infrastructure and Energy Database)** offers a flexible and easy-to-configure data infrastructure with essential services, minimizing the effort required for data management. By providing standardized interfaces and APIs, infDB streamlines collaboration in energy modeling and analysis, enabling users to focus on insights rather than data handling.
 
 For instance, it can be used for the following applications:
 - Energy System Modeling
 - Infrastructure Planning
 - Scenario Analysis
-- Geospatial Analysis
+- Geospatial Analysis -->
 
 ## How it works?
 The infDB architecture is composed of three coordinated layers as shown in the figure below:

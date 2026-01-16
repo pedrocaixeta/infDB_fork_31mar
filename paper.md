@@ -1,5 +1,6 @@
 ---
 title: 'infDB: An Open-Source Infrastructure and Energy Database'
+title: 'An Open-Source Data Ecosystem for Urban Energy Infrastructure Modelling and Planning'
 tags:
     - Python
     - Docker
@@ -11,7 +12,7 @@ authors:
     - name: Patrick Buchenberg
         orcid: 0000-0001-7683-8422
         corresponding: true
-        equal-contrib: true
+        equal-contrib: false
         affiliation: 1
     - name: Markus Döpfert
         orcid: 
@@ -29,7 +30,7 @@ authors:
         orcid: 
         equal-contrib: false
         affiliation: 1
-    - name: Husain 
+    - name: Hussein Mohamed Ali Genena 
         orcid: 
         equal-contrib: false
         affiliation: 1
@@ -91,10 +92,10 @@ The infDB is designed to be modular, scalable, and flexible, allowing for easy i
 
 ### Key Features
 
-- **Geospatial, Time Series & Graph support**: Built on PostGIS, TimescaleDB and pgRouting.
-- **Platform Independent**: Containerized with Docker.
-- **Modular**: extensible via standardized APIs.
-- **Open Source**: permissive licensing.
+- **User-Friendly**: easy to configure and use.
+- **Geospatial, Time Series & Graph Data Support**: PostgreSQL extended by PostGIS, TimescaleDB and pgRouting.
+- **Modular and Platform Independent**: Containerized with Docker.
+- **Open Source**: Apache License Version 2.0 - permissive licensing.
 - **Open Data**: Automatized import of common opendata sources.
 
 The figure bewlow provides an overview of the infDB architecture and its main components in the grey box. Integrated tools on the right side can access the data stored in the core database via standardized interfaces and data schemas. 
@@ -114,30 +115,32 @@ The figure below illustrates the architecture of infDB and its containerized ser
 ![infDB - Architecture](docs/mkdocs/docs/infdb/infdb-architecture.png)
 
 A central docker compose file (compose.yml) controls all containerized services. Bash scripts (infdb-start.sh, infdb-stop.sh, infdb-remove.sh, infdb-import.sh) are provided to simplify common tasks such as starting, stopping, and managing the entire infDB platform for the end user.
-The configuration of the infDB uses environment variables defined in the .env file to customize settings such as database credentials, ports, and controll of services. The imported opendata sources can be managed via a yml file (config-infdb-loader.yml) file, which specifies datasets to be ingested and their respective configurations.
+The configuration of the infDB uses environment variables defined in the .env file to customize settings such as database credentials, ports, and controll of services. The imported opendata sources can be managed via a YAML file (config-infdb-loader.yml) file, which specifies datasets to be ingested and their respective configurations.
 
 
 In summary, the infDB is a modular and flexible data platform built on dockerized services that can be easily activated and configured for specific use cases. This architecture ensures portability across all platforms. By providing standardized interfaces and APIs, infDB fosters an extensible ecosystem that empowers users to integrate custom tools and workflows seamlessly.
 
 # Research Impact Statement
 
+The major research impact of infDB is minimizing the effort required for data management and empowering growth of an ecosystem at the same time. Its ability to streamline and standardize data management for energy system modeling and analysis. By providing a modular, open-source infrastructure, infDB addresses key challenges in data accessibility, integration, and reproducibility. This allows researchers, analysts, and planners to focus on their core tasks of modeling and analysis, rather than being bogged down by data logistics.
 
-Its primary mission is to empower the growth of an ecosystem by offering standardized interfaces and APIs. This platform-independent approach streamlines collaboration in energy modeling and analysis, allowing users to dedicate their focus to generating insights rather than handling data logistics.
+The example of calculating linear heat density for municipal heat planning demonstrates how infDB can facilitate complex data workflows by integrating diverse data sources and providing standardized interfaces for data access. This not only speeds up the analysis process but also enhances the quality and reliability of the results.
 
-- speedup
-- increase quality
-- reduce cost
-- reproducibility
+The long-term impact of infDB is expected to be significant, as it promotes transparency, reproducibility, and collaboration in the energy modeling community. By enabling easy sharing of data and tools, infDB fosters an ecosystem where researchers can build upon each other's work, leading to more open, robust and innovative solutions for energy system challenges. 
+
+The main benefits can be summarized as follows:
+
+- reduce cost and effort of data and infrastructure handling
+- speedup research and analysis
+- increase quality of research outcomes
+- enable and support collaboration
+- reproducibility of research results
 - transparency
-
-1.	easy-to-configure and use
-2.	minimizing the effort required for data management 
-3.	Empowering growth of ecosystem
-
-
 
 
 # AI usage disclosure
+
+In the development of this work, GitHub Copilot, ChatGPT, and Gemini were used. Github Copilot assisted in code generation by code suggestions and completion tasks, while ChatGPT and Gemini assisted in drafting and refining textual content.
 
 # Acknowledgements
 

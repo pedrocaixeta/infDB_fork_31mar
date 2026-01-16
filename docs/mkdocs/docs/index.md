@@ -8,10 +8,10 @@ The **infDB - Infrastructure and Energy Database** provides a modular and easy-t
 
 ## Key Features
 
-: :material-plus-circle: **Geospatial, Time Series & Graph support**: Built on PostGIS, TimescaleDB and pgRouting.
+: :material-plus-circle: **Geospatial, Time Series & Graph Data Support**: Built on PostGIS, TimescaleDB and pgRouting.
 : :material-plus-circle: **Platform Independent**: Containerized with Docker.
 : :material-plus-circle: **Modular**: extensible via standardized APIs.
-: :material-plus-circle: **Open Source**: permissive licensing.
+: :material-plus-circle: **Open Source**: Apache License Version 2.0 - permissive licensing.
 : :material-plus-circle: **Open Data**: Automatized import of common opendata sources.
 
 ## Why use it?
