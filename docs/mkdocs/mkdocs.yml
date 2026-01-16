@@ -55,7 +55,7 @@ nav:
     - infdb-importer: infdb/infdb-importer.md
   - API: 
     - Introduction: api/index.md
-    - pypackage: api/pypackage.md
+    - pyinfdb: api/pyinfdb.md
   - Tools: 
     - Introduction: tools/index.md
     - Template: tools/template.md

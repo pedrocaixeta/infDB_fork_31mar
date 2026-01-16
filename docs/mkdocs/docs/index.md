@@ -16,6 +16,8 @@ The **infDB - Infrastructure and Energy Database** provides a modular and easy-t
 
 ## Why use it?
 
+The infDB platform addresses common challenges in energy system modeling and analysis, particularly those related to data management. By providing a standardized and modular infrastructure, infDB reduces the time and effort required to set up and maintain data systems. This allows researchers, analysts, and planners to focus on their core tasks of modeling and analysis, rather than being bogged down by data logistics.
+
 The infDB can be used effectively wherever geospatial and time series information is required. Possible applications include:
 
 -   Energy System Modeling

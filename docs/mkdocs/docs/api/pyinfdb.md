@@ -1,11 +1,10 @@
-# InfDB Python Package
+# infDB Python Package
 
-This guide explains how to use the `infdb` python package to interact with your database in a standardized, configuration-driven way.
+This guide explains how to use the `pyinfdb` python package to interact with your database in a standardized, configuration-driven way.
 
 ## Overview
 
-The `infdb` package is a wrapper around postgresql database connections. It provides a single "Facade" class (`InfDB`) that handles:
-
+The `pyinfdb` package is a wrapper around postgresql database connections. It provides a single "Facade" class (`InfDB`) that handles:
 1. **Configuration**: Loading database credentials and settings from YAML and environment files.
 2. **Connections**: Providing both raw `psycopg2` clients and `SQLAlchemy` engines.
 3. **Logging**: Standardized logging for your tools.
@@ -14,7 +13,7 @@ The `infdb` package is a wrapper around postgresql database connections. It prov
 ## Installation
 
 ```bash
-pip install infdb
+pip install pyinfdb
 ```
 
 ## Quick Start

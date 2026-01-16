@@ -3,7 +3,7 @@ The architecture of infDB is designed to be modular, scalable, and flexible, all
 
 ![text](infdb-architecture.png)
 
-The central docker compose file (`docker-compose.yml`) controls all containerized services. Bash scripts (`infdb-start.sh`, `infdb-stop.sh`, `infdb-remove.sh`, `infdb-import.sh`) are provided to simplify common tasks such as starting, stopping, and managing the entire infDB platform for the end user.
+The central docker compose file (`compose.yml`) controls all containerized services. Bash scripts (`infdb-start.sh`, `infdb-stop.sh`, `infdb-remove.sh`, `infdb-import.sh`) are provided to simplify common tasks such as starting, stopping, and managing the entire infDB platform for the end user.
 
 The configuration of the infDB uses environment variables defined in the `.env` file to customize settings such as database credentials, ports, and volume paths. The imported opendata sources can be managed via the `config-infdb-loader.yml` file, which specifies datasets to be ingested and their respective configurations.
 
