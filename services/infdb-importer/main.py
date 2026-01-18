@@ -2,6 +2,7 @@ import multiprocessing as mp
 from typing import List
 
 from infdb import InfDB
+from typing import List, Callable
 
 from src import (
     basemap,
@@ -23,6 +24,16 @@ from src import (
 
 # ============================== Entry Point ============================
 
+def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
+    infdb = InfDB(tool_name="infdb-loader")
+    try:
+        load_fn(infdb)
+    finally:
+        # prevents QueueListener/_monitor thread exceptions on process exit
+        try:
+            infdb.stop_logger()
+        except Exception:
+            pass
 
 def main() -> None:
     """Bootstrap loader, drop dev schema, and spawn data-loading processes.
@@ -60,21 +71,22 @@ def main() -> None:
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
-    processes.append(mp.Process(target=need.load, args=(infdb,), name="need"))
-    processes.append(mp.Process(target=tabula.load, args=(infdb,), name="tabula"))
-    processes.append(mp.Process(target=lod2_nrw.load, args=(infdb,), name="lod2-nrw"))
-    processes.append(mp.Process(target=plz.load, args=(infdb,), name="plz"))
-    processes.append(mp.Process(target=basemap.load, args=(infdb,), name="basemap"))
-    processes.append(mp.Process(target=census2022.load, args=(infdb,), name="census2022"))
-    processes.append(mp.Process(target=openmeteo.load, args=(infdb,), name="openmeteo"))
-    processes.append(mp.Process(target=kwp_nrw.load, args=(infdb,), name="kwp_nrw"))
-    processes.append(mp.Process(target=kwp_nrw_oberhausen.load, args=(infdb,), name="kwp_nrw_oberhausen"))
-    processes.append(mp.Process(target=gebaeude_neuburg.load, args=(infdb,), name="gebaeude-neuburg"))
+    processes.append(mp.Process(target=_run_loader, args=(need.load,), name="need"))
+    processes.append(mp.Process(target=_run_loader, args=(tabula.load,), name="tabula"))
+    processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
+    processes.append(mp.Process(target=_run_loader, args=(plz.load,), name="plz"))
+    processes.append(mp.Process(target=_run_loader, args=(basemap.load,), name="basemap"))
+    processes.append(mp.Process(target=_run_loader, args=(census2022.load,), name="census2022"))
+    processes.append(mp.Process(target=_run_loader, args=(openmeteo.load,), name="openmeteo"))
+    processes.append(mp.Process(target=_run_loader, args=(kwp_nrw.load,), name="kwp_nrw"))
+    processes.append(mp.Process(target=_run_loader, args=(kwp_nrw_oberhausen.load,), name="kwp_nrw_oberhausen"))
+    processes.append(mp.Process(target=_run_loader, args=(gebaeude_neuburg.load,), name="gebaeude-neuburg"))
     processes.append(
-        mp.Process(target=waermeatlas_hessen_bensheim.load, args=(infdb,), name="waermeatlas_hessen_bensheim")
+        mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
     )
-    # processes.append(mp.Process(target=wetterdienst.load, args=(log_queue,), name="wetterdienst"))
-    processes.append(mp.Process(target=opendata_bavaria.load, args=(infdb,), name="opendata_bavaria"))
+
+    # processes.append(mp.Process(target=wetterdienst._run_loader, args=(log_queue,), name="wetterdienst"))
+    processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
 
     for process in processes:
         process.start()
@@ -122,4 +134,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    mp.set_start_method("spawn", force=True) 
+    mp.freeze_support()
     main()
