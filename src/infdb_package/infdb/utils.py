@@ -276,19 +276,6 @@ def do_cmd(cmd: str | List[str], is_shell_interpreted: bool = False) -> int:
         raise ValueError("cmd must be a non-empty string")
 
     log.info("Executing command: %s", cmd)
-
-    # allow aria2c to run in parallel without pipe/progress deadlocks
-    is_aria2c = isinstance(cmd, list) and len(cmd) > 0 and cmd[0] == "aria2c"
-    if is_aria2c:
-        proc = subprocess.run(cmd, shell=is_shell_interpreted, check=False)  # stdout/stderr inherited
-        return_code = proc.returncode
-        if return_code == 0:
-            log.info("Command completed successfully.")
-        else:
-            log.error("Command failed with return code %s", return_code)
-        return return_code
-
-
     process = subprocess.Popen(
         cmd,
         shell=is_shell_interpreted,  # nosec B602
