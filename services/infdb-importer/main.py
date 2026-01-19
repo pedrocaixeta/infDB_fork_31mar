@@ -84,7 +84,7 @@ def main() -> None:
         mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
     )
 
-    # processes.append(mp.Process(target=wetterdienst._run_loader, args=(log_queue,), name="wetterdienst"))
+    # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
     processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
     
 
