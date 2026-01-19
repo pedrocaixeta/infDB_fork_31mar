@@ -6,6 +6,7 @@ from infdb import InfDB
 
 from . import utils
 
+
 def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear_existing: bool = False) -> None:
     """Create (or update) a single geogitter table by inserting grid cells per resolution.
 
@@ -51,7 +52,7 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
         """
         db.execute_query(ddl)
 
-        utils.materialize_scope_table(infdb) # Ensure opendata.scope exists
+        utils.materialize_scope_table(infdb)  # Ensure opendata.scope exists
         all_envelops = utils.get_all_envelops(infdb)
         for envelop in all_envelops:
             log.debug("Envelop: %s", envelop)
@@ -62,13 +63,11 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
             if isinstance(resolutions, str):
                 resolutions = [resolutions]
 
-    
             ags_col = "AGS" if "AGS" in envelop.columns else "ags"
             gen_col = "GEN" if "GEN" in envelop.columns else ("gen" if "gen" in envelop.columns else None)
 
             ags_val = str(envelop[ags_col].iloc[0])
             gen_val = str(envelop[gen_col].iloc[0]) if gen_col else ""
-
 
             # Insert per resolution, skipping existing ids
             for resolution in resolutions or []:

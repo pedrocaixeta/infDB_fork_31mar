@@ -36,14 +36,10 @@ def load(infdb: InfDB) -> bool:
         if not utils.if_active("lod2-nrw", infdb):
             return True
 
-        gml_path = infdb.get_config_path(
-            [infdb.get_toolname(), "sources", "lod2-nrw", "path", "gml"], type="loader"
-        )
+        gml_path = infdb.get_config_path([infdb.get_toolname(), "sources", "lod2-nrw", "path", "gml"], type="loader")
         os.makedirs(gml_path, exist_ok=True)
 
-        base_url = (
-            infdb.get_config_value([infdb.get_toolname(), "sources", "lod2-nrw", "base_url"]).rstrip("/") + "/"
-        )
+        base_url = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2-nrw", "base_url"]).rstrip("/") + "/"
         tile_size_m = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2-nrw", "tile_size_m"]) or 1000
         template = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2-nrw", "filename_template"])
 
@@ -71,18 +67,24 @@ def load(infdb: InfDB) -> bool:
         params = infdb.get_db_parameters_dict()
         import_mode = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2-nrw", "import-mode"])
         cmd_parts = [
-            "citydb", "import", "citygml",
-            "-H", params["host"],
-            "-d", params["db"],
-            "-u", params["user"],
-            "-p", params["password"],
-            "-P", str(params["exposed_port"]),
+            "citydb",
+            "import",
+            "citygml",
+            "-H",
+            params["host"],
+            "-d",
+            params["db"],
+            "-u",
+            params["user"],
+            "-p",
+            params["password"],
+            "-P",
+            str(params["exposed_port"]),
             f"--import-mode={import_mode}",
             str(gml_path),
         ]
         utils.do_cmd(cmd_parts)
 
-       
         log.info("LOD2-NRW data loaded successfully")
         sys.exit(0)
     except Exception:

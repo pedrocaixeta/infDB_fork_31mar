@@ -451,6 +451,5 @@ def _load_lod2(infdb: InfDB) -> bool:
     ]
     utils.do_cmd(" ".join(str(a) for a in cmd_parts))
 
-    
     log.info("LOD2 data loaded successfully")
     return True

@@ -1,8 +1,7 @@
 import multiprocessing as mp
-from typing import List
+from typing import Callable, List
 
 from infdb import InfDB
-from typing import List, Callable
 
 from src import (
     basemap,
@@ -24,6 +23,7 @@ from src import (
 
 # ============================== Entry Point ============================
 
+
 def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
     infdb = InfDB(tool_name="infdb-loader")
     try:
@@ -34,6 +34,7 @@ def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
             infdb.stop_logger()
         except Exception:
             pass
+
 
 def main() -> None:
     """Bootstrap loader, drop dev schema, and spawn data-loading processes.
@@ -86,7 +87,6 @@ def main() -> None:
 
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
     processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
-    
 
     for process in processes:
         process.start()
@@ -105,7 +105,7 @@ def main() -> None:
     try:
         ags_list = utils.fetch_scope_ags_from_db(infdb)
 
-        ags_by  = [s for s in ags_list if s.startswith("09")]
+        ags_by = [s for s in ags_list if s.startswith("09")]
         ags_nrw = [s for s in ags_list if s.startswith("05")]
 
         def fmt(lst):
@@ -123,14 +123,12 @@ def main() -> None:
             )
             log.info("buildings_lod2: Bavaria completed")
 
-            
             log.info("buildings_lod2: starting NRW (05...)")
             db.execute_sql_file(
                 "sql/buildings_lod2.sql",
                 {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_nrw)},
             )
             log.info("buildings_lod2: NRW completed")
-            
 
             log.info("buildings_lod2: finished (BY+NRW)")
     except Exception:
@@ -156,6 +154,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    mp.set_start_method("spawn", force=True) 
+    mp.set_start_method("spawn", force=True)
     mp.freeze_support()
     main()

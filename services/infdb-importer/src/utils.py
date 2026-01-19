@@ -4,12 +4,12 @@ import os
 import random
 import shlex
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 from typing import Iterable, List, Optional, Union
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
-
 
 import chardet
 import geopandas as gpd
@@ -19,7 +19,6 @@ from bs4 import BeautifulSoup
 from infdb import InfDB
 from infdb.utils import do_cmd as infdb_do_cmd
 from pySmartDL import SmartDL
-import tempfile
 
 # ============================== Constants ==============================
 HTTP_TIMEOUT_SECONDS: int = 60
@@ -418,6 +417,7 @@ def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
 
 # =================== geospatial / DB import helpers ===================
 
+
 def resolve_scope_patterns(scope: Union[str, Iterable[str], None]) -> List[str]:
     """
     Turn config scope into a list of SQL LIKE patterns.
@@ -491,6 +491,7 @@ def fetch_scope_ags_from_db(infdb: InfDB) -> List[str]:
     finally:
         conn.close()
 
+
 def materialize_scope_table(infdb: InfDB) -> None:
     """
     Create `opendata.scope` once from the resolved AGS selection.
@@ -521,7 +522,6 @@ def materialize_scope_table(infdb: InfDB) -> None:
         index=False,
     )
     log.info("Materialized opendata.scope (%d rows).", len(gdf_scope))
-
 
 
 def get_envelop(infdb: InfDB) -> gpd.GeoDataFrame:
@@ -703,7 +703,7 @@ def import_layers(
             tmp_gpkg = tempfile.NamedTemporaryFile(
                 prefix="clip_boundary_",
                 suffix=".gpkg",
-                delete=False, 
+                delete=False,
             ).name
             try:
                 from shapely import wkt as shapely_wkt
