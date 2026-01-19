@@ -23,6 +23,14 @@ def _iter_tiles_for_geom(geom, tile_size_m: int):
 
 
 def load(infdb: InfDB) -> bool:
+    """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL.
+
+    Behavior preserved:
+    - Returns True when inactive (matching original early-exit).
+    - Uses aria2c for downloads and `citydb import citygml` for loading.
+    - Builds URL by replacing `#scope` token with each AGS value.
+    - Executes a post-import SQL file with format params.
+    """
     log = infdb.get_worker_logger()
     try:
         if not utils.if_active("lod2-nrw", infdb):
