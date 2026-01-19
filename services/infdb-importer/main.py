@@ -67,7 +67,6 @@ def main() -> None:
 
     # Ensure that administrative areas are loaded for scope
     bkg.load(infdb)
-
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
@@ -87,6 +86,7 @@ def main() -> None:
 
     # processes.append(mp.Process(target=wetterdienst._run_loader, args=(log_queue,), name="wetterdienst"))
     processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
+    
 
     for process in processes:
         process.start()
@@ -104,13 +104,35 @@ def main() -> None:
     # Run buildings_lod2.sql ONCE here (after all joins to prevent race conditions)
     try:
         ags_list = utils.fetch_scope_ags_from_db(infdb)
-        formatted_scope = ",".join(f"'{s}'" for s in ags_list)
+
+        ags_by  = [s for s in ags_list if s.startswith("09")]
+        ags_nrw = [s for s in ags_list if s.startswith("05")]
+
+        def fmt(lst):
+            return ",".join(f"'{s}'" for s in lst)
+
         with infdb.connect() as db:
+            log.info("buildings_lod2: dropping table opendata.buildings_lod2 (if exists)")
+            db.execute_query("DROP TABLE IF EXISTS opendata.buildings_lod2;")
+            log.info("buildings_lod2: drop done")
+
+            log.info("buildings_lod2: starting Bavaria (09...)")
             db.execute_sql_file(
                 "sql/buildings_lod2.sql",
-                {"output_schema": "opendata", "gemeindeschluessel": formatted_scope},
+                {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_by)},
             )
-        log.info("buildings_lod2.sql finished successfully")
+            log.info("buildings_lod2: Bavaria completed")
+
+            
+            log.info("buildings_lod2: starting NRW (05...)")
+            db.execute_sql_file(
+                "sql/buildings_lod2.sql",
+                {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_nrw)},
+            )
+            log.info("buildings_lod2: NRW completed")
+            
+
+            log.info("buildings_lod2: finished (BY+NRW)")
     except Exception:
         log.exception("buildings_lod2.sql failed")
 
