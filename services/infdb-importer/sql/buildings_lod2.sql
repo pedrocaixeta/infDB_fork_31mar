@@ -4,6 +4,7 @@
 -- 00_cleanup.sql
 -- Cleanup existing buildings table if it exists
 --------------------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS {output_schema};
 
 --------------------------------------------------------------
 -- 02_create_buildings_table.sql
