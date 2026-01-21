@@ -33,22 +33,42 @@ authors:
       orcid: ''
       equal-contrib: false
       affiliation: 1
+    - name: Laura Kuper
+      orcid: ''
+      equal-contrib: false
+      affiliation: 2
+    - name: Carolin Ayasse
+      orcid: ''
+      equal-contrib: false
+      affiliation: 3
+    - name: Haniyeh Ebrahimi Salari
+      orcid: ''
+      equal-contrib: false
+      affiliation: 4
 affiliations:
     - name: Technical University of Munich, Germany
       index: 1
       ror: 02kkvpp62
+    - name: Siemens AG, Germany
+      index: 2
+      ror: 
+    - name: Technical University of Darmstadt
+      index: 3
+      ror: 
+    - name: Technical University of Dortmund
+      index: 4
+      ror: 
 date: '31 January 2026'
 bibliography: paper.bib
 ---
 
 # Summary
-The infDB - Infrastructure and Energy Database provides a modular and easy-to-configure open-source data infrastructure for energy modeling and analysis to minimize the effort required for data collection and handling.
-The objective is to empower the growth of an ecosystem by offering standardized data formats and interfaces. This platform-independent approach streamlines collaboration in energy modeling and analysis, allowing users to dedicate their focus to generating insights rather than handling data logistics. 
+The infDB - Infrastructure and Energy Database provides a modular and easy-to-configure open-source data infrastructure for energy modeling and analysis to minimize the effort required for data collection and handling. The objective is to empower the growth of an ecosystem by offering standardized data formats and interfaces. This platform-independent approach streamlines collaboration in energy modeling and analysis, allowing users to dedicate their focus to generating insights rather than handling data logistics. 
 
 # Statement of need
 Municipal Heat Planning (KWP) is an important component for the heating transition and plays a key role in Germany's aim to become climate-neutral by 2045.
-The federal government introduced a law in 2023 giving cities with over 100,000 inhabitants until mid-2026 and smaller towns until mid-2028 to come up with a plan for transitioning to climate-neutral heating, which to a large extent is supposed to happen through an expansion of district heating [@Open-Data-Strategie:2021]. However, the majority of these municipal heating plans commissioned in the past are not transparently traceable neither capable of being regularly updated.
-Moreover, the paragraph §14d of the German Energy Industry Act (EnWG) obliges operators to provide data on their distribution networks to the Federal Network Agency [@Open-Data-Strategie:2021]. This a huge challenge for DSO (Distribution System Operators) as they often lack standardized data infrastructures and tools to manage and share their data efficiently.
+The federal government introduced a law in 2023 giving cities with over 100,000 inhabitants until mid-2026 and smaller towns until mid-2028 to come up with a plan for transitioning to climate-neutral heating, which to a large extent is supposed to happen through an expansion of district heating [@kwp:2026]. However, the majority of these municipal heating plans commissioned in the past are not transparently traceable neither capable of being regularly updated.
+Moreover, the paragraph §14d of the German Energy Industry Act (EnWG) obliges operators to provide data on their distribution networks to the Federal Network Agency [@14d:2026]. This a huge challenge for DSO (Distribution System Operators) as they often lack standardized data infrastructures and tools to manage and share their data efficiently.
 At the same time, the Federal Cabinet pushes the availabilty of public infrastructure and energy data within the scope of the Data Strategy of the Federal German Government [@Open-Data-Strategie:2021]. Most of the required data is now published as open data under licenses like CC-BY 2.0 Germany. The problem is that the data is published by different authorities in different formats and structures. This makes it difficult to access, integrate, and analyze data for energy modeling and policy analysis in practice.
 
 The infDB - Infrastructure and Energy Database as part of the research project NEED addresses these challenges by simplifying and standardizing data access as well as providing open source tools to create a fundamental and reproducible data basis as for both introductory examples mentioned above. It does so by offering a modular and flexible data platform built on containerized services that can be easily activated and configured for specific use cases. This architecture ensures portability across all platforms. By providing standardized interfaces and APIs, infDB fosters an extensible open ecosystem that empowers users to integrate custom tools and workflows seamlessly.
@@ -60,7 +80,7 @@ The infDB addresses exactly this need and can be applied in many other contexts 
 # State of the field
 Several commercial and open-source solutions exist for energy and infrastructure data management. Commercial platforms such as nPro, Solarea, and flexRM provide advanced features including user-friendly interfaces and robust analytics tailored to energy professionals. Open-source tools, including OpenPlan and City Energy Analyst, offer frameworks for urban energy system modeling and building energy performance simulation, respectively.
 
-Complementary research initiatives are advancing data standardization efforts. The NEED project develops a decentralized data hub providing conventional and synthetic energy infrastructure data in machine-readable formats to facilitate stakeholder interoperability [@Open-Data-Strategie:2021]. The DB4KWP project addresses data uniformity by formalizing heating data collection, naming conventions, and linking through ontologies such as the Open Energy Ontology (OEO) and Open Energy Knowledge Graph (OEKG) [@Open-Data-Strategie:2021].
+Complementary research initiatives are advancing data standardization efforts. The NEED project develops a decentralized data hub providing conventional and synthetic energy infrastructure data in machine-readable formats to facilitate stakeholder interoperability [@NEED:2023]. The DB4KWP project addresses data uniformity by formalizing heating data collection, naming conventions, and linking through ontologies such as the Open Energy Ontology (OEO) and Open Energy Knowledge Graph (OEKG) [@DB4KWP:2026].
 
 Despite these advances, a gap remains: existing solutions lack an integrated, modular data infrastructure platform that seamlessly combines heterogeneous data sources with standardized interfaces. The infDB addresses this gap by providing a flexible, containerized architecture that enables straightforward integration of diverse data sources and emerging solutions, thereby enhancing data quality and ecosystem extensibility.
 
