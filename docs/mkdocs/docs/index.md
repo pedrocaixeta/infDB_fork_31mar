@@ -28,7 +28,6 @@ The infDB can be used effectively wherever geospatial and time series informatio
 
 The infDB architecture is composed of two main components:
 
-<!-- : :material-database: **[infdb-db](infdb/core.md)** – PostgreSQL database for geospatial and time series data. -->
 : :fontawesome-solid-gears: **[Services](usage/services.md)** – Dockerized open-source software providing base functionality.
 : :material-tools: **[Tools](tools/index.md)** – Software interacting with the infDB.
 
@@ -39,8 +38,8 @@ The infDB architecture is composed of two main components:
 Check out the **[Usage Guide](usage/index.md)** to install, configure and run your instance.
 
 ## Demo
-The **[Linear Heat Density](linear-heat-density/index.md)** use case showcases the capabilities of infDB in the context of municipal heat planning. 
-<!-- It provides a practical example of how to utilize the platform for analyzing and visualizing linear heat density data within a city environment. -->
+The **[Linear Heat Density](linear-heat-density/index.md)** use case demonstrates the capabilities of infDB in the context of municipal heat planning (KWP). 
+![](linear-heat-density/qwc-browser.png)
 
 ## Contribution
 

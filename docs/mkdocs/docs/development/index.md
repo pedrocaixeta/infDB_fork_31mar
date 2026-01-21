@@ -14,7 +14,11 @@ If you are interested in contributing to the infDB project, please refer to the 
 
 -   [**Workflow**](workflow.md): How to submit pull requests and report issues.
 -   [**Repository Structure**](repository.md): Overview of the project repository.
--   [**Guidelines**](guidelines.md): Coding standards and documentation rules.
+-   **Guidelines**:
+    -   [Coding Standards](guidelines/coding-standards.md)
+    -   [Database](guidelines/database.md)
+    -   [Process](guidelines/process.md)
+    -   [Best Practices](guidelines/best-practices.md)
 -   [**Documentation**](documentation.md): How to write and maintain documentation.
 -   [**Code of Conduct**](code-of-conduct.md): Community standards and expectations
 -   [**Tips & Tricks**](tips-and-tricks.md): Helpful hints and commands for development.

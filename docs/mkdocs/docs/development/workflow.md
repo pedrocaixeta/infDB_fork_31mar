@@ -4,7 +4,7 @@ Please follow the development workflow outlined below when contributing to the i
 0. **Set up the environment** following the installation instructions in [Usage -> Get Software](../usage/get-software.md).
 1. **Open an issue** to discuss new features, bugs, or changes.
 2. **Create a new branch** for each feature or bug fix based on an issue.
-3. **Implement the changes** following the [coding guidelines](../development/guidelines.md).
+3. **Implement the changes** following the [coding guidelines](../development/guidelines/coding-standards.md).
 4. **Write tests** for new functionality or bug fixes.
 5. **Run tests** to ensure the code works as expected.
 6. **Create a merge request** to integrate your changes.
