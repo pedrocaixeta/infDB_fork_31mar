@@ -5,8 +5,7 @@ tags:
     - Python
     - Docker
     - Open Data
-    - Database
-    - Data Science
+    - 'Data Science'
 authors:
     - name: Patrick Buchenberg
       orcid: 0000-0001-7683-8422
@@ -63,74 +62,68 @@ bibliography: paper.bib
 ---
 
 # Summary
-The infDB - Infrastructure and Energy Database provides a modular and easy-to-configure open-source data infrastructure for energy modeling and analysis to minimize the effort required for data collection and handling. The objective is to empower the growth of an ecosystem by offering standardized data formats and interfaces. This platform-independent approach streamlines collaboration in energy modeling and analysis, allowing users to dedicate their focus to generating insights rather than handling data logistics. 
+`infDB` (Infrastructure and Energy Database) is a modular, open-source data infrastructure designed to streamline energy modeling and municipal heat planning. It reduces the overhead of data collection and pre-processing by offering a containerized platform for standardized data ingestion, storage, and retrieval. By providing a unified interface for heterogeneous data sources, `infDB` allows researchers and planners to focus on generating insights and modeling energy systems rather than managing data logistics. The platform fosters a collaborative ecosystem by ensuring data is FAIP (Findable, Accessible, Interoperable, and Reusable).
 
 # Statement of need
-Municipal Heat Planning (KWP) is an important component for the heating transition and plays a key role in Germany's aim to become climate-neutral by 2045.
-The federal government introduced a law in 2023 giving cities with over 100,000 inhabitants until mid-2026 and smaller towns until mid-2028 to come up with a plan for transitioning to climate-neutral heating, which to a large extent is supposed to happen through an expansion of district heating [@kwp:2026]. However, the majority of these municipal heating plans commissioned in the past are not transparently traceable neither capable of being regularly updated.
-Moreover, the paragraph §14d of the German Energy Industry Act (EnWG) obliges operators to provide data on their distribution networks to the Federal Network Agency [@14d:2026]. This a huge challenge for DSO (Distribution System Operators) as they often lack standardized data infrastructures and tools to manage and share their data efficiently.
-At the same time, the Federal Cabinet pushes the availabilty of public infrastructure and energy data within the scope of the Data Strategy of the Federal German Government [@Open-Data-Strategie:2021]. Most of the required data is now published as open data under licenses like CC-BY 2.0 Germany. The problem is that the data is published by different authorities in different formats and structures. This makes it difficult to access, integrate, and analyze data for energy modeling and policy analysis in practice.
+The transition to climate-neutral heating is a central pillar of energy policy, exemplified by Germany's aim for climate neutrality by 2045. New legislative frameworks, such as the requirement for Municipal Heat Planning (KWP) and the transparency obligations of the German Energy Industry Act (EnWG §14d), demand that municipalities and Distribution System Operators (DSOs) process vast amounts of infrastructure data [@kwp:2026; @14d:2026].
 
-The infDB - Infrastructure and Energy Database as part of the research project NEED addresses these challenges by simplifying and standardizing data access as well as providing open source tools to create a fundamental and reproducible data basis as for both introductory examples mentioned above. It does so by offering a modular and flexible data platform built on containerized services that can be easily activated and configured for specific use cases. This architecture ensures portability across all platforms. By providing standardized interfaces and APIs, infDB fosters an extensible open ecosystem that empowers users to integrate custom tools and workflows seamlessly.
+However, the current landscape of energy data is fragmented. While the Open Data Strategy of the Federal German Government [@Open-Data-Strategie:2021] has increased data availability, this data is published by disparate authorities in varying formats, spatial resolutions, and licensing structures (e.g., CC-BY 2.0). Consequently, energy modeling workflows often suffer from:
 
-Municipal Heat Planning requires integrating public data from diverse sources and formats as well as transparent and reproducible workflows to ensure that plans can be updated regularly.
-The German Energy Industry Act (EnWG) requires DSOs to submit accurate and comprehensive data about distribution networks.
-The infDB addresses exactly this need and can be applied in many other contexts where energy and infrastructure data management is required by providing a standardized data infrastructure that supports multiple data formats and sources as well as meets the regulatory requirements efficiently to submit distribution data in compliance with federal standards while reducing administrative burden.
+1. **Lack of Reproducibility:** Heat plans are often one-off studies that are difficult to update or audit.
+2. **High Pre-processing Effort:** Researchers spend disproportionate time standardizing raw data before analysis.
+3. **Siloed Infrastructure:** DSOs and municipalities lack standardized tools to manage and share distribution network data efficiently.
+
+`infDB` addresses these challenges by providing a reproducible, version-controlled, and automated ETL (Extract, Transform, Load) pipeline. It acts as a middleware between raw public data and high-level energy modeling tools, ensuring that planning data is transparent, traceable, and easily updatable.
 
 # State of the field
-Several commercial and open-source solutions exist for energy and infrastructure data management. Commercial platforms such as nPro, Solarea, and flexRM provide advanced features including user-friendly interfaces and robust analytics tailored to energy professionals. Open-source tools, including OpenPlan and City Energy Analyst, offer frameworks for urban energy system modeling and building energy performance simulation, respectively.
+Energy and infrastructure data management is an active field with several existing solutions:
 
-Complementary research initiatives are advancing data standardization efforts. The NEED project develops a decentralized data hub providing conventional and synthetic energy infrastructure data in machine-readable formats to facilitate stakeholder interoperability [@NEED:2023]. The DB4KWP project addresses data uniformity by formalizing heating data collection, naming conventions, and linking through ontologies such as the Open Energy Ontology (OEO) and Open Energy Knowledge Graph (OEKG) [@DB4KWP:2026].
+* **Commercial Platforms:** Tools like **nPro**, **Solarea**, and **flexRM** offer robust analytics and user interfaces but are proprietary, limiting transparency and community extension.
+* **Open Source Modeling Frameworks:** Tools like **City Energy Analyst (CEA)** and **OpenPlan** excel at simulation and optimization but often assume the existence of cleaned, structured input data.
+* **Data Initiatives:** The **NEED project** [@NEED:2023] provides a decentralized data hub for synthetic energy data, and **DB4KWP** [@DB4KWP:2026] focuses on ontologies (OEO/OEKG) and naming conventions.
 
-Despite these advances, a gap remains: existing solutions lack an integrated, modular data infrastructure platform that seamlessly combines heterogeneous data sources with standardized interfaces. The infDB addresses this gap by providing a flexible, containerized architecture that enables straightforward integration of diverse data sources and emerging solutions, thereby enhancing data quality and ecosystem extensibility.
+`infDB` addresses a critical gap in the energy data ecosystem. While simulation tools like the City Energy Analyst excel at modeling, `infDB` provides the foundational data infrastructure that these tools require. Unlike static data repositories, `infDB` offers an active, containerized platform that enables users to deploy local instances, continuously integrate fresh datasets, and seamlessly connect with both commercial and open-source downstream tools. By providing a technical implementation layer, `infDB` can complement ontology initiatives like DB4KWP, transforming conceptual data standards into practical, operational systems.
 
 # Software Design
-The infDB is designed to be modular, scalable, and flexible, allowing for easy integration of various data sources and tools. This architecture is implemented using docker-compose to orchestrate multiple services, including the core database, data importers, and various processing tools. The idea is that for each specific use case, only the required services need to be activated and configured accordingly. This architecture ensures portability across all platforms. By providing standardized interfaces and APIs, infDB fosters an extensible ecosystem that empowers users to integrate custom tools and workflows seamlessly.
-
-### Key Features
-
-- **User-Friendly**: easy to configure and use.
-- **Geospatial, Time Series & Graph Data Support**: PostgreSQL extended by PostGIS, TimescaleDB and pgRouting.
-- **Modular and Platform Independent**: Containerized with Docker.
-- **Open Source**: Apache License Version 2.0 - permissive licensing.
-- **Open Data**: Automatized import of common opendata sources.
-
-The figure bewlow provides an overview of the infDB architecture and its main components in the grey box. Integrated tools on the right side can access the data stored in the core database via standardized interfaces and data schemas. 
+`infDB` follows a modular microservices architecture orchestrated via Docker Compose. The system is conceptually divided into **Services**, which provide the foundational infrastructure, and **Tools**, which consume and process the data. This separation allows for high portability and enables users to activate only the components required for their specific use case.
 
 ![infDB - Services and Tools](docs/mkdocs/docs/assets/img/infdb-overview.png)
 
-The infDB platform provides a suite of essential *services* designed to facilitate database operation and administration, data handling and visualization, and connectivity. Each preconfigured service can be activated individually to tailor the environment to your specific requirements. 
-The *infdb-importer* on the left side inside the grey box facilitates the ingestion of various open data sources into the core database. This service automates the ingestion and structuring of various external open data formats into the infDB platform. It supports multiple data sources and formats, transforming raw data into structured schemas within the database for easy access and analysis. 
-The *infdb-db* in the middle of the grey box hosts the PostgreSQL database with extensions for geospatial, time series and graph data (PostGIS, TimescaleDB, pgRouting), serving as the central database within the platform. It handles data storage, retrieval, and management, ensuring integrity and high availability for connected services and tools. 
-The *APIs* (fastAPI, pygeoAPI, PostgREST) on the right upper corner inside the grey box provide standardized REST and OGC interfaces for providing data access to external applications and services.
+<!-- ### infDB - Services -->
+The *Services* layer (depicted in the grey box in the architecture diagram) handles database operations, administration, data ingestion, and connectivity. These containerized services include:
 
-The infDB ecosystem also includes a variety of (external) *tools* designed to handle different aspects of data workflows. These so called tools are software that interact with infDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains and and thus establishes the foundation for an open and extensible ecosystem. In addition to the pre-integrated tools, users can easily integrate their own custom tools into the infDB ecosystem by using the provided python package pyinfdb that can be used to interact with the infDB database and services. It provides functionalities for database connections, logging, configuration management, and utility functions. 
+* **infdb-importer:** This service automates the ingestion of diverse open data sources. It transforms raw external formats into structured schemas within the database. Users control this process via a simple YAML configuration file (`config-infdb-loader.yml`), eliminating the need for custom ETL scripting.
+* **infdb-db:** The central storage engine hosting a PostgreSQL database. It is pre-configured with essential extensions for energy modeling:
+    * **PostGIS** for geospatial data.
+    * **TimescaleDB** for time-series data.
+    * **3D City DB** for city model data.
+    * **pgRouting** for graph-based network analysis.
+* **APIs:** This layer provides standardized interfaces to external applications, ensuring the database remains accessible but secure. It includes **FastAPI** for custom logic, **pygeoAPI** for OGC standards, and **PostgREST** for immediate RESTful access to database tables.
+* **pgAdmin:** A web-based GUI for database administration, allowing users to inspect schemas, run queries, and manage data without command-line interaction.
+* **JupyterNotebook:** An interactive environment pre-loaded with the `pyinfdb` library, enabling users to prototype data analyses and visualize results directly within the platform.
+* **QGIS Webclient:** A web-based GIS client for visualizing geospatial data stored in the database, useful for urban planners and GIS specialists.
+* **OpenCloud:** An optional component for integrating with cloud storage solutions, facilitating scalable data handling for large datasets.
 
+<!-- ### infDB - Tools -->
+The *Tools* layer (depicted in the right box in the architecture diagram) consists of (external) software that interacts with the `infDB` Services to process data or generate insights. This modular approach allows users to chain different tools into custom workflows.
 
-The figure below illustrates the architecture of infDB and its containerized services.
+* **Standardized Integration:** Tools interact with the core database exclusively through open interfaces (SQL or REST APIs), ensuring that the underlying data schema remains consistent regardless of the analysis tool used.
+* **pyinfdb:** To facilitate the development of custom tools, the platform provides the `pyinfdb` Python package. This library abstracts database connections, logging, and configuration management, allowing researchers to rapidly develop Python-based analysis scripts that integrate seamlessly with the infDB ecosystem.
+* **Extensible Ecosystem:** Because the architecture relies on standard interfaces, users can integrate existing third-party simulation software or develop proprietary tools that plug into the `infDB` backend without modifying the core services.
+
+Platform management is simplified through provided Bash scripts (e.g., for startup and teardown) and environment variable configurations (`.env`), ensuring that the entire infrastructure can be deployed or replicated with minimal effort.
 
 ![infDB - Architecture](docs/mkdocs/docs/infdb/infdb-architecture.png)
 
-A central docker compose file (compose.yml) controls all containerized services. Bash scripts (infdb-start.sh, infdb-stop.sh, infdb-remove.sh, infdb-import.sh) are provided to simplify common tasks such as starting, stopping, and managing the entire infDB platform for the end user.
-The configuration of the infDB uses environment variables defined in the .env file to customize settings such as database credentials, ports, and controll of services. The imported opendata sources can be managed via a YAML file (config-infdb-loader.yml) file, which specifies datasets to be ingested and their respective configurations.
+# Research Relevance
+The major research impact of `infDB` is the standardization of energy system analysis workflows. By decoupling data management from modeling logic, it allows for:
 
-In summary, the infDB is a modular and flexible data platform built on dockerized services that can be easily activated and configured for specific use cases. This architecture ensures portability across all platforms. By providing standardized interfaces and APIs, infDB fosters an extensible ecosystem that empowers users to integrate custom tools and workflows seamlessly.
+* **Reproducibility:** The containerized approach ensures that an analysis environment can be perfectly replicated on any machine.
+* **Longitudinal Analysis:** Automated importers allow researchers to regularly update their datasets as new open data becomes available, transforming static "heat plans" into dynamic monitoring systems.
+* **Algorithmic Development:** Researchers can focus on developing algorithms (e.g., for district heating expansion) relying on a stable database schema, rather than adapting algorithms to shifting input formats.
 
-# Research Impact Statement
-The major research impact of infDB is minimizing the effort required for data management and empowering growth of an ecosystem at the same time. Its ability to streamline and standardize data management for energy system modeling and analysis. By providing a modular, open-source infrastructure, infDB addresses key challenges in data accessibility, integration, and reproducibility. This allows researchers, analysts, and planners to focus on their core tasks of modeling and analysis, rather than being bogged down by data logistics.
-
-The example of calculating linear heat density for municipal heat planning demonstrates how infDB can facilitate complex data workflows by integrating diverse data sources and providing standardized interfaces for data access. This not only speeds up the analysis process but also enhances the quality and reliability of the results.
-
-The long-term impact of infDB is expected to be significant, as it promotes transparency, reproducibility, and collaboration in the energy modeling community. By enabling easy sharing of data and tools, infDB fosters an ecosystem where researchers can build upon each other's work, leading to more open, robust and innovative solutions for energy system challenges. 
-
-The main benefits can be summarized as follows:
-
-- reduce cost and effort of data and infrastructure handling
-- speedup research and analysis
-- increase quality of research outcomes
-- enable and support collaboration
-- reproducibility of research results
-- transparency
+# Applications
+A key application example is calculating linear heat density for municipal heat planning (KWP). Using `infDB`, researchers and planners can immediately leverage preprocessed, enriched open building data (LOD2) combined with statistical census data to compute building-level heat demand. This approach dramatically reduces computational overhead and development effort compared to traditional file-based GIS workflows, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
 
 
 # AI usage disclosure
