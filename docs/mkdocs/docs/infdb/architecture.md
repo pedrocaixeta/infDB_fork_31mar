@@ -1,17 +1,25 @@
-# infDB Architecture
-The architecture of infDB is designed to be modular, scalable, and flexible, allowing for easy integration of various data sources and tools. This architecture is implemented using docker-compose to orchestrate multiple services, including the core database, data importers, and various processing tools.
+---
+icon: material/domain
+---
+# infDB Architecture :material-domain:
 
-![text](infdb-architecture.png)
+The architecture of infDB is designed to be modular, scalable, and flexible, allowing for easy integration of various data sources and tools. This architecture is implemented using Docker Compose to orchestrate multiple services, including the core database, data importers, and various processing tools.
 
-The central docker compose file (`compose.yml`) controls all containerized services. Bash scripts (`infdb-start.sh`, `infdb-stop.sh`, `infdb-remove.sh`, `infdb-import.sh`) are provided to simplify common tasks such as starting, stopping, and managing the entire infDB platform for the end user.
+![infDB Architecture](infdb-architecture.png)
 
-The configuration of the infDB uses environment variables defined in the `.env` file to customize settings such as database credentials, ports, and volume paths. The imported opendata sources can be managed via the `config-infdb-loader.yml` file, which specifies datasets to be ingested and their respective configurations.
+## Core Components
 
+-   **Docker Compose**: The extensive `compose.yml` file controls all containerized services.
+-   **Helper Scripts**: Bash scripts (`infdb-start.sh`, `infdb-stop.sh`, etc.) simplify common management tasks.
+-   **Configuration**:
+    -   `.env`: Controls global settings like credentials, ports, and paths.
+    -   `config-infdb-loader.yml`: Manages open data import configurations.
 
-The selection and configuration of services uses the in-built docker profiles functionality.
+## Profiles & Scalability
+Service selection is handled via Docker profiles, allowing you to spin up only what you need.
+
 ```bash
 COMPOSE_PROFILES=core docker compose up
 ```
-This command starts only the core services of infDB including the database. Additional services can be activated by extending the `COMPOSE_PROFILES` environment variable as list with other profiles.
 
-
+This command starts only the **core** services (the database). You can extend the functionality by adding other profiles (e.g., `COMPOSE_PROFILES=core,api,pgadmin`).
