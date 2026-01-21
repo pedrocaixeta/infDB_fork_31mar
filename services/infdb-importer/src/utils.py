@@ -4,9 +4,10 @@ import os
 import random
 import shlex
 import subprocess
+import tempfile
 import time
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Union
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
 
@@ -366,6 +367,41 @@ def download_aria2c(
     do_cmd(cmd_parts)
 
 
+def download_aria2c_many(
+    urls: List[str],
+    output_dir: str | Path,
+    connections: int = 8,
+    max_connection_per_server: int = 8,
+    continue_download: bool = True,
+    quiet: bool = True,
+) -> None:
+    """
+    Download many URLs using aria2c in one shot (-i input_file).
+    Much faster than calling aria2c once per file.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # write URL list
+    url_file = output_dir / "_aria2_urls.txt"
+    with open(url_file, "w", encoding="utf-8") as f:
+        for u in urls:
+            f.write(u.strip() + "\n")
+
+    cmd_parts: list[str] = ["aria2c"]
+
+    if continue_download:
+        cmd_parts.append("-c")
+    cmd_parts.extend(["-x", str(connections), "-s", str(max_connection_per_server)])
+
+    if quiet:
+        cmd_parts.extend(["--summary-interval=60", "--console-log-level=warn"])
+
+    cmd_parts.extend(["-d", str(output_dir), "-i", str(url_file)])
+
+    do_cmd(cmd_parts)
+
+
 def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
     """
     Execute a shell command.
@@ -382,37 +418,163 @@ def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
 # =================== geospatial / DB import helpers ===================
 
 
-def get_envelop(infdb: InfDB):
-    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
-    log = infdb.get_worker_logger()
+def resolve_scope_patterns(scope: Union[str, Iterable[str], None]) -> List[str]:
+    """
+    Turn config scope into a list of SQL LIKE patterns.
+
+    Backward compatible behavior:
+      - "05"        -> "05%"
+      - "09474126"  -> "09474126%"
+      - "05%"       -> "05%"   (already a LIKE pattern)
+      - "09_"       -> "09_"   (already a LIKE pattern)
+    """
+    if scope is None:
+        return []
+
     if isinstance(scope, str):
-        scope = [scope]
-    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
-    log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
-    log.debug("Envelop Path (file): %s", path)
-    gdf = gpd.read_file(path, layer="vg5000_gem")
-    gdf_scope = gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
-    gdf_scope.to_postgis("scope", infdb.get_db_engine(), if_exists="replace", schema="opendata", index=False)
+        items = [scope]
+    else:
+        items = list(scope)
+
+    patterns: List[str] = []
+    for s in items:
+        s = str(s).strip()
+        if not s:
+            continue
+        if "%" in s or "_" in s:
+            patterns.append(s)
+        else:
+            patterns.append(f"{s}%")
+    return patterns
+
+
+def fetch_scope_ags_from_db(infdb: InfDB) -> List[str]:
+    """
+    Resolve configured scope into the concrete list of municipality AGS values
+    by querying opendata.bkg_vg5000_gem.
+
+    Returns a list of AGS strings (unique, stable order).
+    """
+    log = infdb.get_worker_logger()
+    params = infdb.get_db_parameters_dict() or {}
+
+    scope_raw = infdb.get_config_value([infdb.get_toolname(), "scope"])
+    patterns = resolve_scope_patterns(scope_raw)
+
+    if not patterns:
+        log.warning("No scope configured; returning empty AGS list.")
+        return []
+
+    # Build: ags LIKE %s OR ags LIKE %s ...
+    where_sql = " OR ".join(["ags LIKE %s"] * len(patterns))
+    sql = f"""
+        SELECT DISTINCT ags
+        FROM opendata.bkg_vg5000_gem
+        WHERE {where_sql}
+        ORDER BY ags;
+    """
+
+    log.info("Resolving scope -> AGS via DB (patterns=%s)", patterns)
+
+    conn = psycopg2.connect(
+        dbname=params["db"],
+        user=params["user"],
+        password=params["password"],
+        host=params["host"],
+        port=params["exposed_port"],
+    )
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, patterns)
+            rows = cur.fetchall()
+            return [str(r[0]) for r in rows]
+    finally:
+        conn.close()
+
+
+def materialize_scope_table(infdb: InfDB) -> None:
+    """
+    Create `opendata.scope` once from the resolved AGS selection.
+
+    This is run before multiprocessing to avoid race conditions where multiple processes
+    try to `replace` (drop/create) the `opendata.scope` table at the same time.
+    """
+    log = infdb.get_worker_logger()
+    engine = infdb.get_db_engine()
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    if not ags_list:
+        log.warning("Scope resolved to 0 AGS rows. Skipping opendata.scope materialization.")
+        return
+
+    sql = """
+        SELECT *
+        FROM opendata.bkg_vg5000_gem
+        WHERE ags = ANY(%s)
+    """
+    gdf_scope = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
+
+    gdf_scope.to_postgis(
+        "scope",
+        engine,
+        schema="opendata",
+        if_exists="replace",
+        index=False,
+    )
+    log.info("Materialized opendata.scope (%d rows).", len(gdf_scope))
+
+
+def get_envelop(infdb: InfDB) -> gpd.GeoDataFrame:
+    """
+    Return ONE combined GeoDataFrame for the configured scope, loaded from DB.
+    """
+    log = infdb.get_worker_logger()
+    engine = infdb.get_db_engine()
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    if not ags_list:
+        log.warning("Scope resolved to 0 AGS rows. Returning empty GeoDataFrame.")
+        return gpd.GeoDataFrame()
+
+    # Use = ANY(%s) to pass a list safely.
+    sql = """
+        SELECT *
+        FROM opendata.bkg_vg5000_gem
+        WHERE ags = ANY(%s)
+    """
+
+    # geopandas.read_postgis works with SQLAlchemy engine too (you already use it elsewhere)
+    gdf_scope = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
     return gdf_scope
 
 
-def get_all_envelops(infdb: InfDB):
-    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
+def get_all_envelops(infdb: InfDB) -> List[gpd.GeoDataFrame]:
+    """
+    Return list[GeoDataFrame], one per municipality AGS in resolved scope.
+    Perfect for your create_geogitter loop.
+    """
     log = infdb.get_worker_logger()
-    if isinstance(scope, str):
-        scope = [scope]
-    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
-    log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
-    log.debug("Envelop Path (file): %s", path)
-    gdf = gpd.read_file(path, layer="vg5000_gem")
-    envelop = []
-    for s in scope:
-        envelop.append(gdf[gdf["AGS"].str.startswith(s)])
-    return envelop
+    engine = infdb.get_db_engine()
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    if not ags_list:
+        log.warning("Scope resolved to 0 AGS rows. Returning empty list.")
+        return []
+
+    sql = """
+        SELECT *
+        FROM opendata.bkg_vg5000_gem
+        WHERE ags = ANY(%s)
+        ORDER BY ags
+    """
+
+    gdf = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
+    if gdf.empty:
+        return []
+
+    envelops = [sub for _, sub in gdf.groupby("ags", sort=False)]
+    log.info("Scope resolved to %d municipalities", len(envelops))
+    return envelops
 
 
 # ============================== file helpers ==============================
@@ -538,7 +700,11 @@ def import_layers(
         clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb)
 
         if clip_wkt:
-            tmp_gpkg = os.path.splitext(os.path.abspath(input_file))[0] + "_clip_tmp.gpkg"
+            tmp_gpkg = tempfile.NamedTemporaryFile(
+                prefix="clip_boundary_",
+                suffix=".gpkg",
+                delete=False,
+            ).name
             try:
                 from shapely import wkt as shapely_wkt
 
@@ -749,7 +915,7 @@ def fast_copy_points_csv(
         conn.close()
 
 
-def get_clip_geometry(target_crs: int, infdb: InfDB):
+def get_clip_geometry(target_crs: int, infdb: InfDB, state_prefix: Optional[str] = None):
     """
     Get clipping geometry for the configured scope.
 
@@ -764,6 +930,11 @@ def get_clip_geometry(target_crs: int, infdb: InfDB):
     """
     gdf_envelope = get_envelop(infdb)
     log = infdb.get_worker_logger()
+
+    if state_prefix:
+        p = str(state_prefix).strip().replace("%", "").replace("_", "")
+        # if they pass "05" => keep "05"; if "05780139" => keep full string
+        gdf_envelope = gdf_envelope[gdf_envelope["ags"].astype(str).str.startswith(p)]
 
     if gdf_envelope is None or gdf_envelope.empty:
         log.info("Scope envelope is empty; no clipping applied.")
