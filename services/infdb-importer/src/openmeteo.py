@@ -220,14 +220,32 @@ def load(infdb: InfDB) -> bool:
         # DB engine via package
         engine = infdb.get_db_engine()
 
-        # Read centroid geometry and lat/lon for 10km grid
+    
         table_name = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "geogitter", "table_name"])
+        # Select the WGS84 lat/lon of 100km grid-cell centroids whose centroid points fall inside the configured scope polygons.
         sql = f"""
-            SELECT id,
-                ST_Y(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS latitude,
-                ST_X(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS longitude
-            FROM {bkg_schema}.{table_name}
-            WHERE name='DE_Grid_ETRS89_LAEA_10km';
+        WITH scope_union AS (
+            SELECT ST_UnaryUnion(ST_Collect(geom)) AS geom
+            FROM {bkg_schema}.scope
+        ),
+        grid_centroids AS (
+            SELECT
+                g.id,
+                ST_Centroid(g.geom) AS c_geom,
+                g.geom AS cell_geom
+            FROM {bkg_schema}.{table_name} g
+            WHERE g.name = 'DE_Grid_ETRS89_LAEA_100km'
+        )
+        SELECT
+            gc.id,
+            ST_Y(ST_Transform(gc.c_geom, {GEO_SRID_WGS84})) AS latitude,
+            ST_X(ST_Transform(gc.c_geom, {GEO_SRID_WGS84})) AS longitude
+        FROM grid_centroids gc
+        CROSS JOIN scope_union s
+        WHERE ST_Covers(
+            ST_Transform(s.geom, ST_SRID(gc.cell_geom)),
+            gc.c_geom
+        );
         """
         pd_dataframe = pd.read_sql(sql=sql, con=engine)
         log.debug("Grid preview:\n%s", pd_dataframe.head())

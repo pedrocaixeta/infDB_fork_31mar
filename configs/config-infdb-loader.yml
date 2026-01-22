@@ -73,7 +73,7 @@ infdb-loader:
             schema: opendata
             prefix: bavaria
             path: 
-                base: "{infdb-loader/path/opendata}/opendata_bavaria/"
+                base: "{infdb-loader/path/opendata}/opendata_bavaria/{infdb-loader/name}"
             datasets:
                 gelaendemodell_1m:
                     status: not-active
@@ -137,6 +137,7 @@ infdb-loader:
                      - 100m
                      - 1km
                      - 10km
+                     - 100km
 
         basemap:
             status: active
