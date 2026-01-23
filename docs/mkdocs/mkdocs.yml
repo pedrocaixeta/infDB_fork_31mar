@@ -39,7 +39,9 @@ nav:
     - Introduction: usage/index.md
     - Requirements: usage/requirements.md
     - Get Software: usage/get-software.md
-    - Setup: usage/setup.md
+    - Setup: 
+      - Environment Variables: usage/setup-env.md
+      - Opendata Configuration: usage/setup-yaml.md
     - Deployment: usage/deployment.md
     - Services: usage/services.md
     - Tools: usage/tools.md
