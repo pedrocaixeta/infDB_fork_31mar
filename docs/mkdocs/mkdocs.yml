@@ -27,6 +27,7 @@ plugins:
   - search
   - awesome-pages
   - glightbox
+  - mkdocstrings
 
 nav:
   - Welcome: 

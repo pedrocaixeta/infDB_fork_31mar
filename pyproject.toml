@@ -59,6 +59,7 @@ docs = [
 # Plugins
 "mkdocs-awesome-pages-plugin",
 "watchdog",
+"mkdocstrings-python",
 ]
 test =[
   {include-group = "precommit-hook"},
