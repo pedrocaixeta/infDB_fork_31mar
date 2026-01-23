@@ -28,7 +28,7 @@ GERMANY_BBOX_CRS84: List[float] = [5.866315, 47.270111, 15.041932, 55.058384]
 
 
 def _setup_logging() -> logging.Logger:
-    """Configure and return the module logger.
+    """Configures and returns the module logger.
 
     Reads LOG_LEVEL from environment (default: INFO), sets a simple log format,
     and returns a logger named by LOGGER_NAME.
@@ -85,7 +85,7 @@ FORCE_DB_TRANSFORM_ALL: bool = ("*" in _FORCE_SET) or ("ALL" in _FORCE_SET)
 
 
 def make_epsg_uri(epsg: int) -> str:
-    """Return OGC EPSG URI for an EPSG code.
+    """Returns the OGC EPSG URI for an EPSG code.
 
     Args:
         epsg: EPSG code as integer.
@@ -115,7 +115,7 @@ class NoAliasDumper(yaml.SafeDumper):
     """YAML dumper that disables anchors/aliases."""
 
     def ignore_aliases(self, data: Any) -> bool:
-        """Disable YAML anchors/aliases to keep output stable.
+        """Disables YAML anchors/aliases to keep output stable.
 
         Args:
             data: Any Python object.
@@ -132,7 +132,7 @@ class NoAliasDumper(yaml.SafeDumper):
 
 
 def get_schema_signature(connection: psycopg.Connection[Any]) -> str:
-    """Return a stable signature of geometry-bearing columns in the DB.
+    """Returns a stable signature of geometry-bearing columns in the DB.
 
     Args:
         connection: psycopg connection.
@@ -177,7 +177,7 @@ def get_schema_signature(connection: psycopg.Connection[Any]) -> str:
 
 
 def get_dml_signature_geom(connection: psycopg.Connection[Any]) -> int:
-    """Return a monotonic-ish DML counter across geometry-bearing tables.
+    """Returns a monotonic-ish DML counter across geometry-bearing tables.
 
     Args:
         connection: psycopg connection.
@@ -214,7 +214,7 @@ def get_dml_signature_geom(connection: psycopg.Connection[Any]) -> int:
 
 
 def list_columns(cursor: psycopg.Cursor[Any], schema: str, table: str) -> List[Tuple[str, str]]:
-    """List column names and types for a table.
+    """Lists column names and types for a table.
 
     Args:
         cursor: psycopg cursor.
@@ -239,7 +239,7 @@ def list_columns(cursor: psycopg.Cursor[Any], schema: str, table: str) -> List[T
 
 
 def list_geometry_sources(cursor) -> list[dict]:
-    """Enumerate geometry/geography sources in the DB.
+    """Enumerates geometry/geography sources in the DB.
 
     Uses geometry_columns/geography_columns if available; falls back to catalogs.
     Avoids reserved-word issues by not using `table` as a SQL column alias and
@@ -366,7 +366,7 @@ def list_geometry_sources(cursor) -> list[dict]:
 
 
 def pick_id_column(cursor: psycopg.Cursor[Any], schema: str, table: str) -> Optional[str]:
-    """Pick the first column containing 'id' (case-insensitive).
+    """Picks the first column containing 'id' (case-insensitive).
 
     Args:
         cursor: psycopg cursor.
@@ -395,7 +395,7 @@ def resolve_srid(
     geometry_column: str,
     srid_hint: Optional[int],
 ) -> int:
-    """Resolve SRID using hint, sampling, or fallback (env only, no overrides).
+    """Resolves SRID using hint, sampling, or fallback (env only, no overrides).
 
     Tries, in order:
       1) The provided `srid_hint` if present and > 0 (from geometry_columns or similar),
@@ -456,7 +456,7 @@ def ensure_target_view(
     non_geom_properties: List[str],
     target_epsg: int,
 ) -> str:
-    """Create or replace `<schema>.<table>__<target_epsg>` with geometry in target EPSG.
+    """Creates or replaces `<schema>.<table>__<target_epsg>` with geometry in target EPSG.
 
     Rules:
       * If row SRID = target → pass through.
@@ -517,7 +517,7 @@ def ensure_target_view(
 
 
 def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
-    """Scan DB, assemble pygeoapi config, and write YAML atomically.
+    """Scans DB, assembles pygeoapi config, and writes YAML atomically.
 
     Enumerates tables with a 'geom' column, normalizes to SERVICES_POSTGRES_EPSG
     via a helper view when needed, and writes a pygeoapi config referencing the
@@ -703,7 +703,7 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
 
 
 def listen_and_rebuild() -> None:
-    """Connect, build config, and rebuild on schema/DML changes.
+    """Connects, builds config, and rebuilds on schema/DML changes.
 
     Opens a persistent DB connection, builds the config, and then polls for
     schema/DML changes. Rebuilds the config when changes are detected, with a

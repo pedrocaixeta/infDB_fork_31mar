@@ -16,7 +16,7 @@ class InfdbLogger:
     """Console + file logging with a multiprocessing-safe queue listener."""
 
     def __init__(self, log_path: str, level: str = "INFO", cleanup: bool = False) -> None:
-        """Initialize root logger, handlers, and a QueueListener.
+        """Initializes the root logger, handlers, and a QueueListener.
 
         Args:
             log_path: Path to the log file to write.
@@ -60,7 +60,7 @@ class InfdbLogger:
         self.listener.start()
 
     def stop(self):
-        """Flush and stop the QueueListener."""
+        """Flushes and stops the QueueListener."""
         self.root_logger.info("Shutting down infdb log listener...")
         try:
             self.listener.stop()
@@ -69,7 +69,7 @@ class InfdbLogger:
             logging.exception("Exception occurred during __stop__(): %s", exc)
 
     def setup_worker_logger(self) -> logging.Logger:
-        """Create a logger for worker processes that forwards to the queue.
+        """Creates a logger for worker processes that forwards to the queue.
 
         Returns:
             A logger configured with a QueueHandler that sends records to the root listener.

@@ -25,7 +25,7 @@ GEO_SRID_WGS84: int = 4326
 
 
 def temperature_2m(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB) -> None:
-    """Fetch hourly 2m temperature from Open-Meteo and bulk load to Postgres.
+    """Fetches hourly 2m temperature from Open-Meteo and bulk loads to Postgres.
 
     Args:
         pd_dataframe: DataFrame with columns ['id', 'latitude', 'longitude'].
@@ -199,7 +199,7 @@ def temperature_2m(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB) -> Non
 
 
 def load(infdb: InfDB) -> bool:
-    """Prepare grid, query Open-Meteo, and load temperature time series.
+    """Prepares grid, queries Open-Meteo, and loads temperature time series.
 
     Behavior preserved:
     - Early exit (True) when feature flag `openmeteo` is inactive.

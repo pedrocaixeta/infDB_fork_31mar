@@ -23,7 +23,7 @@ def _iter_tiles_for_geom(geom, tile_size_m: int):
 
 
 def load(infdb: InfDB) -> bool:
-    """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL.
+    """Downloads CityGML (per AGS scope), imports via citydb CLI, then runs post-import SQL.
 
     Behavior preserved:
     - Returns True when inactive (matching original early-exit).

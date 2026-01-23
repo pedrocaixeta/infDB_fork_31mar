@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 def _get_gpkg_layers(gpkg: Path) -> list[str]:
-    """List layer names in a GPKG."""
+    """Lists layer names in a GPKG."""
     try:
         # Attempt JSON parsing (preferred method for structured output)
         out = subprocess.check_output(["ogrinfo", "-ro", "-q", "-json", str(gpkg)], text=True)
@@ -108,8 +108,7 @@ def load(infdb: InfDB) -> bool:
 
 
 def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
-    """
-    Load DGM1 (Geländemodell 1m) for each configured AGS scope.
+    """Loads DGM1 (Geländemodell 1m) for each configured AGS scope.
 
     For every scope (8-digit AGS):
       * download the corresponding meta4 / tiles
@@ -282,7 +281,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
 
 
 def _load_tatsaechliche_nutzung(infdb: InfDB, cfg: dict, base_path: Path, pgurl: str, target_epsg: int):
-    """Load land use (TN) from Nutzung_kreis.gpkg into PostGIS."""
+    """Loads land use (TN) from Nutzung_kreis.gpkg into PostGIS."""
 
     url = cfg["url"]
     schema = cfg.get("schema", "opendata")
@@ -380,7 +379,7 @@ def _load_tatsaechliche_nutzung(infdb: InfDB, cfg: dict, base_path: Path, pgurl:
 
 # ==================== load lod2 ====================
 def _load_lod2(infdb: InfDB) -> bool:
-    """Download CityGML (per AGS scope), import via citydb CLI, then run post-import SQL."""
+    """Downloads CityGML (per AGS scope), imports via citydb CLI, then runs post-import SQL."""
     log = infdb.get_worker_logger()
 
     # Use the same activation logic as DGM1 / TN: based on the dataset config

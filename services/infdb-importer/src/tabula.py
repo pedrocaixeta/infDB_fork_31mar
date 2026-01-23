@@ -16,7 +16,7 @@ CSV_EXT: str = ".csv"
 
 
 def load(infdb: InfDB) -> bool:
-    """Download Tabula JSONs, transform them to CSV, and load into Postgres.
+    """Downloads Tabula JSONs, transforms them to CSV, and loads into Postgres.
 
     Behavior preserved:
     - Skips entirely when `tabula` feature flag is inactive.

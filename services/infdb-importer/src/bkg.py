@@ -8,7 +8,7 @@ from . import utils
 
 
 def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear_existing: bool = False) -> None:
-    """Create (or update) a single geogitter table by inserting grid cells per resolution.
+    """Creates (or updates) a single geogitter table by inserting grid cells per resolution.
 
     Behavior preserved:
     - Single target table: {schema}.{table_name}
@@ -19,6 +19,7 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
     Args:
         resolutions: Either a single resolution string (e.g., "1km", "500m")
             or a sequence of such strings.
+        infdb: The InfDB instance.
         clear_existing: If True, drop the table before (re)creating it.
 
     Raises:
@@ -141,7 +142,7 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
 
 
 def load(infdb: InfDB) -> bool:
-    """Download BKG sources, import layers, and generate geogitter grid.
+    """Downloads BKG sources, imports layers, and generates geogitter grid.
 
     Behavior preserved:
     - (Optional) feature guard for BKG: left commented as in original.
