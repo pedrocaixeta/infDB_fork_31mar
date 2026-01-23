@@ -10,13 +10,13 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-loader:
-    name: "by-nrw"  # Name of the infdb-loader instance
+    name: "sf-oh-nb"  # Name of the infdb-loader instance
     scope:  # List of AGS codes (8-digit) and/or state prefixes (2-digit, e.g. "05" for NRW)
       # - "01"  # Schleswig-Holstein
       # - "02"  # Hamburg
       # - "03"  # Niedersachsen
       # - "04"  # Bremen
-      - "05"  # Nordrhein-Westfalen
+      # - "05"  # Nordrhein-Westfalen
       # - "06"  # Hessen
       # - "07"  # Rheinland-Pfalz
       # - "08"  # Baden-Württemberg
@@ -28,10 +28,11 @@ infdb-loader:
       # - "14"  # Sachsen
       # - "15"  # Sachsen-Anhalt
       # - "16"  # Thüringen
-      # - "09780139"  # Sonthofen (BY)
-      # - "05119000" # Oberhausen (NRW)
+        - "09780139"  # Sonthofen (BY)
+        - "05119000" # Oberhausen (NRW)
+        - "09185149" # Neuburg a. d. Donau (BY)
     multiproccesing: 
-        status: not-active
+        status: active
         max_cores: 2    # max cores since of memory limitations to 2
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
