@@ -16,17 +16,17 @@ Its architecture is composed of two main components:
 ## Services
 infDB services follow microservice architecture principles, enabling independent development and deployment while improving modularity, scalability, and adaptability.
 
-- [infdb-db](database.md): Core PostgreSQL database with PostGIS, timescaledb, and pgrouting extensions; handles all central storage and queries.
-- [infdb-importer](infdb-importer.md): Automates the ingestion, structuring, and integration of external open data formats into the platform.
-- [pgAdmin](https://www.pgadmin.org/): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
-- [FastAPI](https://fastapi.tiangolo.com/): REST endpoints with OpenAPI docs and validated access to 3D, geospatial, and time-series data.
-- [Jupyter](https://jupyter.org/): Notebook environment for exploratory queries, ETL prototypes, reproducible analysis.
-- [QWC2](https://github.com/qwc-services/qwc2): Web mapping client for 2D/3D visualization, layer styling, spatial inspection, quick dataset validation.
-- [PostgREST](https://postgrest.org/): Auto-generated REST API over PostgreSQL schemas using DB roles for auth; rapid, lightweight data access without extra backend code.
-- [pygeoapi](https://pygeoapi.io/): OGC API (Features/Coverages/Processes) server exposing PostGIS data via standards-based JSON & HTML endpoints for interoperable geospatial discovery and querying.
-- [Opencloud](https://opencloud.com/): Cloud infrastructure and deployment management for scalable service orchestration and resource provisioning.
+![alt text](../usage/services.png)
 
-More details of available services can be found at **[infdb -> Services](services.md)**.
+- [infdb-db](services/infdb-db.md): Core PostgreSQL database with PostGIS, timescaledb, and pgrouting extensions; handles all central storage and queries.
+- [infdb-importer](services/infdb-importer.md): Automates the ingestion, structuring, and integration of external open data formats into the platform.
+- [pgAdmin](services/pgadmin.md): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
+- [FastAPI](services/fastapi.md): REST endpoints with OpenAPI docs and validated access to 3D, geospatial, and time-series data.
+- [Jupyter](services/jupyter.md): Notebook environment for exploratory queries, ETL prototypes, reproducible analysis.
+- [QWC2](services/qwc2.md): Web mapping client for 2D/3D visualization, layer styling, spatial inspection, quick dataset validation.
+- [PostgREST](services/postgrest.md): Auto-generated REST API over PostgreSQL schemas using DB roles for auth; rapid, lightweight data access without extra backend code.
+- [pygeoapi](services/pygeoapi.md): OGC API (Features/Coverages/Processes) server exposing PostGIS data via standards-based JSON & HTML endpoints for interoperable geospatial discovery and querying.
+- [Opencloud](services/opencloud.md): Cloud infrastructure and deployment management for scalable service orchestration and resource provisioning.
 
 ## Tools
 The infDB ecosystem includes a variety of tools designed to handle different aspects of data workflows. These so called tools are software that interact with infDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains.

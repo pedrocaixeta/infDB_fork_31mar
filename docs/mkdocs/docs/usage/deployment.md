@@ -1,49 +1,53 @@
 ---
-icon: material/docker
+icon: material/rocket-launch
 ---
+# Deployment :material-rocket-launch:
 
-The infDB can be easily deployed using the provided bash scripts, which simplify the startup, stop and removing process.
-!!! warning
-    Ensure that Docker is running. If you use Docker Desktop, start the application first.
+The infDB platform is designed for easy deployment using provided bash scripts that abstract complex Docker Compose commands.
 
-## Start infDB
-To start the configured infDB services, use the following startup script:
+!!! warning "Prerequisite"
+    Ensure that **Docker** and **Docker Compose** are installed and running on your system.
+
+## Management Commands
+
+### Start infDB
+To start the configured infDB services:
+
 ```bash
 bash infdb-start.sh up -d --build
 ```
-!!! info
-    infDB will continue running until you stop it manually as described below, even if the machine is restarted.
 
-## Stop infDB
-To stop all running infDB services without deleting any data, execute:
+!!! info "Persistence"
+    infDB services will continue running in the background until manually stopped, even if the terminal is closed.
+
+### Stop infDB
+To stop all running services **without** deleting data:
 
 ```bash
 bash infdb-stop.sh
 ```
 
-## Remove infDB
-To stop all running infDB services and delete all stored data, execute:
+### Remove infDB
+To stop services **and** delete all stored data (reset):
 
 ```bash
 bash infdb-remove.sh
 ```
-!!! danger
-    All stored data gets removed
 
-## Import Open Data
-The opendata is imported automatically by starting the infDB. If you want to add further opendata without restarting the infDB, execute:
+!!! danger "Data Loss"
+    This command will permanently remove all data stored in the database volumes.
+
+## Data Import
+
+The **infdb-importer** service usually runs automatically on startup if configured. To trigger a manual import run without restarting the entire stack:
+
 ```bash
 bash infdb-import.sh
 ```
 
-!!! info
-    Downloaded data is stored centrally on each host as a persistent docker volume. This data persists even if the `infdb-importer` container is removed.
-
-## Remove Infdb-importer Data
-To remove the downloaded open data, execute:
+### Cleaning Import Data
+Downloaded raw data files are stored in a persistent Docker volume (`infdb-loader-data`). To reclaim space:
 
 ```bash
 docker volume rm infdb-loader-data
 ```
-!!! danger
-    All downloaded data gets removed
