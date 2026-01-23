@@ -87,7 +87,7 @@ cd infdb
 #### Clone infDB
 ``` bash
 # Replace "infdb-demo" by name of instance 
-git clone git@git-ce.rwth-aachen.de:need/NEED-infdb.git infdb-demo
+git clone git@github.com:tum-ens/InfDB.git infdb-demo
 cd infdb-demo
 ```
 
