@@ -51,15 +51,15 @@ The PostgreSQL, all services and adopted tools are dockerized for a modular and 
 ### Services
 The infDB platform provides a suite of essential services designed to facilitate database operation and administration, data handling and visualization, and connectivity. Each preconfigured service can be activated individually to tailor the environment to your specific requirements. This section provides a brief description and configuration options for each available service.
 
-More information, a list of available services see [Services](docs/mkdocs/docs/usage/services.md).
+More information, a list of available services see [Services](https://tum-ens.github.io/InfDB/infdb/#services).
 
 ### Tools
 Tools are software that interact with infDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains.
 
-More information, a list of integrated tools and additional information, see [Tools](docs/mkdocs/docs/tools/index.md).
+More information, a list of integrated tools and additional information, see [Tools](https://tum-ens.github.io/InfDB/tools/).
 
 ## Getting Started
-If you want to use the infDB with the default settings just use the [Quick Start](#Quick-Start) below. For more information in detail read the [Usage Guide](https://need.pages.git-ce.rwth-aachen.de/NEED-infdb/usage/) of the official documentation.
+If you want to use the infDB with the default settings just use the [Quick Start](#Quick-Start) below. For more information in detail read the [Usage Guide](https://tum-ens.github.io/InfDB/usage/) of the official documentation.
 
 ### Prequisites
  - Docker Engine: https://docs.docker.com/engine/install/

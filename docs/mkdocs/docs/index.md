@@ -24,26 +24,27 @@ The infDB can be used effectively wherever geospatial and time series informatio
 -   Energy System Modeling
 -   Municipal Heat Planning and Infrastructure Planning
 -   Scenario and Geospatial Analysis
+
 ## Architecture
 
 The infDB architecture is composed of two main components:
 
-: :fontawesome-solid-gears: **[Services](https://tum-ens.github.io/InfDB/infdb/#services)** – Dockerized open-source software providing base functionality.
-: :material-tools: **[Tools](https://tum-ens.github.io/InfDB/tools/)** – Software interacting with the infDB.
+: :fontawesome-solid-gears: **[Services](usage/services.md)** – Dockerized open-source software providing base functionality.
+: :material-tools: **[Tools](tools/index.md)** – Software interacting with the infDB.
 
 ![infDB Overview](assets/img/infdb-overview.png)
 
 ## Getting Started
 
-Check out the **[Usage Guide](https://tum-ens.github.io/InfDB/usage/)** to install, configure and run your instance.
+Check out the **[Usage Guide](usage/index.md)** to install, configure and run your instance.
 
 ## Demo
-The **[Linear Heat Density](https://tum-ens.github.io/InfDB/linear-heat-density/)** use case demonstrates the capabilities of infDB in the context of municipal heat planning (KWP). 
-![Linear Heat Density Demo](https://tum-ens.github.io/InfDB/linear-heat-density/qwc-browser.png)
+The **[Linear Heat Density](linear-heat-density/index.md)** use case demonstrates the capabilities of infDB in the context of municipal heat planning (KWP). 
+![](linear-heat-density/qwc-browser.png)
 
 ## Contribution
 
-Check out the **[Developer Guide](https://tum-ens.github.io/InfDB/development/)** to learn how to contribute.
+Check out the **[Developer Guide](development/index.md)** to learn how to contribute.
 
 ## Feedback and contributions
 
