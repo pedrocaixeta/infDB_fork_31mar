@@ -34,9 +34,9 @@ linear-heat-density:
                 geom-column: geom
             heat-demand:
                 schema: ro_heat
-                table: buildings
-                id-column:  '"building_objectid"'
-                heat-demand-column:  '"heating:demand[Wh]"'
+                table: entise_summary
+                id-column: building_objectid
+                heat-demand-column: heating:demand[Wh]
         output:
             schema: linear_heat_density   # needs to be snake_case
             table: linear_heat_density

@@ -15,11 +15,11 @@ set +a
 echo "=== Run infdb-basedata ==="
 bash $(dirname "$0")/infdb-basedata/run.sh
 
+echo "=== Run process-streets ==="
+bash $(dirname "$0")/process-streets/run.sh
+
 echo "=== Run buildings-to-street ==="
 bash $(dirname "$0")/buildings-to-street/run.sh 
-
-echo "=== Run process-streets ==="
-bash $(dirname "$0")/process-streets/run.sh 
 
 echo "=== Run ro-heat ==="
 bash $(dirname "$0")/ro-heat/run.sh

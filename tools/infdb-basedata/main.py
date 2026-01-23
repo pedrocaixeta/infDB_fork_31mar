@@ -53,12 +53,13 @@ def main() -> None:
         end_time = time.time()
         log.info("BUILDINGS SQL scripts completed in %.2f seconds", end_time - start_time)
 
-        # Execute CONNECTIONS scripts
-        start_time = time.time()
-        log.info("Executing connections SQL scripts")
-        db.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
-        end_time = time.time()
-        log.info("CONNECTIONS SQL scripts completed in %.2f seconds", end_time - start_time)
+        # Moved to buildings-to-street tool
+        # # Execute CONNECTIONS scripts
+        # start_time = time.time()
+        # log.info("Executing connections SQL scripts")
+        # db.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
+        # end_time = time.time()
+        # log.info("CONNECTIONS SQL scripts completed in %.2f seconds", end_time - start_time)
 
     log.info("Successfully finished %s tool", infdb.get_toolname())
     infdb.stop_logger()

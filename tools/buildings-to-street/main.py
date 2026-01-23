@@ -18,7 +18,7 @@ def main():
     """
 
     # Initialize InfDB handler
-    infdb = InfDB(tool_name="buildings-to-street")
+    infdb = InfDB(tool_name="buildings-to-street", config_path="configs")
     log = infdb.get_logger()
     # Start message
     log.info(f"Starting {infdb.get_toolname()} tool")

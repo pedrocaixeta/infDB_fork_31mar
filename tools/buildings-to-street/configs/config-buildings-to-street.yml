@@ -31,7 +31,7 @@ buildings-to-street:
         buildings:
             schema: basedata
             table: buildings
-            id-column: '"objectid"'
+            id-column: objectid
             geom-column: geom
         output:
             schema: buildings_to_street
