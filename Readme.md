@@ -3,7 +3,7 @@
 </p>
 
 # infDB - Infrastructure and Energy Database
-**The infDB is a user-friendly, platform-independent, and open-source data infrastructure as a foundation for energy system analyses. It enables complex evaluations by combining various tools through standardized interfaces, fostering an open and interoperable ecosystem.**
+`infDB` (Infrastructure and Energy Database) is a modular, open-source data infrastructure designed to streamline energy modeling as for instance municipal heat planning (KWP). It reduces the overhead of data collection and pre-processing by offering a containerized platform for standardized data ingestion, storage, and retrieval. By providing a unified interface for heterogeneous data sources, `infDB` allows researchers and planners to focus on generating insights and modeling energy systems rather than managing data logistics. The platform fosters a collaborative ecosystem by ensuring data is FAIR (Findable, Accessible, Interoperable, and Reusable).
 
 | Category | Badges |
 |----------|--------|
