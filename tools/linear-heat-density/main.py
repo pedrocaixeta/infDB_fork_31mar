@@ -63,7 +63,9 @@ def main():
             "heat_demand_geom": infdb.get_config_value(
                 [infdb.get_toolname(), "data", "input", "heat-demand", "geom-column"]
             ),
-            "heat_demand_column": f'"{infdb.get_config_value([infdb.get_toolname(), "data", "input", "heat-demand", "heat-demand-column"])}"',
+            "heat_demand_column": f'"{infdb.get_config_value(
+                [infdb.get_toolname(), "data", "input", "heat-demand", "heat-demand-column"]
+            )}"',
             "output_schema": infdb.get_config_value([infdb.get_toolname(), "data", "output", "schema"]),
             "output_table": infdb.get_config_value([infdb.get_toolname(), "data", "output", "table"]),
         }
