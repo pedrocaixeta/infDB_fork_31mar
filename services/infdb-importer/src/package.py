@@ -4,7 +4,7 @@ from . import utils
 
 
 def load(infdb: InfDB) -> None:
-    """Download and unpack the opendata package using the loader configuration.
+    """Downloads and unpacks the opendata package using the loader configuration.
 
     Behavior preserved:
     - Reads paths and URL from the 'loader' tool config.

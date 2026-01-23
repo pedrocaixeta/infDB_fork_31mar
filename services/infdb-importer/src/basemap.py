@@ -8,6 +8,7 @@ from . import utils
 
 
 def load(infdb: InfDB) -> None:
+    """Downloads and imports basemap data based on configuration."""
     log = infdb.get_worker_logger()
     try:
         if not utils.if_active("basemap", infdb):

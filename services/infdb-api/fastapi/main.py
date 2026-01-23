@@ -27,18 +27,28 @@ app.add_middleware(GZipMiddleware, minimum_size=500)  # Enable gzip compression 
 # Root endpoint for basic API status
 @app.get("/")
 async def root():
+    """Returns a basic status message indicating the API is running."""
     return {"message": "INFDB API is running."}
 
 
 # Health check endpoint
 @app.get("/health")
 async def health():
+    """Returns the health status of the API gateway."""
     return {"status": "ok"}
 
 
 # Health check for PostgREST service
 @app.get("/postgrest/health")
 async def postgrest_health():
+    """Checks the health of the downstream PostgREST service.
+
+    Returns:
+        A dictionary containing the status code and a boolean 'ok' flag.
+
+    Raises:
+        HTTPException: If PostgREST is unreachable.
+    """
     timeout = httpx.Timeout(5.0, read=5.0)
     url = POSTGREST_URL
     try:
@@ -51,6 +61,14 @@ async def postgrest_health():
 
 # Helper to proxy HTTP responses, preserving headers except for hop-by-hop headers
 def _proxy_response(resp: httpx.Response) -> Response:
+    """Proxies an HTTP response, preserving headers except for hop-by-hop headers.
+
+    Args:
+        resp: The original httpx response.
+
+    Returns:
+        A FastAPI Response object.
+    """
     media = resp.headers.get("content-type", "application/json")
     r = Response(content=resp.content, status_code=resp.status_code, media_type=media)
     hop = {
@@ -75,6 +93,17 @@ def _proxy_response(resp: httpx.Response) -> Response:
 async def _proxy(
     req: Request, base_url: str, subpath: str, *, override_params: Optional[Iterable[Tuple[str, str]]] = None
 ) -> httpx.Response:
+    """Proxies a request to another service.
+
+    Args:
+        req: The incoming FastAPI request.
+        base_url: The base URL of the target service.
+        subpath: The path to append to the base URL.
+        override_params: Optional query parameters to use instead of the request's params.
+
+    Returns:
+        The httpx response from the target service.
+    """
     method = req.method
     target = urljoin(base_url, subpath)
     body = await req.body()
@@ -101,6 +130,21 @@ async def get_postgrest(
     limit: int = 100,
     tolerance: float = Query(100, description="Geometry simplification tolerance (units match your data)"),
 ):
+    """Fetches data from PostgREST with optional geometry simplification.
+
+    Args:
+        request: The incoming request.
+        schema: The database schema.
+        table: The table name.
+        limit: Max number of records to return.
+        tolerance: Tolerance for geometry simplification.
+
+    Returns:
+        JSON response with (optionally) simplified geometries.
+
+    Raises:
+        HTTPException: If PostgREST returns an error or is unreachable.
+    """
     # Only pass allowed params to PostgREST, filter out internal params
     # type check has issues with restriction to type: list[tuple[str, str]]
     passthrough: List[tuple[str, str | int | float | bool | None]] = [
@@ -151,6 +195,19 @@ async def get_postgrest(
 # POST endpoint to insert a new row into a table via PostgREST
 @app.post("/postgrest/{schema}/{table}")
 async def post_postgrest(schema: str, table: str, row: dict):
+    """Inserts a new row into a table via PostgREST.
+
+    Args:
+        schema: The database schema.
+        table: The table name.
+        row: The dictionary representing the row to insert.
+
+    Returns:
+        The PostgREST response (JSON or success message).
+
+    Raises:
+        HTTPException: If PostgREST returns an error or is unreachable.
+    """
     headers = {"Content-Type": "application/json", "Content-Profile": schema}
     try:
         async with httpx.AsyncClient() as client:
@@ -176,6 +233,21 @@ async def put_postgrest(
     row: dict,
     key_column: str = Query("id", description="Primary key column name"),
 ):
+    """Updates an existing row in a table via PostgREST.
+
+    Args:
+        schema: The database schema.
+        table: The table name.
+        item_id: The ID of the item to update.
+        row: The new data for the row.
+        key_column: The name of the primary key column.
+
+    Returns:
+        The PostgREST response (JSON or update status).
+
+    Raises:
+        HTTPException: If PostgREST returns an error or is unreachable.
+    """
     headers = {"Content-Type": "application/json", "Content-Profile": schema}
     params = {key_column: f"eq.{item_id}"}
     try:
@@ -198,6 +270,20 @@ async def put_postgrest(
 async def delete_postgrest(
     schema: str, table: str, item_id: str, key_column: str = Query("id", description="Primary key column name")
 ):
+    """Removes a row from a table via PostgREST.
+
+    Args:
+        schema: The database schema.
+        table: The table name.
+        item_id: The ID of the item to delete.
+        key_column: The name of the primary key column.
+
+    Returns:
+        A success status message.
+
+    Raises:
+        HTTPException: If PostgREST returns an error or is unreachable.
+    """
     headers = {"Content-Type": "application/json", "Content-Profile": schema}
     params = {key_column: f"eq.{item_id}"}
     try:

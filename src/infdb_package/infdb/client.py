@@ -24,7 +24,7 @@ class InfdbClient:
     """Thin Postgres client backed by psycopg2 with a SQLAlchemy engine helper."""
 
     def __init__(self, infdb_config: InfdbConfig, log: logging.Logger, db_name: str = "postgres") -> None:
-        """Initialize the client and open a connection.
+        """Initializes the client and opens a connection.
 
         Args:
             infdb_config: Configuration provider for database parameters.
@@ -57,17 +57,17 @@ class InfdbClient:
     # -------------------------- Context Manager --------------------------
 
     def __enter__(self) -> "InfdbClient":
-        """Enter context manager (returns self)."""
+        """Enters the context manager (returns self)."""
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        """Exit context manager and close resources."""
+        """Exits the context manager and closes resources."""
         self.close()
 
     # -------------------------- Lifecycle --------------------------------
 
     def close(self) -> None:
-        """Close cursor and connection, ignoring close-time exceptions."""
+        """Closes the cursor and connection, ignoring close-time exceptions."""
         try:
             if getattr(self, "cur", None):
                 self.cur.close()
@@ -78,17 +78,17 @@ class InfdbClient:
             self.log.exception("Exception occurred during close(): %s", exc)
 
     def __del__(self) -> None:
-        """Best-effort resource cleanup on GC."""
+        """Performs best-effort resource cleanup on GC."""
         self.close()
 
     def __str__(self) -> str:  # pragma: no cover - human-readable aid
-        """Human-readable description of the client."""
+        """Returns a human-readable description of the client."""
         return f"InfdbClient connected to {self.db_params}"
 
     # --------------------------- Operations ------------------------------
 
     def execute_query(self, query: str, params: ParamsTuple = None) -> List[Row]:
-        """Execute SQL and return fetched rows; return [] for non-SELECT statements.
+        """Executes SQL and returns fetched rows; returns [] for non-SELECT statements.
 
         Args:
             query: SQL query to execute.
@@ -109,7 +109,7 @@ class InfdbClient:
         file_list: Optional[Sequence[str]] = None,
         format_params: Optional[Dict[str, Any]] = None,
     ):
-        """Execute a set of .sql files in lexicographic order by default.
+        """Executes a set of .sql files in lexicographic order by default.
 
         Args:
             sql_dir: Directory containing SQL files.
@@ -159,7 +159,7 @@ class InfdbClient:
                 raise
 
     def execute_sql_file(self, file_path: str, format_params: Optional[Dict[str, Any]] = None) -> None:
-        """Execute a single SQL file by delegating to execute_sql_files.
+        """Executes a single SQL file by delegating to execute_sql_files.
 
         Args:
             file_path: Absolute or relative path to the SQL file.
@@ -172,7 +172,7 @@ class InfdbClient:
         )
 
     def get_db_engine(self):
-        """Create and return a SQLAlchemy engine for the target DB.
+        """Creates and returns a SQLAlchemy engine for the target DB.
 
         Returns:
             A SQLAlchemy Engine connected to the configured database.
@@ -187,7 +187,7 @@ class InfdbClient:
         return sqlalchemy.create_engine(db_url)
 
     def get_db_params(self) -> DBParams:
-        """Return a shallow copy of the resolved DB parameters.
+        """Returns a shallow copy of the resolved DB parameters.
 
         Returns:
             A dictionary of database parameters.

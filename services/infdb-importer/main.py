@@ -37,7 +37,7 @@ def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
 
 
 def main() -> None:
-    """Bootstrap loader, drop dev schema, and spawn data-loading processes.
+    """Bootstraps loader, drops dev schema, and spawns data-loading processes.
 
     Behavior preserved:
     - Uses InfDB for config and centralized logging (queue listener).

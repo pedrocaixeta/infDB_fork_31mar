@@ -18,7 +18,7 @@ class InfdbConfig:
     """Read and resolve tool-specific YAML config with optional InfDB base merge."""
 
     def __init__(self, tool_name: str, config_basedir: str) -> None:
-        """Initialize configuration for a tool.
+        """Initializes the configuration for a tool.
 
         Args:
             tool_name: The tool identifier (used to select the YAML file and section).
@@ -33,12 +33,13 @@ class InfdbConfig:
         self._CONFIG: Dict[str, Any] = self._merge_configs(self.config_path)
 
     def __str__(self) -> str:
+        """Returns a string representation of the InfdbConfig."""
         return f"InfdbConfig(tool='{self.tool_name}', path='{self.config_path}')"
 
     # ---------------- internal helpers ----------------
 
     def _load_config(self, path: str) -> Dict[str, Any]:
-        """Load a YAML file. Raise FileNotFoundError if the file is missing."""
+        """Loads a YAML file. Raises FileNotFoundError if the file is missing."""
         if os.path.exists(path):
             with open(path, "r", encoding=FILE_ENCODING) as file:
                 return yaml.safe_load(file) or {}
@@ -47,7 +48,7 @@ class InfdbConfig:
             raise FileNotFoundError(f"Config file '{path}' not found.")
 
     def _merge_configs(self, base_path: str) -> Dict[str, Any]:
-        """Load tool config and (optionally) merge shared InfDB base config, quietly."""
+        """Loads tool config and (optionally) merges shared InfDB base config, quietly."""
         self.log.debug("Loading configuration from '%s'", base_path)
         configs = self._load_config(base_path)
         if not configs:
@@ -56,7 +57,7 @@ class InfdbConfig:
         return self._resolve_yaml_placeholders(configs)
 
     def _flatten_dict(self, data: Dict[str, Any], parent_key: str = "", sep: str = "/") -> Dict[str, Any]:
-        """Flatten nested dictionaries into path-like keys."""
+        """Flattens nested dictionaries into path-like keys."""
         items: Dict[str, Any] = {}
         for key, value in data.items():
             new_key = f"{parent_key}{sep}{key}" if parent_key else key
@@ -67,7 +68,7 @@ class InfdbConfig:
         return items
 
     def _replace_placeholders(self, data: Any, flat_map: Dict[str, Any]) -> Any:
-        """Recursively replace {placeholders} in strings using a flattened map."""
+        """Recursively replaces {placeholders} in strings using a flattened map."""
         if isinstance(data, dict):
             return {k: self._replace_placeholders(v, flat_map) for k, v in data.items()}
         if isinstance(data, list):
@@ -88,18 +89,18 @@ class InfdbConfig:
         return data
 
     def _resolve_yaml_placeholders(self, yaml_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Resolve intra-file {placeholders} using flattened key/value paths."""
+        """Resolves intra-file {placeholders} using flattened key/value paths."""
         flat_map = self._flatten_dict(yaml_data)
         return self._replace_placeholders(deepcopy(yaml_data), flat_map)
 
     # ---------------- public API ----------------
 
     def get_config(self) -> Dict[str, Any]:
-        """Return the fully merged and resolved configuration dictionary."""
+        """Returns the fully merged and resolved configuration dictionary."""
         return self._CONFIG
 
     def get_value(self, keys: List[str]) -> Any:
-        """Safely traverse nested keys; returns None if the path is missing.
+        """Safely traverses nested keys; returns None if the path is missing.
 
         Args:
             keys: Ordered key path within the configuration.
@@ -120,7 +121,7 @@ class InfdbConfig:
         return element
 
     def get_path(self, keys: List[str], type: str) -> str:
-        """Resolve a path from config and map it to a filesystem location.
+        """Resolves a path from config and maps it to a filesystem location.
 
         Args:
             keys: Ordered key path within the configuration.
@@ -137,13 +138,14 @@ class InfdbConfig:
 
     @staticmethod
     def get_root_path() -> str:
-        """Return the project root path (two levels up from this file)."""
+        """Returns the project root path (two levels up from this file)."""
         return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     def get_db_parameters(self, db_name: str = "postgres") -> Dict[str, str]:
-        """Return database connection parameters for a given service from config-toolname.yml.
-           Adopt it from environment variables if set to "None".
-           Host is set to "host.docker.internal" if "None".
+        """Returns database connection parameters for a given service from config-toolname.yml.
+
+        Adopt it from environment variables if set to "None".
+        Host is set to "host.docker.internal" if "None".
 
         Args:
             db_name: Name of the DB service section to read.
@@ -163,7 +165,7 @@ class InfdbConfig:
         return db_params_service
 
     def get_env_parameters(self, key, infdb) -> Optional[str]:
-        """Return a dictionary of environment variables for this tool.
+        """Returns a dictionary of environment variables for this tool.
 
         Args:
             key: Environment variable name (case-insensitive).
