@@ -721,7 +721,7 @@ infdb-loader:
             - "Potenzial-FF-Solarthermie-Flur"
 
         gebaeude-neuburg:
-            status: active
+            status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
             protocol: webdav
             username: "need"
@@ -733,7 +733,7 @@ infdb-loader:
             layer:
                 - "gebaeudedaten_neuburg"
         waermeatlas-hessen-bensheim:
-            status: active
+            status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/BensheimWaermeatlasHessen.gpkg"
             protocol: webdav
             username: "need"
@@ -751,7 +751,7 @@ infdb-loader:
                 - "Hausumringe"
                 - "Flurstuecke"
         tudo-basemap-ways:
-            status: active
+            status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/TUDO_Basemap_ways.geojson"
             protocol: webdav
             username: "need"
