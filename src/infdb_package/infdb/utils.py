@@ -24,7 +24,7 @@ log = logging.getLogger(LOGGER_NAME)
 
 def read_env(var_name: str, default: Optional[str] = None, required: bool = False) -> str:
     """
-    Read an environment variable with optional default and required check.
+    Reads an environment variable with optional default and required check.
 
     Args:
         var_name: Name of the environment variable to read.
@@ -57,7 +57,7 @@ def build_dsn_from_env(
     port_var: int,
 ) -> str:
     """
-    Build a PostgreSQL DSN string from common environment variables.
+    Builds a PostgreSQL DSN string from common environment variables.
 
     Args:
         user_var: Database username.
@@ -78,7 +78,7 @@ def build_dsn_from_env(
 
 def ensure_dir_exists(path: str) -> str:
     """
-    Ensure a directory (or a file's parent directory) exists; return absolute path.
+    Ensures a directory (or a file's parent directory) exists; returns absolute path.
 
     Args:
         path: A directory path or a file path.
@@ -106,7 +106,7 @@ def _atomic_write(
     binary: bool, data: Any, output_path: str, file_mode: str | None = None, dir_mode: str | None = None
 ) -> str:
     """
-    Internal: write text/bytes atomically and optionally set chmods.
+    Internal: writes text/bytes atomically and optionally set chmods.
 
     Args:
         binary: If True, write `data` as bytes using binary mode (`wb`).
@@ -160,7 +160,7 @@ def _atomic_write(
 
 def atomic_write_text(text: str, output_path: str, file_mode: str | None = None, dir_mode: str | None = None) -> str:
     """
-    Atomically write text to a file. Optionally apply chmod to file/dir.
+    Atomically writes text to a file. Optionally apply chmod to file/dir.
 
     Args:
         text: Text content to write.
@@ -183,7 +183,7 @@ def atomic_write_text(text: str, output_path: str, file_mode: str | None = None,
 
 def atomic_write_yaml(data: Any, output_path: str, file_mode: str | None = None, dir_mode: str | None = None) -> str:
     """
-    Atomically serialize a Python object to YAML and write to a file.
+    Atomically serializes a Python object to YAML and writes to a file.
 
     Args:
         data: Python object to serialize to YAML (e.g., dict, list).
@@ -208,7 +208,7 @@ def atomic_write_yaml(data: Any, output_path: str, file_mode: str | None = None,
 
 def read_text(input_path: str) -> str:
     """
-    Read a text file; return empty string if it does not exist.
+    Reads a text file; returns empty string if it does not exist.
 
     Args:
         input_path: Path to the file to read.
@@ -230,7 +230,7 @@ def read_text(input_path: str) -> str:
 
 def write_yaml(data: Any, output_path: str) -> None:
     """
-    Backward-compatible non-atomic YAML writer.
+    Writes a YAML file (backward-compatible, non-atomic).
     Prefer `atomic_write_yaml` for config files.
 
     Args:
@@ -257,7 +257,7 @@ def write_yaml(data: Any, output_path: str) -> None:
 
 def do_cmd(cmd: str | List[str], is_shell_interpreted: bool = False) -> int:
     """
-    Execute a shell command, streaming output to the logger.
+    Executes a shell command, streaming output to the logger.
 
     Args:
         cmd: Command to run. Can be a string or a list of strings.
@@ -305,7 +305,7 @@ def do_sql_query(
     logger: Optional[logging.Logger] = None,
 ) -> None:
     """
-    Run a single SQL statement using InfdbClient, then close the connection.
+    Runs a single SQL statement using InfdbClient, then closes the connection.
 
     Args:
         query: SQL statement to execute.
@@ -330,7 +330,7 @@ def get_db_engine(
     logger: Optional[logging.Logger] = None,
 ):
     """
-    Return a SQLAlchemy Engine using InfdbClient (URL building is centralized).
+    Returns a SQLAlchemy Engine using InfdbClient (URL building is centralized).
 
     Args:
         cfg: `InfdbConfig` instance used to resolve database connection parameters.
@@ -355,7 +355,7 @@ def get_db_engine(
 
 def compute_signature(items: Iterable[str]) -> str:
     """
-    Produce a stable signature string from an iterable of strings.
+    Produces a stable signature string from an iterable of strings.
 
     Args:
         items: Iterable of strings to combine in order.

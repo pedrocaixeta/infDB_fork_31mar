@@ -20,7 +20,7 @@ class InfDB:
     """
 
     def __init__(self, tool_name: str, config_path: str = DEFAULT_CONFIG_DIR) -> None:
-        """Initialize the facade with configuration and logging.
+        """Initializes the facade with configuration and logging.
 
         Args:
             tool_name: Identifier used to pick the tool section in the config.
@@ -39,26 +39,27 @@ class InfDB:
         self.logger: logging.Logger = self.infdblogger.root_logger
 
     def __str__(self) -> str:
+        """Returns a string description of the InfDB facade."""
         return f"InfDB(tool='{self.tool_name}', config='{self.config_path}')"
 
     # ------------------ config & logging helpers ------------------
 
     def get_logger(self) -> logging.Logger:
-        """Return the root logger used by this instance."""
+        """Returns the root logger used by this instance."""
         return self.logger
 
     def get_worker_logger(self) -> logging.Logger:
-        """Create and return a worker logger from the InfdbLogger helper."""
+        """Creates and returns a worker logger from the InfdbLogger helper."""
         return self.infdblogger.setup_worker_logger()
 
     def stop_logger(self) -> None:
-        """Stop the InfdbLogger's QueueListener."""
+        """Stops the InfdbLogger's QueueListener."""
         self.infdblogger.stop()
 
     # ------------------ database helpers ------------------
 
     def connect(self) -> InfdbClient:
-        """Create a new database client.
+        """Creates a new database client.
 
         Prefer: `with inf.connect(...) as client: ...`.
 
@@ -70,7 +71,7 @@ class InfDB:
         return InfdbClient(self.infdbconfig, self.get_logger())
 
     def get_db_engine(self):
-        """Return a SQLAlchemy engine for the specified database.
+        """Returns a SQLAlchemy engine for the specified database.
 
         Args: None
 
@@ -83,19 +84,19 @@ class InfDB:
     # ------------------ configuration access ------------------
 
     def get_toolname(self) -> str:
-        """Return the tool name configured for this instance."""
+        """Returns the tool name configured for this instance."""
         return self.tool_name
 
     def get_config_dict(self) -> Dict[str, Any]:
-        """Return the merged configuration dictionary."""
+        """Returns the merged configuration dictionary."""
         return self.infdbconfig.get_config()
 
     def get_db_parameters_dict(self) -> Dict[str, Any]:
-        """Return final parameters dictionary for the postgres service."""
+        """Returns final parameters dictionary for the postgres service."""
         return self.infdbconfig.get_db_parameters()
 
     def get_config_value(self, keys: List[str], insert_toolname: bool = False):
-        """Return a value from the configuration by traversing a key path.
+        """Returns a value from the configuration by traversing a key path.
 
         Args:
             keys: Ordered key path within the configuration.
@@ -110,7 +111,7 @@ class InfDB:
         return self.infdbconfig.get_value(keys)
 
     def get_config_path(self, keys: List[str], type: str = "config", insert_toolname: bool = False) -> str:
-        """Resolve a filesystem path from config.
+        """Resolves a filesystem path from config.
 
         Args:
             keys: Ordered key path within the configuration.
@@ -125,7 +126,7 @@ class InfDB:
         return self.infdbconfig.get_path(keys, type=type)
 
     def get_env_variable(self, key) -> Optional[str]:
-        """Return a dictionary of environment variables for this tool.
+        """Returns a dictionary of environment variables for this tool.
 
         Returns:
             A dictionary of environment variables.

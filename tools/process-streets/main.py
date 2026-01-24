@@ -19,7 +19,7 @@ def main():
     # -----------------------------------------------------
     # INIT INFDB
     # -----------------------------------------------------
-    infdb = InfDB(tool_name="process-streets")
+    infdb = InfDB(tool_name="process-streets", config_path="configs")
     log = infdb.get_logger()
 
     log.info("=== Starting process-streets tool ===")

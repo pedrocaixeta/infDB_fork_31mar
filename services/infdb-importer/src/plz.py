@@ -8,7 +8,7 @@ from . import utils
 
 
 def load(infdb: InfDB) -> bool:
-    """Download PLZ dataset (if active), ensure schema, and import configured layers.
+    """Downloads PLZ dataset (if active), ensures schema, and imports configured layers.
 
     Behavior preserved:
     - Early exit (True) when feature flag `plz` is inactive.

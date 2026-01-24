@@ -27,7 +27,7 @@ log = logging.getLogger(LOGGER_NAME)
 
 
 def _setup_worker_logger(log_queue: mp.Queue) -> logging.Logger:
-    """Send this module's logs to the main process QueueListener.
+    """Sends this module's logs to the main process QueueListener.
 
     Args:
         log_queue: Multiprocessing queue used by the central QueueListener.
@@ -57,7 +57,7 @@ def load(log_queue: mp.Queue) -> None:
 
 
 def stations_filter_by_examples() -> None:
-    """Retrieve DWD stations that measure air temperature; print demo outputs."""
+    """Retrieves DWD stations that measure air temperature; prints demo outputs."""
     request = DwdObservationRequest(
         parameters=("hourly", "temperature_air"),
         periods="recent",

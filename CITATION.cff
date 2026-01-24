@@ -11,9 +11,9 @@ authors:
     alias: "@mdoepfert"
     affiliation: "Technical University of Munich"
     orcid: "https://orcid.org/0000-0001-8720-2585"
-title: "InfDB"
+title: "infDB - Infrastructure and Energy Database"
 type: software
-license: MIT
+license: Apache License Version 2.0
 version: 0.2.0
 doi: 
 date-released: 2025-13-05

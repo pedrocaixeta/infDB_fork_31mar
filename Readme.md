@@ -1,505 +1,125 @@
 <p align="center">
-   <img src="docs/img/logo_infdb_text.png" alt="Repo logo" width="250"/>
+   <img src="docs/mkdocs/docs/assets/img/logo_infdb_text.png" alt="Repo logo" width="100"/>
 </p>
 
 # infDB - Infrastructure and Energy Database
-
-**The infDB is a user-friendly, platform-independent, and open-source data infrastructure as a foundation for energy system analyses. It enables complex evaluations by combining various tools through standardized interfaces, fostering an open and interoperable ecosystem.**
+**infDB - Infrastructure and Energy Database** provides a modular and easy-to-configure open-source data and tool infrastructure equipped with essential services, designed to minimize the effort required for data management. This platform-independent containerized approach streamlines collaboration in energy modeling and analysis, empowering the growth of an ecosystem by offering standardized interfaces and APIs, and allowing users to dedicate their focus to generating insights rather than handling data logistics by ensuring data is FAIR (Findable, Accessible, Interoperable, and Reusable).
 
 | Category | Badges |
 |----------|--------|
-| License | [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) |
-| Documentation | [![Documentation](https://img.shields.io/badge/docs-available-brightgreen)](https://gitlab.lrz.de/tum-ens/need/database) |
-| Development | [![Open Issues](https://img.shields.io/badge/issues-open-blue)](https://gitlab.lrz.de/tum-ens/need/database/-/issues) [![Closed Issues](https://img.shields.io/badge/issues-closed-green)](https://gitlab.lrz.de/tum-ens/need/database/-/issues) [![Open MRs](https://img.shields.io/badge/merge_requests-open-blue)](https://gitlab.lrz.de/tum-ens/need/database/-/merge_requests) [![Closed MRs](https://img.shields.io/badge/merge_requests-closed-green)](https://gitlab.lrz.de/tum-ens/need/database/-/merge_requests) |
-| Community | [![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen)](docs/contributing/CONTRIBUTING.md) [![Contributors](https://img.shields.io/badge/contributors-0-orange)](#) [![Repo Count](https://img.shields.io/badge/repo-count-brightgreen)](#) |
+| License | [![License](https://img.shields.io/badge/license-Apache%202-blue)](LICENSE) |
+| Documentation | [![Documentation](https://img.shields.io/badge/docs-available-brightgreen)](https://tum-ens.github.io/InfDB) |
+| Community | [![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://tum-ens.github.io/InfDB/development) [![Contributors](https://img.shields.io/badge/contributors-0-orange)](#) [![Repo Count](https://img.shields.io/badge/repo-count-brightgreen)](#) |
 
 ## Table of Contents
 
-- [Purpose](#purpose)
+- [Why use it?](#why-use-it)
 - [How it works?](#how-it-works)
 - [Getting Started](#getting-started)
-  - [Installation for local development](#installation-for-local-development)
-- [For Developers](#for-developers)
-   - [Repository Structure](#repository-structure)
-   - [Usage Guidelines](#usage-guidelines)
-   - [Basic API Usage](#basic-api-usage)
-   - [Development Workflow](#development-workflow)
-   - [API Documentation](#api-documentation)
-   - [CI/CD Workflow](#cicd-workflow)
-   - [Development Resources](#development-resources)
-   - [Contribution and Code Quality](#contribution-and-code-quality)
 - [License and Citation](#license-and-citation)
 
-## Purpose
 
+## Why use it?
+
+The infDB platform addresses common challenges in energy system modeling and analysis, particularly those related to data management. By providing a standardized and modular infrastructure, infDB reduces the time and effort required to set up and maintain data systems. This allows researchers, analysts, and planners to focus on their core tasks of modeling and analysis, rather than being bogged down by data logistics.
+
+The infDB can be used effectively wherever geospatial and time series information is required. Possible applications include:
+
+-   Energy System Modeling
+-   Municipal Heat Planning and Infrastructure Planning
+-   Scenario and Geospatial Analysis
+
+<!-- ## Purpose
 **infDB (Infrastructure and Energy Database)** offers a flexible and easy-to-configure data infrastructure with essential services, minimizing the effort required for data management. By providing standardized interfaces and APIs, infDB streamlines collaboration in energy modeling and analysis, enabling users to focus on insights rather than data handling.
 
 For instance, it can be used for the following applications:
 - Energy System Modeling
 - Infrastructure Planning
 - Scenario Analysis
-- Geospatial Analysis
+- Geospatial Analysis -->
 
 ## How it works?
 The infDB architecture is composed of three coordinated layers as shown in the figure below:
-1. **PostgreSQL** – foundational geospatial and semantic infrastructure and energy data (center)
-2. **Services** – preconfigured platform services (left & top)
-3. **Tools** – external connected software and scripts. (right)
+
+- **Services** – Dockerized open-source software providing base functionality.
+- **Tools** –  Software interacting with the infDB.
 
 The PostgreSQL database is the basis and extended by services and tools. More information of each layer is described below. 
 The PostgreSQL, all services and adopted tools are dockerized for a modular and flexible application.
-![alt text](docs/img/infdb-overview.png)
-
-### PostgreSQL
-The foundation is a PostgreSQL database enhanced with TimescaleDB, PostGIS, PGRouting, and the 3D City Database:
-
-- [TimescaleDB](https://www.timescale.com/): Scalable time-series storage (weather, load, generation) with hypertables, compression, optional continuous aggregates.
-- [PostGIS](https://postgis.net/): Spatial/geographic objects (buildings, parcels, networks) with geometry queries, projections, and spatial indexing.
-- [PGRouting](https://pgrouting.org/): Network routing algorithms (shortest path, reachability) on road and infrastructure graphs for mobility and grid analysis.
-- [3D City Database](http://www.3dcitydb.org/): Virtual 3D city model storage (buildings, terrain, infrastructure) with CityGML support, spatial indexing, and semantic queries for detailed urban analysis.
+![infDB overview](docs/mkdocs/docs/assets/img/infdb-overview.png)
 
 ### Services
-Integrated, preconfigured services extending the infDB:
-- [pgAdmin](https://www.pgadmin.org/): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
-- [FastAPI](https://fastapi.tiangolo.com/): REST endpoints (/city, /weather) with OpenAPI docs and validated access to 3D, geospatial, and time-series data.
-- [Jupyter](https://jupyter.org/): Notebook environment (dependencies and env vars preloaded) for exploratory queries, ETL prototypes, reproducible analysis.
-- [QWC2](https://github.com/qwc-services/qwc2): Web mapping client for 2D/3D visualization, layer styling, spatial inspection, quick dataset validation.
-- [PostgREST](https://postgrest.org/): Auto-generated REST API over PostgreSQL schemas (tables, views, RPC) using DB roles for auth; rapid, lightweight data access without extra backend code.
-- [pygeoapi](https://pygeoapi.io/): OGC API (Features/Coverages/Processes) server exposing PostGIS data via standards-based JSON & HTML endpoints for interoperable geospatial discovery and querying.
+The infDB platform provides a suite of essential services designed to facilitate database operation and administration, data handling and visualization, and connectivity. Each preconfigured service can be activated individually to tailor the environment to your specific requirements. This section provides a brief description and configuration options for each available service.
 
-These services provide core functionalities and support a seamless path from ingestion to analysis and visualization.
+More information, a list of available services see [Services](https://tum-ens.github.io/InfDB/infdb/#services).
 
 ### Tools
-Tools are external software, scripts, or workflows that interact with infDB through its standardized APIs and database schemas, enabling specialized analysis and processing capabilities.
+Tools are software that interact with infDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains.
 
-#### Currently Integrated Tools
-The following tools are currently integrated with infDB:
-
-- **infDB-loader**: Containerized solution for automated ingestion of public open data for Germany
-- **infDB-basedata**: Containerized pipeline for data transformation, validation, and enrichment
-- **[pylovo](https://github.com/tum-ens/pylovo)**: Python tool for generating synthetic low-voltage distribution grids
-- **[EnTiSe](https://github.com/tum-ens/EnTiSe)**: Python tool for energy time series generation and management
-
-Additional community-developed or domain-specific tools can be easily integrated through infDB's standardized APIs and database schemas.
+More information, a list of integrated tools and additional information, see [Tools](https://tum-ens.github.io/InfDB/tools/).
 
 ## Getting Started
-To get started, follow these steps below. For more information in detail read the [https://infdb.readthedocs.io/](https://infdb.readthedocs.io/).
+If you want to use the infDB with the default settings just use the [Quick Start](#Quick-Start) below. For more information in detail read the [Usage Guide](https://tum-ens.github.io/InfDB/usage/) of the official documentation.
 
 ### Prequisites
-**Docker**: You can either use Docker Engine: https://docs.docker.com/engine/install/ \
-or Docker Desktop (for a Graphical User Interface): https://docs.docker.com/desktop/
+ - Docker Engine: https://docs.docker.com/engine/install/
+ - Docker Desktop: https://docs.docker.com/desktop/
 
-### Steps
-If you are happy with the preconfiguration and default passwords, then just follow these four steps (see detailed instructions in the corresponding sections below):
-
-1. [Prepare folder structure](#Suggested-folder-structure-for-infDB)   
-2. [Clone infDB](#clone-infdb)
-3. [Startup infDB](#startup-script)
-4. [Import data and run toolchain](#setup-infdb-loader)
-
-**Important:** All commands need to be executed on **macOS or Linux**. 
-
-**Windows users:** Please install
-- [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
-- [Ubuntu as Windows Subsystem for Linux (WSL)](https://documentation.ubuntu.com/wsl/stable/howto/install-ubuntu-wsl2/)
-
-After installation, launch the Linux terminal by searching for "Ubuntu" in your applications.
-
-### Folder Structure of infDB
-The infDB provides a modular folder structure that allows managing multiple database instances independently. Each instance represents a separate deployment with its own data, configuration, and services—ideal for handling different regions, projects, or environments.
+### Folder Structure
+The infDB uses the following folder structure:
+  ```
+  infdb/
+  ├── infdb-demo/
+  ├── sonthofen/
+  ├── ...
+  └── muenchen/
 ```
-infdb/
-├── infdb-demo/
-├── sonthofen/
-├── ...
-└── muenchen/
-```
-The recommended structure places all instance data in docker managed volumes while keeping each instance's configuration and tools in separate directories (e.g., `infdb-demo/`, `sonthofen/`, `muenchen/`). This approach simplifies backups, migrations, and multi-instance management.
 
-First of all, create the main `infdb` directory and navigate into it:
+### Quick Start
+You can quickly start an infDB with default configuration and credentials by following these steps:
+
+#### Create Folder for infDB
 ```bash
 mkdir infdb
 cd infdb
 ```
-### Clone infDB
-Then, you can access the repository either with SSH or HTTPS as you like:
 
-**Windows Users - IMPORTANT:** Clone the repository to your Ubuntu home directory:
-````
-\\wsl.localhost\Ubuntu\home\[PC username]
-````
-(in file explorer Windows shows \\wsl.localhost as Linux) and execute scripts from Linux terminal (search for Ubuntu in applications)
-
-**SSH vs HTTPS:**
-- **SSH (Secure Shell)**: Uses cryptographic key pairs for authentication. Once set up, you won't need to enter credentials for each operation. Recommended for frequent Git operations.
-  ```bash
-  # Replace "infdb-demo" by name of instance 
-  git clone git@git-ce.rwth-aachen.de:need/NEED-infdb.git infdb-demo 
-  ```
-
-- **HTTPS**: Uses username and password (or personal access token) for authentication. Simpler to set up initially but may require credentials for each operation unless you configure credential caching.
-or using **https** 
-  ```bash
-  # Replace "infdb-demo" by name of instance
-  git clone https://git-ce.rwth-aachen.de/need/NEED-infdb.git infdb-demo
-  ```
-
-Both methods are secure and work identically for cloning, pushing, and pulling. Your choice depends on your workflow preferences and environment constraints.
-
-Navigate to the instance directory:
-```bash
+#### Clone infDB
+``` bash
+# Replace "infdb-demo" by name of instance 
+git clone git@github.com:tum-ens/InfDB.git infdb-demo
 cd infdb-demo
 ```
 
-### Setup infDB Configuration
-Before starting infDB, you need to configure it:
-
-1. **Copy the configuration template:**
-    ```bash
-    cp .env.template .env
-    ```
-
-2. **Edit the environment file** at `.env` to customize your infDB instance settings (database credentials, ports, paths, etc.).
-    
-    **Note:** If you're using the default configuration, you can skip editing and proceed directly to generating the configuration files.
-
-    ```bash
-    # ==============================================================================
-    # InfDB Docker Compose Configuration
-    # ==============================================================================
-    # This file contains all configuration parameters for the InfDB Docker setup.
-    # Copy this file to .env and customize the values as needed.
-    # ==============================================================================
-
-    # ==============================================================================
-    # SERVICE ACTIVATION
-    # ==============================================================================
-    # Select profiles to activate
-
-    # Base profiles
-    COMPOSE_PROFILES=core,admin
-
-    # All profiles
-    # COMPOSE_PROFILES=core,admin,api,notebook,qwc
-
-    # ==============================================================================
-    # BASE CONFIGURATION
-    # ==============================================================================
-    # Base name for the project (used in network names and data paths)
-    BASE_NAME=infdb-demo
-
-    # Docker network name for inter-service communication
-    # Pattern: infdb_<instance-name>_network
-    BASE_NETWORK_NAME=infdb_${BASE_NAME}_network
-
-    # Path to config files (used by infdb-init)
-    CONFIG_INFDB_PATH=./configs
-
-
-    # ==============================================================================
-    # POSTGRESQL DATABASE (Core Service)
-    # ==============================================================================
-
-    ...
-    ```
-
-### Start infDB
-The startup script simplifies the startup process if you dont want to execute each single step as shown below separately and are happy with the default configurations and passwords:
+#### Start infDB
 ```bash
-bash infdb-startup.sh
+bash infdb-start.sh up -d --build
 ```
 
-**Hint:** The infDB will be run as long as you stop it manually as described below even when 
-the machine is restarted.
-
-**Hint** Ensure that Docker is running. If you use Docker Desktop, start the app.
-
-
-### Run Linear-Heat-Density
-In order to start the tools of the use case Linear Heat Density, please use the following script:
+#### Import Opendata
 ```bash
-bash tools/run_linear-heat-density.sh
+bash infdb-import.sh
 ```
 
-### Stop infDB
-To stop all running infDB services, execute:
+#### Stop infDB
 ```bash
-docker compose stop
+bash infdb-stop.sh
 ```
 
-### Remove infDB
-To stop all running infDB services and remove them, execute:
-```bash
-bash docker compose down
-```
+<!-- # Changelog
 
-### Remove infdb-loader data
-To remove the downloaded infdb-loader data, execute:
-```bash
-bash infdb-remove.sh
-```
-
-### Visualize infDB data in QWC Web Client
-1. In [.env](.env) make sure profiles `core` and `qwc`to `COMPOSE_PROFILES`
-2. Restart infDB with new profile to start services including QWC Web Client:
-```bash
-bash infdb-startup.sh
-```
-3. Open http://localhost:80/ in your web browser.
-
-### Inspect infDB Data in Database with Postgres Admin UI
-1. In [.env](.env) make sure profiles `core` and `admin`to `COMPOSE_PROFILES`
-2. Restart infDB with new profile to start services including QWC Web Client:
-```bash
-bash infdb-startup.sh
-```
-3. Open http://localhost:82/ in your web browser.
-
-## Developer on Windows 
-To open the repository in Visual Studio Code (VSC) click the two arrowheads in the lower left corner of VSC and select "Connect to WSL". Then you can open the repository folder from for Linux home directory.
-
-
-
-# Tools Directory
-For detailed information about each tool, their usage, configuration options, and examples, please refer to the [tools/Readme.md](tools/Readme.md) file.
-
-## Hints for Advanced Users
-
-### PSQL Connection to infDB
-```bash
-# on linux and macos
-PGPASSWORD='citydb_password' psql -h localhost -p 5432 -U citydb_user -d citydb
-```
-
-### Configurations (only in addition for QGIS Desktop)
-.pg_service.conf for QGIS to connect to InfDB via service
-```
-[infdb_postgres]
-host=localhost
-port=5432
-dbname=citydb
-user=citydb_user
-password=citydb_password
-sslmode=disable
-```
-
-# Troubleshooting: Issues Encountered During first infDB Installation on Windows
-
-This section summarizes some problems encountered during the first installation and startup of infDB on Windows, along with their solutions.
-
-**1.Ubuntu Opened as root instead of Normal User**
-
--Problem:
-WSL launched Ubuntu as the root user. May lead to problems while executing commands.
-
--Cause:
-No default user was configured during first installation.
-
--Solution:
-```bash
-adduser username
-```
-
-Set the default user:
-```bash
-#ubuntu 
-config --default-user username
-```
-
-Restart WSL:
-```bash
-wsl --shutdown
-```
-
-**2.Docker Command Not Found in WSL2**
-
--Problem:
-The command 'docker' could not be found in this WSL2 distro.
-
--Cause:
-Docker Desktop installed, but WSL integration disabled.
-
--Fix:
-Enable Docker & WSL integration:
-
-Docker Desktop → Settings → Resources → WSL Integration
-
-Enable integration with Ubuntu.
-After enabling, check via:
-```bash
-#ubuntu 
-
-docker –version
-```
-**3. Docker Permission Denied**
-
--Problem:
-permission denied while trying to connect to the Docker daemon socket
-
--Cause:
-Logged in user was not part of the docker group.
-
--Fix:
-```bash
-#ubuntu 
-sudo usermod -aG docker username
-```
-Restart WSL:
-```bash
-#ubuntu 
-wsl –shutdown
-```
-
-# For Developers
-
-### Local development environment for InfDB for developers
-```bash
-# on linux and macos by installation script
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# or by pip
-pip install uv
-```
-
-### Create environment (only once)
-```bash
-# linux and macos
-uv sync
-```
-
-### Activate environment
-```bash
-# linux and macos
-source .venv/bin/activate
-# windows
-venv\Scripts\activate
-```
-### Clean repo
-```bash
-git fetch origin
-git reset --hard
-git clean -fdx
-```
-
-### Stop and remove all docker containers and volumes
-```bash
-# 1. Stop all containers
-docker stop $(docker ps -a -q)
-
-# 2. Remove all containers (breaks the link to the volumes)
-docker rm $(docker ps -a -q)
-
-# 3. Delete all volumes
-docker volume rm $(docker volume ls -q)
-```
-
-### Clean docker
-```bash
-docker system prune -a --volume
-```
-
-### Tree with permission
-```bash
-tree -pug
-# -p permissions
-# -u user
-# -g group
-```
-
-## Repository Structure
-
-- **src/**: Main application package
-  - **infdb_package/**: Business logic services
-  - **main.py**: Application entry point
-- **docs/**: Documentation
-  - **architecture/**: System architecture documentation
-  - **contributing/**: Contribution guidelines and code of conduct
-  - **development/**: Developer guides and workflows
-  - **guidelines/**: Project guidelines and standards
-  - **operations/**: Operational guides and CI/CD documentation
-  - **source/**: Source files for documentation
-  - **img/**: Images used in documentation
-- **dockers/**: Docker configuration files
-- **tools/**: External tools and scripts that interact with infDB
-  - Individual tool directories with their own configurations
-  - **Readme.md**: Detailed documentation for all tools
-- **configs/**: Configuration files for infDB initialization
-- **tests/**: Test suite
-  - **unit/**: Unit tests for individual components
-  - **integration/**: Tests for component interactions
-  - **e2e/**: End-to-end tests for the application
-
-
-## Development Workflow
-
-1. **Open an issue** to discuss new features, bugs, or changes.
-2. **Create a new branch** for each feature or bug fix based on an issue.
-3. **Implement the changes** following the coding guidelines.
-4. **Write tests** for new functionality or bug fixes.
-5. **Run tests** to ensure the code works as expected.
-6. **Create a merge request** to integrate your changes.
-7. **Address review comments** and update your code as needed.
-8. **Merge the changes** after approval.
-
-
-## CI/CD Workflow
-
-The CI/CD workflow is set up using GitLab CI/CD. The workflow runs tests, checks code style, and builds the documentation on every push to the repository. You can view workflow results directly in the repository's CI/CD section. For detailed information about the CI/CD workflow, see the [CI/CD Guide](docs/operations/CI_CD_Guide.md).
-
-## Development Resources
-
-The following resources are available to help developers understand and contribute to the project:
-
-### Coding Guidelines
-
-The [Coding Guidelines](docs/guidelines/CODING_GUIDELINES.md) document outlines the coding standards and best practices for the project. Start here when trying to understand the project as a developer.
-
-### Architecture Documentation
-
-The [Architecture Documentation](docs/architecture/index.rst) provides an overview of the system architecture, including the database schema, components, and integration points.
-
-### Developer Guides
-
-- [Development Setup Guide](docs/development/setup.md): Comprehensive instructions for setting up a development environment
-- [Contribution Workflow](docs/development/workflow.md): Step-by-step process for contributing to the project
-- [API Development Guide](docs/development/api_guide.md): Information for developers who want to use or extend the API
-- [Database Schema Documentation](docs/development/database_schema.md): Detailed information about the database schema
-
-### Contribution Guidelines
-
-- [Contributing Guide](docs/contributing/CONTRIBUTING.md): Guidelines for contributing to the project
-- [Code of Conduct](docs/contributing/CODE_OF_CONDUCT.md): Community standards and expectations
-- [Release Procedure](docs/contributing/RELEASE_PROCEDURE.md): Process for creating new releases
-
-### Operations Documentation
-
-- [CI/CD Guide](docs/operations/CI_CD_Guide.md): Detailed information about the CI/CD workflow
-
-## Contribution and Code Quality
-
-Everyone is invited to develop this repository with good intentions. Please follow the workflow described in the [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md).
-
-### Coding Standards
-
-This repository follows consistent coding styles. Refer to [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) and the [Coding Guidelines](docs/guidelines/CODING_GUIDELINES.md) for detailed standards.
-
-### Pre-commit Hooks
-
-Pre-commit hooks are configured to check code quality before commits, helping enforce standards.
-
-### Changelog
-
-The changelog is maintained in the [CHANGELOG.md](CHANGELOG.md) file. It lists all changes made to the repository. Follow instructions there to document any updates.
+The changelog is maintained in the [CHANGELOG.md](CHANGELOG.md) file. It lists all changes made to the repository. Follow instructions there to document any updates. -->
 
 # License and Citation
 
-The code of this repository is licensed under the **MIT License** (MIT).  
-See [LICENSE](LICENSE) for rights and obligations.  
-See the *Cite this repository* function or [CITATION.cff](CITATION.cff) for citation of this repository.  
-Copyright: [TU Munich - ENS](https://www.epe.ed.tum.de/en/ens/homepage/) | [MIT](LICENSE)
+The code of this repository is licensed under the **Apache 2.0 License**.  
+See [LICENSE](LICENSE) for rights and obligations. See [Citation](docs/mkdocs/docs/welcome/citation.md) for citation of this repository.  
+Copyright: [TU Munich - ENS](https://www.epe.ed.tum.de/en/ens/homepage/) | [Apache 2.0 License](LICENSE)
 
 # Contact
 Patrick Buchenberg
 
-Chair of Renewable and Sustainable Energy System - Technical University of Munich (TUM).
+Chair of Renewable and Sustainable Energy System
+Technical University of Munich (TUM) 
 Email: patrick.buchenberg@tum.de
 [https://www.epe.ed.tum.de/ens/staff/ensteam/patrick-buchenberg/](https://www.epe.ed.tum.de/ens/staff/ensteam/patrick-buchenberg/)

@@ -5,13 +5,12 @@
 -- Cleanup existing buildings table if it exists
 --------------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS {output_schema};
-DROP TABLE IF EXISTS {output_schema}.buildings_lod2;
 
 --------------------------------------------------------------
 -- 02_create_buildings_table.sql
 -- Create buildings table
 --------------------------------------------------------------
-CREATE TABLE {output_schema}.buildings_lod2
+CREATE TABLE IF NOT EXISTS {output_schema}.buildings_lod2
 (
     id                SERIAL PRIMARY KEY,
     feature_id        integer,
@@ -39,6 +38,8 @@ CREATE TABLE {output_schema}.buildings_lod2
 CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings_lod2 USING GIST (geom);
 CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.buildings_lod2 USING GIST (centroid);
 CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_lod2 (id, objectid, building_function_code);
+CREATE INDEX IF NOT EXISTS buildings_lod2_feature_id_idx ON {output_schema}.buildings_lod2 (feature_id);
+CREATE INDEX IF NOT EXISTS buildings_lod2_gks_objectid_idx ON {output_schema}.buildings_lod2 (gemeindeschluessel, objectid);
 
 --------------------------------------------------------------
 -- 03_fill_id_object_id_building.sql
@@ -65,8 +66,7 @@ WHERE f.objectclass_id = 901 -- =building
   -- AND p.val_string <> '31001_2463' -- exclude garages
   -- AND p.val_string <> '31001_2513' -- exclude water containers
 -- ORDER BY f.id
-AND gsd.val_string IN ({gemeindeschluessel})  -- filter by gemeindeschluessel
-;
+AND gsd.val_string IN ({gemeindeschluessel});  -- filter by gemeindeschluessel
 
 -- -----------------------------------------------------------------
 -- -- 0X_fill_gemeindeschluessel.sql
@@ -94,7 +94,8 @@ WITH height_data AS (SELECT p.feature_id, p.val_double
 UPDATE {output_schema}.buildings_lod2 b
 SET height = hd.val_double
 FROM height_data hd
-WHERE b.feature_id = hd.feature_id;
+WHERE b.feature_id = hd.feature_id
+  AND b.gemeindeschluessel IN ({gemeindeschluessel});
 
 -- -- delete buildings below a height threshold
 -- DELETE
@@ -120,15 +121,17 @@ WHERE b.feature_id = hd.feature_id;
 --------------------------------------------------------------
 WITH ground_data AS (
     WITH group_901 AS (
-    SELECT
-        feature.objectid AS objectid,
-        feature.id as feature_id,
-        gd.geometry_properties ->> 'objectId' as root_object_id,
-        child ->> 'objectId' as child_object_id
-    FROM feature
-             JOIN geometry_data gd ON feature.id = gd.feature_id
-             CROSS JOIN LATERAL jsonb_array_elements(gd.geometry_properties -> 'children') AS child
-    WHERE objectclass_id = 901
+        SELECT
+            f.objectid AS objectid,
+            f.id AS feature_id,
+            gd.geometry_properties ->> 'objectId' AS root_object_id,
+            child ->> 'objectId' AS child_object_id
+        FROM {output_schema}.buildings_lod2 b
+        JOIN feature f ON f.id = b.feature_id
+        JOIN geometry_data gd ON f.id = gd.feature_id
+        CROSS JOIN LATERAL jsonb_array_elements(gd.geometry_properties -> 'children') AS child
+        WHERE f.objectclass_id = 901
+          AND b.gemeindeschluessel IN ({gemeindeschluessel})
     ),
     group_710 AS (
          SELECT
@@ -156,7 +159,8 @@ SET groundsurface_flaeche = ground_data.area,
     geom       = ground_data.geom,
     centroid   = ST_Centroid(ground_data.geom)
 FROM ground_data
-WHERE b.objectid = ground_data.objectid;
+WHERE b.objectid = ground_data.objectid
+  AND b.gemeindeschluessel IN ({gemeindeschluessel});
 
 -- -- delete buildings below an area threshold
 -- DELETE
@@ -173,7 +177,8 @@ WITH floor_number_data AS (SELECT feature_id, val_int
 UPDATE {output_schema}.buildings_lod2 b
 SET storeysAboveGround = GREATEST(fnd.val_int, 1)
 FROM floor_number_data fnd
-WHERE b.feature_id = fnd.feature_id;
+WHERE b.feature_id = fnd.feature_id
+  AND b.gemeindeschluessel IN ({gemeindeschluessel});
 
 -- -- fill in missing floor_number values
 -- WITH average_floor_height AS (SELECT building_use_id,
@@ -213,4 +218,5 @@ SET street = sad.street,
     state = sad.state
     -- original_street = sad.original_street
 FROM split_addresses sad
-WHERE b.feature_id = sad.feature_id;
+WHERE b.feature_id = sad.feature_id
+  AND b.gemeindeschluessel IN ({gemeindeschluessel});

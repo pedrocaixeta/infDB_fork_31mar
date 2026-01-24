@@ -4,9 +4,10 @@ import os
 import random
 import shlex
 import subprocess
+import tempfile
 import time
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Union
 from urllib.parse import urljoin, urlparse
 from zipfile import BadZipFile, ZipFile
 
@@ -30,22 +31,22 @@ SQL_SCHEMA_GEOMETRY_COL: str = "geom"
 
 
 def _ensure_list(value) -> List:
-    """Return value as list (wrap scalars); pass through lists unchanged."""
+    """Returns value as list (wraps scalars); passes through lists unchanged."""
     if isinstance(value, list):
         return value
     return [value]
 
 
 def _fetch_html(url: str) -> BeautifulSoup:
-    """Fetch a URL and return a BeautifulSoup parser (html.parser)."""
+    """Fetches a URL and returns a BeautifulSoup parser (html.parser)."""
     resp = requests.get(url, timeout=HTTP_TIMEOUT_SECONDS)
     resp.raise_for_status()
     return BeautifulSoup(resp.content, "html.parser")
 
 
 def _pg_connstring_for_gdal(infdb: InfDB) -> str:
-    """
-    Build a GDAL/OGR PostgreSQL connection string.
+    """Builds a GDAL/OGR PostgreSQL connection string.
+
     ogr2ogr expects 'dbname', not 'db'.
     """
     # use InfDB helper that returns merged DB params
@@ -60,8 +61,8 @@ def _pg_connstring_for_gdal(infdb: InfDB) -> str:
 
 
 def _pg_connstring_for_psql(infdb: InfDB) -> str:
-    """
-    Build a PostgreSQL connection string for psql/libpq tools (URI format).
+    """Builds a PostgreSQL connection string for psql/libpq tools (URI format).
+
     Used by: psql, raster2pgsql, pg_dump, pg_restore, etc.
     """
     params = infdb.get_db_parameters_dict()
@@ -71,10 +72,11 @@ def _pg_connstring_for_psql(infdb: InfDB) -> str:
 
 
 def _ogr2ogr(cmd_args, infdb, env_extra=None):
-    """
-    Execute ogr2ogr with environment tuned for speed:
+    """Executes ogr2ogr with environment tuned for speed.
+
       - PG_USE_COPY=YES : streams via COPY (very fast)
       - OGR_ENABLE_PARTIAL_REPROJECTION=TRUE : small perf boost
+
     Handles spaces in arguments safely (no shell) and logs output line by line.
     Raises RuntimeError if ogr2ogr exits with non-zero code.
     """
@@ -118,13 +120,13 @@ def _ogr2ogr(cmd_args, infdb, env_extra=None):
 
 
 def if_multiprocesing(infdb: InfDB) -> bool:
-    """Return True if multiprocessing is enabled via config (original spelling/API)."""
+    """Returns True if multiprocessing is enabled via config (original spelling/API)."""
     status = infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "status"])
     return status == "active"
 
 
 def if_active(service: str, infdb: InfDB) -> bool:
-    """Tell whether a given source service is active; logs decision.
+    """Tells whether a given source service is active; logs decision.
 
     Args:
         service: Service key under `loader.sources`.
@@ -142,7 +144,7 @@ def if_active(service: str, infdb: InfDB) -> bool:
 
 
 def any_element_in_string(target_string: str, elements: Iterable[str]) -> bool:
-    """Return True if any element is a substring of the target string."""
+    """Returns True if any element is a substring of the target string."""
     return any(element in target_string for element in elements)
 
 
@@ -150,7 +152,7 @@ def any_element_in_string(target_string: str, elements: Iterable[str]) -> bool:
 
 
 def get_links(url: str, ending: str, flt: str, infdb: InfDB) -> list[str]:
-    """Scrape links from a page matching an ending and substring filter.
+    """Scrapes links from a page matching an ending and substring filter.
 
     Args:
         url: Page URL to scrape.
@@ -184,7 +186,7 @@ def _requests_download(
     backoff_base=1.5,
     chunk=1024 * 1024,
 ) -> str:
-    """HEAD (size if available) → streamed GET with retries/backoff."""
+    """Fetches HEAD (size if available) → streamed GET with retries/backoff."""
     os.makedirs(dest_dir, exist_ok=True)
 
     # filename from URL path
@@ -243,7 +245,8 @@ def _requests_download(
 def download_files(
     urls, file_path: str, infdb: InfDB, protocol: str = "http", username: str = None, access_token: str = None
 ) -> list[str]:
-    """
+    """Downloads files using either the requests library (WebDAV) or SmartDL.
+
     If `webdav` provided → use requests (supports WebDAV basic auth).
     Else → use SmartDL (your current async flow).
     """
@@ -289,7 +292,7 @@ def download_files(
 
 
 def unzip(zip_files, unzip_dir: str, infdb: InfDB) -> None:
-    """Extract one or more zip files into `unzip_dir`, skipping if already extracted.
+    """Extracts one or more zip files into `unzip_dir`, skipping if already extracted.
 
     Args:
         zip_files: A single .zip path or list of .zip paths.
@@ -322,9 +325,7 @@ def download_aria2c(
     auto_file_renaming: bool = False,
     quiet: bool = True,
 ) -> None:
-    """
-    Download files using aria2c with configurable options.
-    """
+    """Downloads files using aria2c with configurable options."""
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -366,9 +367,43 @@ def download_aria2c(
     do_cmd(cmd_parts)
 
 
-def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
+def download_aria2c_many(
+    urls: List[str],
+    output_dir: str | Path,
+    connections: int = 8,
+    max_connection_per_server: int = 8,
+    continue_download: bool = True,
+    quiet: bool = True,
+) -> None:
+    """Downloads many URLs using aria2c in one shot (-i input_file).
+
+    Much faster than calling aria2c once per file.
     """
-    Execute a shell command.
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # write URL list
+    url_file = output_dir / "_aria2_urls.txt"
+    with open(url_file, "w", encoding="utf-8") as f:
+        for u in urls:
+            f.write(u.strip() + "\n")
+
+    cmd_parts: list[str] = ["aria2c"]
+
+    if continue_download:
+        cmd_parts.append("-c")
+    cmd_parts.extend(["-x", str(connections), "-s", str(max_connection_per_server)])
+
+    if quiet:
+        cmd_parts.extend(["--summary-interval=60", "--console-log-level=warn"])
+
+    cmd_parts.extend(["-d", str(output_dir), "-i", str(url_file)])
+
+    do_cmd(cmd_parts)
+
+
+def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
+    """Executes a shell command.
 
     - If `cmd` is a string and shell=False: split into argv via shlex.split (safe).
     - If `cmd` is a string and shell=True: pass directly to shell (needed for pipes, redirections).
@@ -382,50 +417,170 @@ def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
 # =================== geospatial / DB import helpers ===================
 
 
-def get_envelop(infdb: InfDB):
-    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
-    log = infdb.get_worker_logger()
+def resolve_scope_patterns(scope: Union[str, Iterable[str], None]) -> List[str]:
+    """Turns config scope into a list of SQL LIKE patterns.
+
+    Backward compatible behavior:
+      - "05"        -> "05%"
+      - "09474126"  -> "09474126%"
+      - "05%"       -> "05%"   (already a LIKE pattern)
+      - "09_"       -> "09_"   (already a LIKE pattern)
+    """
+    if scope is None:
+        return []
+
     if isinstance(scope, str):
-        scope = [scope]
-    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
-    log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
-    log.debug("Envelop Path (file): %s", path)
-    gdf = gpd.read_file(path, layer="vg5000_gem")
-    gdf_scope = gdf[gdf["AGS"].str.startswith(tuple(scope or []))]
-    gdf_scope.to_postgis("scope", infdb.get_db_engine(), if_exists="replace", schema="opendata", index=False)
+        items = [scope]
+    else:
+        items = list(scope)
+
+    patterns: List[str] = []
+    for s in items:
+        s = str(s).strip()
+        if not s:
+            continue
+        if "%" in s or "_" in s:
+            patterns.append(s)
+        else:
+            patterns.append(f"{s}%")
+    return patterns
+
+
+def fetch_scope_ags_from_db(infdb: InfDB) -> List[str]:
+    """Resolves configured scope into the concrete list of municipality AGS values by querying opendata.bkg_vg5000_gem.
+
+    Returns a list of AGS strings (unique, stable order).
+    """
+    log = infdb.get_worker_logger()
+    params = infdb.get_db_parameters_dict() or {}
+
+    scope_raw = infdb.get_config_value([infdb.get_toolname(), "scope"])
+    patterns = resolve_scope_patterns(scope_raw)
+
+    if not patterns:
+        log.warning("No scope configured; returning empty AGS list.")
+        return []
+
+    # Build: ags LIKE %s OR ags LIKE %s ...
+    where_sql = " OR ".join(["ags LIKE %s"] * len(patterns))
+    sql = f"""
+        SELECT DISTINCT ags
+        FROM opendata.bkg_vg5000_gem
+        WHERE {where_sql}
+        ORDER BY ags;
+    """
+
+    log.info("Resolving scope -> AGS via DB (patterns=%s)", patterns)
+
+    conn = psycopg2.connect(
+        dbname=params["db"],
+        user=params["user"],
+        password=params["password"],
+        host=params["host"],
+        port=params["exposed_port"],
+    )
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, patterns)
+            rows = cur.fetchall()
+            return [str(r[0]) for r in rows]
+    finally:
+        conn.close()
+
+
+def materialize_scope_table(infdb: InfDB) -> None:
+    """Creates `opendata.scope` once from the resolved AGS selection.
+
+    This is run before multiprocessing to avoid race conditions where multiple processes
+    try to `replace` (drop/create) the `opendata.scope` table at the same time.
+    """
+    log = infdb.get_worker_logger()
+    engine = infdb.get_db_engine()
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    if not ags_list:
+        log.warning("Scope resolved to 0 AGS rows. Skipping opendata.scope materialization.")
+        return
+
+    sql = """
+        SELECT *
+        FROM opendata.bkg_vg5000_gem
+        WHERE ags = ANY(%s)
+    """
+    gdf_scope = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
+
+    gdf_scope.to_postgis(
+        "scope",
+        engine,
+        schema="opendata",
+        if_exists="replace",
+        index=False,
+    )
+    log.info("Materialized opendata.scope (%d rows).", len(gdf_scope))
+
+
+def get_envelop(infdb: InfDB) -> gpd.GeoDataFrame:
+    """Returns ONE combined GeoDataFrame for the configured scope, loaded from DB."""
+    log = infdb.get_worker_logger()
+    engine = infdb.get_db_engine()
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    if not ags_list:
+        log.warning("Scope resolved to 0 AGS rows. Returning empty GeoDataFrame.")
+        return gpd.GeoDataFrame()
+
+    # Use = ANY(%s) to pass a list safely.
+    sql = """
+        SELECT *
+        FROM opendata.bkg_vg5000_gem
+        WHERE ags = ANY(%s)
+    """
+
+    # geopandas.read_postgis works with SQLAlchemy engine too (you already use it elsewhere)
+    gdf_scope = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
     return gdf_scope
 
 
-def get_all_envelops(infdb: InfDB):
-    """Return the configured administrative envelope (GeoDataFrame filtered by AGS)."""
-    scope = infdb.get_config_value([infdb.get_toolname(), "scope"])
+def get_all_envelops(infdb: InfDB) -> List[gpd.GeoDataFrame]:
+    """Returns list[GeoDataFrame], one per municipality AGS in resolved scope.
+
+    Perfect for your create_geogitter loop.
+    """
     log = infdb.get_worker_logger()
-    if isinstance(scope, str):
-        scope = [scope]
-    ags_path = infdb.get_config_path([infdb.get_toolname(), "sources", "bkg", "path", "unzip"], type="loader")
-    log.debug("Envelop Path (unzipped): %s", ags_path)
-    path = get_file(ags_path, filename="vg5000", ending=GPKG_EXT, infdb=infdb)
-    log.debug("Envelop Path (file): %s", path)
-    gdf = gpd.read_file(path, layer="vg5000_gem")
-    envelop = []
-    for s in scope:
-        envelop.append(gdf[gdf["AGS"].str.startswith(s)])
-    return envelop
+    engine = infdb.get_db_engine()
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    if not ags_list:
+        log.warning("Scope resolved to 0 AGS rows. Returning empty list.")
+        return []
+
+    sql = """
+        SELECT *
+        FROM opendata.bkg_vg5000_gem
+        WHERE ags = ANY(%s)
+        ORDER BY ags
+    """
+
+    gdf = gpd.read_postgis(sql, con=engine, geom_col="geom", params=(ags_list,))
+    if gdf.empty:
+        return []
+
+    envelops = [sub for _, sub in gdf.groupby("ags", sort=False)]
+    log.info("Scope resolved to %d municipalities", len(envelops))
+    return envelops
 
 
 # ============================== file helpers ==============================
 
 
 def get_subdirectories_by_suffix(folder, suffix):
-    """Return all subdirectories in `folder` whose names end with `suffix`."""
+    """Returns all subdirectories in `folder` whose names end with `suffix`."""
     folder = Path(folder)
     return [str(p) for p in folder.iterdir() if p.is_dir() and p.name.endswith(suffix)]
 
 
 def get_all_files(folder_path: str, ending: str) -> list[str]:
-    """Recursively collect all files under `folder_path` with the given ending."""
+    """Recursively collects all files under `folder_path` with the given ending."""
     files: list[str] = []
     for dirpath, _, filenames in os.walk(folder_path):
         for filename in filenames:
@@ -436,7 +591,7 @@ def get_all_files(folder_path: str, ending: str) -> list[str]:
 
 
 def get_file(folder_path: str, filename: str, ending: str, infdb: InfDB) -> Optional[str]:
-    """Return the newest file path in `folder_path` containing `filename` and ending with `ending`.
+    """Returns the newest file path in `folder_path` containing `filename` and ending with `ending`.
     Necessary for data that was updated by provider:
     All data is saved in files -> selects newest to save in database."""
     files = get_all_files(folder_path, ending)
@@ -450,7 +605,7 @@ def get_file(folder_path: str, filename: str, ending: str, infdb: InfDB) -> Opti
 
 
 def get_website_links(url: str, infdb: InfDB) -> list[str]:
-    """Return all .zip links found on the given page (absolute or relative hrefs)."""
+    """Returns all .zip links found on the given page (absolute or relative hrefs)."""
     soup = _fetch_html(url)
     log = infdb.get_worker_logger()
     links = [a["href"] for a in soup.find_all("a", href=True) if a["href"].endswith(".zip")]
@@ -460,7 +615,7 @@ def get_website_links(url: str, infdb: InfDB) -> list[str]:
 
 
 def get_file_from_url(url: str):
-    """Split a URL into (filename, stem, extension) triple."""
+    """Splits a URL into (filename, stem, extension) triple."""
     path = urlparse(url).path
     filename = os.path.basename(path)
     name, extension = os.path.splitext(filename)
@@ -471,7 +626,7 @@ def get_file_from_url(url: str):
 
 
 def ensure_utf8_encoding(filepath: str, infdb: InfDB) -> str:
-    """Detect file encoding; if not UTF-8, re-encode to a temp UTF-8 CSV and return its path."""
+    """Detects file encoding; if not UTF-8, re-encodes to a temp UTF-8 CSV and returns its path."""
     log = infdb.get_worker_logger()
     with open(filepath, "rb") as f:
         raw = f.read()
@@ -496,7 +651,7 @@ def ensure_utf8_encoding(filepath: str, infdb: InfDB) -> str:
 
 
 def get_number_processes(infdb: InfDB) -> int:
-    """Determine worker process count based on CPU count and config max_cores."""
+    """Determines worker process count based on CPU count and config max_cores."""
     log = infdb.get_worker_logger()
     number_processes = 1
     max_processes = infdb.get_config_value([infdb.get_toolname(), "multiproccesing", "max_cores"]) or 1
@@ -538,7 +693,11 @@ def import_layers(
         clip_wkt, clip_method, _ = get_clip_geometry(target_crs=epsg, infdb=infdb)
 
         if clip_wkt:
-            tmp_gpkg = os.path.splitext(os.path.abspath(input_file))[0] + "_clip_tmp.gpkg"
+            tmp_gpkg = tempfile.NamedTemporaryFile(
+                prefix="clip_boundary_",
+                suffix=".gpkg",
+                delete=False,
+            ).name
             try:
                 from shapely import wkt as shapely_wkt
 
@@ -749,9 +908,8 @@ def fast_copy_points_csv(
         conn.close()
 
 
-def get_clip_geometry(target_crs: int, infdb: InfDB):
-    """
-    Get clipping geometry for the configured scope.
+def get_clip_geometry(target_crs: int, infdb: InfDB, state_prefix: Optional[str] = None):
+    """Gets clipping geometry for the configured scope.
 
     This is the single source of truth for spatial clipping used by both
     import_layers() and fast_copy_points_csv().
@@ -764,6 +922,11 @@ def get_clip_geometry(target_crs: int, infdb: InfDB):
     """
     gdf_envelope = get_envelop(infdb)
     log = infdb.get_worker_logger()
+
+    if state_prefix:
+        p = str(state_prefix).strip().replace("%", "").replace("_", "")
+        # if they pass "05" => keep "05"; if "05780139" => keep full string
+        gdf_envelope = gdf_envelope[gdf_envelope["ags"].astype(str).str.startswith(p)]
 
     if gdf_envelope is None or gdf_envelope.empty:
         log.info("Scope envelope is empty; no clipping applied.")
@@ -781,8 +944,7 @@ def get_clip_geometry(target_crs: int, infdb: InfDB):
 
 
 def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
-    """
-    Return one exact clipping geometry per configured scope.
+    """Returns one exact clipping geometry per configured scope.
 
     Returns a list of dicts:
       {
