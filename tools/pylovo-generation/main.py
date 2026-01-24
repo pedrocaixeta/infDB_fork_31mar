@@ -3,11 +3,13 @@
 Pylovo Generation Tool - Interactive AGS Selection
 Generates synthetic low-voltage grid topologies for German municipalities.
 """
+
 import os
 import subprocess
 import sys
 from typing import List
 from infdb import InfDB
+
 
 def query_database(infdb: InfDB, query: str) -> str:
     """Execute a PostgreSQL query and return the result."""
@@ -17,15 +19,11 @@ def query_database(infdb: InfDB, query: str) -> str:
         f"@{db_params['host']}:{db_params['exposed_port']}/{db_params['db']}"
     )
     try:
-        result = subprocess.run(
-            ['psql', conn_string, '-t', '-c', query],
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        result = subprocess.run(["psql", conn_string, "-t", "-c", query], capture_output=True, text=True, check=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError:
         return ""
+
 
 def get_available_ags(infdb: InfDB) -> List[str]:
     """Query database for available AGS codes from opendata.scope table."""
@@ -34,7 +32,7 @@ def get_available_ags(infdb: InfDB) -> List[str]:
     ags_query = 'SELECT "AGS" FROM opendata.scope WHERE "AGS" IS NOT NULL ORDER BY "AGS"'
     result = query_database(infdb, ags_query)
     # Parse result and remove leading zeros
-    ags_list = [line.strip().lstrip('0') for line in result.split('\n') if line.strip()]
+    ags_list = [line.strip().lstrip("0") for line in result.split("\n") if line.strip()]
     return ags_list
 
 
@@ -42,10 +40,12 @@ def prompt_user_selection(infdb: InfDB, available_ags: List[str]) -> str:
     """Display available AGS codes and prompt user for selection."""
     log = infdb.get_logger()
     # Blue color for the ags prompt
-    BLUE = '\033[94m'
-    RESET = '\033[0m'
+    BLUE = "\033[94m"
+    RESET = "\033[0m"
 
-    log.info("Enter AGS codes to generate low voltage grids: Single AGS ➜ 9185149 | Multiple AGS ➜ 9185149,9185150 | All AGS ➜ all")
+    log.info(
+        "Enter AGS codes to generate low voltage grids: Single AGS ➜ 9185149 | Multiple AGS ➜ 9185149,9185150 | All AGS ➜ all"
+    )
     log.info(f"{BLUE}Available municipalities (AGS codes):{RESET}")
     for ags in available_ags:
         log.info(f"{BLUE}{ags}{RESET}")
@@ -56,12 +56,12 @@ def prompt_user_selection(infdb: InfDB, available_ags: List[str]) -> str:
         log.error("No AGS codes entered")
         sys.exit(1)
 
-    if selection.lower() == 'all':
-        ags_list = ','.join(available_ags)
+    if selection.lower() == "all":
+        ags_list = ",".join(available_ags)
         log.info("Selected: All municipalities (%s)", ags_list)
     else:
         # Remove leading zeros from user input (in case they copy from database)
-        ags_list = ','.join([ags.strip().lstrip('0') for ags in selection.split(',')])
+        ags_list = ",".join([ags.strip().lstrip("0") for ags in selection.split(",")])
         log.info("Selected: %s", ags_list)
 
     return ags_list
@@ -71,17 +71,18 @@ def run_pylovo_setup(infdb: InfDB) -> None:
     """Run pylovo-setup to initialize the database schema."""
     log = infdb.get_logger()
     log.info("Setting up pylovo database...")
-    os.chdir('/app/pylovo')
-    result = subprocess.run(['uv', 'run', 'pylovo-setup'], check=False)
+    os.chdir("/app/pylovo")
+    result = subprocess.run(["uv", "run", "pylovo-setup"], check=False)
     if result.returncode != 0:
         log.error("pylovo-setup failed")
         sys.exit(1)
+
 
 def run_pylovo_generate(infdb: InfDB, ags_list: str) -> None:
     """Run pylovo-generate for the selected AGS codes."""
     log = infdb.get_logger()
     log.info(f"Generating synthetic grids for AGS: {ags_list}")
-    result = subprocess.run(['uv', 'run', 'pylovo-generate', '--ags', ags_list], check=False)
+    result = subprocess.run(["uv", "run", "pylovo-generate", "--ags", ags_list], check=False)
     if result.returncode == 0:
         log.info("Grid generation completed successfully")
     else:
@@ -104,13 +105,13 @@ def main() -> None:
     log.info("  Output schema: %s", output_schema)
     # Set environment variables for pylovo (it doesn't use InfDB directly)
     db_params = infdb.get_db_parameters_dict()
-    os.environ['DBNAME'] = db_params['db']
-    os.environ['DBUSER'] = db_params['user']
-    os.environ['HOST'] = db_params['host']
-    os.environ['PORT'] = str(db_params['exposed_port'])
-    os.environ['PASSWORD'] = db_params['password']
-    os.environ['TARGET_SCHEMA'] = output_schema
-    os.environ['INFDB_SOURCE_SCHEMA'] = input_schema
+    os.environ["DBNAME"] = db_params["db"]
+    os.environ["DBUSER"] = db_params["user"]
+    os.environ["HOST"] = db_params["host"]
+    os.environ["PORT"] = str(db_params["exposed_port"])
+    os.environ["PASSWORD"] = db_params["password"]
+    os.environ["TARGET_SCHEMA"] = output_schema
+    os.environ["INFDB_SOURCE_SCHEMA"] = input_schema
 
     # Check AGS selection: config file or interactive
     config_ags = infdb.get_config_value([infdb.get_toolname(), "data", "ags_list"])
@@ -129,5 +130,7 @@ def main() -> None:
     run_pylovo_generate(infdb, ags_selection)
     log.info("Successfully finished %s tool", infdb.get_toolname())
     infdb.stop_logger()
+
+
 if __name__ == "__main__":
     main()
