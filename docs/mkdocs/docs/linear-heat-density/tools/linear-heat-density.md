@@ -8,4 +8,4 @@ The **linear-heat-density** tool calculates the linear heat density by aggregati
 !!! note "Under Development"
     This documentation section is currently being expanded.
 
-    **Maintainer**: Caro
+    **Maintainer**: Caro 
