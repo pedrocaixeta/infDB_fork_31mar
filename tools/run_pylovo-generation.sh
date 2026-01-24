@@ -16,9 +16,9 @@ set -a
 set +a
 
 echo "=== Run infdb-basedata ==="
-docker compose -f "$SCRIPT_DIR/infdb-basedata/compose.yml" up --build
+bash "$SCRIPT_DIR/infdb-basedata/run.sh"
 
 echo "=== Run pylovo-generation ==="
-docker compose -f "$SCRIPT_DIR/pylovo-generation/compose.yml" run --rm --build pylovo-generation
+bash "$SCRIPT_DIR/pylovo-generation/run.sh"
 
 echo "=== Done! InfDB with pylovo grids is ready. ==="

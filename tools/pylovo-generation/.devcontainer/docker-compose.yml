@@ -16,6 +16,9 @@ services:
       #- ..:/workspaces:cached
        - .:/app:cached # Mount the current directory to /app in the container
 
+    env_file:
+      - ../../.env  # repo root .env (dev only)
+
     # Uncomment the next four lines if you will use a ptrace-based debugger like C++, Go, and Rust.
     # cap_add:
     #   - SYS_PTRACE
