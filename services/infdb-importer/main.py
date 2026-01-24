@@ -116,21 +116,24 @@ def main() -> None:
             db.execute_query("DROP TABLE IF EXISTS opendata.buildings_lod2;")
             log.info("buildings_lod2: drop done")
 
-            log.info("buildings_lod2: starting Bavaria (09...)")
-            db.execute_sql_file(
-                "sql/buildings_lod2.sql",
-                {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_by)},
-            )
-            log.info("buildings_lod2: Bavaria completed")
+            if ags_by:
+                log.info("buildings_lod2: starting Bavaria (09...)")
+                db.execute_sql_file(
+                    "sql/buildings_lod2.sql",
+                    {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_by)},
+                )
+                log.info("buildings_lod2: Bavaria completed")
 
-            log.info("buildings_lod2: starting NRW (05...)")
-            db.execute_sql_file(
-                "sql/buildings_lod2.sql",
-                {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_nrw)},
-            )
-            log.info("buildings_lod2: NRW completed")
+            if ags_nrw:
+                log.info("buildings_lod2: starting NRW (05...)")
+                db.execute_sql_file(
+                    "sql/buildings_lod2.sql",
+                    {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_nrw)},
+                )
+                log.info("buildings_lod2: NRW completed")
 
             log.info("buildings_lod2: finished (BY+NRW)")
+            
     except Exception:
         log.exception("buildings_lod2.sql failed")
 
