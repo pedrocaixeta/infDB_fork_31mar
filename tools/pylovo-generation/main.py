@@ -45,7 +45,8 @@ def prompt_user_selection(infdb: InfDB, available_ags: List[str]) -> str:
     RESET = "\033[0m"
 
     log.info(
-        "Enter AGS codes to generate low voltage grids: Single AGS ➜ 9185149 | Multiple AGS ➜ 9185149,9185150 | All AGS ➜ all"
+        "Enter AGS codes to generate low voltage grids: Single AGS ➜ 9185149 | "
+        "Multiple AGS ➜ 9185149,9185150 | All AGS ➜ all"
     )
     log.info(f"{BLUE}Available municipalities (AGS codes):{RESET}")
     for ags in available_ags:
