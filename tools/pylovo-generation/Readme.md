@@ -47,4 +47,4 @@ Copyright (c) 2025 Technical University of Munich - Chair of Renewable and Susta
 
 ---
 
-**Part of the infDB ecosystem**: [https://infdb.readthedocs.io/](https://infdb.readthedocs.io/)
+**Part of the infDB ecosystem**: [https://tum-ens.github.io/InfDB/](https://tum-ens.github.io/InfDB/)
