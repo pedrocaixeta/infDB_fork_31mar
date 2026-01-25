@@ -9,9 +9,9 @@ services:
             - ../../.env  # Use root .env file with database credentials
             - env_pylovo.list
         volumes:
+            - ./configs:/app/configs
+            - ./src/pylovo:/app/mnt/pylovo
             - ../../configs:/app/mnt/configs-infdb #:ro # for root *.yml configs
-            - ./configs:/app/configs #:ro # for local pylovo config
-            - ../../src/infdb_package:/app/mnt/infdb_package
-            - /app/.venv # Exclude .venv from volume mount
+            - ../../src/infdb_package:/app/mnt/infdb_package #
         extra_hosts:
             - "host.docker.internal:host-gateway"
