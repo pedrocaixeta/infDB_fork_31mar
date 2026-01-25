@@ -10,7 +10,7 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-loader:
-    name: "sf-oh-nb"  # Name of the infdb-loader instance
+    name: "sonthofen"  # Name of the infdb-loader instance
     scope:  # List of AGS codes (8-digit) and/or state prefixes (2-digit, e.g. "05" for NRW)
       # - "01"  # Schleswig-Holstein
       # - "02"  # Hamburg
@@ -54,7 +54,7 @@ infdb-loader:
             access_token: "letdown subscribe lily catchable landmine sphinx"
     sources:
         package:
-            status: active
+            status: not-active
             url: http://ds1.need.energy:8123/opendata-neuburg-demo.zip
             path:
                 base: "{infdb-loader/path/base}"
