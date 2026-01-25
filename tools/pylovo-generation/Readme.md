@@ -34,7 +34,7 @@ If you encounter issues:
 1. Check the logs for error messages
 2. Verify configuration settings
 3. Ensure infDB is running and accessible
-4. Review the [troubleshooting section in infDB docs](https://infdb.readthedocs.io/)
+4. Review the [troubleshooting section in infDB docs](https://tum-ens.github.io/InfDB/)
 5. Open an issue on the repository
 
 ## License and Citation
