@@ -21,7 +21,7 @@ For further information, please refer to the [pylovo documentation](https://gith
 
 Before using this tool, ensure you have:
 
-- infDB instance running (see [infDB documentation](https://infdb.readthedocs.io/))
+- infDB instance running (see [infDB documentation](https://tum-ens.github.io/InfDB/))
 - Docker and Docker Compose installed
 - If the pylovo submodules is empty or out of sync, use ``git submodule update --init --recursive`` to initialize and update it.
 
