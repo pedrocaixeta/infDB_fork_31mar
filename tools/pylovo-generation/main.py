@@ -73,8 +73,8 @@ def run_pylovo_setup(infdb: InfDB) -> None:
     """Run pylovo-setup to initialize the database schema."""
     log = infdb.get_logger()
     log.info("Setting up pylovo database...")
-    os.chdir("/app/pylovo")
-    result = subprocess.run(["uv", "run", "pylovo-setup"], check=False)
+    os.chdir("/app/src/pylovo")
+    result = subprocess.run(["uv", "run", "--active", "pylovo-setup"], check=False)
     if result.returncode != 0:
         log.error("pylovo-setup failed")
         sys.exit(1)
@@ -84,7 +84,7 @@ def run_pylovo_generate(infdb: InfDB, ags_list: str) -> None:
     """Run pylovo-generate for the selected AGS codes."""
     log = infdb.get_logger()
     log.info(f"Generating synthetic grids for AGS: {ags_list}")
-    result = subprocess.run(["uv", "run", "pylovo-generate", "--ags", ags_list], check=False)
+    result = subprocess.run(["uv", "run", "--active", "pylovo-generate", "--ags", ags_list], check=False)
     if result.returncode == 0:
         log.info("Grid generation completed successfully")
     else:
