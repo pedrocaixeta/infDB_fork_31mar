@@ -34,7 +34,7 @@ def main() -> None:
     log.info("Output schema: %s", output_schema)
     WAYS_SQL_DIR: str = os.path.join("sql", "ways_sql")
     BUILDINGS_SQL_DIR: str = os.path.join("sql", "buildings_sql")
-    CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
+    # CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
     # Database work (context-managed)
     with infdb.connect() as db:
         # Execute WAYS scripts

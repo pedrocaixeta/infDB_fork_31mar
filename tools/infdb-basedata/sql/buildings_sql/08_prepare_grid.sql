@@ -28,9 +28,10 @@ CREATE INDEX ON temp_grid_transformed (id);
 
 DELETE FROM {output_schema}.buildings_grid target
 --WHERE target.gemeindeschluessel IN ({list_gemeindeschluessel})
-  WHERE target.id NOT IN (
-    SELECT src.id
+  WHERE NOT EXISTS (
+    SELECT 1
     FROM temp_grid_transformed src
+    WHERE src.id = target.id
   );
 
 INSERT INTO {output_schema}.buildings_grid (id, x_mp, y_mp, geom)

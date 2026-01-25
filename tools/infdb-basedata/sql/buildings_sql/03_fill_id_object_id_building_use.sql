@@ -1,9 +1,10 @@
 -- Delete objectid which do not exist anymore
 DELETE FROM {output_schema}.buildings target
-WHERE target.objectid NOT IN (
-    SELECT src.objectid
+WHERE NOT EXISTS (
+    SELECT 1
     FROM {input_schema}.buildings_lod2 src
---    WHERE src.gemeindeschluessel IS IN {list_gemeindeschluessel}
+    WHERE src.objectid = target.objectid
+--      AND src.gemeindeschluessel IS IN {list_gemeindeschluessel}
 );
 
 -- Fill id, objectid and building use columns
