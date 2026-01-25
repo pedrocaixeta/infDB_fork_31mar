@@ -133,7 +133,7 @@ def main() -> None:
                 log.info("buildings_lod2: NRW completed")
 
             log.info("buildings_lod2: finished (BY+NRW)")
-            
+
     except Exception:
         log.exception("buildings_lod2.sql failed")
 
