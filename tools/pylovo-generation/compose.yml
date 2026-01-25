@@ -7,10 +7,7 @@ services:
         tty: true         # Allocate a pseudo-TTY
         env_file:
             - ../../.env  # Use root .env file with database credentials
-        environment:
-            # Pylovo configuration
-            USE_INFDB: "True"
-            CONFIG_INFDB_PATH: /app/mnt/configs-infdb
+            - env_pylovo.list
         volumes:
             - ../../configs:/app/mnt/configs-infdb #:ro # for root *.yml configs
             - ./configs:/app/configs #:ro # for local pylovo config

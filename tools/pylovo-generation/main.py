@@ -106,12 +106,6 @@ def main() -> None:
     log.info("  Input schema: %s", input_schema)
     log.info("  Output schema: %s", output_schema)
     # Set environment variables for pylovo (it doesn't use InfDB directly)
-    db_params = infdb.get_db_parameters_dict()
-    os.environ["DBNAME"] = db_params["db"]
-    os.environ["DBUSER"] = db_params["user"]
-    os.environ["HOST"] = db_params["host"]
-    os.environ["PORT"] = str(db_params["exposed_port"])
-    os.environ["PASSWORD"] = db_params["password"]
     os.environ["TARGET_SCHEMA"] = output_schema
     os.environ["INFDB_SOURCE_SCHEMA"] = input_schema
 
