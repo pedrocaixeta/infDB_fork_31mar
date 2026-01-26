@@ -19,7 +19,7 @@ GitLab-specific configurations including issue templates, merge request template
 #### `configs/`
 Configuration files for infDB initialization:
 
-- `config-infdb-loader.yml`: Configuration for infdb-importer to import opendata sources
+- `config-infdb-import.yml`: Configuration for infdb-import to import opendata sources
 
 #### `docs/`
 
@@ -32,7 +32,7 @@ infDB services, each with Docker configurations:
 - **infdb-api/**: API services (FastAPI, PostgREST, pygeoapi)
 - **infdb-db/**: PostgreSQL database with 3DCityDB extension
 - **infdb-http/**: HTTP server with nginx
-- **infdb-importer/**: Data import service with various data source importers
+- **infdb-import/**: Data import service with various data source importers
 - **jupyter/**: Jupyter notebook service for analysis
 - **opencloud/**: Nextcloud integration
 - **pgadmin/**: PostgreSQL administration interface

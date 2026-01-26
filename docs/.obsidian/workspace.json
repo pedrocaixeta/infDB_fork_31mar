@@ -219,7 +219,7 @@
     "docs/usage/get-software.md",
     "docs/tools/ro-heat.md",
     "docs/tools/infdb-basedata.md",
-    "docs/tools/infdb-loader.md",
+    "docs/tools/infdb-import.md",
     "docs/tools/index.md",
     "docs/tools",
     "Untitled.base",

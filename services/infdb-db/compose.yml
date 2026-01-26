@@ -1,7 +1,7 @@
 services:
     postgres:
         profiles:
-            - core
+            - db
         build:
             context: .
             dockerfile: Dockerfile
