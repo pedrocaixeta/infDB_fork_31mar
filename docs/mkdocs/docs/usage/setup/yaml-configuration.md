@@ -8,7 +8,7 @@ The configuration for the opendata import is done via a YAML file (default: `con
 
 For detailed configuration options of the **infdb-importer**, refer to the [Services > infdb-importer](../../infdb/services/infdb-importer.md) documentation.
 
-Below is an example of the `config-infdb-loader.yml` file:
+Below is an exemplary excerpt of the `config-infdb-loader.yml` file:
 
 ```yaml title="configs/config-infdb-loader.yml"
 # Configuration file for infdb-loader
@@ -23,7 +23,7 @@ Below is an example of the `config-infdb-loader.yml` file:
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-loader:
-    name: "forchheim"  # Name of the infdb-loader instance
+    name: "import-opendata"  # Name of the infdb-loader instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich
         - "09780139"  # Sonthofen
@@ -60,3 +60,5 @@ infdb-loader:
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Bevoelkerungszahl.zip
 ```
+###REVIEW: Fix nomenclature loader vs importer in all files to avoid confusion here?###
+###REVIEW: I would suggest more generic region-independen names for the import docker...I dont see the advantage of changing this one every time parallel to the scopes, do you?###
