@@ -45,9 +45,9 @@ authors:
       equal-contrib: false
       affiliation: 4
     - name: Martin Stengel
-      orcid: ''
+      orcid: 0009-0006-2721-3227
       equal-contrib: false
-      affiliation: 5
+      affiliation: 1,5
 affiliations:
     - name: Technical University of Munich, Germany
       index: 1
@@ -61,7 +61,7 @@ affiliations:
     - name: Technical University of Dortmund, Germany
       index: 4
       ror: 
-    - name: Hochschule Rosenheim, Germany
+    - name: Rosenheim Technical University of Applied Sciences, Germany
       index: 5
       ror: 
 date: '31 January 2026'
@@ -139,7 +139,8 @@ A key use case is calculating linear heat density, i.e., estimating building hea
 In the development of this work, GitHub Copilot, ChatGPT, and Gemini were used. Github Copilot assisted in code generation by code suggestions and completion tasks, while ChatGPT and Gemini assisted in drafting and refining textual content.
 
 # Acknowledgements
-We gratefully acknowledge financial support through the project executing agency Jülich (PTJ) with funds provided by the Federal Ministry for Economic Affairs and Climate Action (BMWK) due to an enactment of the German Bundestag under Grant No. 01256602/1.
+Martin Stengel gratefully acknowledges financial support through the Bavarian State Ministry of Science and the Arts to promote applied research and development at universities of applied sciences and technical universities.
+All other authors gratefully acknowledge financial support through the project executing agency Jülich (PTJ) with funds provided by the Federal Ministry for Economic Affairs and Climate Action (BMWK) due to an enactment of the German Bundestag under Grant No. 01256602/1.
 
 # References
 
