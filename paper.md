@@ -76,6 +76,7 @@ By separating data ingestion, storage, and access from downstream analysis and m
   
 
 # Statement of need
+#### I would not make it as focused on Germany and rather keep it more general. But this mostly depends on if you want to focus on the data sources more or the gray box in you figure (Services). I would rather say that energy system analysts suffer from these issues worldwide.
 The transition to climate-neutral heating is a central pillar of energy policy, exemplified by Germany's aim for climate neutrality by 2045. New legislative frameworks, such as the requirement for Municipal Heat Planning (KWP) and the transparency obligations of the German Energy Industry Act (EnWG §14d), demand that municipalities and Distribution System Operators (DSOs) process vast amounts of energy and infrastructure data [@kwp:2026; @14d:2026].
 
 However, the current landscape of energy data is fragmented. While the Open Data Strategy of the Federal German Government [@Open-Data-Strategie:2021] has increased data availability, this data is published by disparate authorities on different platforms in varying formats, spatial resolutions, and licensing structures. Consequently, energy modeling workflows often suffer from:
