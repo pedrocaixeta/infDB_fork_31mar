@@ -75,7 +75,6 @@ By separating data ingestion, storage, and access from downstream analysis and m
   
 
 # Statement of need
-#### I would not make it as focused on Germany and rather keep it more general. But this mostly depends on if you want to focus on the data sources more or the gray box in you figure (Services). I would rather say that energy system analysts suffer from these issues worldwide.
 The transition to climate-neutral heating is a central pillar of energy policy, exemplified by Germany's aim for climate neutrality by 2045. New legislative frameworks, such as the requirement for Municipal Heat Planning (KWP) and the transparency obligations of the German Energy Industry Act (EnWG §14d), demand that municipalities and Distribution System Operators (DSOs) process vast amounts of energy and infrastructure data [@kwp:2026; @14d:2026].
 
 However, the current landscape of energy data is fragmented. While the Open Data Strategy of the Federal German Government [@Open-Data-Strategie:2021] has increased data availability, this data is published by disparate authorities on different platforms in varying formats, spatial resolutions, and licensing structures. Consequently, energy modeling workflows often suffer from:
@@ -85,7 +84,11 @@ However, the current landscape of energy data is fragmented. While the Open Data
 3. **Limited Workflow Transferability:** Data processing workflows often require substantial adaptation across regions due to differing data formats, interfaces, and conventions.
 4. **Siloed Infrastructure:** DSOs and municipalities lack standardized tools to manage and share distribution network data efficiently.
 
-`infDB` addresses these challenges by providing a reproducible, version-controlled, and automated ETL (Extract, Transform, Load) pipeline. It acts as a middleware between raw public data and high-level energy modeling tools, ensuring that planning data is transparent, traceable, and easily updatable.
+`infDB` addresses these challenges by providing a reproducible, version-controlled, and automated ETL (Extract, Transform, Load) pipeline. It acts as a middleware between raw public data and high-level energy modeling tools, ensuring that planning data is transparent, traceable, and easily updatable. 
+While `infDB` is developed in a German context addressing local regulatory requirements, the underlying architecture and methodology can be applied to 
+
+
+adapted to manage energy and infrastructure data across different regions and regulatory frameworks, making it applicable to municipal and regional energy planning efforts worldwide.
 
 # State of the field
 Energy and infrastructure data management is an active field with several existing solutions:
