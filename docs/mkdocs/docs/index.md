@@ -5,7 +5,6 @@
 </p>
 
 **infDB - Infrastructure and Energy Database** provides a modular and easy-to-configure open-source data and tool infrastructure. It is equipped with essential services, designed to minimize the effort required for data management. We follow a platform-independent containerized approach that streamlines collaboration in energy modeling and analysis, empowering the growth of an ecosystem by offering standardized interfaces and APIs, and by allowing users to dedicate their focus to generating insights rather than handling data logistics.
-~~A ensuring data is FAIR (Findable, Accessible, Interoperable, and Reusable).~~ ###REVIEW: Ich finde das passt hier nicht###
 
 
 ## Key Features
@@ -29,14 +28,13 @@ The infDB can be used effectively wherever geospatial and time series informatio
 
 ## Architecture
 
-The infDB architecture is composed of two main components:
+The architecture of infDB as shown in figure below is composed of two main components:
 
-: :fontawesome-solid-gears: **[Services](usage/services.md)** – Dockerized base functionalities.
-: :material-tools: **[Tools](tools/index.md)** – Use-case specific functionalities ###REVIEW: Willst du hier klarstellen, dass die tools nicht open source sind? Auch wenn closed Werkzeuge die infdb nutzen können, würde ich davon ausgehen, dass du dich hier nur auf die bestehenden offenen tools beziehst, die auch ins repo gepushed werden###
+: :fontawesome-solid-gears: **[Services](usage/services.md)** – Dockerized core functionalities.
+: :material-tools: **[Tools](tools/index.md)** – Dockerized software and tools for specific use cases and data processing tasks.
 
 ![infDB Overview](assets/img/infdb-overview.png)
 
-###REVIEW: Ich finde hier sollte man auch auf die Graphik eingehen###
 
 ## Getting Started
 
@@ -45,7 +43,6 @@ Check out the **[Usage Guide](usage/index.md)** to install, configure and run yo
 ## Demo
 The **[Linear Heat Density](linear-heat-density/index.md)** use case demonstrates the capabilities of infDB in the context of municipal heat planning (KWP). 
 ![](linear-heat-density/qwc-browser.png)
-###REVIEW: Die Graphik ist sehr unscharf###
 
 ## Contribution
 

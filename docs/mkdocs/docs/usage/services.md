@@ -7,5 +7,3 @@ The infDB platform provides a suite of essential services designed to facilitate
 ![alt text](services.png)
 
 For a comprehensive list of integrated services and additional configuration information, see [Services](../infdb/index.md#services) .
-
-###REVIEW: Gestrichen wegen Dopplung und kein Mehrwert für Usage?###
