@@ -100,13 +100,13 @@ class Material:
     # _dens: float = field(init = False, repr = False)
 
     def __init__(
-        self,
-        name: str,
-        thick: float = 0.100,
-        cond: float = 1.00,
-        spec_heat: float = 1000.0,
-        dens: float = 1000.0,
-        thermal_absorptance: float = 0.9,
+            self,
+            name: str,
+            thick: float = 0.100,
+            cond: float = 1.00,
+            spec_heat: float = 1000.0,
+            dens: float = 1000.0,
+            thermal_absorptance: float = 0.9,
     ):
         """Define the material and check the properties, using setter methods
 
@@ -395,10 +395,10 @@ class Construction(object):
 
     tot_heat_trans_coef = pd.DataFrame(
         {
-            "Outside": [25, 25, 1000, 7.7, 6.7, 6.7],
-            "Inside": [7.7, 7.7, 7.7, 7.7, 6.7, 6.7],
+            "Outside": [25, 25, 25, 1000, 7.7, 6.7, 6.7],
+            "Inside": [7.7, 7.7, 7.7, 7.7, 7.7, 6.7, 6.7],
         },
-        index=["ExtWall", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"],
+        index=["ExtWall", "Window", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"],
     )
 
     rad_heat_trans_coef = 5.0
@@ -426,6 +426,7 @@ class Construction(object):
                 )
         if construction_type not in [
             "ExtWall",
+            "Window",
             "Roof",
             "GroundFloor",
             "IntWall",
@@ -434,7 +435,7 @@ class Construction(object):
         ]:
             raise WrongConstructionType(
                 f"Construction {name}. construction type {construction_type} not in "
-                '["ExtWall", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"]'
+                '["ExtWall", "Window", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"]'
             )
         self.name = name
         self.construction_type = construction_type
@@ -445,10 +446,10 @@ class Construction(object):
         self._R_si = 1 / (self.tot_heat_trans_coef.loc[self.construction_type]["Inside"])
         self._R_se = 1 / (self.tot_heat_trans_coef.loc[self.construction_type]["Outside"])
         self._conv_heat_trans_coef_int = (
-            self.tot_heat_trans_coef.loc[self.construction_type]["Inside"] - self.rad_heat_trans_coef
+                self.tot_heat_trans_coef.loc[self.construction_type]["Inside"] - self.rad_heat_trans_coef
         )
         self._conv_heat_trans_coef_ext = (
-            self.tot_heat_trans_coef.loc[self.construction_type]["Outside"] - self.rad_heat_trans_coef
+                self.tot_heat_trans_coef.loc[self.construction_type]["Outside"] - self.rad_heat_trans_coef
         )
 
         self.ext_absorptance = self.materials_list[0].thermal_absorptance
@@ -478,7 +479,8 @@ class Construction(object):
         # Run ISO13790params and vdi6007params to calculate further parameters
 
         self._ISO13790_params()
-        self._VDI6007_params()
+        # Commented out for performance reasons
+        #self._VDI6007_params()
 
     def _ISO13790_params(self):
         """Calculates ISO13790 params: k_int, k_est"""
@@ -499,14 +501,14 @@ class Construction(object):
             Z[0, 0, i] = np.cosh(eps[i]) * np.cos(eps[i]) + 1j * np.sinh(eps[i]) * np.sin(eps[i])
             Z[1, 1, i] = Z[0, 0, i]
             Z[0, 1, i] = -(sigma[i] / (2 * self.conductivities[i])) * (
-                np.sinh(eps[i]) * np.cos(eps[i])
-                + np.cosh(eps[i]) * np.sin(eps[i])
-                + 1j * (np.cosh(eps[i]) * np.sin(eps[i]) - np.sinh(eps[i]) * np.cos(eps[i]))
+                    np.sinh(eps[i]) * np.cos(eps[i])
+                    + np.cosh(eps[i]) * np.sin(eps[i])
+                    + 1j * (np.cosh(eps[i]) * np.sin(eps[i]) - np.sinh(eps[i]) * np.cos(eps[i]))
             )
             Z[1, 0, i] = -(self.conductivities[i] / sigma[i]) * (
-                np.sinh(eps[i]) * np.cos(eps[i])
-                - np.cosh(eps[i]) * np.sin(eps[i])
-                + 1j * (np.sinh(eps[i]) * np.cos(eps[i]) + np.cosh(eps[i]) * np.sin(eps[i]))
+                    np.sinh(eps[i]) * np.cos(eps[i])
+                    - np.cosh(eps[i]) * np.sin(eps[i])
+                    + 1j * (np.sinh(eps[i]) * np.cos(eps[i]) + np.cosh(eps[i]) * np.sin(eps[i]))
             )
         Z_si = np.eye(2)
         # Internal surface resistance (convection and radiation, ISO 6946)
@@ -664,30 +666,30 @@ class Construction(object):
         C1_t = dict()
 
         for a, omega, days in zip(
-            [self._A1n_t2, self._A1n_t7], [self.omega_bt[0], self.omega_bt[1]], ["2", "7"], strict=True
+                [self._A1n_t2, self._A1n_t7], [self.omega_bt[0], self.omega_bt[1]], ["2", "7"], strict=True
         ):
             # rcValues Given the complex matrix of the building element BT, the function
             # calculates the values R1 and C1
             R1 = (
-                1
-                / sup
-                * ((np.real(a[1, 1]) - 1) * np.real(a[0, 1]) + np.imag(a[1, 1]) * np.imag(a[0, 1]))
-                / ((np.real(a[1, 1]) - 1) ** 2 + (np.imag(a[1, 1])) ** 2)
+                    1
+                    / sup
+                    * ((np.real(a[1, 1]) - 1) * np.real(a[0, 1]) + np.imag(a[1, 1]) * np.imag(a[0, 1]))
+                    / ((np.real(a[1, 1]) - 1) ** 2 + (np.imag(a[1, 1])) ** 2)
             )
 
             if not asim:
                 C1 = (
-                    sup
-                    * ((np.real(a[1, 1]) - 1) ** 2 + (np.imag(a[1, 1])) ** 2)
-                    / (omega * (np.real(a[0, 1]) * np.imag(a[1, 1]) - (np.real(a[1, 1]) - 1) * np.imag(a[0, 1])))
+                        sup
+                        * ((np.real(a[1, 1]) - 1) ** 2 + (np.imag(a[1, 1])) ** 2)
+                        / (omega * (np.real(a[0, 1]) * np.imag(a[1, 1]) - (np.real(a[1, 1]) - 1) * np.imag(a[0, 1])))
                 )
             else:
                 # sarebbe C1_korr per pareti caricate asimmetricamente (pareti AW)
                 C1 = (
-                    sup
-                    * (1 / (omega * R1 * sup))
-                    * (rw * sup - np.real(a[0, 1]) * np.real(a[1, 1]) - np.imag(a[1, 1]) * np.imag(a[0, 1]))
-                    / (np.real(a[1, 1]) * np.imag(a[0, 1]) - np.real(a[0, 1]) * np.imag(a[1, 1]))
+                        sup
+                        * (1 / (omega * R1 * sup))
+                        * (rw * sup - np.real(a[0, 1]) * np.real(a[1, 1]) - np.imag(a[1, 1]) * np.imag(a[0, 1]))
+                        / (np.real(a[1, 1]) * np.imag(a[0, 1]) - np.real(a[0, 1]) * np.imag(a[1, 1]))
                 )
             R1_t[days] = R1
             C1_t[days] = C1
@@ -715,11 +717,11 @@ Construction: {self.name}
 
     @classmethod
     def from_U_value(
-        cls,
-        name: str,
-        u_value: float,
-        weight_class: str = "Medium",
-        construction_type: str = "ExtWall",
+            cls,
+            name: str,
+            u_value: float,
+            weight_class: str = "Medium",
+            construction_type: str = "ExtWall",
     ):
         """This is a class method to create Construction object just from the U-value and weight class
         It creates just an equivalent material to reach the U-value

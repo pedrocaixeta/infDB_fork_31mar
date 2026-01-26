@@ -31,7 +31,7 @@ def main():
 
     # Get configuration values
     input_schema = infdbhandler.get_config_value(["ro-heat", "data", "input", "schema"])
-    output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output" "schema"])
+    output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output", "schema"])
 
     random_seed = infdbhandler.get_config_value(["ro-heat", "data", "input", "random_seed"])
     rng = np.random.default_rng(seed=random_seed)
@@ -103,9 +103,7 @@ def main():
         )
 
         # TODO: sort by layer_index according to EUReCA specification
-        # TODO: Handling of windows
         infdblog.debug("Starting construction of building elements")
-        elements = elements[elements["element_name"] != "Window"]
 
         rc_values = rc_calculation.calculate_rc_values(elements)
 

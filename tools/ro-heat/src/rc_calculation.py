@@ -36,7 +36,8 @@ def create_constructions(elements: DataFrame) -> DataFrame:
         "Rooftop": "Roof",
         "Ceiling": "IntCeiling",
         "Floor": "IntFloor",
-        "InnerWall": "IntWall"
+        "InnerWall": "IntWall",
+        "Window": "Window",
     }
 
     constructions["construction_obj"] = constructions.apply(
@@ -60,8 +61,9 @@ def aggregate_rc_values(constructions: DataFrame) -> DataFrame:
         axis=1,
     )
 
+    # Windows do not contribute to thermal capacitance
     constructions["capacitance"] = constructions.apply(
-        lambda row: row["construction_obj"].k_int * row["area"], axis=1
+        lambda row: row["construction_obj"].k_int * row["area"] if row['element_name'] not in ["Window"] else 0, axis=1
     )
 
     rc_values = (
