@@ -129,11 +129,14 @@ Platform management as shown in \autoref{fig:architecture} is simplified through
 ![infDB - Architecture \label{fig:architecture}](docs/mkdocs/docs/infdb/infdb-architecture.png)
 
 # Research Relevance
-The major research impact of `infDB` is the standardization of energy system analysis workflows. By decoupling data management from modeling logic, it allows for:
+The research relevance of `infDB` lies in its role as a reusable data infrastructure that supports transparent and reproducible energy system analysis workflows. By separating data management from analysis logic, `infDB` contributes to several recurring methodological requirements in energy research:
 
-* **Reproducibility:** The containerized approach ensures that an working environment can be ensured and replicated on any machine.
-* **Continouity:** Automated importers allow researchers to regularly update their datasets as new open data becomes available, transforming static one-time snapshots into dynamic continuous analysis.
-* **Stability:** Researchers can focus on developing algorithms (e.g., for district heating expansion) relying on a stable database schema, rather than adapting algorithms to shifting input formats.
+#### I rephrased some and expanded the points a bit by splitting them up.
+* **Reproducibility:** Containerized deployment and configuration-based data ingestion allow complete data pipelines to be rerun and inspected. This enables studies to be reproduced or updated when new data becomes available, without reimplementing preprocessing steps.
+* **Transferability:** By enforcing structured schemas and standardized access interfaces, infDB allows data processing and analysis workflows to be reused across regions and projects with minimal adaptation, reducing region-specific reimplementation effort.
+* **Separation of concerns:** infDB decouples data acquisition, storage, and access from modeling and analysis code. This allows researchers to develop and test analytical methods independently of changes in input data formats or sources.
+* **Workflow stability:** Stable database schemas and interfaces provide a consistent foundation for iterative research, supporting comparative studies and sensitivity analyses without requiring repeated adjustments to data handling logic.
+* **Methodological neutrality:** infDB does not prescribe modeling approaches, optimization methods, or policy assumptions. Its role is limited to providing structured and accessible data, allowing a wide range of analytical methods to be applied without constraint.
 
 # Applications
 A key use case is calculating linear heat density, i.e., estimating building heat demands and distributing them along street segments, to asses the financial feasibility of district heating as basis for municipal heat planning (KWP) or district heating feasibility studies (BEW). Using `infDB`, researchers and planners can immediately leverage preprocessed, enriched open building data (LOD2) combined with statistical census data to compute building-level heat demand. This approach reduces computational overhead and development effort compared to traditional file-based GIS workflows, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
