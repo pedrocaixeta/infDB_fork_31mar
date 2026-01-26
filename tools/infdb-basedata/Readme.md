@@ -2,7 +2,7 @@
 
 ## Prequires
 - Docker
-- Have database set up with open data (see `tools/infdb-loader`)
+- Have database set up with open data (see `tools/infdb-import`)
 
 
 ### Source Code

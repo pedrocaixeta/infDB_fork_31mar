@@ -15,8 +15,8 @@
 
 # How to register new data sources - for Developers
 ## Prepare Development Environment
-1. Open `infdb-loader` as folder in IDE
-2. Make sure that no docker `infdb-loader` exists on your machine (stop and/or remove if necessary)
+1. Open `infdb-import` as folder in IDE
+2. Make sure that no docker `infdb-import` exists on your machine (stop and/or remove if necessary)
 3. Open folder in a VS Code devcontainer 
 4. In `main.py`, comment the following lines for faster development:
 
@@ -33,7 +33,7 @@ with infdb.connect() as db:  # InfdbClient context
 ### Relevant files and folders:
 - `main.py` is the main script to run the data loading process.
 - `src/` contains scripts with load function for each data source.
-- `configs/config-infdb-loader.yml` contains all configuration parameters for the infDB-loader including which data sources to load.
+- `configs/config-infdb-import.yml` contains all configuration parameters for the infDB-loader including which data sources to load.
 
 ### Registration process:
 1. Create a new script in `src/` folder for your data source, e.g. `src/mydata.py`
@@ -46,7 +46,7 @@ from src import mydata
 ```python
 processes.append(mp.Process(target=mydata.load, args=(infdb,), name="mydata"))
 ```
-5. In `configs/config-infdb-loader.yml`, add any necessary configuration needed to load your data.
+5. In `configs/config-infdb-import.yml`, add any necessary configuration needed to load your data.
 
 
 ## After development
@@ -57,7 +57,7 @@ processes.append(mp.Process(target=mydata.load, args=(infdb,), name="mydata"))
 ## When to use
 The current default setup creates a docker managed volume where all downloaded files are placed. 
 The data in docker managed volume are persistent unless the volume is removed.
-This default configuration allows to re-use downloaded files between runs of the infdb-loader container,
+This default configuration allows to re-use downloaded files between runs of the infdb-import container,
 but also a simple removal without enhanced user privilege.
 Volume and therefore downloaded data can be removed for example by:
 ```bash

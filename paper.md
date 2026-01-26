@@ -101,7 +101,7 @@ Energy and infrastructure data management is an active field with several existi
 <!-- ### infDB - Services -->
 The *Services* layer (depicted in the grey box in \autoref{fig:infdb-overview}) handles database operations, administration, data ingestion, and connectivity. These containerized services include:
 
-* **infdb-importer:** This service automates the ingestion of diverse open data sources. It transforms raw external formats into structured schemas within the database. Users control this process via a simple YAML configuration file (`config-infdb-loader.yml`), eliminating the need for custom ETL scripting.
+* **infdb-import:** This service automates the ingestion of diverse open data sources. It transforms raw external formats into structured schemas within the database. Users control this process via a simple YAML configuration file (`config-infdb-import.yml`), eliminating the need for custom ETL scripting.
 * **infdb-db:** The central storage engine hosting a PostgreSQL database. It is pre-configured with essential extensions for energy modeling:
     * **PostGIS** for geospatial data.
     * **TimescaleDB** for time-series data.

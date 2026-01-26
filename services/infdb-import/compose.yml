@@ -1,16 +1,16 @@
 services:
-    infdb-loader:
+    infdb-import:
         profiles:
             - opendata
         build:
             context: .
             dockerfile: Dockerfile
         volumes:
-            - infdb-loader-data:/workspaces/data
-            #- ./configs:/workspaces/infdb-loader/configs:ro  # for production
-            - .:/workspaces/infdb-loader # for development only
+            - infdb-import-data:/workspaces/data
+            #- ./configs:/workspaces/infdb-import/configs:ro  # for production
+            - .:/workspaces/infdb-import # for development only
             - ../../src/infdb_package:/workspaces/infdb_package
-            - /workspaces/infdb-loader/.venv # for development only: exclude .venv from volume mount
+            - /workspaces/infdb-import/.venv # for development only: exclude .venv from volume mount
             - .vscode:/workspaces/.vscode:ro # for development only
             - ../../configs:/workspaces/configs:ro
         extra_hosts:
@@ -21,5 +21,5 @@ services:
             - UV_LINK_MODE=copy
 
 volumes:
-    infdb-loader-data:
-        name: infdb-loader-data
+    infdb-import-data:
+        name: infdb-import-data

@@ -157,6 +157,3 @@ JWT_SECRET_KEY=change-me-in-production
 14. **PyGeoAPI Port**: Port that exposes outside of docker and used to communicate with other applications.
 15. **PyGeoAPI Host**: Base url for pygeoAPI local: "localhost", remote: "DOMAIN" or "IP-ADDRESS-OF-REMOTE-HOST".
 16. **PostgREST Port**: Port that exposes outside of docker.
-
-###REVIEW: core==postgresql? So würde ich die Beschreibung verstehen, aber es beinhaltet ja eigentlich mehr, oder?###
-###REVIEW: Wieso ist 54328 unser Default?###
