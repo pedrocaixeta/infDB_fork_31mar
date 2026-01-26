@@ -213,9 +213,10 @@ def load(infdb: InfDB) -> bool:
         base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "openmeteo", "path", "base"], type="loader")
         os.makedirs(base_path, exist_ok=True)
 
-        # Ensure BKG 10km grid exists
+        # Ensure BKG grid exists (resolution configured in openmeteo)
         bkg_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "schema"])
-        bkg.create_geogitter("10km", infdb)
+        grid_resolution = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "grid_resolution"])
+        bkg.create_geogitter(grid_resolution, infdb)
 
         # DB engine via package
         engine = infdb.get_db_engine()
@@ -227,7 +228,7 @@ def load(infdb: InfDB) -> bool:
                 ST_Y(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS latitude,
                 ST_X(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS longitude
             FROM {bkg_schema}.{table_name}
-            WHERE name='DE_Grid_ETRS89_LAEA_10km';
+            WHERE name='DE_Grid_ETRS89_LAEA_{grid_resolution}';
         """
         pd_dataframe = pd.read_sql(sql=sql, con=engine)
         log.debug("Grid preview:\n%s", pd_dataframe.head())
