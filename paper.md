@@ -69,7 +69,11 @@ bibliography: paper.bib
 ---
 
 # Summary
-`infDB - Infrastructure and Energy Database` provides a modular and easy-to-configure open-source data and tool infrastructure equipped with essential services, designed to minimize the effort required for data management. This platform-independent containerized approach streamlines collaboration in energy modeling and analysis, empowering the growth of an ecosystem by offering standardized interfaces and APIs, and allowing users to dedicate their focus to generating insights rather than handling data logistics by ensuring data is FAIR (Findable, Accessible, Interoperable, and Reusable).
+#### I would write this more concretely as the previous version was rather vague and did not make clear what infDB provides. I think explaining the concrete software and the intended use cases is important. I even added some examples of applications to make it more tangible.
+`infDB - Infrastructure and Energy Database` is an open-source, containerized data infrastructure for managing and providing access to heterogeneous energy and infrastructure datasets used in urban and regional energy system studies. It bundles a PostgreSQL-based database with geospatial and time-series extensions, standardized REST and OGC-compliant APIs, and configurable import services that transform raw public data into structured, version-controlled schemas.
+
+By separating data ingestion, storage, and access from downstream analysis and modeling tools, infDB reduces data preprocessing effort and enables reproducible, transferable energy modeling workflows across regions and projects. In that way it can be used for many different applications in energy system modeling, such as district heating planning, electrical distribution network analysis, or urban energy demand estimation.
+  
 
 # Statement of need
 The transition to climate-neutral heating is a central pillar of energy policy, exemplified by Germany's aim for climate neutrality by 2045. New legislative frameworks, such as the requirement for Municipal Heat Planning (KWP) and the transparency obligations of the German Energy Industry Act (EnWG §14d), demand that municipalities and Distribution System Operators (DSOs) process vast amounts of energy and infrastructure data [@kwp:2026; @14d:2026].
