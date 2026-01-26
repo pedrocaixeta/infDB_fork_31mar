@@ -21,7 +21,7 @@ infDB services follow microservice architecture principles, enabling independent
 ![alt text](../usage/services.png)
 
 - [infdb-db](services/infdb-db.md): Core PostgreSQL database with PostGIS, timescaledb, and pgrouting extensions; handles all central storage and queries.
-- [infdb-importer](services/infdb-importer.md): Automates the ingestion, structuring, and integration of external open data formats into the platform.
+- [infdb-import](services/infdb-import.md): Automates the ingestion, structuring, and integration of external open data formats into the platform.
 - [pgAdmin](services/pgadmin.md): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
 - [FastAPI](services/fastapi.md): REST endpoints with OpenAPI docs and validated access to 3D, geospatial, and time-series data.
 - [Jupyter](services/jupyter.md): Notebook environment for exploratory queries, ETL prototypes, reproducible analysis.

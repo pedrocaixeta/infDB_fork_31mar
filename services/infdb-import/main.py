@@ -36,7 +36,7 @@ def main() -> None:
     """
 
     # Bootstrap InfDB (provides package config + central logging)
-    infdb = InfDB(tool_name="infdb-loader")
+    infdb = InfDB(tool_name="infdb-import")
 
     # Root logger and the running QueueListener (started by InfdbLogger internally)
     log = infdb.get_logger()

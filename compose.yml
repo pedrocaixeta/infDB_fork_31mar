@@ -19,7 +19,7 @@ include:
   # DATABASE SERVICES (Profile: opendata)
   # ==============================================================================
   # infdB Data Importer and Loader
-  - path: services/infdb-importer/compose.yml
+  - path: services/infdb-import/compose.yml
 
   # ==============================================================================
   # ADMIN SERVICES (Profile: admin)

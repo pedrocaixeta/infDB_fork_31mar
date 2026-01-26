@@ -1,4 +1,4 @@
-# Configuration file for infdb-loader
+# Configuration file for infdb-import
 #
 # This configuration file contains tool-specific settings and database connection parameters.
 #
@@ -9,8 +9,8 @@
 # - To connect to a remote infdb instance, replace 'None' values with your specific
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
-infdb-loader:
-    name: "import-opendata" #"forchheim"  # Name of the infdb-loader instance
+infdb-import:
+    name: "oberh_neub_sonth" #"forchheim"  # Name of the infdb-import instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich (BY)
         - "09780139"  # Sonthofen (BY)
@@ -25,9 +25,9 @@ infdb-loader:
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
         opendata: "opendata/"
-        processed: "{infdb-loader/name}"
+        processed: "{infdb-import/name}"
     logging:
-        path: "infdb-loader.log"
+        path: "infdb-import.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
@@ -45,8 +45,8 @@ infdb-loader:
             status: active
             url: http://ds1.need.energy:8123/opendata-neuburg-demo.zip
             path:
-                base: "{infdb-loader/path/base}"
-                processed: "{infdb-loader/path/opendata}"
+                base: "{infdb-import/path/base}"
+                processed: "{infdb-import/path/opendata}"
         need:
             status: not-active
             host: "ds1.need.energy"
@@ -55,14 +55,14 @@ infdb-loader:
             user: postgres
             password: postgres
             schema_input: need
-            path_dump: "{infdb-loader/path/opendata}/need/"
+            path_dump: "{infdb-import/path/opendata}/need/"
 
         opendata_bavaria:
             status: active
             schema: opendata
             prefix: bavaria
             path: 
-                base: "{infdb-loader/path/opendata}/opendata_bavaria/"
+                base: "{infdb-import/path/opendata}/opendata_bavaria/"
             datasets:
                 gelaendemodell_1m:
                     status: not-active
@@ -90,16 +90,16 @@ infdb-loader:
             url:
                 - "http://ds1.need.energy:8123/3d-gm_lod2_kacheln.zip"    #scope placeholder for AGS
             path:
-                lod2: "{infdb-loader/path/opendata}/lod2-nrw/"
-                gml: "{infdb-loader/path/opendata}/lod2-nrw/{infdb-loader/name}"
+                lod2: "{infdb-import/path/opendata}/lod2-nrw/"
+                gml: "{infdb-import/path/opendata}/lod2-nrw/{infdb-import/name}"
 
         bkg:
             status: active
             path:
-                base: "{infdb-loader/path/opendata}/bkg/"
-                zip: "{infdb-loader/sources/bkg/path/base}/zip/"
-                unzip: "{infdb-loader/sources/bkg/path/base}/unzip/"
-                processed: "{infdb-loader/path/processed}/bkg/"
+                base: "{infdb-import/path/opendata}/bkg/"
+                zip: "{infdb-import/sources/bkg/path/base}/zip/"
+                unzip: "{infdb-import/sources/bkg/path/base}/unzip/"
+                processed: "{infdb-import/path/processed}/bkg/"
             prefix: bkg
             schema: opendata
             vg5000:
@@ -133,8 +133,8 @@ infdb-loader:
                 - by # Bavaria
                 - nw # North Rhine-Westphalia
             path:
-                base: "{infdb-loader/path/opendata}/basemap/"
-                processed: "{infdb-loader/path/processed}/basemap/"
+                base: "{infdb-import/path/opendata}/basemap/"
+                processed: "{infdb-import/path/processed}/basemap/"
             schema: opendata
             prefix: basemap
             layer:
@@ -176,8 +176,8 @@ infdb-loader:
             username: "infdb"
             access_token: "letdown subscribe lily catchable landmine sphinx"
             path:
-                base: "{infdb-loader/path/opendata}/plz/"
-                processed: "{infdb-loader/path/processed}/plz/"
+                base: "{infdb-import/path/opendata}/plz/"
+                processed: "{infdb-import/path/processed}/plz/"
             schema: opendata
             prefix: postcodes
             layer:
@@ -188,7 +188,7 @@ infdb-loader:
                 - "https://raw.githubusercontent.com/RWTH-EBC/TEASER/refs/heads/main/teaser/data/input/inputdata/TypeElements_TABULA_DE.json"
                 - "https://raw.githubusercontent.com/RWTH-EBC/TEASER/refs/heads/main/teaser/data/input/inputdata/MaterialTemplates.json"
             path:
-                base: "{infdb-loader/path/opendata}/tabula/"
+                base: "{infdb-import/path/opendata}/tabula/"
             schema: opendata
             prefix: tabula
         zensus_2022:
@@ -201,10 +201,10 @@ infdb-loader:
                 - 2022
                 # - 2011
             path:
-                base: "{infdb-loader/path/opendata}/zensus/"
-                zip: "{infdb-loader/sources/zensus_2022/path/base}/zip/"
-                unzip: "{infdb-loader/sources/zensus_2022/path/base}/unzip/"
-                processed: "{infdb-loader/path/processed}/zensus_2022/"
+                base: "{infdb-import/path/opendata}/zensus/"
+                zip: "{infdb-import/sources/zensus_2022/path/base}/zip/"
+                unzip: "{infdb-import/sources/zensus_2022/path/base}/unzip/"
+                processed: "{infdb-import/path/processed}/zensus_2022/"
             url: "https://www.zensus2022.de/DE/Ergebnisse-des-Zensus/_inhalt.html"
             schema: opendata
             prefix: zensus
@@ -623,8 +623,8 @@ infdb-loader:
           schema: opendata
           prefix: openmeteo
           path:
-              base: "{infdb-loader/path/opendata}/openmeteo/"
-              processed: "{infdb-loader/path/processed}/openmeteo/"
+              base: "{infdb-import/path/opendata}/openmeteo/"
+              processed: "{infdb-import/path/processed}/openmeteo/"
           timing:
               start_time: "2020-01-01"
               end_time: "2024-12-31"
@@ -638,10 +638,10 @@ infdb-loader:
           schema: opendata
           prefix: kwp_nrw
           path:
-              base: "{infdb-loader/path/opendata}/kwp-nrw/"
-              zip: "{infdb-loader/sources/kwp-nrw/path/base}/zip/"
-              unzip: "{infdb-loader/sources/kwp-nrw/path/base}/unzip/"
-              processed: "{infdb-loader/path/processed}/kwp-nrw/"
+              base: "{infdb-import/path/opendata}/kwp-nrw/"
+              zip: "{infdb-import/sources/kwp-nrw/path/base}/zip/"
+              unzip: "{infdb-import/sources/kwp-nrw/path/base}/unzip/"
+              processed: "{infdb-import/path/processed}/kwp-nrw/"
           datasets:
               - name: Waermebedarf
                 status: active
@@ -690,10 +690,10 @@ infdb-loader:
           schema: opendata
           prefix: kwp_nrw_oberhausen
           path:
-              base: "{infdb-loader/path/opendata}/kwp-nrw-oberhausen/"
-              zip: "{infdb-loader/sources/kwp-nrw-oberhausen/path/base}/"
-              unzip: "{infdb-loader/sources/kwp-nrw-oberhausen/path/base}/unzip/"
-              processed: "{infdb-loader/path/processed}/kwp-nrw-oberhausen/"
+              base: "{infdb-import/path/opendata}/kwp-nrw-oberhausen/"
+              zip: "{infdb-import/sources/kwp-nrw-oberhausen/path/base}/"
+              unzip: "{infdb-import/sources/kwp-nrw-oberhausen/path/base}/unzip/"
+              processed: "{infdb-import/path/processed}/kwp-nrw-oberhausen/"
           layer:
             - "WBM-NRW_"
             - "WBM-NRW-erhoeht"
@@ -713,8 +713,8 @@ infdb-loader:
             username: "need"
 
             path:
-                base: "{infdb-loader/path/opendata}/gebaeude-neuburg/"
-                processed: "{infdb-loader/path/processed}/gebaeude-neuburg/"
+                base: "{infdb-import/path/opendata}/gebaeude-neuburg/"
+                processed: "{infdb-import/path/processed}/gebaeude-neuburg/"
             schema: need_intern
             layer:
                 - "gebaeudedaten_neuburg"
@@ -724,8 +724,8 @@ infdb-loader:
             protocol: webdav
             username: "need"
             path:
-                base: "{infdb-loader/path/opendata}/waermeatlas-hessen-bensheim/"
-                processed: "{infdb-loader/path/processed}/waermeatlas-hessen-bensheim/"
+                base: "{infdb-import/path/opendata}/waermeatlas-hessen-bensheim/"
+                processed: "{infdb-import/path/processed}/waermeatlas-hessen-bensheim/"
             schema: need_intern
             prefix: "waermeatlas_hessen_bensheim"
             layer:
@@ -742,8 +742,8 @@ infdb-loader:
             protocol: webdav
             username: "need"
             path:
-                base: "{infdb-loader/path/opendata}/tudo-basemap-ways/"
-                processed: "{infdb-loader/path/processed}/tudo-basemap-ways/"
+                base: "{infdb-import/path/opendata}/tudo-basemap-ways/"
+                processed: "{infdb-import/path/processed}/tudo-basemap-ways/"
             schema: need_intern
             layer: 
                 - "Basemap_Oberhausen_Neuburg_Sonthofen_Verkehrslinie"
