@@ -99,32 +99,31 @@ Energy and infrastructure data management is an active field with several existi
 `infDB` fills a gap in the existing energy data ecosystem. While simulation tools like the City Energy Analyst focus on modeling, `infDB` provides the foundational data infrastructure that these tools require. Unlike static data repositories, `infDB` offers a dynamic, service-oriented platform that enables users to deploy local instances, continuously integrate fresh datasets, and seamlessly connect with both commercial and open-source downstream tools. By providing a technical implementation layer, `infDB` can complement ontology initiatives like DB4KWP, transforming conceptual data standards into practical, operational systems.
 
 # Software Design
-`infDB` follows a modular microservices architecture orchestrated via Docker Compose. The system is conceptually divided into **Services**, which provide the foundational infrastructure, and **Tools**, which consume and process the data. This separation allows for high portability and enables users to activate only the components required for their specific use case.
+`infDB` is designed as a modular, containerized data infrastructure that separates data ingestion, storage, and access from downstream analysis and modeling. It follows a service-oriented architecture orchestrated via Docker Compose, allowing individual components to be deployed, configured, and combined depending on the requirements of a specific workflow. The system is conceptually divided into **Services**, which provide the foundational infrastructure, and **Tools**, which consume and process the data. This separation allows for high portability and enables users to activate only the components required for their specific use case.
 
 ![infDB - Data Sources, Services and Tools \label{fig:infdb-overview}](docs/mkdocs/docs/assets/img/infdb-overview.png)
 
 <!-- ### infDB - Services -->
 The *Services* layer (depicted in the grey box in \autoref{fig:infdb-overview}) handles database operations, administration, data ingestion, and connectivity. These containerized services include:
 
-* **infdb-importer:** This service automates the ingestion of diverse open data sources. It transforms raw external formats into structured schemas within the database. Users control this process via a simple YAML configuration file (`config-infdb-loader.yml`), eliminating the need for custom ETL scripting.
+* **infdb-importer:** This service automates the ingestion of heterogeneous external data sources. It transforms raw external formats into structured schemas within the database. Users control this process via a simple YAML configuration file (`config-infdb-loader.yml`), eliminating the need for custom ETL scripting.
 * **infdb-db:** The central storage engine hosting a PostgreSQL database. It is pre-configured with essential extensions for energy modeling:
     * **PostGIS** for geospatial data.
     * **TimescaleDB** for time-series data.
     * **3D City DB** for (3D) semantic city models.
     * **pgRouting** for graph-based network analysis.
-* **APIs:** This layer provides standardized interfaces to external applications, ensuring the database remains accessible but secure. It includes **FastAPI** for custom logic, **pygeoAPI** for OGC standards, and **PostgREST** for immediate RESTful access to database tables.
-* **pgAdmin:** A web-based GUI for database administration, allowing users to inspect schemas, run queries, and manage data without command-line interaction.
-* **JupyterNotebook:** An interactive environment pre-loaded with the `pyinfdb` library, enabling users to prototype data analyses and visualize results directly within the platform.
-* **QGIS Webclient:** A web-based GIS client for visualizing geospatial data stored in the database, useful for urban planners and GIS specialists.
-* **OpenCloud:** An optional component for integrating with cloud storage solutions, facilitating scalable data handling for large datasets.
+* **APIs and data access services:** infDB exposes data exclusively through standardized interfaces rather than custom file formats. This includes SQL access to the database as well as RESTful and OGC-compliant APIs implemented using **FastAPI**, **PostgREST**, and **pygeoAPI**. These interfaces allow external tools to access data in a consistent manner while keeping the internal database structure encapsulated.
+* **Administrative and interactive services:** Optional services such as **pgAdmin**, **Jupyter Notebook**, and a web-based **QGIS** client support administration, inspection, prototyping, and visualization of data stored in the database. These components are intended to lower the barrier to entry for users from different backgrounds (e.g., GIS specialists or researchers) but are not required for automated or headless workflows.
+* **External storage integration:** An optional **OpenCloud** component allows integration with cloud-based storage solutions for handling large datasets. This component is not required for local deployments and can be omitted in minimal setups.
 
 <!-- ### infDB - Tools -->
 The *Tools* layer (depicted in the right box in the architecture diagram) consists of (external) software that interacts with the `infDB` Services to process data or generate insights. This modular approach allows users to chain different tools into custom workflows. Tools can be built upon following foundations:
 
 * **Standardized Integration:** Tools interact with the core database exclusively through open interfaces (SQL or REST APIs), ensuring that the underlying data schema remains consistent regardless of the tool used.
 * **pyinfdb:** To facilitate the development of custom tools, the platform provides the `pyinfdb` Python package. This library abstracts database connections, logging, and configuration management, allowing researchers to rapidly develop Python-based analysis scripts that integrate seamlessly with the infDB ecosystem.
-* **Extensible Ecosystem:** Because the architecture relies on standard interfaces, users can integrate existing third-party simulation software or develop proprietary tools that plug into the `infDB` backend without modifying the core services.
+* **Extensible Ecosystem:** Importantly, infDB does not prescribe specific modeling approaches, optimization methods, or planning workflows. Its role is limited to providing a stable and reproducible data infrastructure that can be reused across different analytical contexts. Therefore, users can integrate existing third-party simulation software or develop proprietary tools that plug into the `infDB` backend without modifying the core services.
 
+#### This is rather short for the figure. Either go further into depth if necessary, or omit this part.
 Platform management as shown in \autoref{fig:architecture} is simplified through provided Bash scripts (e.g., for startup and teardown) and environment variable configurations (`.env`), ensuring that the entire infrastructure can be deployed or replicated with minimal effort.
 
 ![infDB - Architecture \label{fig:architecture}](docs/mkdocs/docs/infdb/infdb-architecture.png)
