@@ -69,7 +69,6 @@ bibliography: paper.bib
 ---
 
 # Summary
-#### I would write this more concretely as the previous version was rather vague and did not make clear what infDB provides. I think explaining the concrete software and the intended use cases is important. I even added some examples of applications to make it more tangible.
 `infDB - Infrastructure and Energy Database` is an open-source, containerized data infrastructure for managing and providing access to heterogeneous energy and infrastructure datasets used in urban and regional energy system studies. It bundles a PostgreSQL-based database with geospatial and time-series extensions, standardized REST and OGC-compliant APIs, and configurable import services that transform raw public data into structured, version-controlled schemas.
 
 By separating data ingestion, storage, and access from downstream analysis and modeling tools, infDB reduces data preprocessing effort and enables reproducible, transferable energy modeling workflows across regions and projects. In that way it can be used for many different applications in energy system modeling, such as district heating planning, electrical distribution network analysis, or urban energy demand estimation.
@@ -91,7 +90,6 @@ However, the current landscape of energy data is fragmented. While the Open Data
 # State of the field
 Energy and infrastructure data management is an active field with several existing solutions:
 
-#### I would write it a bit more conservatively, e.g. "excel".
 * **Commercial Platforms:** Tools like **nPro**, **Solarea**, and **flexRM** offer robust analytics and user interfaces but are proprietary, limiting transparency and community extension.
 * **Open Source Modeling Frameworks:** Tools like **City Energy Analyst (CEA)**, **EUReCA** and **OpenPlan** focus on modeling and optimization but typically assume preprocessed, structured input data provided externally.
 * **Data Initiatives:** The **NEED project** [@NEED:2023] provides a decentralized data hub for synthetic energy data, and **DB4KWP** [@DB4KWP:2026] focuses on ontologies (OEO/OEKG) and naming conventions.
@@ -106,15 +104,15 @@ Energy and infrastructure data management is an active field with several existi
 <!-- ### infDB - Services -->
 The *Services* layer (depicted in the grey box in \autoref{fig:infdb-overview}) handles database operations, administration, data ingestion, and connectivity. These containerized services include:
 
-* **infdb-import:** This service automates the ingestion of heterogeneous external data sources. It transforms raw external formats into structured schemas within the database. Users control this process via a simple YAML configuration file (`config-infdb-loader.yml`), eliminating the need for custom ETL scripting.
+* **infdb-import:** This service automates the ingestion of heterogeneous external data sources. It transforms raw external formats into structured schemas within the database. Users control this process via a simple YAML configuration file (`config-infdb-import.yml`), eliminating the need for custom ETL scripting.
 * **infdb-db:** The central storage engine hosting a PostgreSQL database. It is pre-configured with essential extensions for energy modeling:
     * **PostGIS** for geospatial data.
     * **TimescaleDB** for time-series data.
     * **3D City DB** for (3D) semantic city models.
     * **pgRouting** for graph-based network analysis.
-* **APIs and data access services:** infDB exposes data exclusively through standardized interfaces rather than custom file formats. This includes SQL access to the database as well as RESTful and OGC-compliant APIs implemented using **FastAPI**, **PostgREST**, and **pygeoAPI**. These interfaces allow external tools to access data in a consistent manner while keeping the internal database structure encapsulated.
-* **Administrative and interactive services:** Optional services such as **pgAdmin**, **Jupyter Notebook**, and a web-based **QGIS** client support administration, inspection, prototyping, and visualization of data stored in the database. These components are intended to lower the barrier to entry for users from different backgrounds (e.g., GIS specialists or researchers) but are not required for automated or headless workflows.
-* **External storage integration:** An optional **OpenCloud** component allows integration with cloud-based storage solutions for handling large datasets. This component is not required for local deployments and can be omitted in minimal setups.
+* **APIs and Data Access Services:** infDB exposes data exclusively through standardized interfaces rather than custom file formats. This includes SQL access to the database as well as RESTful and OGC-compliant APIs implemented using **FastAPI**, **PostgREST**, and **pygeoAPI**. These interfaces allow external tools to access data in a consistent manner while keeping the internal database structure encapsulated.
+* **Administrative and Interactive Services:** Optional services such as **pgAdmin**, **Jupyter Notebook**, and a web-based **QGIS** client support administration, inspection, prototyping, and visualization of data stored in the database. These components are intended to lower the barrier to entry for users from different backgrounds (e.g., GIS specialists or researchers) but are not required for automated or headless workflows.
+* **External Storage Integration:** An optional **OpenCloud** component allows integration with cloud-based storage solutions for handling large datasets. This component is not required for local deployments and can be omitted in minimal setups.
 
 <!-- ### infDB - Tools -->
 The *Tools* layer (depicted in the right box in the architecture diagram) consists of (external) software that interacts with the `infDB` Services to process data or generate insights. This modular approach allows users to chain different tools into custom workflows. Tools can be built upon following foundations:
@@ -123,25 +121,29 @@ The *Tools* layer (depicted in the right box in the architecture diagram) consis
 * **pyinfdb:** To facilitate the development of custom tools, the platform provides the `pyinfdb` Python package. This library abstracts database connections, logging, and configuration management, allowing researchers to rapidly develop Python-based analysis scripts that integrate seamlessly with the infDB ecosystem.
 * **Extensible Ecosystem:** Importantly, infDB does not prescribe specific modeling approaches, optimization methods, or planning workflows. Its role is limited to providing a stable and reproducible data infrastructure that can be reused across different analytical contexts. Therefore, users can integrate existing third-party simulation software or develop proprietary tools that plug into the `infDB` backend without modifying the core services.
 
-#### This is rather short for the figure. Either go further into depth if necessary, or omit this part.
-Platform management as shown in \autoref{fig:architecture} is simplified through provided Bash scripts (e.g., for startup and teardown) and environment variable configurations (`.env`), ensuring that the entire infrastructure can be deployed or replicated with minimal effort.
-
-![infDB - Architecture \label{fig:architecture}](docs/mkdocs/docs/infdb/infdb-architecture.png)
-
 # Research Relevance
 The research relevance of `infDB` lies in its role as a reusable data infrastructure that supports transparent and reproducible energy system analysis workflows. By separating data management from analysis logic, `infDB` contributes to several recurring methodological requirements in energy research:
 
-#### I rephrased some and expanded the points a bit by splitting them up.
 * **Reproducibility:** Containerized deployment and configuration-based data ingestion allow complete data pipelines to be rerun and inspected. This enables studies to be reproduced or updated when new data becomes available, without reimplementing preprocessing steps.
 * **Transferability:** By enforcing structured schemas and standardized access interfaces, infDB allows data processing and analysis workflows to be reused across regions and projects with minimal adaptation, reducing region-specific reimplementation effort.
-* **Separation of concerns:** infDB decouples data acquisition, storage, and access from modeling and analysis code. This allows researchers to develop and test analytical methods independently of changes in input data formats or sources.
-* **Workflow stability:** Stable database schemas and interfaces provide a consistent foundation for iterative research, supporting comparative studies and sensitivity analyses without requiring repeated adjustments to data handling logic.
-* **Methodological neutrality:** infDB does not prescribe modeling approaches, optimization methods, or policy assumptions. Its role is limited to providing structured and accessible data, allowing a wide range of analytical methods to be applied without constraint.
+* **Separation of Concerns:** infDB decouples data acquisition, storage, and access from modeling and analysis code. This allows researchers to develop and test analytical methods independently of changes in input data formats or sources.
+* **Workflow Stability:** Stable database schemas and interfaces provide a consistent foundation for iterative research, supporting comparative studies and sensitivity analyses without requiring repeated adjustments to data handling logic.
+* **Methodological Neutrality:** infDB does not prescribe modeling approaches, optimization methods, or policy assumptions. Its role is limited to providing structured and accessible data, allowing a wide range of analytical methods to be applied without constraint.
 
 # Applications
-#### The role that infDB plays here is not clear enough. I would write this in more detail, maybe even use the figure from above and show the workflow along it by highlighting the different points and maybe circle them plus #1, #2, #3 etc." For me the focus should here be on the procedural flow and how infDB supports it.
-#### Alternatively, you could also provide a few shorter snippets on possible applications but I would prefer the first approach or a mixture where you explain linear heat density in detail and then provide a few more short examples.
-A key use case is calculating linear heat density, i.e., estimating building heat demands and distributing them along street segments, to asses the financial feasibility of district heating as basis for municipal heat planning (KWP) or district heating feasibility studies (BEW). Using `infDB`, researchers and planners can immediately leverage preprocessed, enriched open building data (LOD2) combined with statistical census data to compute building-level heat demand. This approach reduces computational overhead and development effort compared to traditional file-based GIS workflows, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
+A key use case demonstrates how `infDB` supports the procedural workflow for assessing district heating feasibility—a central requirement for municipal heat planning (KWP) and district heating potential studies (BEW). The workflow consists of interconnected steps where `infDB` provides the foundational data infrastructure:
+
+**Step 1 – Data Integration:** Raw, heterogeneous data sources (building registries, census data, network geometries, energy consumption records) are ingested through `infdb-import` and stored in the unified database, eliminating manual data collection and format conversion.
+
+**Step 2 – Data Access & Enrichment:** Analysis tools query the standardized database via REST or SQL APIs to retrieve preprocessed, enriched geospatial datasets (e.g., LOD2 building models with thermal properties). This replaces tedious file-based GIS workflows.
+
+**Step 3 – Heat Demand Estimation:** Researchers apply domain-specific algorithms to compute building-level heat demands using statistical models calibrated against census and consumption data, leveraging the consistent data foundation that `infDB` provides.
+
+**Step 4 – Linear Heat Density Calculation:** Building heat demands are spatially distributed along street network segments to derive linear heat density maps. This metric directly informs feasibility assessments by identifying corridors where district heating networks are economically viable.
+
+**Step 5 – Iteration & Update:** When new data becomes available (e.g., updated building stock, revised energy statistics), the entire pipeline can be re-executed without reimplementing preprocessing logic, ensuring studies remain current and reproducible.
+
+By abstracting data management complexity, `infDB` enables planners and researchers to focus on domain logic rather than data wrangling, while maintaining full transparency and auditability throughout the workflow. It also ensures reproducible, auditable results that can be continuously updated as new data becomes available.
 
 # AI usage disclosure
 In the development of this work, GitHub Copilot, ChatGPT, and Gemini were used. Github Copilot assisted in code generation by code suggestions and completion tasks, while ChatGPT and Gemini assisted in drafting and refining textual content.
