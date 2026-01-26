@@ -10,8 +10,6 @@ from infdb import InfDB
 from src import refurbishment, rc_calculation, timedata
 
 # Parameters
-rng = np.random.default_rng(seed=42)
-simulation_year = 2024
 construction_year_col = "construction_year"
 
 
@@ -32,8 +30,15 @@ def main():
     engine = infdbclient_citydb.get_db_engine()
 
     # Get configuration values
-    input_schema = infdbhandler.get_config_value(["ro-heat", "data", "input_schema"])
-    output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output_schema"])
+    input_schema = infdbhandler.get_config_value(["ro-heat", "data", "input", "schema"])
+    output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output" "schema"])
+
+    random_seed = infdbhandler.get_config_value(["ro-heat", "data", "input", "random_seed"])
+    rng = np.random.default_rng(seed=random_seed)
+
+    simulation_year = infdbhandler.get_config_value(["ro-heat", "data", "input", "simulation_year"])
+
+    refurbishment_config = infdbhandler.get_config_value(["ro-heat", "data", "refurbishment"])
 
     try:
         sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
@@ -58,20 +63,10 @@ def main():
         buildings[construction_year_col] = refurbishment.sample_construction_year(buildings, simulation_year,
                                                                                   construction_year_col, rng)
 
-        refurbishment_simulation_parameters = {
-            "outer_wall": {
-                "distribution": lambda gen, parameters: gen.normal(**parameters),
-                "distribution_parameters": {"loc": 40, "scale": 10},
-            },
-            "rooftop": {
-                "distribution": lambda gen, parameters: gen.normal(**parameters),
-                "distribution_parameters": {"loc": 50, "scale": 10},
-            },
-            "window": {
-                "distribution": lambda gen, parameters: gen.normal(**parameters),
-                "distribution_parameters": {"loc": 30, "scale": 10},
-            },
-        }
+        refurbishment_simulation_parameters = {n: {"distribution": lambda gen, parameters: gen.normal(**parameters),
+                                                   "distribution_parameters": {"loc": i['lifespan_mean'],
+                                                                               "scale": i['lifespan_spread']}, } for
+                                               n, i in refurbishment_config.items()}
 
         infdblog.debug("Starting refurbishment simulation")
         refurbed_df = refurbishment.simulate_refurbishment(
@@ -85,17 +80,7 @@ def main():
         infdblog.debug(refurbed_df.info())
         infdblog.debug(refurbed_df.head())
 
-        refurbishment_quotas = {
-            "outer_wall": {
-                "refurbed_fraction": 0.33,
-            },
-            "rooftop": {
-                "refurbed_fraction": 0.63,
-            },
-            "window": {
-                "refurbed_fraction": 0.9,
-            },
-        }
+        refurbishment_quotas = {n: {"refurbed_fraction": i['quota']} for n, i in refurbishment_config.items()}
 
         infdblog.debug("Starting harmonization with refurbishment quotas")
         harmonized_df = refurbishment.harmonize_with_quota(refurbed_df, refurbishment_quotas, rng, infdblog,
