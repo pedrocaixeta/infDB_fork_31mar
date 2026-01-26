@@ -37,3 +37,5 @@ If you activate the service, it should be available on the default port `SERVICE
 
 === "Remote"
     http://IP-ADDRESS-OF-HOST:8088
+
+###Review: I think we need a more detailed description here to enable others to upload their projects?###

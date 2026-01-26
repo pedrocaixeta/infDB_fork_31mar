@@ -1,6 +1,6 @@
 # infdb-basedata
 
-The `infdb-basedata` tool creates a fundamental data basis for infrastructure modeling, planning, and analysis by merging various opendata sources into consolidated datasets. The focus is on building information on building level.
+The `infdb-basedata` tool creates a fundamental data basis for infrastructure modeling, planning, and analysis by merging various opendata sources into consolidated datasets. The focus lies on building information on the building level.
 
 **Data Sources Used**
     

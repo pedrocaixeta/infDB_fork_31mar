@@ -10,7 +10,7 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-loader:
-    name: "oberh_neub_sonth" #"forchheim"  # Name of the infdb-loader instance
+    name: "import-opendata" #"forchheim"  # Name of the infdb-loader instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich (BY)
         - "09780139"  # Sonthofen (BY)
