@@ -3,31 +3,40 @@
 </p>
 
 # infDB - Infrastructure and Energy Database
-
-**The infDB is a user-friendly, platform-independent, and open-source data infrastructure as a foundation for energy system analyses. It enables complex evaluations by combining various tools through standardized interfaces, fostering an open and interoperable ecosystem.**
+**infDB - Infrastructure and Energy Database** provides a modular and easy-to-configure open-source data and tool infrastructure equipped with essential services, designed to minimize the effort required for data management. This platform-independent containerized approach streamlines collaboration in energy modeling and analysis, empowering the growth of an ecosystem by offering standardized interfaces and APIs, and allowing users to dedicate their focus to generating insights rather than handling data logistics by ensuring data is FAIR (Findable, Accessible, Interoperable, and Reusable).
 
 | Category | Badges |
 |----------|--------|
 | License | [![License](https://img.shields.io/badge/license-Apache%202-blue)](LICENSE) |
-| Documentation | [![Documentation](https://img.shields.io/badge/docs-available-brightgreen)](https://need.pages.git-ce.rwth-aachen.de/NEED-infdb) |
-| Community | [![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://need.pages.git-ce.rwth-aachen.de/NEED-infdb/development) [![Contributors](https://img.shields.io/badge/contributors-0-orange)](#) [![Repo Count](https://img.shields.io/badge/repo-count-brightgreen)](#) |
+| Documentation | [![Documentation](https://img.shields.io/badge/docs-available-brightgreen)](https://tum-ens.github.io/InfDB) |
+| Community | [![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://tum-ens.github.io/InfDB/development) [![Contributors](https://img.shields.io/badge/contributors-0-orange)](#) [![Repo Count](https://img.shields.io/badge/repo-count-brightgreen)](#) |
 
 ## Table of Contents
 
-- [Purpose](#purpose)
+- [Why use it?](#why-use-it)
 - [How it works?](#how-it-works)
 - [Getting Started](#getting-started)
 - [License and Citation](#license-and-citation)
 
-## Purpose
 
+## Why use it?
+
+The infDB platform addresses common challenges in energy system modeling and analysis, particularly those related to data management. By providing a standardized and modular infrastructure, infDB reduces the time and effort required to set up and maintain data systems. This allows researchers, analysts, and planners to focus on their core tasks of modeling and analysis, rather than being bogged down by data logistics.
+
+The infDB can be used effectively wherever geospatial and time series information is required. Possible applications include:
+
+-   Energy System Modeling
+-   Municipal Heat Planning and Infrastructure Planning
+-   Scenario and Geospatial Analysis
+
+<!-- ## Purpose
 **infDB (Infrastructure and Energy Database)** offers a flexible and easy-to-configure data infrastructure with essential services, minimizing the effort required for data management. By providing standardized interfaces and APIs, infDB streamlines collaboration in energy modeling and analysis, enabling users to focus on insights rather than data handling.
 
 For instance, it can be used for the following applications:
 - Energy System Modeling
 - Infrastructure Planning
 - Scenario Analysis
-- Geospatial Analysis
+- Geospatial Analysis -->
 
 ## How it works?
 The infDB architecture is composed of three coordinated layers as shown in the figure below:
@@ -42,21 +51,21 @@ The PostgreSQL, all services and adopted tools are dockerized for a modular and 
 ### Services
 The infDB platform provides a suite of essential services designed to facilitate database operation and administration, data handling and visualization, and connectivity. Each preconfigured service can be activated individually to tailor the environment to your specific requirements. This section provides a brief description and configuration options for each available service.
 
-More information, a list of available services see [Services](docs/mkdocs/docs/usage/services.md).
+More information, a list of available services see [Services](https://tum-ens.github.io/InfDB/infdb/#services).
 
 ### Tools
 Tools are software that interact with infDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains.
 
-More information, a list of integrated tools and additional information, see [Tools](docs/mkdocs/docs/tools/index.md).
+More information, a list of integrated tools and additional information, see [Tools](https://tum-ens.github.io/InfDB/tools/).
 
 ## Getting Started
-If you want to use the infDB with the default settings just use the [Quick Start](#Quick-Start-Guide) below. For more information in detail read the [Usage Guide](https://need.pages.git-ce.rwth-aachen.de/NEED-infdb/usage/) of the official documentation.
+If you want to use the infDB with the default settings just use the [Quick Start](#Quick-Start) below. For more information in detail read the [Usage Guide](https://tum-ens.github.io/InfDB/usage/) of the official documentation.
 
 ### Prequisites
  - Docker Engine: https://docs.docker.com/engine/install/
  - Docker Desktop: https://docs.docker.com/desktop/
 
-### Quick Start
+### Folder Structure
 The infDB uses the following folder structure:
   ```
   infdb/
@@ -65,6 +74,9 @@ The infDB uses the following folder structure:
   ├── ...
   └── muenchen/
 ```
+
+### Quick Start
+You can quickly start an infDB with default configuration and credentials by following these steps:
 
 #### Create Folder for infDB
 ```bash
@@ -75,13 +87,13 @@ cd infdb
 #### Clone infDB
 ``` bash
 # Replace "infdb-demo" by name of instance 
-git clone git@git-ce.rwth-aachen.de:need/NEED-infdb.git infdb-demo
+git clone git@github.com:tum-ens/InfDB.git infdb-demo
 cd infdb-demo
 ```
 
 #### Start infDB
 ```bash
-bash infdb-start.sh
+bash infdb-start.sh up -d --build
 ```
 
 #### Import Opendata
@@ -94,9 +106,9 @@ bash infdb-import.sh
 bash infdb-stop.sh
 ```
 
-# Changelog
+<!-- # Changelog
 
-The changelog is maintained in the [CHANGELOG.md](CHANGELOG.md) file. It lists all changes made to the repository. Follow instructions there to document any updates.
+The changelog is maintained in the [CHANGELOG.md](CHANGELOG.md) file. It lists all changes made to the repository. Follow instructions there to document any updates. -->
 
 # License and Citation
 

@@ -117,7 +117,7 @@ security:
   script:
     - source .venv/bin/activate
     - bandit -r **/*.py --severity-level medium --exclude build --skip "B608"
-    - safety check
+    - safety scan
   allow_failure: true
 
 

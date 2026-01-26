@@ -15,10 +15,16 @@ set +a
 echo "=== Run infdb-basedata ==="
 bash $(dirname "$0")/infdb-basedata/run.sh
 
+echo "=== Run process-streets ==="
+bash $(dirname "$0")/process-streets/run.sh
+
+echo "=== Run buildings-to-street ==="
+bash $(dirname "$0")/buildings-to-street/run.sh 
+
 echo "=== Run ro-heat ==="
 bash $(dirname "$0")/ro-heat/run.sh
 
-echo "=== Run kwp ==="
-bash $(dirname "$0")/kwp/run.sh
+echo "=== Run linear heat density ==="
+bash $(dirname "$0")/linear-heat-density/run.sh
 
 echo "=== Done! InfDB with linear heat density is ready. ==="

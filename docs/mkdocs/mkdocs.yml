@@ -1,5 +1,5 @@
 site_name: "infDB Documentation"
-site_description: "Documentation for the infDB - an open source infrastructure and energy data infrastructure."
+site_description: "Documentation for infDB - An Open-Source Data Ecosystem for Urban Energy Infrastructure Modelling and Planning"
 repo_name: "infDB/infDB"
 copyright: "2026, Patrick Buchenberg"
 theme:
@@ -27,6 +27,7 @@ plugins:
   - search
   - awesome-pages
   - glightbox
+  - mkdocstrings
 
 nav:
   - Welcome: 
@@ -39,7 +40,10 @@ nav:
     - Introduction: usage/index.md
     - Requirements: usage/requirements.md
     - Get Software: usage/get-software.md
-    - Setup: usage/setup.md
+    - Setup: 
+      - Introduction: usage/setup.md
+      - Environment Variables: usage/setup/environment-variables.md
+      - YAML Configuration: usage/setup/yaml-configuration.md
     - Deployment: usage/deployment.md
     - Services: usage/services.md
     - Tools: usage/tools.md
@@ -49,13 +53,21 @@ nav:
     - Architecture: infdb/architecture.md
     # - Core: infdb/core.md
     - Database: infdb/database.md
-    - Services: infdb/services.md
+    - Services:
+    # - infdb/services.md
     # - Tools: usage/tools.md
-    # - infdb-db: infdb/infdb-db.md
-    - infdb-importer: infdb/infdb-importer.md
+      - infdb-db: infdb/services/infdb-db.md
+      - infdb-importer: infdb/services/infdb-importer.md
+      - pgAdmin: infdb/services/pgadmin.md
+      - Jupyter Notebook: infdb/services/jupyter.md
+      - QGIS Webclient: infdb/services/qwc2.md
+      - FastAPI: infdb/services/fastapi.md
+      - PostgREST: infdb/services/postgrest.md
+      - pygeoapi: infdb/services/pygeoapi.md
+      - OpenCloud: infdb/services/opencloud.md
   - API: 
     - Introduction: api/index.md
-    - pypackage: api/pypackage.md
+    - pyinfdb: api/pyinfdb.md
   - Tools: 
     - Introduction: tools/index.md
     - Template: tools/template.md
@@ -63,12 +75,20 @@ nav:
     # - ro-heat: tools/ro-heat.md
   - Linear Heat Density: 
     - Introduction: linear-heat-density/index.md
-    - Tools: linear-heat-density/tools.md
+    - Tools:
+      - infdb-basedata: linear-heat-density/tools/infdb-basedata.md
+      - ro-heat: linear-heat-density/tools/ro-heat.md
+      - process-streets: linear-heat-density/tools/process-streets.md
+      - linear-heat-density: linear-heat-density/tools/linear-heat-density.md
   - Development: 
     - Introduction: development/index.md
     - Workflow: development/workflow.md
     - Repository: development/repository.md
-    - Guidelines: development/guidelines.md
+    - Guidelines:
+      - Coding Standards: development/guidelines/coding-standards.md
+      - Database: development/guidelines/database.md
+      - Process: development/guidelines/process.md
+      - Best Practices: development/guidelines/best-practices.md
     - Documentation: development/documentation.md
     - Code of Conduct: development/code-of-conduct.md
 

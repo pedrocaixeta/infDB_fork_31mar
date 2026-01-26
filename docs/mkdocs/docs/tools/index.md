@@ -6,7 +6,7 @@ icon: material/tools
 The infDB ecosystem includes a variety of tools designed to handle different aspects of data workflows. These so called tools are software that interact with infDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains.
 
 <p align="center">
-  <img src="/usage/tools.png" alt="infDB logo" width="100"/>
+  <img src="../usage/tools.png" alt="infDB logo" width="100"/>
 </p>
 
 

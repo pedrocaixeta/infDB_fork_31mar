@@ -10,17 +10,29 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-loader:
-    name: "oberh_neub_sonth" #"forchheim"  # Name of the infdb-loader instance
-    scope:  # AGS (Amtlicher Gemeindeschlüssel)
-        # - "09162000"  # Munich (BY)
+    name: "sonthofen"  # Name of the infdb-loader instance
+    scope:  # List of AGS codes (8-digit) and/or state prefixes (2-digit, e.g. "05" for NRW)
+      # - "01"  # Schleswig-Holstein
+      # - "02"  # Hamburg
+      # - "03"  # Niedersachsen
+      # - "04"  # Bremen
+      # - "05"  # Nordrhein-Westfalen
+      # - "06"  # Hessen
+      # - "07"  # Rheinland-Pfalz
+      # - "08"  # Baden-Württemberg
+      # - "09"  # Bayern
+      # - "10"  # Saarland
+      # - "11"  # Berlin
+      # - "12"  # Brandenburg
+      # - "13"  # Mecklenburg-Vorpommern
+      # - "14"  # Sachsen
+      # - "15"  # Sachsen-Anhalt
+      # - "16"  # Thüringen
         - "09780139"  # Sonthofen (BY)
-        # - "09780116"  # Bolsterlang
-        - "09185149" # Neuburg a.d. Donau (BY)
-        # - "09474126" # Forchheim (BY)
-        # - "09261000" # Landshut (BY)
-        - "05119000" # Oberhausen (NRW)
+      # - "05119000" # Oberhausen (NRW)
+      # - "09185149" # Neuburg a. d. Donau (BY)
     multiproccesing: 
-        status: not-active
+        status: active
         max_cores: 2    # max cores since of memory limitations to 2
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
@@ -42,7 +54,7 @@ infdb-loader:
             access_token: "letdown subscribe lily catchable landmine sphinx"
     sources:
         package:
-            status: active
+            status: not-active
             url: http://ds1.need.energy:8123/opendata-neuburg-demo.zip
             path:
                 base: "{infdb-loader/path/base}"
@@ -85,10 +97,12 @@ infdb-loader:
                     table_name: tatsaechliche_nutzung
                     url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
         lod2-nrw:
-            status: active
+            status: not-active
             import-mode: skip # delete
-            url:
-                - "http://ds1.need.energy:8123/3d-gm_lod2_kacheln.zip"    #scope placeholder for AGS
+            base_url: "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/lod2_gml/"
+            tile_size_m: 1000
+            # Template uses km-grid indices (not meters)
+            filename_template: "LoD2_32_{e_km}_{n_km}_1_NW.gml"
             path:
                 lod2: "{infdb-loader/path/opendata}/lod2-nrw/"
                 gml: "{infdb-loader/path/opendata}/lod2-nrw/{infdb-loader/name}"
@@ -131,7 +145,7 @@ infdb-loader:
             ending: ".gpkg"
             filter:
                 - by # Bavaria
-                - nw # North Rhine-Westphalia
+                # - nw # North Rhine-Westphalia
             path:
                 base: "{infdb-loader/path/opendata}/basemap/"
                 processed: "{infdb-loader/path/processed}/basemap/"
@@ -634,7 +648,7 @@ infdb-loader:
               - wind_speed_10m
               - precipitation
         kwp-nrw:
-          status: active
+          status: not-active
           schema: opendata
           prefix: kwp_nrw
           path:
@@ -685,7 +699,7 @@ infdb-loader:
                 layer:
                   - "FF_Solarthermie_Flur_NRW"
         kwp-nrw-oberhausen:
-          status: active
+          status: not-active
           url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW_05119000_Oberhausen_EPSG25832_Shape.zip
           schema: opendata
           prefix: kwp_nrw_oberhausen
@@ -707,7 +721,7 @@ infdb-loader:
             - "Potenzial-FF-Solarthermie-Flur"
 
         gebaeude-neuburg:
-            status: active
+            status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
             protocol: webdav
             username: "need"
@@ -719,7 +733,7 @@ infdb-loader:
             layer:
                 - "gebaeudedaten_neuburg"
         waermeatlas-hessen-bensheim:
-            status: active
+            status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/BensheimWaermeatlasHessen.gpkg"
             protocol: webdav
             username: "need"
@@ -737,7 +751,7 @@ infdb-loader:
                 - "Hausumringe"
                 - "Flurstuecke"
         tudo-basemap-ways:
-            status: active
+            status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/TUDO_Basemap_ways.geojson"
             protocol: webdav
             username: "need"

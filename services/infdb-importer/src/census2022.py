@@ -93,10 +93,11 @@ def load(infdb: InfDB) -> None:
 
 
 def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
-    """Download, unzip, transform, and load one dataset to PostGIS.
+    """Downloads, unzips, transforms, and loads one dataset to PostGIS.
 
     Args:
         dataset: A dataset record from config (`name`, `url`, `year`, `table_name`, `status`, ...).
+        tool_name: The name of the tool (for logging/config).
 
     Returns:
         True on success or skip; False when an exception is encountered (logged).

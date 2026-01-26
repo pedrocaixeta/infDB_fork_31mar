@@ -11,13 +11,16 @@ The infDB database as service infdb-db is organized into multiple schemas to sep
 - `need`: Retrieved data from the NEED platform.
 - `choose_a_name`: Each infDB tool uses its own schema to store processed data, views, and functions.
 
-## Extensions
+## ERD Diagram
+![alt text](erd.png)
+
+<!-- ## Extensions
 The following extensions are installed to enhance database capabilities:
 
 - **PostGIS**: Adds support for geographic objects, enabling spatial queries and operations.
 - **TimescaleDB**: Provides time-series data management with features like hypertables and continuous aggregates.
 - **3DCityDB**: Manages 3D city models based on the CityGML standard.
-- **pgRouting**: Offers routing and network analysis functionalities.
+- **pgRouting**: Offers routing and network analysis functionalities. -->
 
 ## Connection Details
 

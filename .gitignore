@@ -165,6 +165,17 @@ uv.lock
 *.meta4
 *.zip
 *.csv
+*.geojson
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qpj
+*.sld
+*.qml
+*.aux.xml
+*.tif
 
 # QWC Data
 services/qgis_webclient/volumes/solr/data/*
@@ -185,3 +196,6 @@ src/infdb_package/site
 .env
 
 docs/mkdocs/site
+
+# JOSS compilation files
+jats/*

@@ -10,3 +10,5 @@ dependencies = [
     "entise",
     "infdb @ file:/app/mnt/infdb_package",
 ]
+[project.optional-dependencies]
+test = ["pytest"]

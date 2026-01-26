@@ -16,7 +16,7 @@ def main():
     """
 
     # Initialize InfDB handler
-    infdb = InfDB(tool_name="linear-heat-density")
+    infdb = InfDB(tool_name="linear-heat-density", config_path="configs")
     log = infdb.get_logger()
     # Start message
     log.info(f"Starting {infdb.get_toolname()} tool")
@@ -60,9 +60,12 @@ def main():
                 [infdb.get_toolname(), "data", "input", "heat-demand", "table"]
             ),
             "heat_demand_id_expr": heat_demand_id_expr,
-            "heat_demand_column": infdb.get_config_value(
-                [infdb.get_toolname(), "data", "input", "heat-demand", "heat-demand-column"]
+            "heat_demand_geom": infdb.get_config_value(
+                [infdb.get_toolname(), "data", "input", "heat-demand", "geom-column"]
             ),
+            "heat_demand_column": f'"{
+                infdb.get_config_value([infdb.get_toolname(), "data", "input", "heat-demand", "heat-demand-column"])
+            }"',
             "output_schema": infdb.get_config_value([infdb.get_toolname(), "data", "output", "schema"]),
             "output_table": infdb.get_config_value([infdb.get_toolname(), "data", "output", "table"]),
         }
