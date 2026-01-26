@@ -1,5 +1,8 @@
 services:
     ro-heat:
+        profiles: [ "heat", "all" ]
+        depends_on:
+            - infdb-basedata
         build:
             context: .
             dockerfile: Dockerfile

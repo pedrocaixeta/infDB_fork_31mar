@@ -1,5 +1,6 @@
 services:
     buildings-to-street:
+        profiles: [ "streets", "all" ]
         build:
             context: .
             dockerfile: Dockerfile

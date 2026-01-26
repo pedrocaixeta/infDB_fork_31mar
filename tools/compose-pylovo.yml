@@ -1,0 +1,3 @@
+include:
+    - infdb-basedata/compose.yml
+    - pylovo-generation/compose.yml

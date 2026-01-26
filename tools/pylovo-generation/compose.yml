@@ -1,12 +1,13 @@
 services:
     pylovo-generation:
+        profiles: [ "pylovo", "all" ]
         build:
             context: .
             dockerfile: Dockerfile
-        stdin_open: true  # Enable stdin for interactive input
-        tty: true         # Allocate a pseudo-TTY
+        stdin_open: true # Enable stdin for interactive input
+        tty: true # Allocate a pseudo-TTY
         env_file:
-            - ../../.env  # Use root .env file with database credentials
+            - ../../.env # Use root .env file with database credentials
             - env_pylovo.list
         volumes:
             - ./configs:/app/configs

@@ -1,5 +1,6 @@
 services:
     process-streets:
+        profiles: [ "streets", "all" ]
         build:
             context: .
             dockerfile: Dockerfile

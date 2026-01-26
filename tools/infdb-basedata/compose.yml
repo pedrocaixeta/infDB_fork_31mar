@@ -1,5 +1,6 @@
 services:
     basedata-changelog:
+        profiles: [ "basedata", "heat", "all" ]
         container_name: basedata-changelog
         build:
             context: ./liquibase
@@ -13,6 +14,7 @@ services:
             - "host.docker.internal:host-gateway"
 
     infdb-basedata:
+        profiles: [ "basedata", "heat", "all" ]
         build:
             context: .
             dockerfile: Dockerfile
@@ -26,5 +28,5 @@ services:
         extra_hosts:
             - "host.docker.internal:host-gateway"
         env_file:
-            - ../../.env  # Load root environment variables first
+            - ../../.env # Load root environment variables first
             - env_infdb_basedata.list
