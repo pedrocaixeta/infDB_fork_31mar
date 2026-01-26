@@ -10,7 +10,7 @@ name: ${BASE_NAME}
 
 include:
   # ==============================================================================
-  # DATABASE SERVICES (Profile: core)
+  # DATABASE SERVICES (Profile: db)
   # ==============================================================================
   # PostgreSQL Database (includes 3DCityDB initialization)
   - path: services/infdb-db/compose.yml
