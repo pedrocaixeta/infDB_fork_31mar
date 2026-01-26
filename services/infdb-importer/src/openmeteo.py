@@ -215,7 +215,7 @@ def load(infdb: InfDB) -> bool:
 
         # Ensure BKG grid exists (resolution configured in openmeteo)
         bkg_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "schema"])
-        grid_resolution = ( infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "grid_resolution"]))
+        grid_resolution = infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "grid_resolution"])
         bkg.create_geogitter(grid_resolution, infdb)
 
         # DB engine via package
