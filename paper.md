@@ -139,8 +139,9 @@ The research relevance of `infDB` lies in its role as a reusable data infrastruc
 * **Methodological neutrality:** infDB does not prescribe modeling approaches, optimization methods, or policy assumptions. Its role is limited to providing structured and accessible data, allowing a wide range of analytical methods to be applied without constraint.
 
 # Applications
+#### The role that infDB plays here is not clear enough. I would write this in more detail, maybe even use the figure from above and show the workflow along it by highlighting the different points and maybe circle them plus #1, #2, #3 etc." For me the focus should here be on the procedural flow and how infDB supports it.
+#### Alternatively, you could also provide a few shorter snippets on possible applications but I would prefer the first approach or a mixture where you explain linear heat density in detail and then provide a few more short examples.
 A key use case is calculating linear heat density, i.e., estimating building heat demands and distributing them along street segments, to asses the financial feasibility of district heating as basis for municipal heat planning (KWP) or district heating feasibility studies (BEW). Using `infDB`, researchers and planners can immediately leverage preprocessed, enriched open building data (LOD2) combined with statistical census data to compute building-level heat demand. This approach reduces computational overhead and development effort compared to traditional file-based GIS workflows, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
-
 
 # AI usage disclosure
 In the development of this work, GitHub Copilot, ChatGPT, and Gemini were used. Github Copilot assisted in code generation by code suggestions and completion tasks, while ChatGPT and Gemini assisted in drafting and refining textual content.
