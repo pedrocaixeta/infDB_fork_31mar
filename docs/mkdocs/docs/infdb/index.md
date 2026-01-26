@@ -8,6 +8,8 @@ The infDB is a modular and flexible data platform built on dockerized services t
 
 ![infDB Overview](../assets/img/infdb-overview.png)
 
+###Review: Auch hier fände ich einen Bezug auf die Graphik gut###
+
 Its architecture is composed of two main components:
 
 : :fontawesome-solid-gears: **[Services](services.md)** – Dockerized open-source software providing base functionality.

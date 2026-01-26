@@ -45,6 +45,7 @@ COMPOSE_PROFILES=...,opendata,...  # (1)
 The imported opendata sources are configured in a YAML file (default: `configs/config-infdb-loader.yml`). This file controls which datasets are downloaded and processed.
 
 Available data sources include (for North Rhine-Westphalia and Bavaria):
+
 - Building data (LOD2)
 - Statistical data (Zensus 2022, 2011)
 - Building topology (TABULA)
