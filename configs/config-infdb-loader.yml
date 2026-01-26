@@ -636,6 +636,7 @@ infdb-loader:
           status: active
           schema: opendata
           prefix: openmeteo
+          grid_resolution: "100km"
           path:
               base: "{infdb-loader/path/opendata}/openmeteo/"
               processed: "{infdb-loader/path/processed}/openmeteo/"

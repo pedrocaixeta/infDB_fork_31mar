@@ -110,12 +110,18 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
                                 )).*
                         FROM envelope e
                     ),
+                    grid_filtered AS (
+                        SELECT gr.geom
+                        FROM grid_raw gr
+                        CROSS JOIN boundary b
+                        WHERE ST_Covers(b.geom, ST_PointOnSurface(gr.geom))
+                    ),
                     grid AS (
                         SELECT
                             ST_Transform(geom, {epsg}) AS geom,
                             ST_XMin(geom) AS x,
                             ST_YMin(geom) AS y
-                        FROM grid_raw
+                        FROM grid_filtered
                     ),
                     id_named AS (
                         SELECT

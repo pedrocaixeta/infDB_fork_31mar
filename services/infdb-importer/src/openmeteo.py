@@ -213,39 +213,22 @@ def load(infdb: InfDB) -> bool:
         base_path = infdb.get_config_path([infdb.get_toolname(), "sources", "openmeteo", "path", "base"], type="loader")
         os.makedirs(base_path, exist_ok=True)
 
-        # Ensure BKG 10km grid exists
+        # Ensure BKG grid exists (resolution configured in openmeteo)
         bkg_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "schema"])
-        bkg.create_geogitter("10km", infdb)
+        grid_resolution = ( infdb.get_config_value([infdb.get_toolname(), "sources", "openmeteo", "grid_resolution"]))
+        bkg.create_geogitter(grid_resolution, infdb)
 
         # DB engine via package
         engine = infdb.get_db_engine()
 
-    
+        # Read centroid geometry and lat/lon for 10km grid
         table_name = infdb.get_config_value([infdb.get_toolname(), "sources", "bkg", "geogitter", "table_name"])
-        # Select the WGS84 lat/lon of 100km grid-cell centroids whose centroid points fall inside the configured scope polygons.
         sql = f"""
-        WITH scope_union AS (
-            SELECT ST_UnaryUnion(ST_Collect(geom)) AS geom
-            FROM {bkg_schema}.scope
-        ),
-        grid_centroids AS (
-            SELECT
-                g.id,
-                ST_Centroid(g.geom) AS c_geom,
-                g.geom AS cell_geom
-            FROM {bkg_schema}.{table_name} g
-            WHERE g.name = 'DE_Grid_ETRS89_LAEA_100km'
-        )
-        SELECT
-            gc.id,
-            ST_Y(ST_Transform(gc.c_geom, {GEO_SRID_WGS84})) AS latitude,
-            ST_X(ST_Transform(gc.c_geom, {GEO_SRID_WGS84})) AS longitude
-        FROM grid_centroids gc
-        CROSS JOIN scope_union s
-        WHERE ST_Covers(
-            ST_Transform(s.geom, ST_SRID(gc.cell_geom)),
-            gc.c_geom
-        );
+            SELECT id,
+                ST_Y(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS latitude,
+                ST_X(ST_Transform(ST_Centroid(geom), {GEO_SRID_WGS84})) AS longitude
+            FROM {bkg_schema}.{table_name}
+            WHERE name='DE_Grid_ETRS89_LAEA_{grid_resolution}';
         """
         pd_dataframe = pd.read_sql(sql=sql, con=engine)
         log.debug("Grid preview:\n%s", pd_dataframe.head())
