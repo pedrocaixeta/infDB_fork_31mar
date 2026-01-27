@@ -3,7 +3,7 @@
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 CREATE TABLE IF NOT EXISTS {output_schema}.{output_table} (
     street_id TEXT PRIMARY KEY,
-    geom geom,
+    geom GEOMETRY,
     total_heat_demand NUMERIC,
     street_length NUMERIC,
     linear_heat_density NUMERIC

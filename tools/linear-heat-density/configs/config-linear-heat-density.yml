@@ -28,8 +28,8 @@ linear-heat-density:
                 schema: buildings_to_street
                 table: buildings_to_streets
             streets:
-                schema: process_streets
-                table: segments
+                schema: opendata # process_streets
+                table: basemap_verkehrslinie # segments
                 id-column: id
                 geom-column: geom
             heat-demand:
