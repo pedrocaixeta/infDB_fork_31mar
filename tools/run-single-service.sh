@@ -15,13 +15,10 @@ set -a
 [ -f $(dirname "$0")/.env ] && . $(dirname "$0")/.env
 set +a
 
-# Extract profile and additional parameter
-PROFILE="${1:-$PROFILE}"
+# Extract SERVICE and additional parameter
+SERVICE="${1:-$SERVICE}"
 PARAM="${2:-$AGS}"
-OPTIONS="${3:-}"
 
-echo "Starting docker compose..."
+echo "Starting docker compose single service $SERVICE"
 export AGS="$PARAM"
-docker compose -f "$(dirname "$0")/compose.yml" \
-    --profile "$PROFILE" \
-     up $OPTIONS
+docker compose run --no-deps "$SERVICE"
