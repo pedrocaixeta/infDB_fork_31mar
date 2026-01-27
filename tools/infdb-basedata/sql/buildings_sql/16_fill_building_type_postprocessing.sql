@@ -38,6 +38,7 @@ WHERE b.id = nc.id
 
 -- Rebalance according to census data
 -- This script rebalances residential building types according to reference data
+-- This step is hierarchical. AB are adjusted first, then MFH, then TH, thereby automatically adjusting SFH
 
 -- Create a mapping between building types and reference columns
 -- AB (Apartment Buildings) = mfh_13undmehrwohnungen + mfh_7bis12wohnungen
@@ -52,16 +53,14 @@ SET grid_id = g.id
 FROM {output_schema}.buildings_grid g
 WHERE ST_Contains(g.geom, centroid);
 
--- Step 2: Calculate current counts and target counts per grid
+-- Step 2: Calculate current counts and target counts per grid for adjusting MFH
 DROP TABLE IF EXISTS temp_grid_current;
 CREATE TABLE temp_grid_current AS
 WITH grid_current AS (
     SELECT
         g.id as grid_id,
         COUNT(CASE WHEN b.building_type = 'AB' THEN 1 END) as current_ab,
-        COUNT(CASE WHEN b.building_type = 'MFH' THEN 1 END) as current_mfh,
-        COUNT(CASE WHEN b.building_type = 'TH' THEN 1 END) as current_th,
-        COUNT(CASE WHEN b.building_type = 'SFH' THEN 1 END) as current_sfh,
+        COUNT(CASE WHEN b.building_type = 'MFH' AND b.households > 1 THEN 1 END) as current_mfh_eligible,
         COUNT(*) as total_buildings
     FROM {output_schema}.buildings b
     JOIN {output_schema}.buildings_grid g ON ST_Contains(g.geom, b.centroid)
@@ -70,6 +69,7 @@ WITH grid_current AS (
 )
 SELECT * FROM grid_current;
 
+-- Census target counts per grid cell being compared against
 DROP TABLE IF EXISTS temp_grid_target;
 CREATE TABLE temp_grid_target AS (
     SELECT
@@ -106,42 +106,31 @@ CREATE TABLE temp_grid_target AS (
     )
 );
 
-DROP TABLE IF EXISTS temp_grid_comparison;
-CREATE TABLE temp_grid_comparison AS
+-- Calculate needed adjustments for MFH
+DROP TABLE IF EXISTS temp_grid_comparisonab;
+CREATE TABLE temp_grid_comparisonab AS
 WITH grid_comparison AS (
     SELECT
         gc.grid_id,
         gc.current_ab,
-        gc.current_mfh,
-        gc.current_th,
-        gc.current_sfh,
+        gc.current_mfh_eligible,
         gc.total_buildings,
         gt.target_ab,
-        gt.target_mfh,
-        gt.target_th,
-        gt.target_sfh,
         gt.total_target,
-        -- Calculate needed adjustments (scaled to current total)
+--         -- Calculate needed adjustments (scaled to current total)
         CASE WHEN gt.total_target > 0 THEN
-            ROUND(gt.target_ab * gc.total_buildings / gt.total_target) - gc.current_ab
-        ELSE 0 END as ab_adjustment,
-        CASE WHEN gt.total_target > 0 THEN
-            ROUND(gt.target_mfh * gc.total_buildings / gt.total_target) - gc.current_mfh
-        ELSE 0 END as mfh_adjustment,
-        CASE WHEN gt.total_target > 0 THEN
-            ROUND(gt.target_th * gc.total_buildings / gt.total_target) - gc.current_th
-        ELSE 0 END as th_adjustment,
-        CASE WHEN gt.total_target > 0 THEN
-            ROUND(gt.target_sfh * gc.total_buildings / gt.total_target) - gc.current_sfh
-        ELSE 0 END as sfh_adjustment
+            ROUND(gt.target_ab * gc.total_buildings::numeric / gt.total_target) - gc.current_ab
+        ELSE 0 END as ab_adjustment
     FROM temp_grid_current gc
     LEFT JOIN temp_grid_target gt ON gc.grid_id = gt.grid_id
 )
+
 SELECT * FROM grid_comparison;
 
--- Step 3: Create conversion plan
+-- -- Step 3: Create conversion plan from  AB to MFH, and from MFH and TH to AB based on adjustment numbers
 DROP TABLE IF EXISTS temp_building_rankings;
-CREATE TABLE temp_building_rankings AS (
+CREATE TABLE temp_building_rankings AS
+WITH ab_to_mfh AS (
     SELECT
         b.id,
         b.building_type,
@@ -151,64 +140,89 @@ CREATE TABLE temp_building_rankings AS (
         b.height,
         gc.grid_id,
         gc.ab_adjustment,
-        gc.mfh_adjustment,
-        gc.th_adjustment,
-        gc.sfh_adjustment,
-
-        -- Rankings for conversion priorities
-        -- For AB increases: prioritize largest MFH, then largest TH
         ROW_NUMBER() OVER (
-            PARTITION BY gc.grid_id, b.building_type
-            ORDER BY
-                CASE WHEN b.building_type = 'MFH' THEN b.floor_area * b.height END DESC NULLS LAST,
-                CASE WHEN b.building_type = 'TH' THEN b.floor_area * b.height END DESC NULLS LAST
-        ) as ab_conversion_rank,
-
-        -- For MFH increases: prioritize largest TH, then smallest AB
-        ROW_NUMBER() OVER (
-            PARTITION BY gc.grid_id, b.building_type
-            ORDER BY
-                CASE WHEN b.building_type = 'TH' THEN b.floor_area * b.height END DESC NULLS LAST,
-                CASE WHEN b.building_type = 'AB' AND b.households <= 4 THEN b.floor_area * b.height END ASC NULLS LAST
-        ) as mfh_conversion_rank,
-
-        -- For TH increases: prioritize smaller MFH
-        ROW_NUMBER() OVER (
-            PARTITION BY gc.grid_id, b.building_type
-            ORDER BY
-                CASE WHEN b.building_type = 'MFH' AND b.households <= 2 THEN b.floor_area * b.height END ASC NULLS LAST
-        ) as th_conversion_rank,
-
-        -- For SFH increases: prioritize smaller TH, then smaller MFH
-        ROW_NUMBER() OVER (
-            PARTITION BY gc.grid_id, b.building_type
-            ORDER BY
-                CASE WHEN b.building_type = 'TH' THEN b.floor_area * b.height END ASC NULLS LAST,
-                CASE WHEN b.building_type = 'MFH' AND b.households <= 2 THEN b.floor_area * b.height END ASC NULLS LAST
-        ) as sfh_conversion_rank
-
+            PARTITION BY gc.grid_id
+            ORDER BY b.floor_area * b.height ASC
+        ) AS ab_to_mfh_conversion_rank,
+        NULL::int AS mfh_to_ab_conversion_rank,
+        NULL::int AS th_to_ab_conversion_rank
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g ON ST_Contains(g.geom, b.centroid)
-    JOIN temp_grid_comparison gc ON g.id = gc.grid_id
-    WHERE b.building_use = 'Residential'
-      AND gc.total_target > 0
-);
+    JOIN {output_schema}.buildings_grid g
+      ON ST_Contains(g.geom, b.centroid)
+    JOIN temp_grid_comparisonab gc
+      ON g.id = gc.grid_id
+    WHERE
+        b.building_use = 'Residential'
+        AND gc.total_target > 0
+        AND gc.ab_adjustment < 0
+        AND b.building_type = 'AB'
+),
 
--- Drop the helper column again
-ALTER TABLE {output_schema}.buildings DROP COLUMN grid_id;
-
--- Pre-calculate the subquery values once per grid_id
-DROP TABLE IF EXISTS temp_grid_counts;
-CREATE TABLE temp_grid_counts AS (
+mfh_to_ab AS (
     SELECT
-        grid_id,
-        COUNT(CASE WHEN building_type = 'MFH' AND households > 1 THEN 1 END) as mfh_multi_household_count,
-        COUNT(CASE WHEN building_type = 'TH' THEN 1 END) as th_count
-    FROM temp_building_rankings
-    GROUP BY grid_id
-);
+        b.id,
+        b.building_type,
+        b.households,
+        b.occupants,
+        b.floor_area,
+        b.height,
+        gc.grid_id,
+        gc.ab_adjustment,
+        NULL::int AS ab_to_mfh_conversion_rank,
+        ROW_NUMBER() OVER (
+            PARTITION BY gc.grid_id
+            ORDER BY b.floor_area * b.height DESC
+        ) AS mfh_to_ab_conversion_rank,
+        NULL::int AS th_to_ab_conversion_rank
+    FROM {output_schema}.buildings b
+    JOIN {output_schema}.buildings_grid g
+      ON ST_Contains(g.geom, b.centroid)
+    JOIN temp_grid_comparisonab gc
+      ON g.id = gc.grid_id
+    WHERE
+        b.building_use = 'Residential'
+        AND b.households > 1
+        AND gc.total_target > 0
+        AND gc.ab_adjustment > 0
+        AND b.building_type = 'MFH'
+),
+-- Ranks TH for AB conversion if MFH are not sufficient
+th_to_ab AS (
+    SELECT
+        b.id,
+        b.building_type,
+        b.households,
+        b.occupants,
+        b.floor_area,
+        b.height,
+        gc.grid_id,
+        gc.ab_adjustment,
+        NULL::int AS ab_to_mfh_conversion_rank,
+        NULL::int AS mfh_to_ab_conversion_rank,
+        ROW_NUMBER() OVER (
+            PARTITION BY gc.grid_id
+            ORDER BY b.floor_area * b.height DESC
+        ) AS th_to_ab_conversion_rank
+    FROM {output_schema}.buildings b
+    JOIN {output_schema}.buildings_grid g
+      ON ST_Contains(g.geom, b.centroid)
+    JOIN temp_grid_comparisonab gc
+      ON g.id = gc.grid_id
+    WHERE
+        b.building_use = 'Residential'
+        AND gc.total_target > 0
+        AND gc.ab_adjustment > 0
+        AND b.building_type = 'TH'
+        AND gc.ab_adjustment >= gc.current_mfh_eligible
+)
 
--- Create the conversion decisions table with a single join
+SELECT * FROM th_to_ab
+Union ALL
+SELECT * FROM ab_to_mfh
+UNION ALL
+SELECT * FROM mfh_to_ab;
+
+-- -- Create the conversion decisions for AB table with a single join
 DROP TABLE IF EXISTS temp_conversion_decisions;
 CREATE TABLE temp_conversion_decisions AS (
     SELECT
@@ -217,59 +231,36 @@ CREATE TABLE temp_conversion_decisions AS (
         br.households,
         br.occupants,
         br.grid_id,
-
         -- Determine new building type based on conversion needs and rankings
         CASE
-            -- Convert to AB
+            -- Convert AB to MFH
+            WHEN br.ab_adjustment < 0 AND (
+               br.building_type = 'AB' AND br.ab_to_mfh_conversion_rank <= ABS(br.ab_adjustment))
+            THEN 'MFH'
+            -- Convert MFH and TH to AB
             WHEN br.ab_adjustment > 0 AND (
-                (br.building_type = 'MFH' AND br.households > 1 AND br.ab_conversion_rank <= br.ab_adjustment) OR
-                (br.building_type = 'TH' AND br.ab_conversion_rank <= GREATEST(0, br.ab_adjustment - gc.mfh_multi_household_count))
-            ) THEN 'AB'
-
-            -- Convert to MFH
-            WHEN br.mfh_adjustment > 0 AND (
-                (br.building_type = 'TH' AND br.mfh_conversion_rank <= br.mfh_adjustment) OR
-                (br.building_type = 'AB' AND br.households <= 4 AND br.mfh_conversion_rank <= GREATEST(0, br.mfh_adjustment - gc.th_count))
-            ) THEN 'MFH'
-
-            -- Convert to TH
-            WHEN br.th_adjustment > 0 AND br.building_type = 'MFH' AND br.households <= 2 AND br.th_conversion_rank <= br.th_adjustment
-            THEN 'TH'
-
-            -- Convert to SFH
-            WHEN br.sfh_adjustment > 0 AND (
-                (br.building_type = 'TH' AND br.sfh_conversion_rank <= br.sfh_adjustment) OR
-                (br.building_type = 'MFH' AND br.households <= 2 AND br.sfh_conversion_rank <= GREATEST(0, br.sfh_adjustment - gc.th_count))
-            ) THEN 'SFH'
-
+                (br.building_type = 'MFH' AND br.households > 1 AND br.mfh_to_ab_conversion_rank <= br.ab_adjustment)
+                OR (br.building_type = 'TH' AND br.th_to_ab_conversion_rank <= br.ab_adjustment - gc.current_mfh_eligible)
+                )THEN 'AB'
             ELSE br.building_type
+
         END as new_type,
 
         -- Calculate new household counts
         CASE
             -- AB conversions
+            WHEN br.ab_adjustment < 0 AND (
+                (br.building_type = 'AB' AND br.ab_to_mfh_conversion_rank <= ABS(br.ab_adjustment))
+                ) THEN GREATEST(br.households, 2)
             WHEN br.ab_adjustment > 0 AND (
-                (br.building_type = 'MFH' AND br.households > 1 AND br.ab_conversion_rank <= br.ab_adjustment) OR
-                (br.building_type = 'TH' AND br.ab_conversion_rank <= GREATEST(0, br.ab_adjustment - gc.mfh_multi_household_count))
-            ) THEN GREATEST(br.households, 2)
-
-            -- MFH conversions
-            WHEN br.mfh_adjustment > 0 AND (
-                (br.building_type = 'TH' AND br.mfh_conversion_rank <= br.mfh_adjustment) OR
-                (br.building_type = 'AB' AND br.households <= 4 AND br.mfh_conversion_rank <= GREATEST(0, br.mfh_adjustment - gc.th_count))
-            ) THEN GREATEST(br.households, 2)
-
-            -- SFH conversions
-            WHEN br.sfh_adjustment > 0 AND (
-                (br.building_type = 'TH' AND br.sfh_conversion_rank <= br.sfh_adjustment) OR
-                (br.building_type = 'MFH' AND br.households <= 2 AND br.sfh_conversion_rank <= GREATEST(0, br.sfh_adjustment - gc.th_count))
-            ) THEN 1
-
+               (br.building_type = 'MFH' AND br.households > 1 AND br.mfh_to_ab_conversion_rank <= br.ab_adjustment) OR
+                (br.building_type = 'TH' AND br.th_to_ab_conversion_rank < Greatest(0, br.ab_adjustment - gc.current_mfh_eligible))
+                ) THEN GREATEST(br.households, 2)
             ELSE br.households
         END as new_households
 
     FROM temp_building_rankings br
-    JOIN temp_grid_counts gc ON br.grid_id = gc.grid_id
+    JOIN temp_grid_comparisonab gc ON br.grid_id = gc.grid_id
 );
 
 
@@ -295,3 +286,337 @@ SET
     occupants = cp.new_occupants
 FROM temp_conversion_plan cp
 WHERE buildings.id = cp.id;
+
+-- Repeat for MFH
+DROP TABLE IF EXISTS temp_grid_current;
+CREATE TABLE temp_grid_current AS
+WITH grid_current AS (
+    SELECT
+        g.id as grid_id,
+        COUNT(CASE WHEN b.building_type = 'MFH' THEN 1 END) as current_mfh,
+        COUNT(CASE WHEN b.building_type = 'TH' THEN 1 END) as current_th,
+        COUNT(*) as total_buildings
+    FROM {output_schema}.buildings b
+    JOIN {output_schema}.buildings_grid g ON ST_Contains(g.geom, b.centroid)
+    WHERE b.building_use = 'Residential' AND g.id IS NOT NULL
+    GROUP BY g.id
+)
+SELECT * FROM grid_current;
+
+DROP TABLE IF EXISTS temp_grid_comparisonmfh;
+CREATE TABLE temp_grid_comparisonmfh AS
+WITH grid_comparison AS (
+    SELECT
+        gc.grid_id,
+        gc.current_mfh,
+        gc.current_th,
+        gc.total_buildings,
+        gt.target_mfh,
+        gt.total_target,
+        Case WHEN gt.total_target > 0 THEN
+            ROUND(gt.target_mfh * gc.total_buildings::numeric / gt.total_target) - gc.current_mfh
+        ELSE 0 END as mfh_adjustment
+    FROM temp_grid_current gc
+    LEFT JOIN temp_grid_target gt ON gc.grid_id = gt.grid_id
+)
+SELECT * FROM grid_comparison;
+
+DROP TABLE IF EXISTS temp_building_rankings;
+CREATE TABLE temp_building_rankings AS
+WITH TH_to_MFH AS (
+    SELECT
+        b.id,
+        b.building_type,
+        b.households,
+        b.occupants,
+        b.floor_area,
+        b.height,
+        gc.grid_id,
+        gc.mfh_adjustment,
+        NULL::int AS SFH_to_MFH_conversion_rank,
+        ROW_NUMBER() OVER (
+            PARTITION BY gc.grid_id
+            ORDER BY b.floor_area * b.height DESC
+        ) AS TH_to_MFH_conversion_rank,
+        NULL::int AS MFH_to_TH_conversion_rank
+    FROM {output_schema}.buildings b
+    JOIN {output_schema}.buildings_grid g
+      ON ST_Contains(g.geom, b.centroid)
+    JOIN temp_grid_comparisonmfh gc
+      ON g.id = gc.grid_id
+    WHERE b.building_use = 'Residential'
+      AND gc.total_target > 0
+      AND gc.mfh_adjustment > 0
+      AND b.building_type = 'TH'
+),
+SFH_to_MFH AS (
+    SELECT
+        b.id,
+        b.building_type,
+        b.households,
+        b.occupants,
+        b.floor_area,
+        b.height,
+        gc.grid_id,
+        gc.mfh_adjustment,
+        ROW_NUMBER() OVER (
+            PARTITION BY gc.grid_id
+            ORDER BY b.floor_area * b.height DESC
+        ) AS SFH_to_MFH_conversion_rank,
+        NULL::int AS TH_to_MFH_conversion_rank,
+        NULL::int AS MFH_to_TH_conversion_rank
+    FROM {output_schema}.buildings b
+    JOIN {output_schema}.buildings_grid g
+      ON ST_Contains(g.geom, b.centroid)
+    JOIN temp_grid_comparisonmfh gc
+      ON g.id = gc.grid_id
+    WHERE b.building_use = 'Residential'
+      AND gc.total_target > 0
+      AND gc.mfh_adjustment > 0
+      AND b.building_type = 'SFH'
+      AND gc.mfh_adjustment > gc.current_th
+),
+MFH_to_TH AS (
+    SELECT
+        b.id,
+        b.building_type,
+        b.households,
+        b.occupants,
+        b.floor_area,
+        b.height,
+        gc.grid_id,
+        gc.mfh_adjustment,
+        NULL::int AS SFH_to_MFH_conversion_rank,
+        NULL::int AS TH_to_MFH_conversion_rank,
+        ROW_NUMBER() OVER (
+            PARTITION BY gc.grid_id
+            ORDER BY b.floor_area * b.height ASC
+        ) AS MFH_to_TH_conversion_rank
+    FROM {output_schema}.buildings b
+    JOIN {output_schema}.buildings_grid g
+      ON ST_Contains(g.geom, b.centroid)
+    JOIN temp_grid_comparisonmfh gc
+      ON g.id = gc.grid_id
+    WHERE b.building_use = 'Residential'
+      AND gc.total_target > 0
+      AND gc.mfh_adjustment < 0
+      AND b.building_type = 'MFH'
+      AND b.households <= 2
+)
+SELECT * FROM SFH_to_MFH
+UNION ALL
+SELECT * FROM TH_to_MFH
+UNION ALL
+SELECT * FROM MFH_to_TH;
+
+DROP TABLE IF EXISTS temp_conversion_decisions;
+CREATE TABLE temp_conversion_decisions AS (
+    SELECT
+        br.id,
+        br.building_type as original_type,
+        br.households,
+        br.occupants,
+        br.grid_id,
+        -- Determine new building type based on conversion needs and rankings
+        CASE
+            -- Convert to MFH to TH
+            WHEN br.mfh_adjustment < 0 AND (
+                br.building_type = 'MFH' AND br.households <= 2 AND br.MFH_to_TH_conversion_rank <= ABS(br.mfh_adjustment)
+            ) THEN 'TH'
+            -- Convert TH and SFH to MFH
+            WHEN br.mfh_adjustment > 0 AND (
+                (br.building_type = 'TH' AND br.TH_to_MFH_conversion_rank <= br.mfh_adjustment) OR
+                (br.building_type = 'SFH' AND br.SFH_to_MFH_conversion_rank <= Greatest(0, br.mfh_adjustment - gc.current_th))
+            ) THEN 'MFH'
+            ELSE br.building_type
+        END as new_type,
+
+        CASE
+            WHEN br.mfh_adjustment > 0 AND (
+                (br.building_type = 'TH' AND br.TH_to_MFH_conversion_rank <= br.mfh_adjustment) OR
+                (br.building_type = 'SFH' AND br.SFH_to_MFH_conversion_rank <= Greatest(0, br.mfh_adjustment - gc.current_th))
+            )  THEN GREATEST(br.households, 2)
+
+            ELSE br.households
+        END as new_households
+
+    FROM temp_building_rankings br
+    JOIN temp_grid_comparisonmfh gc ON br.grid_id = gc.grid_id
+);
+
+DROP TABLE IF EXISTS temp_conversion_plan;
+CREATE TABLE temp_conversion_plan AS
+(
+    SELECT
+        id,
+        original_type,
+        new_type,
+        households,
+        new_households,
+        GREATEST(occupants, new_households, CASE WHEN new_type = 'AB' THEN 2 ELSE 1 END) as new_occupants
+    FROM temp_conversion_decisions
+    WHERE original_type != new_type
+);
+
+UPDATE {output_schema}.buildings
+SET
+    building_type = cp.new_type,
+    households = cp.new_households,
+    occupants = cp.new_occupants
+FROM temp_conversion_plan cp
+WHERE buildings.id = cp.id;
+
+-- Repeat for THs
+DROP TABLE IF EXISTS temp_grid_current;
+CREATE TABLE temp_grid_current AS
+WITH grid_current AS (
+    SELECT
+        g.id as grid_id,
+        COUNT(CASE WHEN b.building_type = 'TH' THEN 1 END) as current_th,
+        COUNT(*) as total_buildings
+    FROM {output_schema}.buildings b
+    JOIN {output_schema}.buildings_grid g ON ST_Contains(g.geom, b.centroid)
+    WHERE b.building_use = 'Residential' AND g.id IS NOT NULL
+    GROUP BY g.id
+)
+SELECT * FROM grid_current;
+
+DROP TABLE IF EXISTS temp_grid_comparisonth;
+CREATE TABLE temp_grid_comparisonth AS
+WITH grid_comparison AS (
+    SELECT
+        gc.grid_id,
+        gc.current_th,
+        gc.total_buildings,
+        gt.target_th,
+        gt.total_target,
+        Case WHEN gt.total_target > 0 THEN
+            ROUND(gt.target_th * gc.total_buildings::numeric / gt.total_target) - gc.current_th
+        ELSE 0 END as th_adjustment
+    FROM temp_grid_current gc
+    LEFT JOIN temp_grid_target gt ON gc.grid_id = gt.grid_id
+)
+
+SELECT * FROM grid_comparison;
+
+DROP TABLE IF EXISTS temp_building_rankings;
+CREATE TABLE temp_building_rankings AS
+WITH SFH_to_TH AS (
+    SELECT
+        b.id,
+        b.building_type,
+        b.households,
+        b.occupants,
+        b.floor_area,
+        b.height,
+        gc.grid_id,
+        gc.th_adjustment,
+        ROW_NUMBER() OVER (
+            PARTITION BY gc.grid_id
+            ORDER BY b.floor_area * b.height DESC
+        ) AS SFH_to_TH_conversion_rank,
+        NULL::int AS TH_to_SFH_conversion_rank
+    FROM {output_schema}.buildings b
+    JOIN {output_schema}.buildings_grid g
+      ON ST_Contains(g.geom, b.centroid)
+    JOIN temp_grid_comparisonth gc
+      ON g.id = gc.grid_id
+    WHERE b.building_use = 'Residential'
+      AND gc.total_target > 0
+      AND gc.th_adjustment > 0
+      AND b.building_type = 'SFH'
+),
+
+TH_to_SFH AS (
+    SELECT
+        b.id,
+        b.building_type,
+        b.households,
+        b.occupants,
+        b.floor_area,
+        b.height,
+        gc.grid_id,
+        gc.th_adjustment,
+        NULL::int AS SFH_to_TH_conversion_rank,
+        ROW_NUMBER() OVER (
+            PARTITION BY gc.grid_id
+            ORDER BY b.floor_area * b.height ASC
+        ) AS TH_to_SFH_conversion_rank
+    FROM {output_schema}.buildings b
+    JOIN {output_schema}.buildings_grid g
+      ON ST_Contains(g.geom, b.centroid)
+    JOIN temp_grid_comparisonth gc
+      ON g.id = gc.grid_id
+    WHERE b.building_use = 'Residential'
+      AND gc.total_target > 0
+      AND gc.th_adjustment < 0
+      AND b.building_type = 'TH'
+)
+
+SELECT * FROM SFH_to_TH
+UNION ALL
+SELECT * FROM TH_to_SFH;
+
+DROP TABLE IF EXISTS temp_conversion_decisions;
+CREATE TABLE temp_conversion_decisions AS (
+    SELECT
+        br.id,
+        br.building_type as original_type,
+        br.households,
+        br.occupants,
+        br.grid_id,
+        CASE
+            -- Convert to TH to SFH
+            WHEN br.th_adjustment < 0 AND(
+                br.building_type = 'TH' AND br.TH_to_SFH_conversion_rank <= ABS(br.th_adjustment))
+            THEN 'SFH'
+            -- Convert SFH to TH
+            WHEN br.th_adjustment > 0 AND(
+                br.building_type = 'SFH' AND br.SFH_to_TH_conversion_rank <= br.th_adjustment)
+            THEN 'TH'
+            ELSE br.building_type
+        END as new_type,
+        CASE
+            WHEN br.th_adjustment < 0 AND (
+                (br.building_type = 'TH' AND br.TH_to_SFH_conversion_rank <= ABS(br.th_adjustment))
+                )
+            THEN 1
+            ELSE br.households
+        END as new_households
+
+    FROM temp_building_rankings br
+    JOIN temp_grid_comparisonth gc ON br.grid_id = gc.grid_id
+);
+
+DROP TABLE IF EXISTS temp_conversion_plan;
+CREATE TABLE temp_conversion_plan AS
+(
+    SELECT
+        id,
+        original_type,
+        new_type,
+        households,
+        new_households,
+        GREATEST(occupants, new_households, CASE WHEN new_type = 'AB' THEN 2 ELSE 1 END) as new_occupants
+    FROM temp_conversion_decisions
+    WHERE original_type != new_type
+);
+
+UPDATE {output_schema}.buildings
+SET
+    building_type = cp.new_type,
+    households = cp.new_households,
+    occupants = cp.new_occupants
+FROM temp_conversion_plan cp
+WHERE buildings.id = cp.id;
+ALTER TABLE {output_schema}.buildings DROP COLUMN grid_id;
+
+-- Drop TEMP tables
+DROP TABLE IF EXISTS temp_grid_current;
+DROP TABLE IF EXISTS temp_grid_target;
+DROP TABLE IF EXISTS temp_grid_comparisonab;
+DROP TABLE IF EXISTS temp_grid_comparisonmfh;
+DROP TABLE IF EXISTS temp_grid_comparisonth;
+DROP TABLE IF EXISTS temp_building_rankings;
+DROP TABLE IF EXISTS temp_conversion_decisions;
+DROP TABLE IF EXISTS temp_conversion_plan;
