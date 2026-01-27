@@ -29,8 +29,8 @@ infdb-loader:
       # - "15"  # Sachsen-Anhalt
       # - "16"  # Thüringen
         - "09780139"  # Sonthofen (BY)
-      # - "05119000" # Oberhausen (NRW)
-      # - "09185149" # Neuburg a. d. Donau (BY)
+        - "05119000" # Oberhausen (NRW)
+        - "09185149" # Neuburg a. d. Donau (BY)
     multiproccesing: 
         status: active
         max_cores: 2    # max cores since of memory limitations to 2
