@@ -30,6 +30,12 @@ FROM
 LEFT JOIN
     street_heat_demand AS shd
 ON
-    {streets_id_expr} = shd.street_id;
+    {streets_id_expr} = shd.street_id
+JOIN
+    opendata.bkg_vg5000_gem AS gem
+ON
+    ST_Intersects(s.{streets_geom}, gem.geom)
+WHERE
+    gem.ags = '{ags}';
 -- Create spatial index
 CREATE INDEX idx_{output_table}_geom ON {output_schema}.{output_table} USING GIST (geometry);

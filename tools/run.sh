@@ -18,9 +18,12 @@ set +a
 # Extract profile and additional parameter
 PROFILE="${1:-$PROFILE}"
 PARAM="${2:-$AGS}"
+OPTIONS="${3:-}"
 
 echo "Starting docker compose..."
 export AGS="$PARAM"
-docker compose -f "$(dirname "$0")/compose.yml" \
-    --profile "$PROFILE" \
-     up # --build 
+# docker compose -f "$(dirname "$0")/compose.yml" \
+#     --profile "$PROFILE" \
+#      up $OPTIONS
+
+docker compose run --no-deps --rm "$PROFILE"
