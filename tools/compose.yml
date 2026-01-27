@@ -1,26 +1,13 @@
 # Master Docker Compose Orchestration for infDB Tools
 # This file includes all individual tool compose files and orchestrates them using profiles
 #
-# Usage:
-#   docker compose --profile basedata up          # Run only basedata
-#   docker compose --profile heat up              # Run heat-related tools
-#   docker compose --profile all up               # Run everything
-#   COMPOSE_PROFILES=basedata,metadata docker compose up  # Using environment variable
-#
 # Available profiles:
-#   - basedata: Base data infrastructure (infdb-basedata, basedata-changelog)
-#   - metadata: Database metadata generation
-#   - kwp: KWP tool
-#   - heat: Heat analysis tools (linear-heat-density, ro-heat)
-#   - streets: Street processing tools (process-streets, buildings-to-street)
+#   - linear: Linear heat density toolchain
 #   - pylovo: Pylovo generation
-#   - sunpot: Solar potential tools (citydbv4, import-to-v4, sunpot-core, sunpot-texture, export-and-import)
-#   - all: Run all tools
 
 include:
   - infdb-basedata/compose.yml
   - infdb-metadata/compose.yml
-  - kwp/compose.yml
   - linear-heat-density/compose.yml
   - process-streets/compose.yml
   - pylovo-generation/compose.yml
@@ -29,5 +16,3 @@ include:
   - sunpot/docker-compose.yml
 
 # Note: Individual tool dependencies are defined in their respective compose files.
-# The sunpot tools have a complete dependency chain:
-#   citydbv4 -> import-to-v4 -> sunpot-core -> sunpot-texture -> export-and-import

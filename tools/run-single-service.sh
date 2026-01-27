@@ -21,4 +21,4 @@ PARAM="${2:-$AGS}"
 
 echo "Starting docker compose single service $SERVICE"
 export AGS="$PARAM"
-docker compose run --no-deps "$SERVICE"
+docker compose -f "$(dirname "$0")/compose.yml" up --no-deps --remove-orphans "$SERVICE"
