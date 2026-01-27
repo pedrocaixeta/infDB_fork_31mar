@@ -12,36 +12,6 @@ WHERE building_use = 'Residential'
                  WHERE temp_touching_neighbor_counts.id = {output_schema}.buildings.id
                    AND count BETWEEN 1 AND 3))
     ));
--- Reference implementation with semi-procedural approach for graph based solution below.
--- -- Buildings with 2-3 floors adjacent to MFH likely also MFH
--- DO
--- $$
---     DECLARE
---         updated_count INTEGER := 1;
---     BEGIN
---         WHILE updated_count > 0
---             LOOP
---                 WITH candidates AS (SELECT DISTINCT n.a_id
---                                     FROM temp_touching_neighbors n
---                                              JOIN {output_schema}.buildings b1 ON n.a_id = b1.id
---                                              JOIN {output_schema}.buildings b2 ON n.b_id = b2.id
---                                     WHERE b2.building_type = 'MFH'
---                                       --AND b1.floor_number BETWEEN 2 AND 3
---                                       AND b1.building_use = 'Residential'
---                                       AND b1.building_type IS NULL
---                                       AND b1.gemeindeschluessel = b2.gemeindeschluessel
---                                     )
---                 UPDATE {output_schema}.buildings b
---                 SET building_type = 'MFH'
---                 FROM candidates
---                 WHERE b.id = candidates.a_id;
---
---                 GET DIAGNOSTICS updated_count = ROW_COUNT;
---                 -- RAISE NOTICE 'Rule 5 iteration: % buildings updated', updated_count;
---             END LOOP;
---     END
--- $$;
-
 
 -- Create Vertex set of buildings which could be of type 'MFH'
 CREATE TEMP TABLE filtered_buildings AS (

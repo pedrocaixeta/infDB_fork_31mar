@@ -14,38 +14,6 @@ WHERE building_use = 'Residential'
                     WHERE temp_touching_neighbor_counts.id = {output_schema}.buildings.id
                       AND count >= 2)));
 
--- Reference implementation with semi-procedural approach for graph based solution below.
--- -- Small buildings with floor area < 100 next to SFH likely also SFH
--- DO
--- $$
---     DECLARE
---         updated_count INTEGER := 1;
---     BEGIN
---         WHILE updated_count > 0
---             LOOP
---                 WITH candidates AS (SELECT DISTINCT n.a_id
---                                     FROM temp_touching_neighbors n
---                                              JOIN {output_schema}.buildings b1 ON n.a_id = b1.id
---                                              JOIN {output_schema}.buildings b2 ON n.b_id = b2.id
---                                     WHERE b2.building_type = 'SFH'
---                                       AND b1.floor_area < 100
---                                       AND b1.floor_number <= 2
---                                       AND b1.building_use = 'Residential'
---                                       AND b1.building_type IS NULL
---                                       AND b1.gemeindeschluessel = b2.gemeindeschluessel
--- )
---                 UPDATE {output_schema}.buildings b
---                 SET building_type = 'SFH'
---                 FROM candidates
---                 WHERE b.id = candidates.a_id;
---
---                 GET DIAGNOSTICS updated_count = ROW_COUNT;
---                 -- RAISE NOTICE 'Rule 2 iteration: % buildings updated', updated_count;
---             END LOOP;
---     END
--- $$;
-
-
 -- Create Vertex set of buildings which could be of type 'SFH'
 CREATE TEMP TABLE filtered_buildings AS (
     SELECT id, geom, height, gemeindeschluessel

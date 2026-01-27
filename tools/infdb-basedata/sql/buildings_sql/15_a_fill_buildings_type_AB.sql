@@ -24,38 +24,6 @@ WHERE b.building_use = 'Residential'
       )
 ;
 
--- Reference implementation with semi-procedural approach for graph based solution below.
--- -- Buildings adjacent to AB with 3+ floors and similar height become AB
--- DO
--- $$
---     DECLARE
---         updated_count INTEGER := 1;
---     BEGIN
---         WHILE updated_count > 0
---             LOOP
---                 WITH candidates AS (SELECT DISTINCT n.a_id
---                                     FROM temp_touching_neighbors n
---                                              JOIN {output_schema}.buildings nb ON n.b_id = nb.id
---                                              JOIN {output_schema}.buildings b1 ON n.a_id = b1.id
---                                     WHERE nb.building_type = 'AB'
---                                       --AND b1.floor_number >= 3
---                                       --AND ABS(b1.height - nb.height)/GREATEST(b1.height, nb.height) < 0.2
---                                       AND b1.building_use = 'Residential'
---                                     -- AND nb.gemeindeschluessel IN ({list_gemeindeschluessel})
---                                     -- AND b1.gemeindeschluessel IN ({list_gemeindeschluessel})
---                                       AND b1.building_type IS NULL
---                                     )
---                 UPDATE {output_schema}.buildings b
---                 SET building_type = 'AB'
---                 FROM candidates
---                 WHERE b.id = candidates.a_id;
---
---                 GET DIAGNOSTICS updated_count = ROW_COUNT;
---                 -- RAISE NOTICE 'Rule 1 iteration: % buildings updated', updated_count;
---             END LOOP;
---     END
--- $$;
-
 -- Propagate building_type 'AB' to neighbours which have no building_type yet
 -- Step 1b: build graph of buildings which are neighbours and fulfilling 'AB'-neighbour criteria
 
