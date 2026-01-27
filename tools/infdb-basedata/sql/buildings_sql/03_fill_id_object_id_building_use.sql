@@ -1,3 +1,8 @@
+-- Summary: Syncs the buildings table with buildings_lod2 source data.
+-- It inserts new buildings, updates existing ones, and removes obsolete entries.
+-- Key attributes like objectid, building_use, and address information are
+-- populated while resetting derived columns.
+
 -- Delete objectid which do not exist anymore
 DELETE FROM {output_schema}.buildings target
 WHERE NOT EXISTS (
@@ -18,10 +23,6 @@ SELECT
        b.house_number,
        b.gemeindeschluessel
 FROM {input_schema}.buildings_lod2 b
---          JOIN property p ON f.id = p.feature_id
--- WHERE f.objectclass_id = 901 -- =building
---   AND p.namespace_id = 10 -- =bldg (redundant?)
---   AND p.name = 'function'
 -- WHERE b.gemeindeschluessel IS IN {list_gemeindeschluessel}
 --    WHERE src.gemeindeschluessel IS IN {list_gemeindeschluessel}
   WHERE building_function_code LIKE '31001_%'  -- only allow buildings

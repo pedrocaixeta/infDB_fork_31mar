@@ -1,3 +1,8 @@
+-- Summary: Establishes relationships between buildings and other spatial
+-- datasets. It creates mapping tables linking buildings to grid cells (bld2grid)
+-- to find the nearest weather time series metadata (bld2ts) for each
+-- building.
+
 -- Create building to grid cell mapping
 DELETE FROM {output_schema}.bld2grid target
 WHERE NOT EXISTS (

@@ -1,3 +1,8 @@
+-- Summary: Identifies and classifies Multi-Family Houses (MFH). It targets
+-- medium-sized residential buildings that fall between single-family and
+-- apartment buildings, using attribute criteria and graph-based analysis
+-- to assign the 'MFH' type.
+
 -- Step 4: Multi-Family Houses (MFH):
 -- Buildings with 2-3 floors, multiple units but smaller than apartment buildings
 -- Often have some neighbors but not as many as apartment buildings

@@ -1,4 +1,8 @@
--- fill households
+-- Summary: Calculates the number of households for residential buildings.
+-- It derives this count from the estimated number of occupants and the average
+-- household size from the corresponding grid cell, using nearest neighbor logic
+-- for missing data.
+
 -- Step 1: Create temp table linking buildings to avg household size grid
 DROP TABLE IF EXISTS temp_building_hh_grid;
 CREATE TEMP TABLE temp_building_hh_grid AS

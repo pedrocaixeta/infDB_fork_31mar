@@ -1,3 +1,8 @@
+-- Summary: Identifies and classifies Terraced Houses (TH). It looks for attached
+-- residential buildings with similar dimensions and specific neighbor counts,
+-- employing iterative propagation or graph-based clustering to label linear
+-- structures of similar buildings.
+
 -- Step 3: Terraced Houses (TH):
 -- Step 3a: Typically have a medium floor area, 2-3 floors, and exactly 1-2 neighbors
 -- They also tend to have similar floor area to their neighbors (within 20%)

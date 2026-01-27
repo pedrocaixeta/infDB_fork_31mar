@@ -1,3 +1,8 @@
+-- Summary: Identifies and classifies Apartment Buildings (AB). It uses a
+-- combination of attributes (floors, area, neighbors) and a graph-based
+-- connected components approach to cluster and propagate the 'AB' classification
+-- to suitable residential buildings.
+
 -- Requires pgrouting:
 -- CREATE EXTENSION pgrouting CASCADE;
 

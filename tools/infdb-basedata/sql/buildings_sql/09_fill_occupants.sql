@@ -1,4 +1,7 @@
--- fill occupants
+-- Summary: Estimates the number of occupants for residential buildings.
+-- It distributes population data from zensus grid cells to buildings proportionally
+-- based on building volume. Buildings without direct grid data are assigned
+-- occupants using the nearest populated grid cell.
 
 -- Step 1: Create temp table for buildings with cell and weight
 DROP TABLE IF EXISTS temp_building_weights;

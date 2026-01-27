@@ -1,3 +1,8 @@
+-- Summary: Prepares the buildings_grid table by spatially joining grid cells
+-- with building centroids. It enriches the grid with census data including
+-- population, household size, building type distribution, and construction
+-- year statistics.
+
 -- Create temp table joining grid cells with buildings based on geometry
 -- Only keeps grid cells that contain at least one building centroid
 -- Optimized for later joins on x_mp and y_mp coordinates

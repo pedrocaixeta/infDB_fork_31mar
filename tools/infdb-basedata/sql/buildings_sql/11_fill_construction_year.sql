@@ -1,4 +1,7 @@
--- fill construction_year
+-- Summary: Assigns a construction year to each building based on census data
+-- distributions. It uses a weighted random assignment derived from construction
+-- year bands in the corresponding or nearest grid cell.
+
 -- Step 1: Create a table with joined buildings and grid cells
 DROP TABLE IF EXISTS temp_building_with_grid_year;
 CREATE TEMP TABLE temp_building_with_grid_year AS

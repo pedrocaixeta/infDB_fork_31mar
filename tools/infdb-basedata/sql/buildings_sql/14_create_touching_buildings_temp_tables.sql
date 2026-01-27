@@ -1,3 +1,7 @@
+-- Summary: Creates temporary tables identifying touching residential buildings.
+-- It computes adjacency relationships and neighbor counts, which are essential
+-- for classifying building types in subsequent steps.
+
 -- create touching neighborhood tables
 DROP TABLE IF EXISTS temp_touching_neighbors;
 CREATE TEMP TABLE temp_touching_neighbors AS

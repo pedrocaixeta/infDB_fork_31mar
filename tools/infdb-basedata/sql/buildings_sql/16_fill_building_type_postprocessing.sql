@@ -1,3 +1,8 @@
+-- Summary: Post-processes building type assignments to ensure consistency and
+-- match census data. It assigns a default type to remaining buildings, corrects
+-- likely errors, and rebalances the distribution of building types (AB, MFH,
+-- TH, SFH) per grid cell to align with statistical targets.
+
 -- Step 5: Set rest to AB
 UPDATE {output_schema}.buildings b
 SET building_type = 'AB'

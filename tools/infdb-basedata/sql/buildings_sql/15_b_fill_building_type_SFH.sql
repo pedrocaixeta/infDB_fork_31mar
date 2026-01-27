@@ -1,3 +1,7 @@
+-- Summary: Identifies and classifies Single Family Houses (SFH). It targets
+-- residential buildings with smaller dimensions and few neighbors, using
+-- attribute filtering and graph-based clustering to assign the 'SFH' type.
+
 -- Step 2: Single Family Houses (SFH):
 -- Typically have larger floor area, 1-2 floors, and few or no neighbors
 UPDATE {output_schema}.buildings

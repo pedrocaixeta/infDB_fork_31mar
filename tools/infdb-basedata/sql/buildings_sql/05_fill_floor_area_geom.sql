@@ -1,3 +1,6 @@
+-- Summary: Updates the geom, centroid, and floor_area columns and
+-- removes small buildings with a floor area of less than 12 square meters.
+
 -- fill geom and floor_area columns
 WITH ground_data AS (
     SELECT objectid as building_objectid,

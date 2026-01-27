@@ -1,6 +1,9 @@
--- fill floor_number column
--- Step 1: Use storeysAboveGround from LOD2 data where available and reasonable
+-- Summary: Estimates and populates the floor_number for buildings. It
+-- prioritizes existing data from buildings_lod2, validating it against
+-- building height. Missing values are derived using average floor heights
+-- per building use or standard fallback values.
 
+-- Step 1: Use storeysAboveGround from LOD2 data where available and reasonable
 -- Use temp table because original table is not indexed
 DROP TABLE IF EXISTS temp_floor_number_data;
 CREATE TEMP TABLE temp_floor_number_data AS

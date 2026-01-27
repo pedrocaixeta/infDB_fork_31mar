@@ -1,3 +1,7 @@
+-- Summary: Updates the height column in the buildings table using data from
+-- buildings_lod2. It also filters out invalid buildings by removing those
+-- with a height less than 3.5 meters.
+
 -- fill height column
 WITH height_data AS (SELECT b.feature_id, 
                     height AS val_double
