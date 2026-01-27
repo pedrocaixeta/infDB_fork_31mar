@@ -23,6 +23,7 @@ def create_materials(elements: DataFrame) -> Series:
 
 
 def create_constructions(elements: DataFrame) -> DataFrame:
+    # Group materials to a list by building_objectid and element_name, drop multi-index
     constructions = (
         elements.groupby(["building_objectid", "element_name", "area"])["materials"]
         .apply(list)
@@ -40,6 +41,7 @@ def create_constructions(elements: DataFrame) -> DataFrame:
         "Window": "Window",
     }
 
+    # Create a EUReCA Constructions per building_objectid from the list of materials and assign the correct EUReCA type
     constructions["construction_obj"] = constructions.apply(
         lambda row: eureca_code.Construction(
             name=f"B{row['building_objectid']}_{row['element_name']}",
@@ -55,15 +57,15 @@ def create_constructions(elements: DataFrame) -> DataFrame:
 def aggregate_rc_values(constructions: DataFrame) -> DataFrame:
     # Internal elements such as inner walls, floors or ceilings do not contribute to thermal resistance
     constructions["resistance"] = constructions.apply(
-        lambda row: row["area"] / row["construction_obj"].thermal_resistance if row['element_name'] in ["ExtWall",
+        lambda row: row["area"] / row["construction_obj"].thermal_resistance if row['element_name'] in ["OuterWall",
                                                                                                         "GroundFloor",
-                                                                                                        "Roof"] else 0,
+                                                                                                        "Rooftop",
+                                                                                                        "Window"] else 0,
         axis=1,
     )
 
-    # Windows do not contribute to thermal capacitance
     constructions["capacitance"] = constructions.apply(
-        lambda row: row["construction_obj"].k_int * row["area"] if row['element_name'] not in ["Window"] else 0, axis=1
+        lambda row: row["construction_obj"].k_int * row["area"], axis=1
     )
 
     rc_values = (
