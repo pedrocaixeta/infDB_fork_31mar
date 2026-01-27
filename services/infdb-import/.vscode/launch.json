@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "main.py",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/infdb-loader"
+            "cwd": "${workspaceFolder}/infdb-import"
         }
     ]
 }

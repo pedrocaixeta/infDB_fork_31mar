@@ -1,24 +1,24 @@
 # infdb-basedata
 
-The `infdb-basedata` tool creates a fundamental data basis for infrastructure modeling, planning, and analysis by merging various opendata sources into consolidated datasets. The focus is on building information on building level.
+The `infdb-basedata` tool creates a fundamental data basis for infrastructure modeling, planning, and analysis by merging various opendata sources into consolidated datasets. The focus lies on building information on the building level.
 
 **Data Sources Used**
     
-- [Zensus 2022](https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Bevoelkerung/Zensus2022/_inhalt.html)
-- [official geogrids by BKGzen](https://gdz.bkg.bund.de/index.php/default/geographische-gitter-fur-deutschland-in-utm-projektion-geogitter-national.html)
-- [3D building models LoD2 Germany (LoD2-DE)](https://gdz.bkg.bund.de/index.php/default/3d-gebaudemodelle-lod2-deutschland-lod2-de.html)
+- [Census of Germany 2022 (Zensus 2022)](https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Bevoelkerung/Zensus2022/_inhalt.html)
+- [Official geogrids](https://gdz.bkg.bund.de/index.php/default/geographische-gitter-fur-deutschland-in-utm-projektion-geogitter-national.html) by the [Federal Agency for Cartography and Geodesy Germany (BKG)](https://www.bkg.bund.de/)
+- [3D building models LoD2 Germany (LoD2-DE)](https://gdz.bkg.bund.de/index.php/default/3d-gebaudemodelle-lod2-deutschland-lod2-de.html) by the [Federal Agency for Cartography and Geodesy Germany (BKG)](https://www.bkg.bund.de/)
 
 ## Key Features
 
 - **Consolidation**: Validates data integrity and types
-- **Dissaggregation**: Sophisticated geographical disaggregation of statistical information with higher spatial resolution
+- **Disaggregation**: Sophisticated geographical disaggregation of statistical information with higher spatial resolution
 - **Validation**: Comparison of generated synthetic building data with official statistics for accuracy
 
 
 
 ## Output Data
 
-The ouptut of the tool are merged and consolidated datasets containing building data with attributes such as:
+The output of the tool are merged and consolidated datasets containing building data with attributes such as:
 
 - Building type (residential, commercial, industrial)
 - Year of construction

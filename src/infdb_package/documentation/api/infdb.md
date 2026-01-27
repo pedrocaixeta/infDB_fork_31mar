@@ -4,7 +4,7 @@
 
 Facade for configuration, logging, and DB connections for InfDB.
 
-Other repos (e.g., `infdb-loader`, `infdb-basedata`) should import and use this
+Other repos (e.g., `infdb-import`, `infdb-basedata`) should import and use this
 class as the single entry point.
 
 ### `__init__(tool_name: str, config_path: str = DEFAULT_CONFIG_DIR) -> None`

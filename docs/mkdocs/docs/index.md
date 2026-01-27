@@ -4,7 +4,7 @@
   <img src="assets/img/logo_infdb_text.png" alt="infDB logo" width="100"/>
 </p>
 
-**infDB - Infrastructure and Energy Database** provides a modular and easy-to-configure open-source data and tool infrastructure equipped with essential services, designed to minimize the effort required for data management. This platform-independent containerized approach streamlines collaboration in energy modeling and analysis, empowering the growth of an ecosystem by offering standardized interfaces and APIs, and allowing users to dedicate their focus to generating insights rather than handling data logistics by ensuring data is FAIR (Findable, Accessible, Interoperable, and Reusable).
+**infDB - Infrastructure and Energy Database** provides a modular and easy-to-configure open-source data and tool infrastructure. It is equipped with essential services, designed to minimize the effort required for data management. We follow a platform-independent containerized approach that streamlines collaboration in energy modeling and analysis, empowering the growth of an ecosystem by offering standardized interfaces and APIs, and by allowing users to dedicate their focus to generating insights rather than handling data logistics.
 
 
 ## Key Features
@@ -12,27 +12,29 @@
 : :material-plus-circle: **Geospatial, Time Series & Graph Data Support**: PostGIS, TimescaleDB and pgRouting.
 : :material-plus-circle: **Platform Independent**: Containerized with Docker.
 : :material-plus-circle: **Modular**: extensible via standardized APIs.
-: :material-plus-circle: **Open Source**: Apache License Version 2.0.
 : :material-plus-circle: **Open Data**: Automatized import of common opendata sources.
+: :material-plus-circle: **FAIR Data**: Focus on providing Findable, Accessible, Interoperable, and Reusable Data.
+: :material-plus-circle: **Open Source**: Apache License Version 2.0.
 
 ## Why use it?
 
-The infDB platform addresses common challenges in energy system modeling and analysis, particularly those related to data management. By providing a standardized and modular infrastructure, infDB reduces the time and effort required to set up and maintain data systems. This allows researchers, analysts, and planners to focus on their core tasks of modeling and analysis, rather than being bogged down by data logistics.
+The infDB platform addresses common challenges in energy system planning and research, particularly those related to data management. By providing a standardized and modular infrastructure, infDB reduces the time and effort required to set up and maintain data systems. This allows researchers and planners to focus on their core tasks of modeling and analysis, rather than being bogged down by data logistics.
 
 The infDB can be used effectively wherever geospatial and time series information is required. Possible applications include:
 
--   Energy System Modeling
--   Municipal Heat Planning and Infrastructure Planning
--   Scenario and Geospatial Analysis
+-   Infrastructure planning such as municipal heat or grid planning activities
+-   Research on energy system optimization on energy transition scenarios
+-   Geospatial analysis of supply and demand potentials
 
 ## Architecture
 
-The infDB architecture is composed of two main components:
+The architecture of infDB as shown in figure below is composed of two main components:
 
-: :fontawesome-solid-gears: **[Services](usage/services.md)** – Dockerized open-source software providing base functionality.
-: :material-tools: **[Tools](tools/index.md)** – Software interacting with the infDB.
+: :fontawesome-solid-gears: **[Services](usage/services.md)** – Dockerized core functionalities.
+: :material-tools: **[Tools](tools/index.md)** – Dockerized software and tools for specific use cases and data processing tasks.
 
 ![infDB Overview](assets/img/infdb-overview.png)
+
 
 ## Getting Started
 
