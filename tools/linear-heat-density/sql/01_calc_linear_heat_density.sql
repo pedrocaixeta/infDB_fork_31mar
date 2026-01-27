@@ -3,7 +3,7 @@
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 CREATE TABLE IF NOT EXISTS {output_schema}.{output_table} (
     street_id TEXT PRIMARY KEY,
-    geometry GEOMETRY,
+    geom geom,
     total_heat_demand NUMERIC,
     street_length NUMERIC,
     linear_heat_density NUMERIC
@@ -14,7 +14,7 @@ WITH street_lengths AS (
     -- Get all streets that intersect with the specified municipality (AGS)
     SELECT
         {streets_id_expr} AS street_id,
-        s.{streets_geom} AS geometry,
+        s.{streets_geom} AS geom,
         ST_Length(s.{streets_geom}) AS street_length
     FROM
         {streets_schema}.{streets_table} AS s
@@ -43,7 +43,7 @@ street_heat_demand AS (
 INSERT INTO {output_schema}.{output_table}
 SELECT
     sl.street_id,
-    sl.geometry,
+    sl.geom,
     COALESCE(shd.total_heat_demand, 0),
     sl.street_length,
     -- Calculate linear heat density (heat demand per meter of street)
@@ -56,10 +56,10 @@ FROM
 LEFT JOIN
     street_heat_demand AS shd ON sl.street_id = shd.street_id
 ON CONFLICT (street_id) DO UPDATE SET
-    geometry = EXCLUDED.geometry,
+    geom = EXCLUDED.geom,
     total_heat_demand = EXCLUDED.total_heat_demand,
     street_length = EXCLUDED.street_length,
     linear_heat_density = EXCLUDED.linear_heat_density;
 
 -- Create spatial index for efficient geometric queries
-CREATE INDEX IF NOT EXISTS idx_{output_table}_geom ON {output_schema}.{output_table} USING GIST (geometry);
+CREATE INDEX IF NOT EXISTS idx_{output_table}_geom ON {output_schema}.{output_table} USING GIST (geom);
