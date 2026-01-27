@@ -26,4 +26,4 @@ export AGS="$PARAM"
 #     --profile "$PROFILE" \
 #      up $OPTIONS
 
-docker compose run --no-deps --rm "$PROFILE"
+docker compose run --no-deps "$PROFILE"

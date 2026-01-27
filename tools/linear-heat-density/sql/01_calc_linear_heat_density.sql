@@ -1,6 +1,31 @@
 -- Calculate linear heat density for street segments
-CREATE TABLE {output_schema}.{output_table} AS
-WITH street_heat_demand AS (
+-- This table stores the heat demand per unit length for each street
+CREATE TABLE IF NOT EXISTS {output_schema}.{output_table} (
+    street_id TEXT PRIMARY KEY,
+    geometry GEOMETRY,
+    total_heat_demand NUMERIC,
+    street_length NUMERIC,
+    linear_heat_density NUMERIC
+);
+
+-- Pre-calculate street lengths to avoid repeated ST_Length calls
+WITH street_lengths AS (
+    -- Get all streets that intersect with the specified municipality (AGS)
+    SELECT
+        {streets_id_expr} AS street_id,
+        s.{streets_geom} AS geometry,
+        ST_Length(s.{streets_geom}) AS street_length
+    FROM
+        {streets_schema}.{streets_table} AS s
+    JOIN
+        opendata.bkg_vg5000_gem AS gem
+    ON
+        ST_Intersects(s.{streets_geom}, gem.geom)
+    WHERE
+        gem.ags = '{ags}'
+),
+-- Aggregate heat demand for each street from connected buildings
+street_heat_demand AS (
     SELECT
         bts.street_id,
         SUM(h.{heat_demand_column}) AS total_heat_demand
@@ -10,40 +35,30 @@ WITH street_heat_demand AS (
         {heat_demand_schema}.{heat_demand_table} AS h
     ON
         bts.building_id::text = {heat_demand_id_expr}
-    JOIN
-        {streets_schema}.{streets_table} AS s
-    ON
-        bts.street_id = {streets_id_expr}
-    JOIN
-        opendata.bkg_vg5000_gem AS gem
-    ON
-        ST_Intersects(s.{streets_geom}, gem.geom)
-    WHERE
-        gem.ags = '{ags}'
     GROUP BY
         bts.street_id
 )
+-- Insert or update records with calculated linear heat density
+INSERT INTO {output_schema}.{output_table}
 SELECT
-    {streets_id_expr} AS street_id,
-    s.{streets_geom} AS geometry,
-    COALESCE(shd.total_heat_demand, 0) AS total_heat_demand,
-    ST_Length(s.{streets_geom}) AS street_length,
-    CASE
-        WHEN ST_Length(s.{streets_geom}) > 0 THEN COALESCE(shd.total_heat_demand, 0) / ST_Length(s.{streets_geom})
-        ELSE 0
-    END AS linear_heat_density
+    sl.street_id,
+    sl.geometry,
+    COALESCE(shd.total_heat_demand, 0),
+    sl.street_length,
+    -- Calculate linear heat density (heat demand per meter of street)
+    CASE WHEN sl.street_length > 0 
+        THEN COALESCE(shd.total_heat_demand, 0) / sl.street_length 
+        ELSE 0 
+    END
 FROM
-    {streets_schema}.{streets_table} AS s
+    street_lengths AS sl
 LEFT JOIN
-    street_heat_demand AS shd
-ON
-    {streets_id_expr} = shd.street_id
-JOIN
-    opendata.bkg_vg5000_gem AS gem
-ON
-    ST_Intersects(s.{streets_geom}, gem.geom)
-WHERE
-    gem.ags = '{ags}';
+    street_heat_demand AS shd ON sl.street_id = shd.street_id
+ON CONFLICT (street_id) DO UPDATE SET
+    geometry = EXCLUDED.geometry,
+    total_heat_demand = EXCLUDED.total_heat_demand,
+    street_length = EXCLUDED.street_length,
+    linear_heat_density = EXCLUDED.linear_heat_density;
 
--- Create spatial index
-CREATE INDEX idx_{output_table}_geom ON {output_schema}.{output_table} USING GIST (geometry);
+-- Create spatial index for efficient geometric queries
+CREATE INDEX IF NOT EXISTS idx_{output_table}_geom ON {output_schema}.{output_table} USING GIST (geometry);
