@@ -1,5 +1,6 @@
 -- Calculate linear heat density for street segments
 -- This table stores the heat demand per unit length for each street
+CREATE SCHEMA IF NOT EXISTS {output_schema};
 CREATE TABLE IF NOT EXISTS {output_schema}.{output_table} (
     street_id TEXT PRIMARY KEY,
     geometry GEOMETRY,
