@@ -145,7 +145,7 @@ infdb-loader:
             ending: ".gpkg"
             filter:
                 - by # Bavaria
-                # - nw # North Rhine-Westphalia
+                - nw # North Rhine-Westphalia
             path:
                 base: "{infdb-loader/path/opendata}/basemap/"
                 processed: "{infdb-loader/path/processed}/basemap/"
