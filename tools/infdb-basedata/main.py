@@ -13,12 +13,13 @@ def main() -> None:
     """
     # Load InfDB facade (config + logging)
     infdb = InfDB(tool_name="infdb-basedata", config_path="configs")
+    ags = infdb.get_env_variable("AGS")
 
     # Logger
     log = infdb.get_logger()
     log.info("Starting %s tool", infdb.get_toolname())
 
-    log.info("AGS environment variable: %s", infdb.get_env_variable("AGS"))
+    log.info("AGS environment variable: %s", ags)
 
     # Config
     input_schema = infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"])
@@ -28,7 +29,7 @@ def main() -> None:
     format_params: Dict[str, Any] = {
         "input_schema": input_schema,
         "output_schema": output_schema,
-        "list_gemeindeschluessel": "todo",
+        "list_gemeindeschluessel": ags,
         "EPSG": epsg,
     }
 

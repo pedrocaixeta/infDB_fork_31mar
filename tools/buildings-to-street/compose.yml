@@ -1,6 +1,6 @@
 services:
     buildings-to-street:
-        profiles: [ "streets", "all", "linear" ]
+        profiles: [ "linear" ]
         build:
             context: .
             dockerfile: Dockerfile
@@ -14,8 +14,7 @@ services:
             - "host.docker.internal:host-gateway"
         env_file:
             - ../../.env
-        environment:
-            AGS: ${AGS}
+            - .env
         depends_on:
             infdb-basedata:
                 condition: service_completed_successfully

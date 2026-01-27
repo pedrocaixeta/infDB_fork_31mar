@@ -1,6 +1,6 @@
 services:
     pylovo-generation:
-        profiles: [ "pylovo", "all" ]
+        profiles: [ "pylovo"]
         build:
             context: .
             dockerfile: Dockerfile

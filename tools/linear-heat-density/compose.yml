@@ -1,6 +1,6 @@
 services:
     linear-heat-density:
-        profiles: [ "heat", "all", "linear" ]
+        profiles: [ "linear" ]
         build:
             context: .
             dockerfile: Dockerfile
