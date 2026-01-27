@@ -85,10 +85,7 @@ However, the current landscape of energy data is fragmented. While the Open Data
 4. **Siloed Infrastructure:** DSOs and municipalities lack standardized tools to manage and share distribution network data efficiently.
 
 `infDB` addresses these challenges by providing a reproducible, version-controlled, and automated ETL (Extract, Transform, Load) pipeline. It acts as a middleware between raw public data and high-level energy modeling tools, ensuring that planning data is transparent, traceable, and easily updatable. 
-While `infDB` is developed in a German context addressing local regulatory requirements, the underlying architecture and methodology can be applied to 
-
-
-adapted to manage energy and infrastructure data across different regions and regulatory frameworks, making it applicable to municipal and regional energy planning efforts worldwide.
+While `infDB` is developed in a German context addressing local regulatory requirements, the underlying architecture and methodology can be also applied to data across different regions and regulatory frameworks, making it applicable to municipal and regional energy planning efforts worldwide.
 
 # State of the field
 Energy and infrastructure data management is an active field with several existing solutions:
