@@ -18,6 +18,8 @@ def main() -> None:
     log = infdb.get_logger()
     log.info("Starting %s tool", infdb.get_toolname())
 
+    log.info("AGS environment variable: %s", infdb.get_env_variable("AGS"))
+
     # Config
     input_schema = infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"])
     output_schema = infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"])

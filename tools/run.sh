@@ -15,5 +15,12 @@ set -a
 [ -f $(dirname "$0")/.env ] && . $(dirname "$0")/.env
 set +a
 
+# Extract profile and additional parameter
+PROFILE="${1:-$PROFILE}"
+PARAM="${2:-$AGS}"
+
 echo "Starting docker compose..."
-docker compose -f "$(dirname "$0")/compose.yml" --profile "$@" up
+export AGS="$PARAM"
+docker compose -f "$(dirname "$0")/compose.yml" \
+    --profile "$PROFILE" \
+     up # --build 

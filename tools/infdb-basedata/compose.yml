@@ -1,6 +1,6 @@
 services:
     basedata-changelog:
-        profiles: [ "basedata", "heat", "all" ]
+        profiles: [ "linear", "basedata", "heat", "all" ]
         container_name: basedata-changelog
         build:
             context: ./liquibase
@@ -14,7 +14,7 @@ services:
             - "host.docker.internal:host-gateway"
 
     infdb-basedata:
-        profiles: [ "basedata", "heat", "all" ]
+        profiles: [ "linear", "basedata", "heat", "all" ]
         build:
             context: .
             dockerfile: Dockerfile

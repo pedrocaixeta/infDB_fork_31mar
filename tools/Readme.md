@@ -8,3 +8,6 @@ docker compose --profile heat up
 docker compose --profile all up
 # Or use environment variable
 COMPOSE_PROFILES=basedata,metadata docker compose up
+
+
+docker compose up -d --no-deps <service_name>
