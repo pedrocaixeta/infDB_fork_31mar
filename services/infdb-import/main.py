@@ -25,7 +25,7 @@ from src import (
 
 
 def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
-    infdb = InfDB(tool_name="infdb-loader")
+    infdb = InfDB(tool_name="infdb-import")
     try:
         load_fn(infdb)
     finally:
