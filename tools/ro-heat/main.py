@@ -43,8 +43,8 @@ def main():
     refurbishment_config = infdbhandler.get_config_value(["ro-heat", "data", "refurbishment"])
 
     try:
-        sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
-        infdbclient_citydb.execute_query(sql)
+        # sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
+        # infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         infdbclient_citydb.execute_query(sql)
         infdblog.info(f"output schema: {output_schema} created successfully")
@@ -92,8 +92,8 @@ def main():
         infdblog.debug("Harmonization with refurbishment quotas completed")
 
         infdblog.debug("Writing harmonized refurbishment data to database")
-        infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
-        harmonized_df.to_sql("buildings_rc", engine, if_exists="replace", schema=output_schema, index=False)
+        # infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_rc CASCADE")
+        harmonized_df.to_sql("buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, index=False)
 
         infdblog.debug("Starting construction of building elements")
         # Run SQL: 02_create_layer_view
@@ -109,6 +109,14 @@ def main():
         infdblog.debug("Starting construction of building elements")
 
         rc_values = rc_calculation.calculate_rc_values(elements)
+        rc_values.to_sql(
+            "buildings_rc",
+            con=engine,
+            if_exists="replace",
+            schema=output_schema,
+            index=True,
+            method="multi",
+        )
 
         bld2ts = timedata.get_bld2ts(database_connection=engine)
 
