@@ -23,7 +23,7 @@ Moreover, there is a python package `infdb` that can be used to interact with th
 The following tools are currently integrated with infDB:
 
 - **infDB-basedata**: Containerized pipeline for data transformation, validation, and enrichment
-- **[pylovo](https://github.com/tum-ens/pylovo)**: Python tool for generating synthetic low-voltage distribution grids
+- **[pylovo-generation](https://github.com/tum-ens/pylovo)**: Python tool for generating synthetic low-voltage distribution grids
 - **[EnTiSe](https://github.com/tum-ens/EnTiSe)**: Python tool for energy time series generation and management
 
 

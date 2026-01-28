@@ -4,14 +4,14 @@ icon: material/file-code
 
 # YAML Configuration
 
-The configuration for the opendata import is done via a YAML file (default: `configs/config-infdb-loader.yml`) due to its complexity.
+The configuration for the opendata import is done via a YAML file (default: `configs/config-infdb-import.yml`) due to its complexity.
 
-For detailed configuration options of the **infdb-importer**, refer to the [Services > infdb-importer](../../infdb/services/infdb-importer.md) documentation.
+For detailed configuration options of the **infdb-import**, refer to the [Services > infdb-import](../../infdb/services/infdb-import.md) documentation.
 
-Below is an example of the `config-infdb-loader.yml` file:
+Below is an exemplary excerpt of the `config-infdb-import.yml` file:
 
-```yaml title="configs/config-infdb-loader.yml"
-# Configuration file for infdb-loader
+```yaml title="configs/config-infdb-import.yml"
+# Configuration file for infdb-import
 #
 # This configuration file contains tool-specific settings and database connection parameters.
 #
@@ -22,8 +22,8 @@ Below is an example of the `config-infdb-loader.yml` file:
 # - To connect to a remote infdb instance, replace 'None' values with your specific
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
-infdb-loader:
-    name: "forchheim"  # Name of the infdb-loader instance
+infdb-import:
+    name: "oberh_neub_sonth"  # Name of the infdb-import instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich
         - "09780139"  # Sonthofen
@@ -33,9 +33,9 @@ infdb-loader:
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     path:
         opendata: "opendata/"
-        processed: "{infdb-loader/name}"
+        processed: "{infdb-import/name}"
     logging:
-        path: "infdb-loader.log"
+        path: "infdb-import.log"
         level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
@@ -60,3 +60,5 @@ infdb-loader:
                   year: 2022
                   url: https://www.destatis.de/static/DE/zensus/gitterdaten/Zensus2022_Bevoelkerungszahl.zip
 ```
+###REVIEW: Fix nomenclature loader vs importer in all files to avoid confusion here?###
+###REVIEW: I would suggest more generic region-independen names for the import docker...I dont see the advantage of changing this one every time parallel to the scopes, do you?###

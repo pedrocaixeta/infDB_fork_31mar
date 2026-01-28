@@ -39,15 +39,15 @@ bash infdb-remove.sh
 
 ## Data Import
 
-The **infdb-importer** service usually runs automatically on startup if configured. To trigger a manual import run without restarting the entire stack:
+The **infdb-import** service usually runs automatically on startup if configured. To trigger a manual import run without restarting the entire stack:
 
 ```bash
 bash infdb-import.sh
 ```
 
 ### Cleaning Import Data
-Downloaded raw data files are stored in a persistent Docker volume (`infdb-loader-data`). To reclaim space:
+Downloaded raw data files are stored in a persistent Docker volume (`infdb-import-data`). To reclaim space:
 
 ```bash
-docker volume rm infdb-loader-data
+docker volume rm infdb-import-data
 ```

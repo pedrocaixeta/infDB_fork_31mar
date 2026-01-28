@@ -13,7 +13,7 @@ The architecture of infDB is designed to be modular, scalable, and flexible, all
 -   **Helper Scripts**: Bash scripts (`infdb-start.sh`, `infdb-stop.sh`, etc.) simplify common management tasks.
 -   **Configuration**:
     -   `.env`: Controls global settings like credentials, ports, and paths.
-    -   `config-infdb-loader.yml`: Manages open data import configurations.
+    -   `config-infdb-import.yml`: Manages open data import configurations.
 
 ## Profiles & Scalability
 Service selection is handled via Docker profiles, allowing you to spin up only what you need.
