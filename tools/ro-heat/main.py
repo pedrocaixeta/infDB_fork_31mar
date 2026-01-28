@@ -19,10 +19,10 @@ def main():
     ags = infdbhandler.get_env_variable("AGS")
 
     # Database connection
-    infdbclient_citydb = infdbhandler.connect("postgres")
+    infdbclient_citydb = infdbhandler.connect()
 
     # Logger setup
-    infdblog = infdbhandler.get_log()
+    infdblog = infdbhandler.get_logger()
 
     # Start message
     infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
