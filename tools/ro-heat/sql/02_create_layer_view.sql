@@ -17,7 +17,7 @@ WITH element_defs AS (SELECT *
                               b.construction_year,
                               b.building_type,
                               to_jsonb(b) AS bjson
-                       FROM ro_heat.buildings_rc b),
+                       FROM ro_heat.buildings_refurbished_status b),
 
 -- Expand buildings × elements and compute area once
      element_areas AS (SELECT b.building_objectid,
