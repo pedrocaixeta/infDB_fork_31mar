@@ -34,7 +34,6 @@ setup:
   stage: setup
   script:
     - uv sync --group=test
-    - uv pip install entise
   artifacts:
     paths:
       - .venv/
