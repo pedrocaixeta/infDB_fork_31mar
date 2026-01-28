@@ -99,10 +99,16 @@ def main():
         # Run SQL: 02_create_layer_view
         infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
 
+        infdblog.debug("Fetching building elements from database")
         elements = pd.read_sql(
             """SELECT *
-               FROM v_element_layer_data""",
+               FROM v_element_layer_data
+               JOIN opendata.buildings_lod2 bld2
+                ON v_element_layer_data.building_objectid = bld2.objectid
+                WHERE bld2.gemeindeschluessel LIKE %s
+                Limit 100""",
             engine,
+            params=(f"{ags}%",),
         )
 
         # TODO: sort by layer_index according to EUReCA specification
