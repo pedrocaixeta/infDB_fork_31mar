@@ -16,6 +16,7 @@ construction_year_col = "construction_year"
 def main():
     # Load InfDB handler
     infdbhandler = InfDB(tool_name="ro-heat", config_path="configs")
+    ags = infdbhandler.get_env_variable("AGS")
 
     # Database connection
     infdbclient_citydb = infdbhandler.connect("postgres")
@@ -25,6 +26,7 @@ def main():
 
     # Start message
     infdblog.info(f"Starting {infdbhandler.get_toolname()} tool")
+    infdblog.info("AGS environment variable: %s", ags)
 
     # Setup database engine
     engine = infdbclient_citydb.get_db_engine()
@@ -52,6 +54,7 @@ def main():
         with open(full_path, "r", encoding="utf-8") as file:
             sql_content = file.read()
         format_params = {
+            "ags": ags,
             "input_schema": input_schema,
         }
         sql_content = sql_content.format(**format_params)
