@@ -21,7 +21,7 @@ WHERE building_use = 'Residential'
     );
 
 
--- Buildings adjacent to at least 2 THs with similar floor area become TH
+-- -- Buildings adjacent to at least 2 THs with similar floor area become TH
 -- -- Note: this part is can not be transformed to graph-based solution, due to the 2-neighbour condition
 --
 -- DO
@@ -63,6 +63,8 @@ CREATE TEMP TABLE filtered_buildings AS (
     WHERE building_use = 'Residential'
     AND (building_type = 'TH'
         OR( building_type IS NULL
+            AND floor_area BETWEEN 70 AND 150
+            AND floor_number BETWEEN 2 AND 3
         )
     )
 )
