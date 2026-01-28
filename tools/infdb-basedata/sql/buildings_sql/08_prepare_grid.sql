@@ -31,6 +31,40 @@ WHERE EXISTS (
 );
 CREATE INDEX ON temp_grid_transformed (id);
 
+-- Create a Buildings_Grid table with a 1km raster additionally
+DROP TABLE IF EXISTS temp_grid_transformed_1km;
+CREATE TEMP TABLE temp_grid_transformed_1km AS
+SELECT
+    g.id,
+    g.x_mp,
+    g.y_mp,
+    g.geom
+FROM (
+    SELECT
+        id,
+        x_mp,
+        y_mp,
+        ST_Transform(geom, {EPSG}) as geom
+    FROM {input_schema}.grid_cells
+    WHERE name='DE_Grid_ETRS89_LAEA_1km'
+) AS g
+WHERE EXISTS (
+    SELECT 1
+    FROM {input_schema}.buildings_lod2 b
+    WHERE g.geom && b.geom
+      AND ST_Contains(g.geom, ST_Centroid(b.geom))
+);
+CREATE INDEX ON temp_grid_transformed_1km (id);
+
+DROP TABLE IF EXISTS {output_schema}.buildings_grid_1km CASCADE;
+-- Create exact copy with data
+CREATE TABLE {output_schema}.buildings_grid_1km (LIKE {output_schema}.buildings_grid INCLUDING ALL);
+-- Copy all data
+INSERT INTO {output_schema}.buildings_grid_1km
+SELECT * FROM {output_schema}.buildings_grid;
+
+
+--Adjusting the 100 m raster table
 DELETE FROM {output_schema}.buildings_grid target
 --WHERE target.gemeindeschluessel IN ({list_gemeindeschluessel})
   WHERE NOT EXISTS (
@@ -100,6 +134,47 @@ FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
 WHERE buildings_grid.x_mp = bauj.x_mp_100m
   AND buildings_grid.y_mp = bauj.y_mp_100m;
 
+--Adjusting the 1km raster table
+    DELETE FROM {output_schema}.buildings_grid_1km target
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM temp_grid_transformed_1km src
+    WHERE src.id = target.id
+  );
+
+INSERT INTO {output_schema}.buildings_grid_1km (id, x_mp, y_mp, geom)
+SELECT
+    src.id,
+    src.x_mp,
+    src.y_mp,
+    src.geom
+FROM temp_grid_transformed_1km src
+LEFT JOIN {output_schema}.buildings_grid_1km target
+       ON target.geom = src.geom
+WHERE target.geom IS NULL
+ON CONFLICT (id) DO UPDATE
+SET id   = EXCLUDED.id,
+    x_mp = EXCLUDED.x_mp,
+    y_mp = EXCLUDED.y_mp;
+
+-- Update with building type data
+UPDATE {output_schema}.buildings_grid_1km
+SET insgesamt_gebaeude = bld.insgesamt_gebaeude,
+  freiefh = bld.freiefh,
+  efh_dhh = bld.efh_dhh,
+  efh_reihenhaus = bld.efh_reihenhaus,
+  freist_zfh = bld.freist_zfh,
+  zfh_dhh = bld.zfh_dhh,
+  zfh_reihenhaus = bld.zfh_reihenhaus,
+  mfh_3bis6wohnungen = bld.mfh_3bis6wohnungen,
+  mfh_7bis12wohnungen = bld.mfh_7bis12wohnungen,
+  mfh_13undmehrwohnungen = bld.mfh_13undmehrwohnungen,
+  anderergebaeudetyp = bld.anderergebaeudetyp
+FROM {input_schema}.zensus_2022_1km_gebaeude_typ_groesse bld
+WHERE buildings_grid_1km.x_mp = bld.x_mp_1km
+  AND buildings_grid_1km.y_mp = bld.y_mp_1km;
+
 
 -- release memory
 DROP TABLE IF EXISTS temp_grid_transformed;
+DROP TABLE IF EXISTS temp_grid_transformed_1km;

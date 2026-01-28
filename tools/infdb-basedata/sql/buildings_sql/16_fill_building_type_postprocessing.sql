@@ -55,7 +55,7 @@ WHERE b.id = nc.id
 ALTER TABLE {output_schema}.buildings ADD COLUMN grid_id text;
 UPDATE {output_schema}.buildings
 SET grid_id = g.id
-FROM {output_schema}.buildings_grid g
+FROM {output_schema}.buildings_grid_1km g
 WHERE ST_Contains(g.geom, centroid);
 
 -- Step 2: Calculate current counts and target counts per grid for adjusting MFH
@@ -68,7 +68,7 @@ WITH grid_current AS (
         COUNT(CASE WHEN b.building_type = 'MFH' AND b.households > 1 THEN 1 END) as current_mfh_eligible,
         COUNT(*) as total_buildings
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g ON ST_Contains(g.geom, b.centroid)
+    JOIN {output_schema}.buildings_grid_1km g ON ST_Contains(g.geom, b.centroid)
     WHERE b.building_use = 'Residential' AND g.id IS NOT NULL
     GROUP BY g.id
 )
@@ -102,7 +102,7 @@ CREATE TABLE temp_grid_target AS (
           + COALESCE(mfh_3bis6wohnungen, 0)
           + COALESCE(mfh_7bis12wohnungen, 0)
           + COALESCE(mfh_13undmehrwohnungen, 0) AS total_target
-    FROM {output_schema}.buildings_grid g
+    FROM {output_schema}.buildings_grid_1km g
     WHERE g.id IS NOT NULL
     AND EXISTS (
         SELECT 1
@@ -152,7 +152,7 @@ WITH ab_to_mfh AS (
         NULL::int AS mfh_to_ab_conversion_rank,
         NULL::int AS th_to_ab_conversion_rank
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_1km g
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonab gc
       ON g.id = gc.grid_id
@@ -180,7 +180,7 @@ mfh_to_ab AS (
         ) AS mfh_to_ab_conversion_rank,
         NULL::int AS th_to_ab_conversion_rank
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_1km g
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonab gc
       ON g.id = gc.grid_id
@@ -209,7 +209,7 @@ th_to_ab AS (
             ORDER BY b.floor_area * b.height DESC
         ) AS th_to_ab_conversion_rank
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_1km g
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonab gc
       ON g.id = gc.grid_id
@@ -302,7 +302,7 @@ WITH grid_current AS (
         COUNT(CASE WHEN b.building_type = 'TH' THEN 1 END) as current_th,
         COUNT(*) as total_buildings
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g ON ST_Contains(g.geom, b.centroid)
+    JOIN {output_schema}.buildings_grid_1km g ON ST_Contains(g.geom, b.centroid)
     WHERE b.building_use = 'Residential' AND g.id IS NOT NULL
     GROUP BY g.id
 )
@@ -345,7 +345,7 @@ WITH TH_to_MFH AS (
         ) AS TH_to_MFH_conversion_rank,
         NULL::int AS MFH_to_TH_conversion_rank
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_1km g
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonmfh gc
       ON g.id = gc.grid_id
@@ -371,7 +371,7 @@ SFH_to_MFH AS (
         NULL::int AS TH_to_MFH_conversion_rank,
         NULL::int AS MFH_to_TH_conversion_rank
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_1km g
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonmfh gc
       ON g.id = gc.grid_id
@@ -398,7 +398,7 @@ MFH_to_TH AS (
             ORDER BY b.floor_area * b.height ASC
         ) AS MFH_to_TH_conversion_rank
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_1km g
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonmfh gc
       ON g.id = gc.grid_id
@@ -480,7 +480,7 @@ WITH grid_current AS (
         COUNT(CASE WHEN b.building_type = 'TH' THEN 1 END) as current_th,
         COUNT(*) as total_buildings
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g ON ST_Contains(g.geom, b.centroid)
+    JOIN {output_schema}.buildings_grid_1km g ON ST_Contains(g.geom, b.centroid)
     WHERE b.building_use = 'Residential' AND g.id IS NOT NULL
     GROUP BY g.id
 )
@@ -522,7 +522,7 @@ WITH SFH_to_TH AS (
         ) AS SFH_to_TH_conversion_rank,
         NULL::int AS TH_to_SFH_conversion_rank
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_1km g
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonth gc
       ON g.id = gc.grid_id
@@ -548,7 +548,7 @@ TH_to_SFH AS (
             ORDER BY b.floor_area * b.height ASC
         ) AS TH_to_SFH_conversion_rank
     FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_1km g
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonth gc
       ON g.id = gc.grid_id
