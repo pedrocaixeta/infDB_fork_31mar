@@ -133,11 +133,7 @@ The research relevance of `infDB` lies in its role as a reusable data infrastruc
 * **Methodological Neutrality:** infDB does not prescribe modeling approaches, optimization methods, or policy assumptions. Its role is limited to providing structured and accessible data, allowing a wide range of analytical methods to be applied without constraint.
 
 # Applications
-One exemplary use case is calculating the linear heat density by estimating building heat demands and distributing them along street segments, to assess the financial feasibility of district heating as basis for municipal heat planning (KWP) or district heating feasibility studies (BEW). 
-Another use case is generating synthetic data of the existing low-voltage grid structures to analyse complex impacts of new assets and their optimized management on grid reinforcement requirements.
-By building upon `infDB`, researchers and planners can immediately leverage preprocessed, enriched open data such as building data (LOD2) and statistical census information to generate consistent synthetic base datasets. 
-The availability of this base data for different use cases facilitate the seamless integration of downstream tools such as energy system optimization models with consistent data for both electrical and district heating grids.
-Compared to isolated file-based GIS workflows this interoperable approach reduces computational overhead as well as development and streamlining efforts, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
+One exemplary use case is calculating the linear heat density by estimating building heat demands and distributing them along street segments, to assess the financial feasibility of district heating as basis for municipal heat planning (KWP) or district heating feasibility studies (BEW):
 
 **Step 1 – Data Integration:** Raw, heterogeneous data sources (building registries, census data, network geometries, energy consumption records) are ingested through `infdb-import` and stored in the unified database, eliminating manual data collection and format conversion.
 
@@ -149,7 +145,10 @@ Compared to isolated file-based GIS workflows this interoperable approach reduce
 
 **Step 5 – Iteration & Update:** When new data becomes available (e.g., updated building stock, revised energy statistics), the entire pipeline can be re-executed without reimplementing preprocessing logic, ensuring studies remain current and reproducible.
 
-By abstracting data management complexity, `infDB` enables planners and researchers to focus on domain logic rather than data wrangling, while maintaining full transparency and auditability throughout the workflow. It also ensures reproducible, auditable results that can be continuously updated as new data becomes available.
+Another use case is generating synthetic data of the existing low-voltage grid structures to analyse complex impacts of new assets and their optimized management on grid reinforcement requirements.
+By building upon `infDB`, researchers and planners can immediately leverage preprocessed, enriched open data such as building data (LOD2) and statistical census information to generate consistent synthetic base datasets. 
+The availability of this base data for different use cases facilitate the seamless integration of downstream tools such as energy system optimization models with consistent data for both electrical and district heating grids.
+Compared to isolated file-based GIS workflows this interoperable approach reduces computational overhead as well as development and streamlining efforts, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
 
 # AI usage disclosure
 In the development of this work, GitHub Copilot, ChatGPT, and Gemini were used. Github Copilot assisted in code generation by code suggestions and completion tasks, while ChatGPT and Gemini assisted in drafting and refining textual content.
