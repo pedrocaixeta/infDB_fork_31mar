@@ -3,6 +3,9 @@
 -- building height. Missing values are derived using average floor heights
 -- per building use or standard fallback values.
 
+-- Create statistics on buildings to avoid nested loop join
+ANALYZE {output_schema}.buildings;
+
 -- Step 1: Use storeysAboveGround from LOD2 data where available and reasonable
 -- Use temp table because original table is not indexed
 DROP TABLE IF EXISTS temp_floor_number_data;
