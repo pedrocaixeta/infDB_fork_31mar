@@ -69,9 +69,9 @@ bibliography: paper.bib
 ---
 
 # Summary
-`infDB - Infrastructure and Energy Database` is an open-source, containerized data infrastructure for managing and providing access to heterogeneous energy and infrastructure datasets used in urban and regional energy system studies. It bundles a PostgreSQL-based database with geospatial, time-series and graph extensions, standardized REST and OGC-compliant APIs, and a configurable import service that transform raw public data into structured, version-controlled schemas.
+`infDB - Infrastructure and Energy Database` is an open-source, containerized data infrastructure for managing and providing access to heterogeneous energy and infrastructure datasets used in urban and regional energy system studies. It bundles a PostgreSQL-based database with geospatial, time-series and graph extensions, standardized REST and OGC-compliant APIs, and a configurable import service that transforms raw public data into structured, version-controlled schemas.
 
-By separating data ingestion, storage, and access from downstream analysis and modeling tools, infDB reduces data preprocessing effort and enables reproducible, transferable energy modeling workflows across regions and projects. In that way it can be used for many different applications in energy system modeling, such as district heating planning, electrical distribution network analysis, or urban energy demand estimation.
+By separating data ingestion, storage, and access from downstream analysis and modeling tools, infDB reduces data preprocessing effort and enables reproducible, transferable energy modeling workflows across regions and projects. Thus, it can be applied to diverse energy system modeling tasks, including district heating planning, electrical distribution network analysis, and urban energy demand estimation.
   
 # Statement of need
 The transition to a climate-neutral energy system is a central pillar of energy policy, exemplified by Germany's aim for climate neutrality by 2045. New legislative frameworks, such as the requirement for municipal heat planning (KWP) and the requirement for grid expansion plans based on regional transition pathway scenarios defined in the German Energy Industry Act (EnWG §14d), demand that municipalities and Distribution System Operators (DSOs) process vast amounts of energy and infrastructure data [@kwp:2026; @14d:2026].
@@ -93,7 +93,7 @@ Energy and infrastructure data management is an active field with several existi
 * **Open Source Modeling Frameworks:** Tools like **City Energy Analyst (CEA)**, **EUReCA** and **OpenPlan** focus on modeling and optimization but typically assume preprocessed, structured input data provided externally.
 * **Data Initiatives:** The **NEED project** [@NEED:2023] provides a decentralized data hub for synthetic energy data, and **DB4KWP** [@DB4KWP:2026] focuses on ontologies (OEO/OEKG) and naming conventions.
 
-`infDB` fills the gap between available open data sources and existing energy modeling and planning solutions. While simulation tools like the City Energy Analyst focus on modeling, `infDB` provides the foundational data infrastructure that these tools require. Moreover, unlike static data repositories, `infDB` offers a dynamic, service-oriented platform that enables users to deploy local instances, continuously integrate fresh datasets, and seamlessly connect with both commercial and open-source downstream tools. This is just an intermediate step. In future, `infDB` can complement ontology initiatives like DB4KWP by providing a technical implementation layer, transforming conceptual data standards into practical, operational systems.
+`infDB` fills the gap between available open data sources and existing energy modeling and planning solutions. While simulation tools like the City Energy Analyst focus on modeling, `infDB` provides the foundational data infrastructure that these tools require. Moreover, unlike static data repositories, `infDB` offers a dynamic, service-oriented platform that enables users to deploy local instances, continuously integrate fresh datasets, and seamlessly connect with both commercial and open-source downstream tools. Looking forward, `infDB` can complement ontology initiatives like DB4KWP by providing a technical implementation layer that transforms conceptual data standards into practical, operational systems.
 
 # Software Design
 `infDB` is designed as a modular, containerized data infrastructure that separates data ingestion, storage, and access from downstream analysis and modeling. It follows a service-oriented architecture orchestrated via Docker Compose, allowing individual components to be deployed, configured, and combined depending on the requirements of a specific workflow. The system is conceptually divided into **Services**, which provide the foundational infrastructure, and **Tools**, which consume and process the data. This separation allows for high portability and enables users to activate only the components required for their specific use case.
@@ -130,11 +130,10 @@ The research relevance of `infDB` lies in its role as a reusable data infrastruc
 * **Methodological Neutrality:** infDB does not prescribe modeling approaches, optimization methods, or policy assumptions. Its role is limited to providing structured and accessible data, allowing a wide range of analytical methods to be applied without constraint.
 
 # Applications
-By building upon `infDB`, researchers and planners can immediately leverage preprocessed, enriched open data such as building data (LOD2) and statistical census information to generate consistent synthetic base datasets. 
-The availability of this base data for different use cases facilitate the seamless integration of downstream tools such as energy system optimization models with consistent data for both electrical and district heating grids.
+By building upon `infDB`, researchers and planners can immediately leverage preprocessed, enriched open data such as building data (LOD2) and statistical census information to generate consistent synthetic base datasets. The availability of this base data for different use cases facilitates the seamless integration of downstream tools, such as energy system optimization models, with consistent data for both electrical and district heating grids.
 Compared to isolated file-based GIS workflows this interoperable approach reduces computational overhead as well as development and streamlining efforts, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
 
-One exemplary use case is calculating the linear heat density by estimating building heat demands and distributing them along street segments, to assess the financial feasibility of district heating as basis for municipal heat planning (KWP) or district heating feasibility studies (BEW) by the following steps:
+An exemplary use case is calculating linear heat density by estimating building heat demands and distributing them along street segments to assess the financial feasibility of district heating as a basis for municipal heat planning (KWP) or district heating feasibility studies (BEW). The workflow consists of the following steps:
 
 **Step 1 – Data Integration:** Raw, heterogeneous data sources (building registries, census data, network geometries, energy consumption records) are ingested through `infdb-import` and stored in the unified database, eliminating manual data collection and format conversion.
 
@@ -146,7 +145,7 @@ One exemplary use case is calculating the linear heat density by estimating buil
 
 **Step 5 – Iteration & Update:** When new data becomes available (e.g., updated building stock, revised energy statistics), the entire pipeline can be re-executed without reimplementing preprocessing logic, ensuring studies remain current and reproducible.
 
-Another use case is generating synthetic data of the existing low-voltage grid structures to analyse complex impacts of new assets and their optimized management on grid reinforcement requirements.
+Another use case involves generating synthetic data of existing low-voltage grid structures to analyze the complex impacts of new assets and their optimized management on grid reinforcement requirements.
 
 
 # AI usage disclosure
