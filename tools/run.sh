@@ -24,4 +24,4 @@ echo "Starting docker compose..."
 export AGS="$PARAM"
 docker compose -f "$(dirname "$0")/compose.yml" \
     --profile "$PROFILE" \
-     up $OPTIONS
+     up --remove-orphans $OPTIONS
