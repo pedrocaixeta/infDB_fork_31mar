@@ -130,23 +130,21 @@ The research relevance of `infDB` lies in its role as a reusable data infrastruc
 * **Methodological Neutrality:** infDB does not prescribe modeling approaches, optimization methods, or policy assumptions. Its role is limited to providing structured and accessible data, allowing a wide range of analytical methods to be applied without constraint.
 
 # Applications
-By building upon `infDB`, researchers and planners can immediately leverage preprocessed, enriched open data such as building data (LOD2) and statistical census information to generate consistent synthetic base datasets. The availability of this base data for different use cases facilitates the seamless integration of downstream tools, such as energy system optimization models, with consistent data for both electrical and district heating grids.
-Compared to isolated file-based GIS workflows this interoperable approach reduces computational overhead as well as development and streamlining efforts, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
+There are different applications to use `infDB` such as:
+* Calculating linear heat density by estimating building heat demands and distributing them along street segments to assess the financial feasibility of district heating as a basis for municipal heat planning (KWP) or district heating feasibility studies (BEW)
+* Generating synthetic data of existing low-voltage grid structures for grid planning to analyze impacts of new assets and their optimized management on grid reinforcement requirements.
 
-An exemplary use case is calculating linear heat density by estimating building heat demands and distributing them along street segments to assess the financial feasibility of district heating as a basis for municipal heat planning (KWP) or district heating feasibility studies (BEW). The workflow consists of the following steps:
+The following section outlines the logical steps of the infdb-workflow, using the calculation of linear heat density for district heating planning as a practical example:
 
-**Step 1 – Data Integration:** Raw, heterogeneous data sources (building registries, census data, network geometries, energy consumption records) are ingested through `infdb-import` and stored in the unified database, eliminating manual data collection and format conversion.
+**Step 1 – Data Integration:** Raw, heterogeneous data sources (building registries, census data, network geometries, energy consumption records) are ingested through `infDB-import` and stored in the unified database, eliminating manual data collection and format conversion. 
 
-**Step 2 – Data Access & Enrichment:** Analysis tools query the standardized database via REST or SQL APIs to retrieve preprocessed, enriched geospatial datasets (e.g., LOD2 building models with thermal properties). This replaces tedious file-based GIS workflows.
+**Step 2 – General tools:** The toolset queries the database via REST or SQL APIs to extract raw data, which is then used to generate enriched base datasets such as the estimation of households per building or building-specific thermal properties. By replacing isolated, file-based GIS workflows with this interoperable framework, the system minimizes computational overhead and streamlining efforts.
 
-**Step 3 – Heat Demand Estimation:** Researchers apply domain-specific algorithms to compute building-level heat demands using statistical models calibrated against census and consumption data, leveraging the consistent data foundation that `infDB` provides.
+**Step 3 – Use case specific toolchain:** The consistent data foundation provided by infDB enables the creation of reproducible synthetic data. In the context of KWP planners can apply domain-specific algorithms to compute building-level heat demands and spatially distribute them along street network segments. The resulting linear heat density maps directly inform feasibility assessments by identifying corridors where district heating networks are economically viable.
 
-**Step 4 – Linear Heat Density Calculation:** Building heat demands are spatially distributed along street network segments to derive linear heat density maps. This metric directly informs feasibility assessments by identifying corridors where district heating networks are economically viable.
+**Step 4 – Iteration & Update:** When new data becomes available (e.g., updated building stock, revised energy statistics), the entire pipeline can be re-executed without reimplementing preprocessing logic, ensuring studies remain current and reproducible.
 
-**Step 5 – Iteration & Update:** When new data becomes available (e.g., updated building stock, revised energy statistics), the entire pipeline can be re-executed without reimplementing preprocessing logic, ensuring studies remain current and reproducible.
-
-Another use case involves generating synthetic data of existing low-voltage grid structures to analyze the complex impacts of new assets and their optimized management on grid reinforcement requirements.
-
+In summary, the `infDB` ecosystem allows researchers and planners across various use cases to access the full spectrum of container-ingested data. This includes open data (e.g., building LOD2), enriched basedata (e.g., estimated households per building), and intermediate simulation results (e.g., heat demand). This also facilitates the seamless integration of downstream tools, such as energy system optimization models, with consistent data for both electrical and district heating grids.
 
 # AI usage disclosure
 In the development of this work, GitHub Copilot, ChatGPT, and Gemini were used. Github Copilot assisted in code generation by code suggestions and completion tasks, while ChatGPT and Gemini assisted in drafting and refining textual content.
