@@ -6,6 +6,8 @@
 -- Create temp table joining grid cells with buildings based on geometry
 -- Only keeps grid cells that contain at least one building centroid
 -- Optimized for later joins on x_mp and y_mp coordinates
+
+-- 100m building grid raster
 DROP TABLE IF EXISTS temp_grid_transformed_100m;
 CREATE TEMP TABLE temp_grid_transformed_100m AS
 SELECT
@@ -27,11 +29,11 @@ WHERE EXISTS (
     FROM {input_schema}.buildings_lod2 b
     WHERE g.geom && b.geom -- prefilter with bounding box &&
       AND ST_Contains(g.geom, ST_Centroid(b.geom))
---        AND b.gemeindeschluessel IN ({list_gemeindeschluessel});
+      AND b.gemeindeschluessel = '{ags}'
 );
 CREATE INDEX ON temp_grid_transformed_100m (id);
 
--- Create a Buildings_Grid table with a 1km raster additionally
+-- 1km building grid raster
 DROP TABLE IF EXISTS temp_grid_transformed_1km;
 CREATE TEMP TABLE temp_grid_transformed_1km AS
 SELECT
@@ -53,6 +55,7 @@ WHERE EXISTS (
     FROM {input_schema}.buildings_lod2 b
     WHERE g.geom && b.geom
       AND ST_Contains(g.geom, ST_Centroid(b.geom))
+      AND b.gemeindeschluessel = '{ags}'
 );
 CREATE INDEX ON temp_grid_transformed_1km (id);
 
