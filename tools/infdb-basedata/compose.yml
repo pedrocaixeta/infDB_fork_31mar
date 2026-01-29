@@ -5,7 +5,7 @@ services:
             context: ./liquibase
             dockerfile: Dockerfile
         env_file:
-            - env_changelog.list
+            - env_changelog.env
         volumes:
             - ./liquibase/changelog/:/liquibase/changelog:ro # only for development
             - ./liquibase/changelog/changelog-master.yml:/liquibase/changelog-master.yml:ro # only for development
@@ -27,4 +27,4 @@ services:
             - "host.docker.internal:host-gateway"
         env_file:
             - ../../.env  # Load root environment variables first
-            - env_infdb_basedata.list
+            - env_infdb_basedata.env
