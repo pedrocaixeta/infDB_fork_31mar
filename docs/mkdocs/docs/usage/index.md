@@ -1,6 +1,6 @@
 # Usage Guide
 
-This usage guide for user provides step-by-step instructions getting up and running with **infDB**.
+This usage guide provides step-by-step instructions for getting up and running with **infDB**.
 
 ## Quick Start Overview
 

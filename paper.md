@@ -21,7 +21,7 @@ authors:
       equal-contrib: false
       affiliation: 1
     - name: Marvin Wen Huang
-      orcid: ''
+      orcid: 0009-0002-3988-2138
       equal-contrib: false
       affiliation: 1
     - name: Kadir Kalkan
@@ -37,7 +37,7 @@ authors:
       equal-contrib: false
       affiliation: 2
     - name: Carolin Ayasse
-      orcid: ''
+      orcid: 0009-0006-8478-216X
       equal-contrib: false
       affiliation: 3
     - name: Haniyeh Ebrahimi Salari
@@ -45,9 +45,9 @@ authors:
       equal-contrib: false
       affiliation: 4
     - name: Martin Stengel
-      orcid: ''
+      orcid: 0009-0006-2721-3227
       equal-contrib: false
-      affiliation: 5
+      affiliation: 1,5
 affiliations:
     - name: Technical University of Munich, Germany
       index: 1
@@ -57,11 +57,11 @@ affiliations:
       ror: 
     - name: Technical University of Darmstadt, Germany
       index: 3
-      ror: 
+      ror: 05n911h24
     - name: Technical University of Dortmund, Germany
       index: 4
       ror: 
-    - name: Hochschule Rosenheim, Germany
+    - name: Rosenheim Technical University of Applied Sciences, Germany
       index: 5
       ror: 
 date: '31 January 2026'
@@ -72,13 +72,15 @@ bibliography: paper.bib
 `infDB - Infrastructure and Energy Database` provides a modular and easy-to-configure open-source data and tool infrastructure equipped with essential services, designed to minimize the effort required for data management. This platform-independent containerized approach streamlines collaboration in energy modeling and analysis, empowering the growth of an ecosystem by offering standardized interfaces and APIs, and allowing users to dedicate their focus to generating insights rather than handling data logistics by ensuring data is FAIR (Findable, Accessible, Interoperable, and Reusable).
 
 # Statement of need
-The transition to climate-neutral heating is a central pillar of energy policy, exemplified by Germany's aim for climate neutrality by 2045. New legislative frameworks, such as the requirement for Municipal Heat Planning (KWP) and the transparency obligations of the German Energy Industry Act (EnWG §14d), demand that municipalities and Distribution System Operators (DSOs) process vast amounts of infrastructure data [@kwp:2026; @14d:2026].
+The transition to climate-neutral heating is a central pillar of energy policy, exemplified by Germany's aim for climate neutrality by 2045. New legislative frameworks, such as the requirement for Municipal Heat Planning (KWP) and the transparency obligations of the German Energy Industry Act (EnWG §14d), demand that municipalities and Distribution System Operators (DSOs) process vast amounts of energy and infrastructure data [@kwp:2026; @14d:2026].
 
 However, the current landscape of energy data is fragmented. While the Open Data Strategy of the Federal German Government [@Open-Data-Strategie:2021] has increased data availability, this data is published by disparate authorities on different platforms in varying formats, spatial resolutions, and licensing structures. Consequently, energy modeling workflows often suffer from:
 
-1. **Lack of Reproducibility:** Heat plans are often one-off studies that are difficult to update or audit.
+1. **Lack of Reproducibility:** Plannings results are often one-off studies that are difficult to update or audit.
 2. **High Pre-processing Effort:** Researchers spend disproportionate time acquiring raw data before analysis.
-3. **Siloed Infrastructure:** DSOs and municipalities lack standardized tools to manage and share distribution network data efficiently.
+3. **Limited Workflow Transferability:** Data processing workflows often require substantial adaptation across regions due to differing data formats, interfaces, and conventions.
+4. **Siloed Infrastructure:** DSOs and municipalities lack standardized tools to manage and share distribution network data efficiently.
+
 
 `infDB` addresses these challenges by providing a reproducible, version-controlled, and automated ETL (Extract, Transform, Load) pipeline. It acts as a middleware between raw public data and high-level energy modeling tools, ensuring that planning data is transparent, traceable, and easily updatable.
 
@@ -99,7 +101,7 @@ Energy and infrastructure data management is an active field with several existi
 <!-- ### infDB - Services -->
 The *Services* layer (depicted in the grey box in \autoref{fig:infdb-overview}) handles database operations, administration, data ingestion, and connectivity. These containerized services include:
 
-* **infdb-importer:** This service automates the ingestion of diverse open data sources. It transforms raw external formats into structured schemas within the database. Users control this process via a simple YAML configuration file (`config-infdb-loader.yml`), eliminating the need for custom ETL scripting.
+* **infdb-import:** This service automates the ingestion of diverse open data sources. It transforms raw external formats into structured schemas within the database. Users control this process via a simple YAML configuration file (`config-infdb-import.yml`), eliminating the need for custom ETL scripting.
 * **infdb-db:** The central storage engine hosting a PostgreSQL database. It is pre-configured with essential extensions for energy modeling:
     * **PostGIS** for geospatial data.
     * **TimescaleDB** for time-series data.
@@ -130,14 +132,15 @@ The major research impact of `infDB` is the standardization of energy system ana
 * **Stability:** Researchers can focus on developing algorithms (e.g., for district heating expansion) relying on a stable database schema, rather than adapting algorithms to shifting input formats.
 
 # Applications
-A key application example is calculating linear heat density as basis for municipal heat planning (KWP), i.e., estimating building heat demands and distributing them along street segments, to asses the financial feasibility of district heating. Using `infDB`, researchers and planners can immediately leverage preprocessed, enriched open building data (LOD2) combined with statistical census data to compute building-level heat demand. This approach dramatically reduces computational overhead and development effort compared to traditional file-based GIS workflows, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
+A key use case is calculating linear heat density, i.e., estimating building heat demands and distributing them along street segments, to asses the financial feasibility of district heating as basis for municipal heat planning (KWP) or district heating feasibility studies (BEW). Using `infDB`, researchers and planners can immediately leverage preprocessed, enriched open building data (LOD2) combined with statistical census data to compute building-level heat demand. This approach reduces computational overhead and development effort compared to traditional file-based GIS workflows, while providing reproducible, auditable results that can be continuously updated as new data becomes available.
 
 
 # AI usage disclosure
 In the development of this work, GitHub Copilot, ChatGPT, and Gemini were used. Github Copilot assisted in code generation by code suggestions and completion tasks, while ChatGPT and Gemini assisted in drafting and refining textual content.
 
 # Acknowledgements
-We gratefully acknowledge financial support through the project executing agency Jülich (PTJ) with funds provided by the Federal Ministry for Economic Affairs and Climate Action (BMWK) due to an enactment of the German Bundestag under Grant No. 01256602/1.
+Martin Stengel gratefully acknowledges financial support through the Bavarian State Ministry of Science and the Arts to promote applied research and development at universities of applied sciences and technical universities.
+All other authors gratefully acknowledge financial support through the project executing agency Jülich (PTJ) with funds provided by the Federal Ministry for Economic Affairs and Climate Action (BMWK) due to an enactment of the German Bundestag under Grant No. 01256602/1.
 
 # References
 

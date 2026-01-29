@@ -141,7 +141,7 @@ SERVICES_QWC_POSTGRES_PASSWORD=infdb
 JWT_SECRET_KEY=change-me-in-production
 ```
 
-1.  **Profiles**: By default only the core is activated. You can activate services by adding the needed profile name to this list.
+1.  **Profiles**: By default only the PostgreSQL core is activated. You can activate services by adding the needed profile name to this list.
 2.  **All Profiles**: If you uncomment this line, all services will be activated.
 3.  **Project Name**: Change the name to the purpose of your work so that the instance can be clearly recognized. This name needs to be unique.
 4.  **DB Name**: Name of base postgres database.

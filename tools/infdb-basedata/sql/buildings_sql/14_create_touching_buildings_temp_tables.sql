@@ -1,3 +1,7 @@
+-- Summary: Creates temporary tables identifying touching residential buildings.
+-- It computes adjacency relationships and neighbor counts, which are essential
+-- for classifying building types in subsequent steps.
+
 -- create touching neighborhood tables
 DROP TABLE IF EXISTS temp_touching_neighbors;
 CREATE TEMP TABLE temp_touching_neighbors AS
@@ -12,6 +16,8 @@ FROM {output_schema}.buildings a
     a.id != b.id AND
     a.building_use = 'Residential' AND
     b.building_use = 'Residential' AND
+    a.gemeindeschluessel = '{ags}' AND
+    b.gemeindeschluessel = '{ags}' AND
     a.geom && b.geom AND -- check for bbox intersection
     ST_DWithin(a.geom, b.geom, 0.01);
 

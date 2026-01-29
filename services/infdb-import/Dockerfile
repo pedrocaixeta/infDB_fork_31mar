@@ -1,6 +1,6 @@
 FROM 3dcitydb/citydb-tool
 
-WORKDIR /workspaces/infdb-loader
+WORKDIR /workspaces/infdb-import
 USER root
 ENV DEBIAN_FRONTEND=noninteractive
 

@@ -25,7 +25,7 @@ from src import (
 
 
 def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
-    infdb = InfDB(tool_name="infdb-loader")
+    infdb = InfDB(tool_name="infdb-import")
     try:
         load_fn(infdb)
     finally:
@@ -48,7 +48,7 @@ def main() -> None:
     """
 
     # Bootstrap InfDB (provides package config + central logging)
-    infdb = InfDB(tool_name="infdb-loader")
+    infdb = InfDB(tool_name="infdb-import")
 
     # Root logger and the running QueueListener (started by InfdbLogger internally)
     log = infdb.get_logger()

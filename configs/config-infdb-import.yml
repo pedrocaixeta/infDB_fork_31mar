@@ -1,4 +1,4 @@
-# Configuration file for infdb-loader
+# Configuration file for infdb-import
 #
 # This configuration file contains tool-specific settings and database connection parameters.
 #
@@ -637,7 +637,6 @@ infdb-loader:
           status: active
           schema: opendata
           prefix: openmeteo
-          grid_resolution: "100km"
           path:
               base: "{infdb-loader/path/opendata}/openmeteo/"
               processed: "{infdb-loader/path/processed}/openmeteo/"
@@ -650,14 +649,14 @@ infdb-loader:
               - wind_speed_10m
               - precipitation
         kwp-nrw:
-          status: not-active
+          status: active
           schema: opendata
           prefix: kwp_nrw
           path:
-              base: "{infdb-loader/path/opendata}/kwp-nrw/"
-              zip: "{infdb-loader/sources/kwp-nrw/path/base}/zip/"
-              unzip: "{infdb-loader/sources/kwp-nrw/path/base}/unzip/"
-              processed: "{infdb-loader/path/processed}/kwp-nrw/"
+              base: "{infdb-import/path/opendata}/kwp-nrw/"
+              zip: "{infdb-import/sources/kwp-nrw/path/base}/zip/"
+              unzip: "{infdb-import/sources/kwp-nrw/path/base}/unzip/"
+              processed: "{infdb-import/path/processed}/kwp-nrw/"
           datasets:
               - name: Waermebedarf
                 status: active
@@ -701,15 +700,15 @@ infdb-loader:
                 layer:
                   - "FF_Solarthermie_Flur_NRW"
         kwp-nrw-oberhausen:
-          status: not-active
+          status: active
           url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW_05119000_Oberhausen_EPSG25832_Shape.zip
           schema: opendata
           prefix: kwp_nrw_oberhausen
           path:
-              base: "{infdb-loader/path/opendata}/kwp-nrw-oberhausen/"
-              zip: "{infdb-loader/sources/kwp-nrw-oberhausen/path/base}/"
-              unzip: "{infdb-loader/sources/kwp-nrw-oberhausen/path/base}/unzip/"
-              processed: "{infdb-loader/path/processed}/kwp-nrw-oberhausen/"
+              base: "{infdb-import/path/opendata}/kwp-nrw-oberhausen/"
+              zip: "{infdb-import/sources/kwp-nrw-oberhausen/path/base}/"
+              unzip: "{infdb-import/sources/kwp-nrw-oberhausen/path/base}/unzip/"
+              processed: "{infdb-import/path/processed}/kwp-nrw-oberhausen/"
           layer:
             - "WBM-NRW_"
             - "WBM-NRW-erhoeht"
@@ -723,25 +722,25 @@ infdb-loader:
             - "Potenzial-FF-Solarthermie-Flur"
 
         gebaeude-neuburg:
-            status: not-active
+            status: active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
             protocol: webdav
             username: "need"
 
             path:
-                base: "{infdb-loader/path/opendata}/gebaeude-neuburg/"
-                processed: "{infdb-loader/path/processed}/gebaeude-neuburg/"
+                base: "{infdb-import/path/opendata}/gebaeude-neuburg/"
+                processed: "{infdb-import/path/processed}/gebaeude-neuburg/"
             schema: need_intern
             layer:
                 - "gebaeudedaten_neuburg"
         waermeatlas-hessen-bensheim:
-            status: not-active
+            status: active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/BensheimWaermeatlasHessen.gpkg"
             protocol: webdav
             username: "need"
             path:
-                base: "{infdb-loader/path/opendata}/waermeatlas-hessen-bensheim/"
-                processed: "{infdb-loader/path/processed}/waermeatlas-hessen-bensheim/"
+                base: "{infdb-import/path/opendata}/waermeatlas-hessen-bensheim/"
+                processed: "{infdb-import/path/processed}/waermeatlas-hessen-bensheim/"
             schema: need_intern
             prefix: "waermeatlas_hessen_bensheim"
             layer:
@@ -753,13 +752,13 @@ infdb-loader:
                 - "Hausumringe"
                 - "Flurstuecke"
         tudo-basemap-ways:
-            status: not-active
+            status: active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/TUDO_Basemap_ways.geojson"
             protocol: webdav
             username: "need"
             path:
-                base: "{infdb-loader/path/opendata}/tudo-basemap-ways/"
-                processed: "{infdb-loader/path/processed}/tudo-basemap-ways/"
+                base: "{infdb-import/path/opendata}/tudo-basemap-ways/"
+                processed: "{infdb-import/path/processed}/tudo-basemap-ways/"
             schema: need_intern
             layer: 
                 - "Basemap_Oberhausen_Neuburg_Sonthofen_Verkehrslinie"

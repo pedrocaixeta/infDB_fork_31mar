@@ -8,7 +8,7 @@ The infDB is a modular and flexible data platform built on dockerized services t
 
 ![infDB Overview](../assets/img/infdb-overview.png)
 
-Its architecture is composed of two main components:
+As shown in the diagram above, the architecture is composed of two main components:
 
 : :fontawesome-solid-gears: **[Services](services.md)** – Dockerized open-source software providing base functionality.
 : :material-tools: **[Tools](../tools/index.md)** – Software interacting with the infDB.
@@ -19,7 +19,7 @@ infDB services follow microservice architecture principles, enabling independent
 ![alt text](../usage/services.png)
 
 - [infdb-db](services/infdb-db.md): Core PostgreSQL database with PostGIS, timescaledb, and pgrouting extensions; handles all central storage and queries.
-- [infdb-importer](services/infdb-importer.md): Automates the ingestion, structuring, and integration of external open data formats into the platform.
+- [infdb-import](services/infdb-import.md): Automates the ingestion, structuring, and integration of external open data formats into the platform.
 - [pgAdmin](services/pgadmin.md): Web UI for inspecting schemas, running SQL, managing roles; auto-configured credentials.
 - [FastAPI](services/fastapi.md): REST endpoints with OpenAPI docs and validated access to 3D, geospatial, and time-series data.
 - [Jupyter](services/jupyter.md): Notebook environment for exploratory queries, ETL prototypes, reproducible analysis.
