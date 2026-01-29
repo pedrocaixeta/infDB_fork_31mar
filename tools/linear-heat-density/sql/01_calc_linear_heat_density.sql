@@ -38,6 +38,7 @@ street_heat_demand AS (
         bts.building_id::text = {heat_demand_id_expr}
     GROUP BY
         bts.street_id
+    WHERE bts.gemeindeschluessel = '{ags}'
 )
 -- Insert or update records with calculated linear heat density
 INSERT INTO {output_schema}.{output_table}
