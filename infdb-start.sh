@@ -17,6 +17,10 @@ set -a
 [ -f .env ] && . .env
 set +a
 
+# Get uid and gid
+UID=$(id -u)
+GID=$(id -g)
+
 # Pull latest images
 echo "=== Pull latest docker images ==="
 docker compose pull
