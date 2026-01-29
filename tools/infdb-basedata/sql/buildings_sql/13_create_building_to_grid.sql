@@ -1,10 +1,22 @@
+-- Summary: Establishes relationships between buildings and other spatial
+-- datasets. It creates mapping tables linking buildings to grid cells (bld2grid)
+-- to find the nearest weather time series metadata (bld2ts) for each
+-- building.
+
 -- Create building to grid cell mapping
 DELETE FROM {output_schema}.bld2grid target
 WHERE NOT EXISTS (
     SELECT 1
     FROM {input_schema}.buildings_lod2 src
     WHERE src.objectid = target.objectid
---      AND src.gemeindeschluessel IN {list_gemeindeschluessel}
+      AND src.gemeindeschluessel = '{ags}'
+)
+AND EXISTS (
+    -- Only delete if this objectid belongs to current AGS region
+    SELECT 1
+    FROM {output_schema}.buildings b
+    WHERE b.objectid = target.objectid
+      AND b.gemeindeschluessel = '{ags}'
 );
 
 INSERT INTO {output_schema}.bld2grid (objectid, id, resolution_meters)
@@ -14,6 +26,7 @@ SELECT b.objectid,
 FROM {input_schema}.buildings_lod2 b
 JOIN {input_schema}.grid_cells g
     ON ST_Intersects(ST_transform(g.geom, {EPSG}), b.centroid)
+WHERE b.gemeindeschluessel = '{ags}'
 ON CONFLICT (objectid,id) DO UPDATE
 SET resolution_meters = EXCLUDED.resolution_meters;
 
@@ -23,7 +36,14 @@ WHERE NOT EXISTS (
     SELECT 1
     FROM {input_schema}.buildings_lod2 src
     WHERE src.objectid = target.bld_objectid
---      AND src.gemeindeschluessel IS IN {list_gemeindeschluessel}
+      AND src.gemeindeschluessel = '{ags}'
+)
+AND EXISTS (
+    -- Only delete if this objectid belongs to current AGS region
+    SELECT 1
+    FROM {output_schema}.buildings b
+    WHERE b.objectid = target.bld_objectid
+      AND b.gemeindeschluessel = '{ags}'
 );
 
 -- Find nearest time series for each building
@@ -48,6 +68,7 @@ CROSS JOIN LATERAL (
     ORDER BY dist
     LIMIT 1
 ) ts
+WHERE bld.gemeindeschluessel = '{ags}'
 ON CONFLICT (bld_objectid,ts_metadata_name)
 DO UPDATE
 SET
@@ -59,6 +80,6 @@ SET
 UPDATE {output_schema}.bld2ts
 SET geom = ST_ShortestLine(bld.centroid, ST_transform(ts.geom, {EPSG}))
 FROM {input_schema}.buildings_lod2 bld, {input_schema}.openmeteo_ts_metadata ts
--- WHERE bld.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE bld2ts.ts_metadata_id = ts.id
+WHERE bld.gemeindeschluessel = '{ags}'
+  AND bld2ts.ts_metadata_id = ts.id
   AND bld2ts.bld_objectid = bld.objectid
