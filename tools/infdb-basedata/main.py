@@ -13,11 +13,14 @@ def main() -> None:
     """
     # Load InfDB facade (config + logging)
     infdb = InfDB(tool_name="infdb-basedata", config_path="configs")
+    ags = infdb.get_env_variable("AGS")
 
     # Logger
     log = infdb.get_logger()
     ags = infdb.get_env_variable("AGS")
     log.info("Starting %s tool", infdb.get_toolname())
+    log.info("AGS environment variable: %s", ags)
+
     log.info("AGS environment variable: %s", ags)
 
     # Config
@@ -30,7 +33,7 @@ def main() -> None:
         "ags": ags,
         "input_schema": input_schema,
         "output_schema": output_schema,
-        "list_gemeindeschluessel": "todo",
+        "list_gemeindeschluessel": ags,
         "EPSG": epsg,
         "census_building_type_resolution": census_building_type_resolution,
     }

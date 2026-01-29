@@ -19,10 +19,12 @@ def main():
 
     # Initialize InfDB handler
     infdb = InfDB(tool_name="choose-a-name")
+    ags = infdb.get_env_variable("AGS")
 
     # Start message
     log = infdb.get_logger()
     log.info(f"Starting {infdb.get_toolname()} tool")
+    log.info("AGS environment variable: %s", ags)
 
     try:
         # ===========================================================

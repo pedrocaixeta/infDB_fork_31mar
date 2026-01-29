@@ -1,5 +1,6 @@
 services:
     linear-heat-density:
+        profiles: [ "linear" ]
         build:
             context: .
             dockerfile: Dockerfile
@@ -13,3 +14,9 @@ services:
             - "host.docker.internal:host-gateway"
         env_file:
             - ../../.env
+            - .env
+        depends_on:
+            ro-heat:
+                condition: service_completed_successfully
+            buildings-to-street:
+                condition: service_completed_successfully

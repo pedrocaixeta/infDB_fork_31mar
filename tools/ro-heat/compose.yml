@@ -1,5 +1,6 @@
 services:
     ro-heat:
+        profiles: [ "linear" ]
         build:
             context: .
             dockerfile: Dockerfile
@@ -12,3 +13,6 @@ services:
             - "host.docker.internal:host-gateway"
         env_file:
             - .env
+        depends_on:
+            infdb-basedata:
+                condition: service_completed_successfully

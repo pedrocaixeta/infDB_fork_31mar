@@ -18,8 +18,11 @@ def main():
     # Initialize InfDB handler
     infdb = InfDB(tool_name="linear-heat-density", config_path="configs")
     log = infdb.get_logger()
+    ags = infdb.get_env_variable("AGS")
+
     # Start message
     log.info(f"Starting {infdb.get_toolname()} tool")
+    log.info("AGS environment variable: %s", ags)
 
     streets_id = infdb.get_config_value([infdb.get_toolname(), "data", "input", "streets", "id-column"])
     heat_demand_id = infdb.get_config_value([infdb.get_toolname(), "data", "input", "heat-demand", "id-column"])
@@ -43,6 +46,7 @@ def main():
         # ===========================================================
         log.info("Running SQL scripts ...")
         format_params = {
+            "ags": ags,
             "buildings_to_streets_schema": infdb.get_config_value(
                 [infdb.get_toolname(), "data", "input", "buildings-to-streets", "schema"]
             ),

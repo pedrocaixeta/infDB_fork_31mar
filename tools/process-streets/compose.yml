@@ -1,5 +1,6 @@
 services:
     process-streets:
+        profiles: [ "linear" ]
         build:
             context: .
             dockerfile: Dockerfile
@@ -13,3 +14,4 @@ services:
             - "host.docker.internal:host-gateway"
         env_file:
             - ../../.env
+            - .env
