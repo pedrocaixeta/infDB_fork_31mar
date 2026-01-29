@@ -623,7 +623,7 @@ SET
 FROM temp_conversion_plan cp
 WHERE buildings.gemeindeschluessel = '{ags}'
   AND buildings.id = cp.id;
-ALTER TABLE {output_schema}.buildings DROP COLUMN IF NOT EXISTS grid_id;
+ALTER TABLE {output_schema}.buildings DROP COLUMN IF EXISTS grid_id;
 
 -- Drop TEMP tables
 DROP TABLE IF EXISTS temp_grid_current;
