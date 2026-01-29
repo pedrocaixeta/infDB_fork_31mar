@@ -6,7 +6,8 @@
 -- Step 5: Set rest to AB
 UPDATE {output_schema}.buildings b
 SET building_type = 'AB'
-WHERE b.building_use = 'Residential'
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.building_use = 'Residential'
   AND b.building_type IS NULL;
 
 
@@ -14,7 +15,8 @@ WHERE b.building_use = 'Residential'
 UPDATE {output_schema}.buildings b
 SET building_type = 'SFH'
 FROM temp_touching_neighbor_counts nc
-WHERE b.id = nc.id
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = nc.id
   AND building_type IN ('MFH', 'AB')
   AND households = 1
   AND nc.count = 0;
@@ -22,7 +24,8 @@ WHERE b.id = nc.id
 UPDATE {output_schema}.buildings b
 SET building_type = 'TH'
 FROM temp_touching_neighbor_counts nc
-WHERE b.id = nc.id
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = nc.id
   AND building_type IN ('MFH', 'AB')
   AND households = 1
   AND nc.count != 0;
@@ -30,14 +33,16 @@ WHERE b.id = nc.id
 UPDATE {output_schema}.buildings b
 SET building_type = 'MFH'
 FROM temp_touching_neighbor_counts nc
-WHERE b.id = nc.id
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = nc.id
   AND building_type IN ('SFH', 'TH')
   AND households BETWEEN 2 AND 4;
 
 UPDATE {output_schema}.buildings b
 SET building_type = 'AB'
 FROM temp_touching_neighbor_counts nc
-WHERE b.id = nc.id
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = nc.id
   AND building_type IN ('SFH', 'TH')
   AND households >= 5;
 
@@ -108,6 +113,7 @@ CREATE TABLE temp_grid_target AS (
         SELECT 1
         FROM {output_schema}.buildings b
         WHERE b.grid_id = g.id
+          AND b.gemeindeschluessel = '{ags}'
     )
 );
 
@@ -526,7 +532,8 @@ WITH SFH_to_TH AS (
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonth gc
       ON g.id = gc.grid_id
-    WHERE b.building_use = 'Residential'
+    WHERE b.gemeindeschluessel = '{ags}'
+      AND b.building_use = 'Residential'
       AND gc.total_target > 0
       AND gc.th_adjustment > 0
       AND b.building_type = 'SFH'
@@ -552,7 +559,8 @@ TH_to_SFH AS (
       ON ST_Contains(g.geom, b.centroid)
     JOIN temp_grid_comparisonth gc
       ON g.id = gc.grid_id
-    WHERE b.building_use = 'Residential'
+    WHERE b.gemeindeschluessel = '{ags}'
+      AND b.building_use = 'Residential'
       AND gc.total_target > 0
       AND gc.th_adjustment < 0
       AND b.building_type = 'TH'
@@ -613,8 +621,9 @@ SET
     households = cp.new_households,
     occupants = cp.new_occupants
 FROM temp_conversion_plan cp
-WHERE buildings.id = cp.id;
-ALTER TABLE {output_schema}.buildings DROP COLUMN grid_id;
+WHERE buildings.gemeindeschluessel = '{ags}'
+  AND buildings.id = cp.id;
+ALTER TABLE {output_schema}.buildings DROP COLUMN IF NOT EXISTS grid_id;
 
 -- Drop TEMP tables
 DROP TABLE IF EXISTS temp_grid_current;

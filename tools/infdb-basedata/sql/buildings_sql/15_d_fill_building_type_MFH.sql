@@ -87,7 +87,8 @@ SET building_type = 'MFH'
 FROM building_components bc
 JOIN seed_components sc
   ON sc.component = bc.component
-WHERE b.id = bc.id;
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = bc.id;
 
 -- release memory
 DROP TABLE IF EXISTS filtered_buildings;

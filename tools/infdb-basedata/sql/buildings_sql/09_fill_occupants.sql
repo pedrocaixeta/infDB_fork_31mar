@@ -14,7 +14,7 @@ FROM {output_schema}.buildings b
     JOIN {output_schema}.buildings_grid_100m g
     ON ST_Contains(g.geom, b.centroid)
 WHERE b.building_use = 'Residential'
--- AND b.gemeindeschluessel IN ({list_gemeindeschluessel})
+  AND b.gemeindeschluessel = '{ags}'
   AND b.centroid && g.geom;  -- Bounding box filter before spatial query
 
 CREATE INDEX ON temp_building_weights (bevoelkerungszahl_id);
@@ -50,8 +50,8 @@ FROM temp_building_weights bw
 UPDATE {output_schema}.buildings b
 SET occupants = bo.assigned_occupants
 FROM temp_building_occupants bo
--- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE b.id = bo.building_id;
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = bo.building_id;
 
 -- Handle buildings without occupants using nearest neighbor
 -- Step 5: Find nearest grid cell with occupancy data for each unassigned building
@@ -79,8 +79,8 @@ WHERE b.occupants IS NULL AND b.building_use = 'Residential';
 UPDATE {output_schema}.buildings b
 SET occupants = ngo.assigned_occupants
 FROM temp_nearest_grid_occupants ngo
--- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE b.id = ngo.building_id;
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = ngo.building_id;
 
 -- release memory
 DROP TABLE IF EXISTS temp_building_weights;

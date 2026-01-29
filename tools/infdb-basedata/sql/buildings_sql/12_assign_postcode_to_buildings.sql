@@ -18,5 +18,6 @@ FROM {input_schema}."postcodes_germany";
 UPDATE {output_schema}.buildings b
 SET postcode = plz::int
 FROM temp_postcode_{EPSG} p
-WHERE p.geom && b.geom -- prefilter with bounding box &&
-AND ST_Contains(p.geom, b.centroid);
+WHERE b.gemeindeschluessel = '{ags}'
+  AND p.geom && b.geom -- prefilter with bounding box &&
+  AND ST_Contains(p.geom, b.centroid);

@@ -16,9 +16,8 @@ SELECT
        b.house_number,
        b.gemeindeschluessel
 FROM {input_schema}.buildings_lod2 b
--- WHERE b.gemeindeschluessel IS IN {list_gemeindeschluessel}
---    WHERE src.gemeindeschluessel IS IN {list_gemeindeschluessel}
-  WHERE building_function_code LIKE '31001_%'  -- only allow buildings
+WHERE b.gemeindeschluessel = '{ags}'
+  AND building_function_code LIKE '31001_%'  -- only allow buildings
   AND building_function_code <> '31001_2463' -- exclude garages
   AND building_function_code <> '31001_2513' -- exclude water containers
   AND b.geom IS NOT NULL;
@@ -26,9 +25,10 @@ FROM {input_schema}.buildings_lod2 b
 CREATE UNIQUE INDEX idx_temp_lod2_data_oid ON temp_lod2_data (objectid);
 ANALYZE temp_lod2_data;
 
--- Delete objectid which do not exist anymore
+-- Delete objectid which do not exist anymore (only for current AGS region)
 DELETE FROM {output_schema}.buildings target
-WHERE NOT EXISTS (
+WHERE target.gemeindeschluessel = '{ags}'
+  AND NOT EXISTS (
     SELECT 1
     FROM temp_lod2_data src
     WHERE src.objectid = target.objectid

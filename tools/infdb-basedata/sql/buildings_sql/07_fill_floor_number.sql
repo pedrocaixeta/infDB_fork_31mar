@@ -72,12 +72,14 @@ WHERE b.floor_number IS NULL;
 -- Step 4: Final fallback for any remaining buildings (use 3.2m average)
 UPDATE {output_schema}.buildings
 SET floor_number = GREATEST(ROUND(height / 3.2), 1)
-WHERE floor_number IS NULL
+WHERE gemeindeschluessel = '{ags}'
+  AND floor_number IS NULL
   AND height IS NOT NULL;
 
 -- Step 5: Set minimum of 1 floor for buildings without height data
 UPDATE {output_schema}.buildings
 SET floor_number = 1
-WHERE floor_number IS NULL;
+WHERE gemeindeschluessel = '{ags}'
+  AND floor_number IS NULL;
 
 DROP TABLE IF EXISTS temp_floor_number_data;

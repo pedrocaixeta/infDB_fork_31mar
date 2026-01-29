@@ -19,6 +19,7 @@ SELECT b.objectid,
 FROM {input_schema}.buildings_lod2 b
 JOIN {input_schema}.grid_cells g
     ON ST_Intersects(ST_transform(g.geom, {EPSG}), b.centroid)
+WHERE b.gemeindeschluessel = '{ags}'
 ON CONFLICT (objectid,id) DO UPDATE
 SET resolution_meters = EXCLUDED.resolution_meters;
 
@@ -53,6 +54,7 @@ CROSS JOIN LATERAL (
     ORDER BY dist
     LIMIT 1
 ) ts
+WHERE bld.gemeindeschluessel = '{ags}'
 ON CONFLICT (bld_objectid,ts_metadata_name)
 DO UPDATE
 SET
@@ -64,6 +66,6 @@ SET
 UPDATE {output_schema}.bld2ts
 SET geom = ST_ShortestLine(bld.centroid, ST_transform(ts.geom, {EPSG}))
 FROM {input_schema}.buildings_lod2 bld, {input_schema}.openmeteo_ts_metadata ts
--- WHERE bld.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE bld2ts.ts_metadata_id = ts.id
+WHERE bld.gemeindeschluessel = '{ags}'
+  AND bld2ts.ts_metadata_id = ts.id
   AND bld2ts.bld_objectid = bld.objectid

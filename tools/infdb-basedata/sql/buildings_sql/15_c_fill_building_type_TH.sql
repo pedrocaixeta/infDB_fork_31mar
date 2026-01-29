@@ -128,7 +128,8 @@ SET building_type = 'TH'
 FROM building_components bc
 JOIN seed_components sc
   ON sc.component = bc.component
-WHERE b.id = bc.id;
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = bc.id;
 
 
 

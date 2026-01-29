@@ -14,8 +14,8 @@ FROM {output_schema}.buildings b
          JOIN {output_schema}.buildings_grid_100m d
              ON d.geom && b.geom AND
              ST_Contains(d.geom, ST_Centroid(b.geom))
--- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE b.occupants IS NOT NULL
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.occupants IS NOT NULL
   AND b.building_use = 'Residential'; -- already ensured by above clause
 
 CREATE INDEX ON temp_building_hh_grid (building_id);
@@ -56,8 +56,9 @@ CROSS JOIN LATERAL (
 ) nearest
 JOIN temp_building_occupants bo ON b.id = bo.building_id
 JOIN temp_cell_weights cw ON nearest.bevoelkerungszahl_id = cw.bevoelkerungszahl_id
--- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE b.occupants IS NULL AND b.building_use = 'Residential';
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.occupants IS NULL
+  AND b.building_use = 'Residential';
 
 -- release memory
 DROP TABLE IF EXISTS temp_building_hh_grid;

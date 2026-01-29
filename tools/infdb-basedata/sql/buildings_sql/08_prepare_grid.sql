@@ -135,8 +135,8 @@ WHERE buildings_grid_100m.x_mp = bauj.x_mp_100m
   AND buildings_grid_100m.y_mp = bauj.y_mp_100m;
 
 --Adjusting the 1km raster table
-    DELETE FROM {output_schema}.buildings_grid_1km target
-  WHERE NOT EXISTS (
+DELETE FROM {output_schema}.buildings_grid_1km target
+WHERE NOT EXISTS (
     SELECT 1
     FROM temp_grid_transformed_1km src
     WHERE src.id = target.id

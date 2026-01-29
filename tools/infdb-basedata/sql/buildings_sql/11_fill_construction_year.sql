@@ -12,8 +12,8 @@ FROM {output_schema}.buildings b
     JOIN {output_schema}.buildings_grid_100m g
     ON g.geom && b.centroid
         AND ST_Contains(g.geom, b.centroid)
--- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE g.id IS NOT NULL;
+WHERE b.gemeindeschluessel = '{ags}'
+  AND g.id IS NOT NULL;
 
 CREATE INDEX ON temp_building_with_grid_year(building_id);
 
@@ -45,8 +45,8 @@ FROM (SELECT building_id,
                    a2020undspaeter,
                    random() AS r
             FROM temp_building_with_grid_year) year_probs) sub
--- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE b.id = sub.building_id;
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = sub.building_id;
 
 
 -- Handle buildings without construction_year using nearest neighbor
@@ -80,7 +80,8 @@ CROSS JOIN LATERAL (
     ORDER BY g.geom <-> b.centroid
     LIMIT 1
 ) nearest
-WHERE b.construction_year IS NULL;
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.construction_year IS NULL;
 
 -- Step 4: Assign construction year using the same weighted random logic
 UPDATE {output_schema}.buildings b

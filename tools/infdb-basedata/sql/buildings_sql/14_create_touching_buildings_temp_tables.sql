@@ -16,6 +16,8 @@ FROM {output_schema}.buildings a
     a.id != b.id AND
     a.building_use = 'Residential' AND
     b.building_use = 'Residential' AND
+    a.gemeindeschluessel = '{ags}' AND
+    b.gemeindeschluessel = '{ags}' AND
     a.geom && b.geom AND -- check for bbox intersection
     ST_DWithin(a.geom, b.geom, 0.01);
 
