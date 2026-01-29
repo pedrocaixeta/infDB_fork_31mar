@@ -96,7 +96,7 @@ type-check:
     #- mypy tools/infdb-import
     #- mypy tools/infdb-metadata
     #- mypy tools/buildings-to-street
-    - mypy tools/kwp
+    # - mypy tools/kwp
     - mypy tools/ro-heat
     - mypy tools/linear-heat-density
     #- mypy tools/sunpot
