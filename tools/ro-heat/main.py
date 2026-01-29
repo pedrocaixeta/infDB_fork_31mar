@@ -275,8 +275,8 @@ def main():
 
         # Execute sql scripts
         infdblog.info("Running SQL scripts ...")
-        SQL_DIR = os.path.join("sql", "heat-demand-r.sql")  # add subfolders here if needed
-        infdbhandler.connect().execute_sql_file(SQL_DIR, format_params=format_params)
+        SQL_FILE = os.path.join("sql", "heat-demand-r.sql")  # add subfolders here if needed
+        infdbhandler.connect().execute_sql_file(SQL_FILE, format_params=format_params)
 
         infdblog.info("Ro-heat successfully completed")
         infdbhandler.stop_logger()
