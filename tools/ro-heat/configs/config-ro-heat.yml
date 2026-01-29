@@ -27,6 +27,7 @@ ro-heat:
             schema: basedata
             simulation_year: 2024
             random_seed: 42
+            method: 1R1C # 1R1C or 1R0C
         refurbishment:
             outer_wall:
                 quota: 0.33

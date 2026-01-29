@@ -4,9 +4,100 @@ import io
 import time
 
 import pandas as pd
+from infdb import InfDB
+from pandas import DataFrame
 from sqlalchemy import MetaData, Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+def write_ts_data(dict_df: dict[str, DataFrame], engine, infdbclient_citydb, infdbhandler: InfDB, infdblog,
+                  output_schema):
+    infdblog.debug("Writing EnTiSe output time series to database")
+
+    # Create metadata table if not exists
+    metadata_sql = f"""
+        CREATE TABLE IF NOT EXISTS {output_schema}.entise_ts_metadata (
+            id SERIAL PRIMARY KEY,
+            name text,
+            description text,
+            grid_id text,
+            type text,
+            unit text,
+            changelog integer,
+            objectid text,
+            source text
+        );
+        """
+    try:
+        infdbclient_citydb.execute_query(metadata_sql)
+    except Exception as e:
+        infdblog.error("Failed to create metadata table: %s", e)
+
+    # Ensure unique constraint for metadata upserts
+    try:
+        unique_idx_sql = f"""
+            CREATE UNIQUE INDEX IF NOT EXISTS entise_ts_metadata_uniq
+            ON {output_schema}.entise_ts_metadata (name, objectid, source);
+            """
+        infdbclient_citydb.execute_query(unique_idx_sql)
+    except Exception as e:
+        infdblog.error("Failed to create unique index on metadata: %s", e)
+
+    # Ensure table exists with appropriate types (grid_id, time, temperature, ts_id)
+
+    table_name = "entise_ts_data"
+
+    # Try to ensure TimescaleDB extension is available (best-effort)
+    try:
+        infdbclient_citydb.execute_query("CREATE EXTENSION IF NOT EXISTS timescaledb;")
+    except Exception as e:
+        infdblog.warning("Could not ensure timescaledb extension (continuing): %s", e)
+
+    create_sql = f"""
+        CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
+            ts_metadata_id integer,
+            time timestamptz,
+            value double precision
+        )
+        WITH (
+            timescaledb.hypertable,
+            timescaledb.partition_column="time",
+            timescaledb.segmentby="ts_metadata_id"
+        );
+        """
+    try:
+        infdbclient_citydb.execute_query(create_sql)
+    except Exception as e:
+        infdblog.error("Failed to create timeseries table with Timescale hypertable syntax: %s", e)
+        # Fallback: create as a plain Postgres table
+        try:
+            create_sql_plain = f"""
+                CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} (
+                    ts_metadata_id integer,
+                    time timestamptz,
+                    value double precision
+                );
+                """
+            infdbclient_citydb.execute_query(create_sql_plain)
+            infdblog.info("Created plain Postgres timeseries table as fallback (no TimescaleDB features).")
+        except Exception as e2:
+            infdblog.error("Failed to create plain timeseries table: %s", e2)
+            raise
+
+    # Upload using baseline
+    upload_start = time.perf_counter()
+    timedata.upload_timeseries_baseline(
+        engine=engine,
+        output_schema=output_schema,
+        table_name=table_name,
+        dict_df=dict_df,
+        infdblog=infdblog,
+    )
+    upload_dt = time.perf_counter() - upload_start
+    infdblog.info(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
+    print(f"Baseline batch upload completed in {upload_dt:.2f} seconds")
+
+    infdblog.info("Ro-heat successfully completed")
+    infdbhandler.stop_logger()
 
 def get_hourly_temperature_2m(objectid, database_connection, start_time=None, end_time=None):
     query = f"""
