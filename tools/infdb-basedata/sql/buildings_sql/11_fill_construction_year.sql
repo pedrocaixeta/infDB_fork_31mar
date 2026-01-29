@@ -9,7 +9,7 @@ SELECT b.id   AS building_id,
        b.geom AS building_geom,
        g.*
 FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_100m g
     ON g.geom && b.centroid
         AND ST_Contains(g.geom, b.centroid)
 -- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
@@ -67,7 +67,7 @@ CROSS JOIN LATERAL (
            g.a2001bis2010,
            g.a2011bis2019,
            g.a2020undspaeter
-    FROM {output_schema}.buildings_grid g
+    FROM {output_schema}.buildings_grid_100m g
     WHERE g.id IS NOT NULL
       AND (COALESCE(NULLIF(g.vor1919, 'NaN'::double precision), 0) +
            COALESCE(NULLIF(g.a1919bis1948, 'NaN'::double precision), 0) +

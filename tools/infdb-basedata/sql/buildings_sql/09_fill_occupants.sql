@@ -11,7 +11,7 @@ SELECT b.id                    AS building_id,
        g.id                    as bevoelkerungszahl_id,
        g.einwohner
 FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid g
+    JOIN {output_schema}.buildings_grid_100m g
     ON ST_Contains(g.geom, b.centroid)
 WHERE b.building_use = 'Residential'
 -- AND b.gemeindeschluessel IN ({list_gemeindeschluessel})
@@ -65,7 +65,7 @@ FROM {output_schema}.buildings b
 CROSS JOIN LATERAL (
     SELECT g.id as bevoelkerungszahl_id,
            g.einwohner as nearest_einwohner
-    FROM {output_schema}.buildings_grid g
+    FROM {output_schema}.buildings_grid_100m g
     WHERE g.id IS NOT NULL
       AND g.einwohner IS NOT NULL
     ORDER BY g.geom <-> b.centroid

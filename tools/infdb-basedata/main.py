@@ -21,6 +21,7 @@ def main() -> None:
     # Config
     input_schema = infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"])
     output_schema = infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"])
+    census_building_type_resolution = infdb.get_config_value([infdb.get_toolname(), "data", "census_building_type_resolution"])
     epsg = infdb.get_db_parameters_dict().get("epsg")
 
     format_params: Dict[str, Any] = {
@@ -28,6 +29,7 @@ def main() -> None:
         "output_schema": output_schema,
         "list_gemeindeschluessel": "todo",
         "EPSG": epsg,
+        "census_building_type_resolution": census_building_type_resolution,
     }
 
     log.info("Input schema: %s", input_schema)

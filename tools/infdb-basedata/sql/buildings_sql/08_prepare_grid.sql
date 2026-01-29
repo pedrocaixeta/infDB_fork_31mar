@@ -6,8 +6,8 @@
 -- Create temp table joining grid cells with buildings based on geometry
 -- Only keeps grid cells that contain at least one building centroid
 -- Optimized for later joins on x_mp and y_mp coordinates
-DROP TABLE IF EXISTS temp_grid_transformed;
-CREATE TEMP TABLE temp_grid_transformed AS
+DROP TABLE IF EXISTS temp_grid_transformed_100m;
+CREATE TEMP TABLE temp_grid_transformed_100m AS
 SELECT
     g.id,
     g.x_mp,
@@ -29,7 +29,7 @@ WHERE EXISTS (
       AND ST_Contains(g.geom, ST_Centroid(b.geom))
 --        AND b.gemeindeschluessel IN ({list_gemeindeschluessel});
 );
-CREATE INDEX ON temp_grid_transformed (id);
+CREATE INDEX ON temp_grid_transformed_100m (id);
 
 -- Create a Buildings_Grid table with a 1km raster additionally
 DROP TABLE IF EXISTS temp_grid_transformed_1km;
@@ -56,31 +56,31 @@ WHERE EXISTS (
 );
 CREATE INDEX ON temp_grid_transformed_1km (id);
 
-DROP TABLE IF EXISTS {output_schema}.buildings_grid_1km CASCADE;
--- Create exact copy with data
-CREATE TABLE {output_schema}.buildings_grid_1km (LIKE {output_schema}.buildings_grid INCLUDING ALL);
--- Copy all data
-INSERT INTO {output_schema}.buildings_grid_1km
-SELECT * FROM {output_schema}.buildings_grid;
+-- DROP TABLE IF EXISTS {output_schema}.buildings_grid_1km CASCADE;
+-- -- Create exact copy with data
+-- CREATE TABLE {output_schema}.buildings_grid_1km (LIKE {output_schema}.buildings_grid_100m INCLUDING ALL);
+-- -- Copy all data
+-- INSERT INTO {output_schema}.buildings_grid_1km
+-- SELECT * FROM {output_schema}.buildings_grid_100m;
 
 
 --Adjusting the 100 m raster table
-DELETE FROM {output_schema}.buildings_grid target
+DELETE FROM {output_schema}.buildings_grid_100m target
 --WHERE target.gemeindeschluessel IN ({list_gemeindeschluessel})
   WHERE NOT EXISTS (
     SELECT 1
-    FROM temp_grid_transformed src
+    FROM temp_grid_transformed_100m src
     WHERE src.id = target.id
   );
 
-INSERT INTO {output_schema}.buildings_grid (id, x_mp, y_mp, geom)
+INSERT INTO {output_schema}.buildings_grid_100m (id, x_mp, y_mp, geom)
 SELECT
     src.id,
     src.x_mp,
     src.y_mp,
     src.geom
-FROM temp_grid_transformed src
-LEFT JOIN {output_schema}.buildings_grid target
+FROM temp_grid_transformed_100m src
+LEFT JOIN {output_schema}.buildings_grid_100m target
        ON target.geom = src.geom
 WHERE target.geom IS NULL
 ON CONFLICT (id) DO UPDATE
@@ -89,22 +89,22 @@ SET id   = EXCLUDED.id,
     y_mp = EXCLUDED.y_mp;
 
 -- Update with population data
-UPDATE {output_schema}.buildings_grid
+UPDATE {output_schema}.buildings_grid_100m
 SET einwohner = pop.einwohner
 FROM {input_schema}.zensus_2022_100m_bevoelkerungszahl pop
-WHERE buildings_grid.x_mp = pop.x_mp_100m
-  AND buildings_grid.y_mp = pop.y_mp_100m;
+WHERE buildings_grid_100m.x_mp = pop.x_mp_100m
+  AND buildings_grid_100m.y_mp = pop.y_mp_100m;
 
 -- Update with household size data
-UPDATE {output_schema}.buildings_grid
+UPDATE {output_schema}.buildings_grid_100m
 SET durchschnhhgroesse = hh.durchschnhhgroesse,
     werterlaeuternde_zeichen = hh.werterlaeuternde_zeichen
 FROM {input_schema}.zensus_2022_100m_durchschn_haushaltsgroesse hh
-WHERE buildings_grid.x_mp = hh.x_mp_100m
-  AND buildings_grid.y_mp = hh.y_mp_100m;
+WHERE buildings_grid_100m.x_mp = hh.x_mp_100m
+  AND buildings_grid_100m.y_mp = hh.y_mp_100m;
 
 -- Update with building type data
-UPDATE {output_schema}.buildings_grid
+UPDATE {output_schema}.buildings_grid_100m
 SET insgesamt_gebaeude = bld.insgesamt_gebaeude,
   freiefh = bld.freiefh,
   efh_dhh = bld.efh_dhh,
@@ -117,11 +117,11 @@ SET insgesamt_gebaeude = bld.insgesamt_gebaeude,
   mfh_13undmehrwohnungen = bld.mfh_13undmehrwohnungen,
   anderergebaeudetyp = bld.anderergebaeudetyp
 FROM {input_schema}.zensus_2022_100m_gebaeude_typ_groesse bld
-WHERE buildings_grid.x_mp = bld.x_mp_100m
-  AND buildings_grid.y_mp = bld.y_mp_100m;
+WHERE buildings_grid_100m.x_mp = bld.x_mp_100m
+  AND buildings_grid_100m.y_mp = bld.y_mp_100m;
 
 -- Update with construction year data
-UPDATE {output_schema}.buildings_grid
+UPDATE {output_schema}.buildings_grid_100m
 SET vor1919 = bauj.vor1919,
   a1919bis1948 = bauj.a1919bis1948,
   a1949bis1978 = bauj.a1949bis1978,
@@ -131,8 +131,8 @@ SET vor1919 = bauj.vor1919,
   a2011bis2019 = bauj.a2011bis2019,
   a2020undspaeter = bauj.a2020undspaeter
 FROM {input_schema}.zensus_2022_100m_gebaeude_baujahr_mikrozensus bauj
-WHERE buildings_grid.x_mp = bauj.x_mp_100m
-  AND buildings_grid.y_mp = bauj.y_mp_100m;
+WHERE buildings_grid_100m.x_mp = bauj.x_mp_100m
+  AND buildings_grid_100m.y_mp = bauj.y_mp_100m;
 
 --Adjusting the 1km raster table
     DELETE FROM {output_schema}.buildings_grid_1km target
@@ -176,5 +176,5 @@ WHERE buildings_grid_1km.x_mp = bld.x_mp_1km
 
 
 -- release memory
-DROP TABLE IF EXISTS temp_grid_transformed;
+DROP TABLE IF EXISTS temp_grid_transformed_100m;
 DROP TABLE IF EXISTS temp_grid_transformed_1km;
