@@ -9,7 +9,14 @@ WHERE NOT EXISTS (
     SELECT 1
     FROM {input_schema}.buildings_lod2 src
     WHERE src.objectid = target.objectid
---      AND src.gemeindeschluessel IN {list_gemeindeschluessel}
+      AND src.gemeindeschluessel = '{ags}'
+)
+AND EXISTS (
+    -- Only delete if this objectid belongs to current AGS region
+    SELECT 1
+    FROM {output_schema}.buildings b
+    WHERE b.objectid = target.objectid
+      AND b.gemeindeschluessel = '{ags}'
 );
 
 INSERT INTO {output_schema}.bld2grid (objectid, id, resolution_meters)
@@ -29,7 +36,14 @@ WHERE NOT EXISTS (
     SELECT 1
     FROM {input_schema}.buildings_lod2 src
     WHERE src.objectid = target.bld_objectid
---      AND src.gemeindeschluessel IS IN {list_gemeindeschluessel}
+      AND src.gemeindeschluessel = '{ags}'
+)
+AND EXISTS (
+    -- Only delete if this objectid belongs to current AGS region
+    SELECT 1
+    FROM {output_schema}.buildings b
+    WHERE b.objectid = target.bld_objectid
+      AND b.gemeindeschluessel = '{ags}'
 );
 
 -- Find nearest time series for each building

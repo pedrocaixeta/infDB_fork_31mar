@@ -66,11 +66,17 @@ CREATE INDEX ON temp_grid_transformed_1km (id);
 
 --Adjusting the 100 m raster table
 DELETE FROM {output_schema}.buildings_grid_100m target
---WHERE target.gemeindeschluessel IN ({list_gemeindeschluessel})
-  WHERE NOT EXISTS (
+WHERE NOT EXISTS (
     SELECT 1
     FROM temp_grid_transformed_100m src
     WHERE src.id = target.id
+  )
+  AND NOT EXISTS (
+    -- Don't delete if it has buildings from other AGS regions (shared grid cell)
+    SELECT 1
+    FROM {output_schema}.buildings b
+    WHERE ST_Contains(target.geom, b.centroid)
+      AND b.gemeindeschluessel != '{ags}'
   );
 
 INSERT INTO {output_schema}.buildings_grid_100m (id, x_mp, y_mp, geom)
@@ -140,6 +146,13 @@ WHERE NOT EXISTS (
     SELECT 1
     FROM temp_grid_transformed_1km src
     WHERE src.id = target.id
+  )
+  AND NOT EXISTS (
+    -- Don't delete if it has buildings from other AGS regions (shared grid cell)
+    SELECT 1
+    FROM {output_schema}.buildings b
+    WHERE ST_Contains(target.geom, b.centroid)
+      AND b.gemeindeschluessel != '{ags}'
   );
 
 INSERT INTO {output_schema}.buildings_grid_1km (id, x_mp, y_mp, geom)
