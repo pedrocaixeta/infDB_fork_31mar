@@ -53,6 +53,12 @@ tree -pug
 # -g group
 ```
 
+### PyPi package build and upload
+```bash
+uv build
+uv publish --token YOUR_PYPI_TOKEN
+```
+
 ### PSQL Connection to infDB
 ```bash
 # on linux and macos
