@@ -24,15 +24,15 @@ buildings-to-street:
             epsg: None
     data:
         streets:
-            schema: need_intern
-            table: tudo_basemap_ways
-            id-column: None
+            schema: process_streets
+            table: segments
+            id-column: id
             geom-column: geom
         buildings:
-            schema: opendata
-            table: kwp_nrw_waermebedarf_gebaeude_fortschreibung_moderat
-            id-column: '"Fest_ID"'
+            schema: basedata
+            table: buildings
+            id-column: objectid
             geom-column: geom
         output:
-            schema: linear_heat_density
+            schema: buildings_to_street
             table: buildings_to_streets

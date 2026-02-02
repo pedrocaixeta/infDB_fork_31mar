@@ -4,9 +4,15 @@
 -- {buildings_schema}, {buildings_table}, {buildings_id_expr}, {buildings_geom}
 -- {output_schema}, {output_table}
 
+CREATE SCHEMA IF NOT EXISTS {output_schema};
+CREATE TABLE IF NOT EXISTS {output_schema}.{output_table} (
+    building_id TEXT PRIMARY KEY,
+    street_id TEXT,
+    nearest_distance DOUBLE PRECISION,
+    geom GEOMETRY
+);
 
-
-CREATE TABLE {output_schema}.{output_table} AS
+INSERT INTO {output_schema}.{output_table} (building_id, street_id, nearest_distance, geom)
 SELECT
     {buildings_id_expr} AS building_id,
     {streets_id_expr} AS street_id,
@@ -14,12 +20,15 @@ SELECT
     ST_ShortestLine(b.{buildings_geom}, s.{streets_geom}) AS geom
 FROM
     {buildings_schema}.{buildings_table} b
-CROSS JOIN LATERAL (
-    SELECT
-        *
-    FROM
-        {streets_schema}.{streets_table} s
-    ORDER BY
-        b.{buildings_geom} <-> s.{streets_geom}
-LIMIT 1
-) s;
+INNER JOIN opendata.bkg_vg5000_gem g ON ST_Intersects(b.{buildings_geom}, g.geom) AND g.ags = '{ags}'
+JOIN LATERAL (
+    SELECT s.*
+    FROM {streets_schema}.{streets_table} s
+    WHERE ST_DWithin(s.{streets_geom}, b.{buildings_geom}, 100)
+    ORDER BY b.{buildings_geom} <-> s.{streets_geom}
+    LIMIT 1
+) s ON true
+ON CONFLICT (building_id) DO UPDATE SET
+    street_id = EXCLUDED.street_id,
+    nearest_distance = EXCLUDED.nearest_distance,
+    geom = EXCLUDED.geom;

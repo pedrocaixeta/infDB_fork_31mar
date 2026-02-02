@@ -1,5 +1,6 @@
 services:
     infdb-metadata:
+        profiles: [ "metadata", "all" ]
         build:
             context: .
             dockerfile: Dockerfile

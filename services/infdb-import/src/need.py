@@ -8,7 +8,7 @@ from . import utils
 
 
 def load(infdb: InfDB) -> None:
-    """Dump schema from a source DB and restore it into the target Postgres.
+    """Dumps schema from a source DB and restores it into the target Postgres.
 
     Behavior preserved:
     - Early exit (True) when feature flag `need` is inactive.

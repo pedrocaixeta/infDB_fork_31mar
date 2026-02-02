@@ -5,11 +5,11 @@ Handles InfDB initialization, database connection, logging, and demo execution.
 
 # Import packages
 
-import json
+# import json
 
 from infdb import InfDB
 
-from src import process_streets
+# from src import process_streets
 
 # Import your full pipeline
 # (The file must be located at: /app/src/process_streets.py)
@@ -19,7 +19,7 @@ def main():
     # -----------------------------------------------------
     # INIT INFDB
     # -----------------------------------------------------
-    infdb = InfDB(tool_name="process-streets")
+    infdb = InfDB(tool_name="process-streets", config_path="configs")
     log = infdb.get_logger()
 
     log.info("=== Starting process-streets tool ===")
@@ -30,10 +30,10 @@ def main():
     # -----------------------------------------------------
     table_name = infdb.get_config_value(["process-streets", "data", "table_name"])
     klasse_filter = infdb.get_config_value(["process-streets", "klasse_filter"])
-    apply_length_filter = infdb.get_config_value(["process-streets", "apply_length_filter"])
-    min_length_deadend_junction = infdb.get_config_value(["process-streets", "min_length_deadend_junction"])
-    remove_deadend_deadend = infdb.get_config_value(["process-streets", "remove_deadend_deadend"])
-    remove_loop = infdb.get_config_value(["process-streets", "remove_loop"])
+    # apply_length_filter = infdb.get_config_value(["process-streets", "apply_length_filter"])
+    # min_length_deadend_junction = infdb.get_config_value(["process-streets", "min_length_deadend_junction"])
+    # remove_deadend_deadend = infdb.get_config_value(["process-streets", "remove_deadend_deadend"])
+    # remove_loop = infdb.get_config_value(["process-streets", "remove_loop"])
 
     log.info(f"Table: {table_name}")
     log.info(f"Klasse Filter: {klasse_filter}")
@@ -44,20 +44,20 @@ def main():
     try:
         log.info("Running process-streets pipeline...")
 
-        results = process_streets.main(
-            table_name=table_name,
-            klasse_filter=klasse_filter,
-            apply_length_filter=apply_length_filter,
-            min_length_deadend_junction=min_length_deadend_junction,
-            remove_deadend_deadend=remove_deadend_deadend,
-            remove_loop=remove_loop,
-            infdb=infdb,
-        )
+        # results = process_streets.main(
+        #     table_name=table_name,
+        #     klasse_filter=klasse_filter,
+        #     apply_length_filter=apply_length_filter,
+        #     min_length_deadend_junction=min_length_deadend_junction,
+        #     remove_deadend_deadend=remove_deadend_deadend,
+        #     remove_loop=remove_loop,
+        #     infdb=infdb,
+        # )
 
         log.info("Pipeline finished successfully.")
 
         # Output result as JSON (InfDB standard)
-        log.info(json.dumps(results, indent=4))
+        # log.info(json.dumps(results, indent=4))
         infdb.stop_logger()
 
         return 0

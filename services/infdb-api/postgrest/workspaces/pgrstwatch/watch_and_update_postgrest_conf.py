@@ -79,7 +79,7 @@ CONF_DIR_MODE_STR: str = str(read_env("POSTGREST_CONF_DIR_MODE", default="0755")
 
 
 def resolve_conf_path() -> tuple[pathlib.Path, pathlib.Path]:
-    """Resolve the config file path and its directory."""
+    """Resolves the config file path and its directory."""
     conf_path_env = DEFAULT_CONF_PATH
     conf_path = pathlib.Path(conf_path_env)
     if conf_path.is_dir():
@@ -97,13 +97,12 @@ CONF_PATH, CONF_DIR = resolve_conf_path()
 
 
 def utcnow() -> str:
-    """Return current UTC time in ISO 8601 format."""
+    """Returns the current UTC time in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat()
 
 
 def atomic_write_text(text: str, out_path: pathlib.Path) -> None:
-    """
-    Atomically write text to the given path and set modes from env.
+    """Atomically writes text to the given path and sets modes from env.
 
     We delegate the actual safe write to utils.atomic_write_text,
     but still apply the file/dir modes that this watcher cares about.
@@ -118,8 +117,7 @@ def atomic_write_text(text: str, out_path: pathlib.Path) -> None:
 
 
 def read_text(path: pathlib.Path) -> str:
-    """
-    Read a file as text, returning empty string if missing.
+    """Reads a file as text, returning empty string if missing.
 
     This is now just a thin wrapper around utils.read_text to keep the
     call sites unchanged.
@@ -131,7 +129,7 @@ def read_text(path: pathlib.Path) -> str:
 
 
 def ensure_conf_exists(conf_path: pathlib.Path, conf_dir: pathlib.Path) -> None:
-    """Ensure the PostgREST config file exists; create a minimal one if missing.
+    """Ensures the PostgREST config file exists; creates a minimal one if missing.
 
     Leaves `db-schemas` empty so this script remains the single source of truth later.
     """
@@ -151,14 +149,14 @@ def ensure_conf_exists(conf_path: pathlib.Path, conf_dir: pathlib.Path) -> None:
 
 
 def fnmatch_any(name: str, patterns: Iterable[str]) -> bool:
-    """Return True if `name` matches any of the glob `patterns`."""
+    """Returns True if `name` matches any of the glob `patterns`."""
     import fnmatch
 
     return any(fnmatch.fnmatch(name, p) for p in patterns)
 
 
 def get_user_schemas(conn: Connection[dict]) -> list[str]:
-    """Return non-system schema names, filtered by EXCLUDE_SCHEMAS."""
+    """Returns non-system schema names, filtered by EXCLUDE_SCHEMAS."""
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -175,7 +173,7 @@ def get_user_schemas(conn: Connection[dict]) -> list[str]:
 
 
 def render_conf_with_schemas(original: str, schemas_csv: str) -> str:
-    """Render a config text with a (single) db-schemas line containing `schemas_csv`."""
+    """Renders a config text with a (single) db-schemas line containing `schemas_csv`."""
     line = f'db-schemas = "{schemas_csv}"'
     if CONF_LINE_RE.search(original):
         return CONF_LINE_RE.sub(line, original, count=1)
@@ -185,7 +183,7 @@ def render_conf_with_schemas(original: str, schemas_csv: str) -> str:
 
 
 def notify_postgrest_reload(conn: Connection[dict], channel: str) -> None:
-    """Notify PostgREST over LISTEN/NOTIFY to reload config and schema cache."""
+    """Notifies PostgREST over LISTEN/NOTIFY to reload config and schema cache."""
     with conn.cursor() as cur:
         cur.execute("SELECT pg_notify(%s, 'reload config')", (channel,))
         cur.execute("SELECT pg_notify(%s, 'reload schema')", (channel,))
@@ -195,7 +193,7 @@ def notify_postgrest_reload(conn: Connection[dict], channel: str) -> None:
 
 
 def loop() -> None:
-    """Watch DB schemas; update PostgREST config and notify on changes."""
+    """Watches DB schemas; updates PostgREST config and notifies on changes."""
     backoff_seconds = 2.0
     last_signature = ""
     last_reload_monotonic = 0.0

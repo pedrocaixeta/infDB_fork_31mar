@@ -10,7 +10,7 @@ NAME = "waermeatlas-hessen-bensheim"
 
 
 def load(infdb: InfDB) -> bool:
-    """Download Gebäude neuburg dataset (if active), ensure schema, and import configured layers.
+    """Downloads Gebäude neuburg dataset (if active), ensures schema, and imports configured layers.
 
     Behavior preserved:
     - Early exit (True) when feature flag `gebaeude-neuburg` is inactive.

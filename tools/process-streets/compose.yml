@@ -1,5 +1,6 @@
 services:
     process-streets:
+        profiles: [ "linear" ]
         build:
             context: .
             dockerfile: Dockerfile
@@ -11,3 +12,6 @@ services:
             - /app/.venv # Exclude .venv from volume mount # for development only
         extra_hosts:
             - "host.docker.internal:host-gateway"
+        env_file:
+            - ../../.env
+            - .env

@@ -1,5 +1,5 @@
 ---
-icon: material/cog
+icon: material/code-braces
 ---
 # Setup
 

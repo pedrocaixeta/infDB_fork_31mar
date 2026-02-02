@@ -18,10 +18,13 @@ def main():
     """
 
     # Initialize InfDB handler
-    infdb = InfDB(tool_name="buildings-to-street")
+    infdb = InfDB(tool_name="buildings-to-street", config_path="configs")
     log = infdb.get_logger()
+    ags = infdb.get_env_variable("AGS")
+
     # Start message
     log.info(f"Starting {infdb.get_toolname()} tool")
+    log.info("AGS environment variable: %s", ags)
 
     try:
         # ===========================================================
@@ -52,6 +55,7 @@ def main():
             buildings_id_expr = f"b.{buildings_id}::text"
 
         format_params = {
+            "ags": ags,
             "streets_schema": infdb.get_config_value([infdb.get_toolname(), "data", "streets", "schema"]),
             "streets_table": infdb.get_config_value([infdb.get_toolname(), "data", "streets", "table"]),
             "streets_id_expr": streets_id_expr,

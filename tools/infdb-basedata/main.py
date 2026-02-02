@@ -13,28 +13,36 @@ def main() -> None:
     """
     # Load InfDB facade (config + logging)
     infdb = InfDB(tool_name="infdb-basedata", config_path="configs")
+    ags = infdb.get_env_variable("AGS")
 
     # Logger
     log = infdb.get_logger()
+    ags = infdb.get_env_variable("AGS")
     log.info("Starting %s tool", infdb.get_toolname())
+    log.info("AGS environment variable: %s", ags)
+
+    log.info("AGS environment variable: %s", ags)
 
     # Config
     input_schema = infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"])
     output_schema = infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"])
+    census_building_type_resolution = infdb.get_config_value([infdb.get_toolname(), "data", "census_building_type_resolution"])
     epsg = infdb.get_db_parameters_dict().get("epsg")
 
     format_params: Dict[str, Any] = {
+        "ags": ags,
         "input_schema": input_schema,
         "output_schema": output_schema,
-        "list_gemeindeschluessel": "todo",
+        "list_gemeindeschluessel": ags,
         "EPSG": epsg,
+        "census_building_type_resolution": census_building_type_resolution,
     }
 
     log.info("Input schema: %s", input_schema)
     log.info("Output schema: %s", output_schema)
     WAYS_SQL_DIR: str = os.path.join("sql", "ways_sql")
     BUILDINGS_SQL_DIR: str = os.path.join("sql", "buildings_sql")
-    CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
+    # CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
     # Database work (context-managed)
     with infdb.connect() as db:
         # Execute WAYS scripts
@@ -53,12 +61,13 @@ def main() -> None:
         end_time = time.time()
         log.info("BUILDINGS SQL scripts completed in %.2f seconds", end_time - start_time)
 
-        # Execute CONNECTIONS scripts
-        start_time = time.time()
-        log.info("Executing connections SQL scripts")
-        db.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
-        end_time = time.time()
-        log.info("CONNECTIONS SQL scripts completed in %.2f seconds", end_time - start_time)
+        # Moved to buildings-to-street tool
+        # # Execute CONNECTIONS scripts
+        # start_time = time.time()
+        # log.info("Executing connections SQL scripts")
+        # db.execute_sql_files(CONNECTIONS_SQL_DIR, format_params=format_params)
+        # end_time = time.time()
+        # log.info("CONNECTIONS SQL scripts completed in %.2f seconds", end_time - start_time)
 
     log.info("Successfully finished %s tool", infdb.get_toolname())
     infdb.stop_logger()
