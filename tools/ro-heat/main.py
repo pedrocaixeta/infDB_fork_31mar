@@ -125,17 +125,43 @@ def main():
         infdblog.debug("Done writing R & C values")
         infdblog.debug(f"Running heat demand estimation with method {method}")
 
+        start_time = f"{simulation_year}-01-01"
+        end_time = f"{simulation_year}-12-31"
+        heating_setpoint = 20.0
+
         if method == "1R0C":
-            # TODO: Implement and set summary
-            raise NotImplementedError()
+            full_path = os.path.join("sql", "heat-demand-r.sql")
+            with open(full_path, "r", encoding="utf-8") as file:
+                sql_content = file.read()
+            format_params = {
+                "ags": ags,
+                "start_time": start_time,
+                "end_time": end_time,
+                "temp_in": heating_setpoint
+            }
+            sql_content = sql_content.format(**format_params)
+            heating_demands = pd.read_sql(sql_content, engine)
+
+            # Summary
+            # TODO: Adapt output format to EnTiSe format
+            heating_demands.index.name = "building_objectid"
+            heating_demands.to_sql(
+                "1R0C_summary",
+                con=engine,
+                if_exists="replace",
+                schema=output_schema,
+                index=False,
+                method="multi",
+            )
+
         elif method == "1R1C":
 
             bld2ts = timedata.get_bld2ts(database_connection=engine)
 
             all_ts_df = timedata.get_all_timeseries_data(
                 database_connection=engine,
-                start=pd.Timestamp(f"{simulation_year}-01-01"),
-                end=pd.Timestamp(f"{simulation_year}-12-31"),
+                start=pd.Timestamp(start_time),
+                end=pd.Timestamp(end_time),
             )
             all_ts_df.index.name = "datetime"
             all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
@@ -147,7 +173,7 @@ def main():
                 columns={"resistance": "resistance[K W-1]", "capacitance": "capacitance[J K-1]"}, errors=True
             )
             entise_input["hvac"] = method
-            entise_input["min_temperature[C]"] = 20.0
+            entise_input["min_temperature[C]"] = heating_setpoint
             entise_input["max_temperature[C]"] = 24.0
             entise_input["gains_solar"] = 0.0
 
