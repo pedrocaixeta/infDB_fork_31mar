@@ -19,16 +19,20 @@ authors:
       orcid: '0000-0001-6560-134X'
       equal-contrib: false
       affiliation: 1
+    - name: Hussein Mohamed Ali Genena
+      orcid: 0009-0002-1600-3145
+      equal-contrib: false
+      affiliation: 1
+    - name: Martin Stengel
+      orcid: 0009-0006-2721-3227
+      equal-contrib: false
+      affiliation: 1,5
     - name: Marvin Wen Huang
       orcid: 0009-0002-3988-2138
       equal-contrib: false
       affiliation: 1
     - name: Kadir Kalkan
       orcid: ''
-      equal-contrib: false
-      affiliation: 1
-    - name: Hussein Mohamed Ali Genena
-      orcid: 0009-0002-1600-3145
       equal-contrib: false
       affiliation: 1
     - name: Laura Kuper
@@ -43,10 +47,6 @@ authors:
       orcid: ''
       equal-contrib: false
       affiliation: 4
-    - name: Martin Stengel
-      orcid: 0009-0006-2721-3227
-      equal-contrib: false
-      affiliation: 1,5
 affiliations:
     - name: Technical University of Munich, Germany
       index: 1
