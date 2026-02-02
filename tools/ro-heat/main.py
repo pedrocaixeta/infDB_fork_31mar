@@ -5,8 +5,6 @@ import pandas as pd
 # entise package has to type stubs
 from entise.core.generator import TimeSeriesGenerator  # type: ignore
 from infdb import InfDB
-from timedata import write_ts_data
-
 from src import refurbishment, timedata, tabula_handling
 
 # Parameters
@@ -210,7 +208,7 @@ def main():
                 infdblog.info("Skipping EnTiSe output time series writing to database as per configuration")
                 return
 
-            write_ts_data(dict_df, engine, infdbclient_citydb, infdbhandler, infdblog, output_schema)
+            timedata.write_ts_data(dict_df, engine, infdbclient_citydb, infdbhandler, infdblog, output_schema)
         else:
             raise ValueError("Method must be 1R0C or 1R1C")
 

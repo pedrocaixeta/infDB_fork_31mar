@@ -9,6 +9,7 @@ from pandas import DataFrame
 from sqlalchemy import MetaData, Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+
 def write_ts_data(dict_df: dict[str, DataFrame], engine, infdbclient_citydb, infdbhandler: InfDB, infdblog,
                   output_schema):
     infdblog.debug("Writing EnTiSe output time series to database")
