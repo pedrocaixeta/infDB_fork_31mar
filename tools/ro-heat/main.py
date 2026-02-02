@@ -1,5 +1,4 @@
 import os
-import time
 
 import numpy as np
 import pandas as pd
@@ -8,7 +7,7 @@ from entise.core.generator import TimeSeriesGenerator  # type: ignore
 from infdb import InfDB
 from timedata import write_ts_data
 
-from src import refurbishment, rc_calculation, timedata
+from src import refurbishment, rc_calculation, timedata, tabula_handling
 
 # Parameters
 construction_year_col = "construction_year"
@@ -100,32 +99,32 @@ def main():
                              index=False)
 
         infdblog.debug("Starting construction of building elements")
-        # Run SQL: 02_create_layer_view
-        infdbclient_citydb.execute_sql_files("sql", ["02_create_layer_view.sql"])
+        full_path = os.path.join("sql", "get_tabula_elements.sql")
+        with open(full_path, "r", encoding="utf-8") as file:
+            sql_content = file.read()
+        tabula_elements = pd.read_sql(sql_content, engine)
 
-        infdblog.debug("Fetching building elements from database")
-        elements = pd.read_sql(
-            """SELECT *
-               FROM v_element_layer_data
-               JOIN opendata.buildings_lod2 bld2
-                ON v_element_layer_data.building_objectid = bld2.objectid
-                WHERE bld2.gemeindeschluessel LIKE %s""",
-            engine,
-            params=(f"{ags}%",),
-        )
+        tabula_structure = tabula_handling.create_tabula_structure(tabula_elements)
 
-        # TODO: sort by layer_index according to EUReCA specification
-        infdblog.debug("Starting construction of building elements")
+        # TODO: Remove if AGS handling is in place
+        harmonized_df = harmonized_df[harmonized_df['building_objectid'].str.startswith('DEBY')]
 
-        rc_values = rc_calculation.calculate_rc_values(elements)
+        harmonized_df[['resistance', 'capacitance']] = harmonized_df.apply(
+            lambda row: tabula_handling.calculate_rc_values(tabula_structure, row), axis=1,
+            result_type="expand")
+        infdblog.debug("Done with construction of building elements")
+
+        infdblog.debug("Writing R & C values")
+        rc_values = harmonized_df[['building_objectid', 'resistance', 'capacitance']]
         rc_values.to_sql(
             "buildings_rc",
             con=engine,
             if_exists="replace",
             schema=output_schema,
-            index=True,
+            index=False,
             method="multi",
         )
+        infdblog.debug("Done writing R & C values")
 
         bld2ts = timedata.get_bld2ts(database_connection=engine)
 
@@ -165,29 +164,29 @@ def main():
 
             # Generate time series and summary
             summary, dict_df = gen.generate(data, workers=os.cpu_count())
+
+            # Summary
+            summary.index.name = "building_objectid"
+            summary.to_sql(
+                "entise_summary",
+                con=engine,
+                if_exists="replace",
+                schema=output_schema,
+                index=True,
+                method="multi",
+            )
+
+            infdblog.info(summary.head())
+
+            # Time Series
+            write_timeseries = False
+            if not write_timeseries:
+                infdblog.info("Skipping EnTiSe output time series writing to database as per configuration")
+                return
+
+            write_ts_data(dict_df, engine, infdbclient_citydb, infdbhandler, infdblog, output_schema)
         else:
             raise ValueError("Method must be 1R0C or 1R1C")
-
-        # Summary
-        summary.index.name = "building_objectid"
-        summary.to_sql(
-            "entise_summary",
-            con=engine,
-            if_exists="replace",
-            schema=output_schema,
-            index=True,
-            method="multi",
-        )
-
-        infdblog.info(summary.head())
-
-        # Time Series
-        write_timeseries = False
-        if not write_timeseries:
-            infdblog.info("Skipping EnTiSe output time series writing to database as per configuration")
-            return
-
-        write_ts_data(dict_df, engine, infdbclient_citydb, infdbhandler, infdblog, output_schema)
 
     except Exception as e:
         infdblog.error(f"Something went wrong: {str(e)}")

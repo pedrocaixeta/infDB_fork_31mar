@@ -192,16 +192,6 @@ class Material:
             value = float(value)
         except ValueError as e:
             raise TypeError(f"Material {self.name}, conductivity is not a float: {value}") from e
-        if value < material_limits["conductivity"][0] or value > material_limits["conductivity"][1]:
-            # Value in [m]. Take a look to units
-            # Check if thickenss is outside
-            raise MaterialPropertyOutsideBoundaries(
-                self.name,
-                "conductivity",
-                lim=material_limits["conductivity"],
-                unit=units["conductivity"],
-                value=value,
-            )
         self._cond = value
 
     @property
