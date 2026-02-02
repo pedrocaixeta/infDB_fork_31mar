@@ -7,7 +7,7 @@ from entise.core.generator import TimeSeriesGenerator  # type: ignore
 from infdb import InfDB
 from timedata import write_ts_data
 
-from src import refurbishment, rc_calculation, timedata, tabula_handling
+from src import refurbishment, timedata, tabula_handling
 
 # Parameters
 construction_year_col = "construction_year"
@@ -45,8 +45,6 @@ def main():
     method = infdbhandler.get_config_value(["ro-heat", "data", "input", "method"])
 
     try:
-        # sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
-        # infdbclient_citydb.execute_query(sql)
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         infdbclient_citydb.execute_query(sql)
         infdblog.info(f"output schema: {output_schema} created successfully")
@@ -99,7 +97,7 @@ def main():
                              index=False)
 
         infdblog.debug("Starting construction of building elements")
-        full_path = os.path.join("sql", "get_tabula_elements.sql")
+        full_path = os.path.join("sql", "02_get_tabula_elements.sql")
         with open(full_path, "r", encoding="utf-8") as file:
             sql_content = file.read()
         tabula_elements = pd.read_sql(sql_content, engine)
@@ -125,22 +123,24 @@ def main():
             method="multi",
         )
         infdblog.debug("Done writing R & C values")
-
-        bld2ts = timedata.get_bld2ts(database_connection=engine)
-
-        all_ts_df = timedata.get_all_timeseries_data(
-            database_connection=engine,
-            start=pd.Timestamp(f"{simulation_year}-01-01"),
-            end=pd.Timestamp(f"{simulation_year}-12-31"),
-        )
-        all_ts_df.index.name = "datetime"
-        all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
-        data = {x: y.sort_index().reset_index() for x, y in all_ts_df.groupby("ts_metadata_id")}
+        infdblog.debug(f"Running heat demand estimation with method {method}")
 
         if method == "1R0C":
             # TODO: Implement and set summary
             raise NotImplementedError()
         elif method == "1R1C":
+
+            bld2ts = timedata.get_bld2ts(database_connection=engine)
+
+            all_ts_df = timedata.get_all_timeseries_data(
+                database_connection=engine,
+                start=pd.Timestamp(f"{simulation_year}-01-01"),
+                end=pd.Timestamp(f"{simulation_year}-12-31"),
+            )
+            all_ts_df.index.name = "datetime"
+            all_ts_df.rename(columns={"value": "air_temperature[C]"}, inplace=True)
+            data = {x: y.sort_index().reset_index() for x, y in all_ts_df.groupby("ts_metadata_id")}
+
             # Preparation for EnTiSe
             entise_input = rc_values.reset_index().rename(columns={"building_objectid": "id"})
             entise_input = entise_input.rename(

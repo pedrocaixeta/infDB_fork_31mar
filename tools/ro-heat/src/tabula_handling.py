@@ -1,9 +1,10 @@
 import numpy as np
+from pandas import DataFrame, Series
 
 from . import eureca_code
 
 
-def create_tabula_structure(tabula_rows):
+def create_tabula_structure(tabula_rows: DataFrame) -> DataFrame:
     tabula_rows['materials'] = tabula_rows.apply(
         lambda x: eureca_code.Material(
             x["material_name"],
@@ -34,7 +35,7 @@ def create_tabula_structure(tabula_rows):
         "Window": "Window",
     }
 
-    # Create a EUReCA Constructions per building_objectid from the list of materials and assign the correct EUReCA type
+    # Create a EUReCA Constructions from the list of materials and assign the correct EUReCA type
     construction_objects = constructions.apply(
         lambda row: eureca_code.Construction(
             name=f"B{row['construction_data']}_{row['element_name']}_{row['start_year']}_{row['end_year']}",
@@ -43,6 +44,8 @@ def create_tabula_structure(tabula_rows):
         ),
         axis=1,
     )
+
+    # Extract construction R and C values
     constructions["R"] = construction_objects.apply(lambda x: x.thermal_resistance)
     constructions["C"] = construction_objects.apply(lambda x: x.k_int)
     constructions["C"] = constructions["C"].fillna(0.0)
@@ -50,7 +53,7 @@ def create_tabula_structure(tabula_rows):
     return constructions
 
 
-def calculate_rc_values(tabula, row):
+def calculate_rc_values(tabula: DataFrame, row: Series) -> tuple[float, float]:
     overall_r = 0.0
     overall_c = 0.0
     components = tabula['element_name'].unique()
@@ -81,25 +84,28 @@ def calculate_rc_values(tabula, row):
     return 1 / overall_r, overall_c
 
 
-def resolve_construction(tabula, component, row):
-    # TODO: Document and simplify
+def resolve_construction(tabula: DataFrame, component: str, row: Series) -> Series:
+    # Get the corresponding refurbishment year
+    # 'GroundFloor', 'Ceiling', 'Floor', 'InnerWall' are not refurbished, therefore,  refurb_year = construction_year
     if component in ['GroundFloor', 'Ceiling', 'Floor', 'InnerWall']:
-        year = row['construction_year']
+        refurb_year = row['construction_year']
     elif component == 'Rooftop':
-        year = row['rooftop']
+        refurb_year = row['rooftop']
     elif component == 'OuterWall':
-        year = row['outer_wall']
+        refurb_year = row['outer_wall']
     elif component == 'Window':
-        year = row['window']
+        refurb_year = row['window']
     else:
         raise ValueError(f"Unknown construction type: {component}")
 
+    # 'Ceiling', 'Floor', 'InnerWall' are not building type specific and have no refurbishment options
     if component in ['Ceiling', 'Floor', 'InnerWall']:
         building_type = 'standard'
         construction_string = 'tabula_de_standard'
+    # For all other components check if refurb_year == construction year and build the corresponding string
     else:
         building_type = row['building_type']
-        if year == row['construction_year']:
+        if refurb_year == row['construction_year']:
             construction_string = f'tabula_de_standard_1_{building_type}'
         else:
             construction_string = f'tabula_de_retrofit_1_{building_type}'
@@ -108,26 +114,26 @@ def resolve_construction(tabula, component, row):
                         & (tabula.construction_data == construction_string)]
 
     if candidates.empty:
-        raise ValueError()
+        raise ValueError(f"No TABULA construction found for row: {row}")
 
-    # Check for direct match
+    # Check for direct match, i.e., refurb year in TABULA interval
     match = candidates[
-        (candidates.start_year <= year)
-        & (candidates.end_year >= year)]
+        (candidates.start_year <= refurb_year)
+        & (candidates.end_year >= refurb_year)]
 
     # If there's no direct match, fall back to closest
     if match.empty:
         dist = np.where(
-            year < candidates.start_year.to_numpy(),
-            candidates.start_year.to_numpy() - year,
-            year - candidates.end_year.to_numpy()
+            refurb_year < candidates.start_year.to_numpy(),
+            candidates.start_year.to_numpy() - refurb_year,
+            refurb_year - candidates.end_year.to_numpy()
         )
 
         # argmin = index of closest range
         i = np.lexsort((candidates.start_year.to_numpy(), dist))[0]
         match = candidates.iloc[i]
     else:
-        # Convert DataFrame to Series for
+        # Convert DataFrame to Series for equal return types
         match = match.iloc[0]
 
     return match
