@@ -1,5 +1,4 @@
 ---
-# title: 'infDB: An Open-Source Infrastructure and Energy Database'
 title: 'infDB: An Open-Source Data Ecosystem for Urban Energy Infrastructure Modelling and Planning'
 tags:
     - Python
@@ -71,7 +70,7 @@ bibliography: paper.bib
 # Summary
 `infDB - Infrastructure and Energy Database` is an open-source, containerized data infrastructure for managing and providing access to heterogeneous energy and infrastructure datasets used in urban and regional energy system studies. It bundles a PostgreSQL-based database with geospatial, time-series and graph extensions, standardized REST and OGC-compliant APIs, and a configurable import service that transforms raw public data into structured, version-controlled schemas.
 
-By decoupling data ingestion, storage, and access from downstream analysis and modeling tools, infDB reduces data preprocessing effort and enables reproducible, transferable energy modeling workflows across regions and projects. In that way it can be used for many different applications in energy system modeling, such as district heating planning, electrical distribution network analysis, or urban energy demand estimation.
+By decoupling data ingestion, storage, and access from downstream analysis and modeling tools, infDB reduces data preprocessing effort and enables reproducible, transferable energy modeling workflows across regions and projects. In this way, it can be used for many different applications in energy system modeling, such as district heating planning, electrical distribution network analysis, or urban energy demand estimation.
   
 # Statement of need
 The transition to a climate-neutral energy system is a central pillar of energy policy, exemplified by Germany's aim for climate neutrality by 2045. New legislative frameworks, such as the requirement for municipal heat planning (KWP) and the requirement for grid expansion plans based on regional transition pathway scenarios defined in the German Energy Industry Act (EnWG §14d), demand that municipalities and Distribution System Operators (DSOs) process vast amounts of energy and infrastructure data [@kwp:2026; @14d:2026].
@@ -147,10 +146,10 @@ The following section outlines the logical steps of the infdb-workflow, using th
 
 **Step 5 – Iteration & Update (Service, Tool):** When new data becomes available (e.g., updated building stock, revised energy statistics), the entire pipeline can be re-executed without reimplementing preprocessing logic, ensuring studies remain current and reproducible.
 
-In summary, the `infDB` ecosystem allows researchers and planners across various use cases to access the full spectrum of container-ingested data. This includes open data (e.g., building LOD2), enriched basedata (e.g., estimated households per building), and intermediate simulation results (e.g., heat demand). This also facilitates the seamless integration of downstream tools, such as energy system optimization models, with consistent data for both electrical and district heating grids.
+In summary, the `infDB` ecosystem allows researchers and planners across various use cases to access the full spectrum of container-ingested data. This includes open data (e.g., building LOD2), enriched base data (e.g., estimated households per building), and intermediate simulation results (e.g., heat demand). This also facilitates the seamless integration of downstream tools, such as energy system optimization models, with consistent data for both electrical and district heating grids.
 
 # AI usage disclosure
-In the development of this work, GitHub Copilot, ChatGPT, and Gemini were used. Github Copilot assisted in code generation by code suggestions and completion tasks, while ChatGPT and Gemini assisted in drafting and refining textual content.
+In the development of this work, GitHub Copilot, ChatGPT, and Gemini were used. GitHub Copilot assisted in code generation through code suggestions and completion tasks, while ChatGPT and Gemini assisted in drafting and refining textual content.
 
 # Acknowledgements
 Martin Stengel gratefully acknowledges financial support through the Bavarian State Ministry of Science and the Arts to promote applied research and development at universities of applied sciences and technical universities.
