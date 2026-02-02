@@ -195,7 +195,7 @@ infdb-import:
             status: active
             resolutions:
                 - 10km
-                # - 1km
+                - 1km
                 - 100m
             years:
                 - 2022
