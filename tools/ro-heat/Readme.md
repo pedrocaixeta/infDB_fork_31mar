@@ -30,7 +30,7 @@ ro-heat:
         input_schema: opendata
         output_schema: ro_heat
 ```
-**Hint:** In case you move the infdb-loader source folder outside of the folder tools in repo or want to change the location where the downloaded data is stored, the paths to data and to configs folder need to be defined in [.env](.env)
+**Hint:** In case you move the infdb-import source folder outside of the folder tools in repo or want to change the location where the downloaded data is stored, the paths to data and to configs folder need to be defined in [.env](.env)
 ```bash
     CONFIG_INFDB_PATH=../infdb/configs  # Change if you moved the "configs" folder
 ```

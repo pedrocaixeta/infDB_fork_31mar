@@ -307,7 +307,7 @@ Here is an example of what the generated ``docker-compose.yml`` might look like:
        NAME              IMAGE                               COMMAND                  SERVICE       CREATED         STATUS                   PORTS
        citydb            3dcitydb/3dcitydb-pg:5.0.0          "docker-entrypoint.s…"   citydb        3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:5433->5432/tcp
        infdb-jupyter-1   jupyter/scipy-notebook:latest       "tini -g -- start-no…"   jupyter       3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:8888->8888/tcp
-       loader            infdb-loader                        "python -u -m src.se…"   loader        3 minutes ago   Up 3 minutes             
+       loader            infdb-import                        "python -u -m src.se…"   loader        3 minutes ago   Up 3 minutes             
        pgadmin           dpage/pgadmin4                      "/entrypoint.sh"         pgadmin       3 minutes ago   Up 3 minutes             443/tcp, 0.0.0.0:81->80/tcp
        timescaledb       timescale/timescaledb:latest-pg14   "docker-entrypoint.s…"   timescaledb   3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:5432->5432/tcp
 

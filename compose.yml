@@ -10,7 +10,7 @@ name: ${BASE_NAME}
 
 include:
   # ==============================================================================
-  # DATABASE SERVICES (Profile: core)
+  # DATABASE SERVICES (Profile: db)
   # ==============================================================================
   # PostgreSQL Database (includes 3DCityDB initialization)
   - path: services/infdb-db/compose.yml
@@ -19,7 +19,7 @@ include:
   # DATABASE SERVICES (Profile: opendata)
   # ==============================================================================
   # infdB Data Importer and Loader
-  - path: services/infdb-importer/compose.yml
+  - path: services/infdb-import/compose.yml
 
   # ==============================================================================
   # ADMIN SERVICES (Profile: admin)

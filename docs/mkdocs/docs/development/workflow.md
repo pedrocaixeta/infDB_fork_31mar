@@ -31,7 +31,7 @@ The CI/CD workflow is set up using GitLab CI/CD. The workflow runs tests, checks
 
 This section summarizes some problems encountered during the first installation and startup of infDB on Windows, along with their solutions.
 
-**1.Ubuntu Opened as root instead of Normal User**
+**1. Ubuntu launched as root instead of Normal User**
 
 - Problem: WSL launched Ubuntu as the root user. May lead to problems while executing commands.
 - Cause: No default user was configured during first installation.
@@ -51,15 +51,15 @@ Restart WSL:
 wsl --shutdown
 ```
 
-**2.Docker Command Not Found in WSL2**
+**2. Docker Command Not Found in WSL2**
 
--Problem:
+- Problem:
 The command 'docker' could not be found in this WSL2 distro.
 
--Cause:
+- Cause:
 Docker Desktop installed, but WSL integration disabled.
 
--Fix:
+- Fix:
 Enable Docker & WSL integration:
 
 Docker Desktop → Settings → Resources → WSL Integration
@@ -69,17 +69,17 @@ After enabling, check via:
 ```bash
 #ubuntu 
 
-docker –version
+docker version
 ```
 **3. Docker Permission Denied**
 
--Problem:
+- Problem:
 permission denied while trying to connect to the Docker daemon socket
 
--Cause:
+- Cause:
 Logged in user was not part of the docker group.
 
--Fix:
+- Fix:
 ```bash
 #ubuntu 
 sudo usermod -aG docker username

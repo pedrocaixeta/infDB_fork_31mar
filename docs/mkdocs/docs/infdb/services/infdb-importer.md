@@ -2,17 +2,17 @@
 icon: material/cloud-download
 ---
 
-# infdb-importer :material-cloud-download:
+# infdb-import :material-cloud-download:
 
-The **infdb-importer** service facilitates the ingestion of external data into the infDB platform. It automates the process of importing various open data formats, ensuring that new datasets are properly structured and integrated into the core database for immediate use.
+The **infdb-import** service facilitates the ingestion of external data into the infDB platform. It automates the process of importing various open data formats, ensuring that new datasets are properly structured and integrated into the core database for immediate use.
 
 ## Architecture
 The specialized microservice interacts directly with the infDB database. It leverages containerization to ensure consistent deployment and operation across different environments. The service can be configured to connect to various data sources, retrieve datasets, and transform them into the required format for storage in the database.
 
-![alt text](infdb-importer.png)
+![alt text](infdb-import.png)
 
 ## Supported Data Formats and Sources
-The infdb-importer supports a wide range of data formats and sources, including but not limited to:
+The infdb-import supports a wide range of data formats and sources, including but not limited to:
 
 - CSV files
 - GeoJSON
@@ -22,7 +22,7 @@ The infdb-importer supports a wide range of data formats and sources, including 
 
 ## Configuration
 
-The configuration of the infdb-importer service is controlled via environment variables:
+The configuration of the infdb-import service is controlled via environment variables:
 
 ```bash title=".env"
 # ==============================================================================
@@ -32,19 +32,20 @@ The configuration of the infdb-importer service is controlled via environment va
 COMPOSE_PROFILES=...,opendata,...  # (1)
 
 # ==============================================================================
-# DATA IMPORTER AND LOADER (infdb-importer)
+# DATA IMPORTER AND LOADER (infdb-import)
 # ==============================================================================
 # Profile: opendata
-# Path to the yaml configuration file for the infdb-loader "configs/config-infdb-loader.yml"
+# Path to the yaml configuration file for the infdb-import "configs/config-infdb-import.yml"
 ```
 
-1.  **Activate service**: The `opendata` profile must be included in the list to activate the infdb-importer service.
+1.  **Activate service**: The `opendata` profile must be included in the list to activate the infdb-import service.
 
 ### YAML Configuration
 
-The imported opendata sources are configured in a YAML file (default: `configs/config-infdb-loader.yml`). This file controls which datasets are downloaded and processed.
+The imported opendata sources are configured in a YAML file (default: `configs/config-infdb-import.yml`). This file controls which datasets are downloaded and processed.
 
 Available data sources include (for North Rhine-Westphalia and Bavaria):
+
 - Building data (LOD2)
 - Statistical data (Zensus 2022, 2011)
 - Building topology (TABULA)
@@ -54,8 +55,8 @@ Available data sources include (for North Rhine-Westphalia and Bavaria):
 
 Example configuration structure:
 
-```yaml title="configs/config-infdb-loader.yml"
-infdb-loader:
+```yaml title="configs/config-infdb-import.yml"
+infdb-import:
     name: "project_name"
     scope:
         - "09162000"  # Municipality Key (AGS)
@@ -84,13 +85,13 @@ infdb-loader:
 ```
 
 ## Data Storage
-The downloaded and processed raw data files are stored in a dedicated volume within the Docker environment (`infdb-loader-data`). This ensures persistence between runs while allowing easy removal without enhanced privileges.
+The downloaded and processed raw data files are stored in a dedicated volume within the Docker environment (`infdb-import-data`). This ensures persistence between runs while allowing easy removal without enhanced privileges.
 
 ## Developer Guide: Registering New Data Sources
 
 ### Prepare Development Environment
-1.  Open `infdb-loader` as a folder in your IDE.
-2.  Ensure no `infdb-loader` container is running (stop/remove if necessary).
+1.  Open `infdb-import` as a folder in your IDE.
+2.  Ensure no `infdb-import` container is running (stop/remove if necessary).
 3.  Open the folder in a VS Code Dev Container.
 4.  In `main.py`, comment out the following lines to speed up development cycles (schema dropping and unnecessary sources):
     ```python
@@ -112,4 +113,4 @@ The downloaded and processed raw data files are stored in a dedicated volume wit
     ```python
     processes.append(mp.Process(target=mydata.load, args=(infdb,), name="mydata"))
     ```
-5.  **Configure**: Add configuration parameters to `configs/config-infdb-loader.yml`.
+5.  **Configure**: Add configuration parameters to `configs/config-infdb-import.yml`.

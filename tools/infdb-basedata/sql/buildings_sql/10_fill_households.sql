@@ -1,4 +1,8 @@
--- fill households
+-- Summary: Calculates the number of households for residential buildings.
+-- It derives this count from the estimated number of occupants and the average
+-- household size from the corresponding grid cell, using nearest neighbor logic
+-- for missing data.
+
 -- Step 1: Create temp table linking buildings to avg household size grid
 DROP TABLE IF EXISTS temp_building_hh_grid;
 CREATE TEMP TABLE temp_building_hh_grid AS
@@ -7,11 +11,11 @@ SELECT b.id AS building_id,
        d.id as haushaltsgroesse_id,
        d.durchschnhhgroesse
 FROM {output_schema}.buildings b
-         JOIN {output_schema}.buildings_grid d
+         JOIN {output_schema}.buildings_grid_100m d
              ON d.geom && b.geom AND
              ST_Contains(d.geom, ST_Centroid(b.geom))
--- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE b.occupants IS NOT NULL
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.occupants IS NOT NULL
   AND b.building_use = 'Residential'; -- already ensured by above clause
 
 CREATE INDEX ON temp_building_hh_grid (building_id);
@@ -44,7 +48,7 @@ FROM {output_schema}.buildings b
 CROSS JOIN LATERAL (
     SELECT g.id as bevoelkerungszahl_id,
            g.einwohner as nearest_einwohner
-    FROM {output_schema}.buildings_grid g
+    FROM {output_schema}.buildings_grid_100m g
     WHERE g.id IS NOT NULL
       AND g.einwohner IS NOT NULL
     ORDER BY g.geom <-> ST_Centroid(b.geom)
@@ -52,8 +56,9 @@ CROSS JOIN LATERAL (
 ) nearest
 JOIN temp_building_occupants bo ON b.id = bo.building_id
 JOIN temp_cell_weights cw ON nearest.bevoelkerungszahl_id = cw.bevoelkerungszahl_id
--- WHERE b.gemeindeschluessel IN ({list_gemeindeschluessel})
-WHERE b.occupants IS NULL AND b.building_use = 'Residential';
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.occupants IS NULL
+  AND b.building_use = 'Residential';
 
 -- release memory
 DROP TABLE IF EXISTS temp_building_hh_grid;

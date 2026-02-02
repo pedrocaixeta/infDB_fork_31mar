@@ -18,7 +18,7 @@ Each tool in the InfDB infrastructure operates in its own isolated database sche
 ```
 PostgreSQL Database (infdb)
 │
-├── Schema: infdb-loader          # Data import tool
+├── Schema: infdb-import          # Data import tool
 │   ├── Tables
 │   ├── Views
 │   └── Functions

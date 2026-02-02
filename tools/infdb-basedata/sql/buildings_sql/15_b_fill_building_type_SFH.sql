@@ -1,3 +1,7 @@
+-- Summary: Identifies and classifies Single Family Houses (SFH). It targets
+-- residential buildings with smaller dimensions and few neighbors, using
+-- attribute filtering and graph-based clustering to assign the 'SFH' type.
+
 -- Step 2: Single Family Houses (SFH):
 -- Typically have larger floor area, 1-2 floors, and few or no neighbors
 UPDATE {output_schema}.buildings
@@ -13,38 +17,6 @@ WHERE building_use = 'Residential'
                     FROM temp_touching_neighbor_counts
                     WHERE temp_touching_neighbor_counts.id = {output_schema}.buildings.id
                       AND count >= 2)));
-
--- Reference implementation with semi-procedural approach for graph based solution below.
--- -- Small buildings with floor area < 100 next to SFH likely also SFH
--- DO
--- $$
---     DECLARE
---         updated_count INTEGER := 1;
---     BEGIN
---         WHILE updated_count > 0
---             LOOP
---                 WITH candidates AS (SELECT DISTINCT n.a_id
---                                     FROM temp_touching_neighbors n
---                                              JOIN {output_schema}.buildings b1 ON n.a_id = b1.id
---                                              JOIN {output_schema}.buildings b2 ON n.b_id = b2.id
---                                     WHERE b2.building_type = 'SFH'
---                                       AND b1.floor_area < 100
---                                       AND b1.floor_number <= 2
---                                       AND b1.building_use = 'Residential'
---                                       AND b1.building_type IS NULL
---                                       AND b1.gemeindeschluessel = b2.gemeindeschluessel
--- )
---                 UPDATE {output_schema}.buildings b
---                 SET building_type = 'SFH'
---                 FROM candidates
---                 WHERE b.id = candidates.a_id;
---
---                 GET DIAGNOSTICS updated_count = ROW_COUNT;
---                 -- RAISE NOTICE 'Rule 2 iteration: % buildings updated', updated_count;
---             END LOOP;
---     END
--- $$;
-
 
 -- Create Vertex set of buildings which could be of type 'SFH'
 CREATE TEMP TABLE filtered_buildings AS (
@@ -117,7 +89,8 @@ SET building_type = 'SFH'
 FROM building_components bc
 JOIN seed_components sc
   ON sc.component = bc.component
-WHERE b.id = bc.id;
+WHERE b.gemeindeschluessel = '{ags}'
+  AND b.id = bc.id;
 
 -- release memory
 DROP TABLE IF EXISTS filtered_buildings;
