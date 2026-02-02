@@ -18,8 +18,8 @@ set -a
 set +a
 
 # Get uid and gid
-UID=$(id -u)
-GID=$(id -g)
+export UID
+export GID=$(id -g)
 
 # Pull latest images
 echo "=== Pull latest docker images ==="

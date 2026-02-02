@@ -10,6 +10,10 @@ set -a
 [ -f .env ] && . .env
 set +a
 
+# Get uid and gid
+export UID
+export GID=$(id -g)
+
 # Stop and remove existing containers
 docker compose --profile "*" down -v --remove-orphans
 

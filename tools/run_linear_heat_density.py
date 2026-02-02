@@ -49,9 +49,9 @@ def signal_handler(sig, frame):
     raise KeyboardInterrupt
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     try:
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             futures = [executor.submit(run_ags, ags) for ags in ags_list]

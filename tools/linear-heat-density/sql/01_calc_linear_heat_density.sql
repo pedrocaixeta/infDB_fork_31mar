@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS {output_schema}.{output_table} (
     geom GEOMETRY,
     total_heat_demand NUMERIC,
     street_length NUMERIC,
-    linear_heat_density NUMERIC
+    linear_heat_density NUMERIC,
+    gemeindeschluessel TEXT
 );
 
 -- Pre-calculate street lengths to avoid repeated ST_Length calls
@@ -38,6 +39,7 @@ street_heat_demand AS (
         bts.building_id::text = {heat_demand_id_expr}
     GROUP BY
         bts.street_id
+    WHERE bts.gemeindeschluessel = '{ags}'
 )
 -- Insert or update records with calculated linear heat density
 INSERT INTO {output_schema}.{output_table}
@@ -49,8 +51,9 @@ SELECT
     -- Calculate linear heat density (heat demand per meter of street)
     CASE WHEN sl.street_length > 0 
         THEN COALESCE(shd.total_heat_demand, 0) / sl.street_length 
-        ELSE 0 
-    END
+        ELSE 0,
+    sl.gemeindeschluessel 
+
 FROM
     street_lengths AS sl
 LEFT JOIN
@@ -59,7 +62,9 @@ ON CONFLICT (street_id) DO UPDATE SET
     geom = EXCLUDED.geom,
     total_heat_demand = EXCLUDED.total_heat_demand,
     street_length = EXCLUDED.street_length,
-    linear_heat_density = EXCLUDED.linear_heat_density;
+    linear_heat_density = EXCLUDED.linear_heat_density,
+    gemeindeschluessel = EXCLUDED.gemeindeschluessel;
 
 -- Create spatial index for efficient geometric queries
 CREATE INDEX IF NOT EXISTS idx_{output_table}_geom ON {output_schema}.{output_table} USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_{output_table}_gemeindeschluessel ON {output_schema}.{output_table} (gemeindeschluessel);

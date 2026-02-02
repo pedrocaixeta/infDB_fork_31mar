@@ -21,12 +21,12 @@ def main() -> None:
     log.info("Starting %s tool", infdb.get_toolname())
     log.info("AGS environment variable: %s", ags)
 
-    log.info("AGS environment variable: %s", ags)
-
     # Config
     input_schema = infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"])
     output_schema = infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"])
-    census_building_type_resolution = infdb.get_config_value([infdb.get_toolname(), "data", "census_building_type_resolution"])
+    census_building_type_resolution = infdb.get_config_value(
+        [infdb.get_toolname(), "data", "census_building_type_resolution"]
+    )
     epsg = infdb.get_db_parameters_dict().get("epsg")
 
     format_params: Dict[str, Any] = {
