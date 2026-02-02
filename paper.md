@@ -13,7 +13,7 @@ authors:
       equal-contrib: false
       affiliation: 1
     - name: Markus Döpfert
-      orcid: ''
+      orcid: 0000-0001-8720-2585
       equal-contrib: false
       affiliation: 1
     - name: Beneharo Reveron Baecker
@@ -29,7 +29,7 @@ authors:
       equal-contrib: false
       affiliation: 1
     - name: Hussein Mohamed Ali Genena
-      orcid: ''
+      orcid: 0009-0002-1600-3145
       equal-contrib: false
       affiliation: 1
     - name: Laura Kuper
@@ -98,8 +98,6 @@ Energy and infrastructure data management is an active field with several existi
 # Software Design
 `infDB` is designed as a modular, containerized data infrastructure that decouples data ingestion, storage, and access from downstream analysis and modeling. It follows a service-oriented architecture orchestrated via Docker Compose, allowing individual components to be deployed, configured, and combined depending on the requirements of a specific workflow. The system is conceptually divided into **Services**, which provide the foundational infrastructure, and **Tools**, which consume and process the data. This separation allows for high data portability between the tools. The configuaribilty of the services enables users to activate only the components required for their specific use case.
 
-###REVIEW: I wouldn't say that the separation into Services and Tools enables targeted component selection but the configuarbility and maybe the modular structure.###
-
 ![infDB - Data Sources, Services and Tools \label{fig:infdb-overview}](docs/mkdocs/docs/assets/img/infdb-overview.png)
 
 <!-- ### infDB - Services -->
@@ -118,11 +116,6 @@ The *Services* layer (depicted in the grey box in \autoref{fig:infdb-overview}) 
 <!-- ### infDB - Tools -->
 The *Tools* layer (depicted in the right box in the architecture diagram) consists of (external) software that interacts with the `infDB` Services to process data or generate insights. Each tool can interact independently with the Services, reading and writing data. This modular approach allows users to chain different tools into custom workflows. Depending on the tool type and requirements, e.g. new scripts, open tool, proprietary tool, multiple integration options with the `infDB` are available building upon following foundations:
 
-###REVIEW: I think the description around the tools might be a bit confusing for people who are new to infdb. Especially, the distinction between different types of tools could be more precise. A question that might arise for someone with a tool is: 'How do I couple my tool? Can I just use infdb for data, or do I have to integrate my tool into infdb?' I think this is partially a wording issue; for instance, you speak of (external) tools but then only of 'building tools'. Additionally, I think it would be helpful to highlight early on that different types of tools can be integrated in different ways. ###
-
-###REVIEW: To me, it is not clear which type of modularity is meant here: Is it the tools being distinct from one another, or the separation into Services and Tool? I made a suggestion for an extra sentence, but I am not sure if my interpretation regarding modularity is correct.###
-
-
 * **Standardized Integration:** Tools interact with the core database exclusively through open interfaces (SQL or REST APIs), ensuring that the underlying data schema remains consistent regardless of the tool used.
 * **pyinfdb:** To facilitate the development of custom tools, the platform provides the `pyinfdb` Python package. This library abstracts database connections, logging, and configuration management, allowing researchers to rapidly develop Python-based analysis scripts that integrate seamlessly with the infDB ecosystem.
 * **Extensible Ecosystem:** Importantly, infDB does not prescribe specific modeling approaches, optimization methods, or planning workflows. Its role is limited to providing a stable and reproducible data infrastructure that can be reused across different analytical contexts. Therefore, users can integrate existing third-party simulation software or develop proprietary tools that plug into the `infDB` backend without modifying the core services.
@@ -138,8 +131,11 @@ The research relevance of `infDB` lies in its role as a reusable data infrastruc
 
 # Applications
 There are different applications to use `infDB` such as:
+
 * Calculating linear heat density by estimating building heat demands and distributing them along street segments to assess the financial feasibility of district heating as a basis for municipal heat planning (KWP) or district heating feasibility studies (BEW)
 * Generating synthetic data of existing low-voltage grid structures for grid planning to analyze impacts of new assets and their optimized management on grid reinforcement requirements.
+
+The following section outlines the logical steps of the infdb-workflow, using the calculation of linear heat density for district heating planning as a practical example:
 
 **Step 1 – Data Integration (Service):** Raw, heterogeneous data sources (building registries, census data, street network geometries, energy consumption records) are ingested through `infdb-import` and stored in the unified database, eliminating manual data collection and format conversion.
 
@@ -149,7 +145,7 @@ There are different applications to use `infDB` such as:
 
 **Step 4 – Linear Heat Density Calculation (Tool):** Building heat demands are spatially distributed along street network segments to derive linear heat density maps. This metric directly informs feasibility assessments by identifying corridors where district heating networks are economically viable.
 
-**Step 4 – Iteration & Update:** When new data becomes available (e.g., updated building stock, revised energy statistics), the entire pipeline can be re-executed without reimplementing preprocessing logic, ensuring studies remain current and reproducible.
+**Step 5 – Iteration & Update (Service, Tool):** When new data becomes available (e.g., updated building stock, revised energy statistics), the entire pipeline can be re-executed without reimplementing preprocessing logic, ensuring studies remain current and reproducible.
 
 In summary, the `infDB` ecosystem allows researchers and planners across various use cases to access the full spectrum of container-ingested data. This includes open data (e.g., building LOD2), enriched basedata (e.g., estimated households per building), and intermediate simulation results (e.g., heat demand). This also facilitates the seamless integration of downstream tools, such as energy system optimization models, with consistent data for both electrical and district heating grids.
 
