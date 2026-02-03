@@ -34,7 +34,7 @@ linear-heat-density:
                 geom-column: geom
             heat-demand:
                 schema: ro_heat
-                table: entise_summary
+                table: annual_heating_demand
                 id-column: building_objectid
                 heat-demand-column: heating:demand[Wh]
         output:

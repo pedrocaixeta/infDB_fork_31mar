@@ -5,7 +5,7 @@ CREATE TABLE ro_heat.annual_heating_demand AS
         bldrc.resistance,
         SUM(ts.value) as temp_sum,
         count(ts.value) as count_temp,
-        (SUM(ts.value)-count(ts.value)*{temp_in})/bldrc.resistance as heating:demand[Wh]
+        (SUM(ts.value)-count(ts.value)*{temp_in})/bldrc.resistance as "heating:demand[Wh]"
     FROM
         ro_heat.buildings_rc AS bldrc
     JOIN

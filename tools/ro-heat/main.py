@@ -129,28 +129,20 @@ def main():
 
         if method == "1R0C":
             full_path = os.path.join("sql", "heat-demand-r.sql")
-            with open(full_path, "r", encoding="utf-8") as file:
-                sql_content = file.read()
+            # with open(full_path, "r", encoding="utf-8") as file:
+            #     sql_content = file.read()
             format_params = {
                 "ags": ags,
                 "start_time": start_time,
                 "end_time": end_time,
                 "temp_in": heating_setpoint
             }
-            sql_content = sql_content.format(**format_params)
-            heating_demands = pd.read_sql(sql_content, engine)
+            infdbclient_citydb.execute_sql_file(full_path, format_params=format_params)
 
             # Summary
-            # TODO: Adapt output format to EnTiSe format
-            heating_demands.index.name = "building_objectid"
-            heating_demands.to_sql(
-                "1R0C_summary",
-                con=engine,
-                if_exists="replace",
-                schema=output_schema,
-                index=False,
-                method="multi",
-            )
+            # # TODO: Adapt output format to EnTiSe format
+            # sql = f"CREATE TABLE IF NOT EXISTS {output_schema};"
+            # infdbclient_citydb.execute_query(sql)
 
         elif method == "1R1C":
 
@@ -182,6 +174,8 @@ def main():
                 how="left",
             ).drop(columns=["bld_objectid"])
 
+            # entise_input = entise_input[1:100]
+            
             # Initialize the generator
             gen = TimeSeriesGenerator()
             gen.add_objects(entise_input)

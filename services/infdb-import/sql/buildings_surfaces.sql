@@ -15,8 +15,8 @@ CREATE TABLE citydb.surface_prefix AS
         ON citydb.surface_prefix (surface_id);
 
 
-DROP TABLE IF EXISTS opendata.building_surfaces;
-CREATE TABLE opendata.building_surfaces AS
+DROP TABLE IF EXISTS opendata.buildings_surfaces;
+CREATE TABLE opendata.buildings_surfaces AS
     SELECT
         sp.surface_objectid AS surface_gmlid,
         sp.objectclass_id,
