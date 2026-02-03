@@ -82,7 +82,7 @@ infdb-import:
                     table_name: tatsaechliche_nutzung
                     url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
         lod2-nrw:
-            status: not-active
+            status: active
             import-mode: skip # delete
             base_url: "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/lod2_gml/"
             tile_size_m: 1000
@@ -195,7 +195,7 @@ infdb-import:
             status: active
             resolutions:
                 - 10km
-                # - 1km
+                - 1km
                 - 100m
             years:
                 - 2022
@@ -629,12 +629,13 @@ infdb-import:
               start_time: "2020-01-01"
               end_time: "2024-12-31"
               temporal: hourly  # options: hourly, daily
+          grid_resolution: 1km
           data:
               - temperature_2m
               - wind_speed_10m
               - precipitation
         kwp-nrw:
-          status: active
+          status: not-active
           schema: opendata
           prefix: kwp_nrw
           path:
@@ -685,7 +686,7 @@ infdb-import:
                 layer:
                   - "FF_Solarthermie_Flur_NRW"
         kwp-nrw-oberhausen:
-          status: active
+          status: not-active
           url: https://www.opengeodata.nrw.de/produkte/umwelt_klima/energie/kwp/KWP-NRW_05119000_Oberhausen_EPSG25832_Shape.zip
           schema: opendata
           prefix: kwp_nrw_oberhausen
@@ -707,7 +708,7 @@ infdb-import:
             - "Potenzial-FF-Solarthermie-Flur"
 
         gebaeude-neuburg:
-            status: active
+            status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
             protocol: webdav
             username: "need"
@@ -719,7 +720,7 @@ infdb-import:
             layer:
                 - "gebaeudedaten_neuburg"
         waermeatlas-hessen-bensheim:
-            status: active
+            status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/BensheimWaermeatlasHessen.gpkg"
             protocol: webdav
             username: "need"
@@ -737,7 +738,7 @@ infdb-import:
                 - "Hausumringe"
                 - "Flurstuecke"
         tudo-basemap-ways:
-            status: active
+            status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/TUDO_Basemap_ways.geojson"
             protocol: webdav
             username: "need"

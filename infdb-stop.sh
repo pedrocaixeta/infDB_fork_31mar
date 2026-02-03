@@ -15,6 +15,6 @@ export UID
 export GID=$(id -g)
 
 # Stop and remove existing containers
-docker compose --profile "*" stop
+docker compose --profile "*" down
 
 echo "=== Successfully stopped InfDB. ==="

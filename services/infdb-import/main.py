@@ -62,9 +62,10 @@ def main() -> None:
     # if utils.if_active("package", infdb):
     #     package.load(infdb)
 
-    # Drop schema "opendata" for clean development runs
-    with infdb.connect() as db:  # InfdbClient context
-        db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
+    # # Drop schema "opendata" for clean development runs
+    # log.info("Dropping schema 'opendata' for clean development run")
+    # with infdb.connect() as db:  # InfdbClient context
+    #     db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
 
     # Ensure that administrative areas are loaded for scope
     bkg.load(infdb)
@@ -112,7 +113,7 @@ def main() -> None:
             return ",".join(f"'{s}'" for s in lst)
 
         with infdb.connect() as db:
-            log.info("buildings_lod2: dropping table opendata.buildings_lod2 (if exists)")
+            log.info("buildings_lod2: dropping table opendata.buildings_lod2 if exists")
             db.execute_query("DROP TABLE IF EXISTS opendata.buildings_lod2;")
             log.info("buildings_lod2: drop done")
 
@@ -120,6 +121,11 @@ def main() -> None:
                 log.info("buildings_lod2: starting Bavaria (09...)")
                 db.execute_sql_file(
                     "sql/buildings_lod2.sql",
+                    {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_by)},
+                )
+                log.info("Bavaria part completed, starting buildings_surfaces.sql")
+                db.execute_sql_file(
+                    "sql/buildings_surfaces.sql",
                     {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_by)},
                 )
                 log.info("buildings_lod2: Bavaria completed")
