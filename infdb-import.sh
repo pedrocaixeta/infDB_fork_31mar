@@ -15,4 +15,4 @@ export UID
 export GID=$(id -g)
 
 # Run the importer script
-docker compose --profile "opendata" up --build
+docker compose --profile "opendata" up "$@" #--build
