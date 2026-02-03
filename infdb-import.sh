@@ -10,6 +10,9 @@ set -a
 [ -f .env ] && . .env
 set +a
 
+# Get uid and gid
+export UID
+export GID=$(id -g)
 
 # Run the importer script
 docker compose --profile "opendata" up --build

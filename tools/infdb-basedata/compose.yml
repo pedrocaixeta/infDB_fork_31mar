@@ -1,6 +1,6 @@
 services:
     basedata-changelog:
-        profiles: [ "linear", "pylovo" ]
+        profiles: [ "linear", "pylovo", "basedata" ]
         container_name: basedata-changelog
         build:
             context: ./liquibase
@@ -14,7 +14,7 @@ services:
             - "host.docker.internal:host-gateway"
 
     infdb-basedata:
-        profiles: [ "linear", "pylovo" ]
+        profiles: [ "linear", "pylovo", "basedata" ]
         build:
             context: .
             dockerfile: Dockerfile
