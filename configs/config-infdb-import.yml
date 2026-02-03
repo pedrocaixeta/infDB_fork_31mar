@@ -10,11 +10,13 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-import:
-    name: "oberh_neub_sonth" #"forchheim"  # Name of the infdb-import instance
+    name: "heili3-neub" #"forchheim"  # Name of the infdb-import instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich (BY)
-        - "09780139"  # Sonthofen (BY)
-        - "05119000" # Oberhausen (NRW)
+        # - "09780139"  # Sonthofen (BY)
+        # - "05119000" # Oberhausen (NRW)
+        # - "05117000" # Dümpten (NRW)
+        - "05158012" # Heiligenhausen (NRW)
         - "09185149" # Neuburg a. d. Donau (BY)
     multiproccesing: 
         status: active
