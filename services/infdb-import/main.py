@@ -120,7 +120,7 @@ def main() -> None:
             if ags_by:
                 log.info("buildings_lod2: starting Bavaria (09...)")
                 db.execute_sql_file(
-                    "sql/buildings_lod2.sql",
+                    "sql/buildings_lod2_optimized.sql",
                     {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_by)},
                 )
                 log.info("Bavaria part completed, starting buildings_surfaces.sql")
@@ -133,7 +133,7 @@ def main() -> None:
             if ags_nrw:
                 log.info("buildings_lod2: starting NRW (05...)")
                 db.execute_sql_file(
-                    "sql/buildings_lod2.sql",
+                    "sql/buildings_lod2_optimized.sql",
                     {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_nrw)},
                 )
                 log.info("buildings_lod2: NRW completed")
