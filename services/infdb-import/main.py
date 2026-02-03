@@ -21,8 +21,6 @@ from src import (
     # wetterdienst,
 )
 
-# ============================== Entry Point ============================
-
 
 def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
     infdb = InfDB(tool_name="infdb-import")
@@ -74,7 +72,6 @@ def main() -> None:
     processes: List[mp.Process] = []
     # processes.append(mp.Process(target=_run_loader, args=(need.load,), name="need"))
     # processes.append(mp.Process(target=_run_loader, args=(tabula.load,), name="tabula"))
-    # processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
     # processes.append(mp.Process(target=_run_loader, args=(plz.load,), name="plz"))
     # processes.append(mp.Process(target=_run_loader, args=(basemap.load,), name="basemap"))
     # processes.append(mp.Process(target=_run_loader, args=(census2022.load,), name="census2022"))
@@ -85,8 +82,8 @@ def main() -> None:
     # processes.append(
     #     mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
     # )
-
     # # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
+    # processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
     # processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
 
     for process in processes:
@@ -120,7 +117,7 @@ def main() -> None:
             if ags_by:
                 log.info("buildings_lod2: starting Bavaria (09...)")
                 db.execute_sql_file(
-                    "sql/buildings_lod2_optimized.sql",
+                    "sql/buildings_lod2.sql",
                     {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_by)},
                 )
                 log.info("Bavaria part completed, starting buildings_surfaces.sql")
@@ -133,12 +130,28 @@ def main() -> None:
             if ags_nrw:
                 log.info("buildings_lod2: starting NRW (05...)")
                 db.execute_sql_file(
-                    "sql/buildings_lod2_optimized.sql",
+                    "sql/buildings_lod2.sql",
                     {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_nrw)},
                 )
                 log.info("buildings_lod2: NRW completed")
 
             log.info("buildings_lod2: finished (BY+NRW)")
+            
+            # Diagnostic: Check geometry population
+            result = db.execute_query("""
+                SELECT 
+                    COUNT(*) as total,
+                    COUNT(geom) as with_geom,
+                    COUNT(centroid) as with_centroid,
+                    COUNT(*) - COUNT(geom) as missing_geom
+                FROM opendata.buildings_lod2
+            """)
+            if result and len(result) > 0:
+                total, with_geom, with_centroid, missing_geom = result[0]
+                log.info(f"Geometry check: {with_geom}/{total} have geom, {missing_geom} missing")
+                if missing_geom > 0:
+                    log.warning(f"Running debug query for geometry extraction...")
+                    db.execute_sql_file("sql/debug_geometry.sql", {})
 
     except Exception:
         log.exception("buildings_lod2.sql failed")

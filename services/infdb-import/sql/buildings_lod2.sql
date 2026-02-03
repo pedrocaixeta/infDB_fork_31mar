@@ -41,6 +41,8 @@ CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_
 CREATE INDEX IF NOT EXISTS buildings_lod2_feature_id_idx ON {output_schema}.buildings_lod2 (feature_id);
 CREATE INDEX IF NOT EXISTS buildings_lod2_objectid_idx ON {output_schema}.buildings_lod2 (objectid);
 CREATE INDEX IF NOT EXISTS buildings_lod2_gks_idx ON {output_schema}.buildings_lod2 (gemeindeschluessel);
+-- CREATE INDEX IF NOT EXISTS buildings_lod2_gks_objectid_idx ON {output_schema}.buildings_lod2 (gemeindeschluessel, objectid);
+
 
 --------------------------------------------------------------
 -- 03_fill_id_object_id_building.sql
