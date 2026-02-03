@@ -128,8 +128,8 @@ CREATE INDEX ON tmp_ground_data(feature_id);
 CREATE TABLE IF NOT EXISTS {output_schema}.buildings_lod2
 (
     id                       SERIAL PRIMARY KEY,
-    feature_id               integer,
-    objectid                 text,
+    feature_id               integer UNIQUE,
+    objectid                 text UNIQUE,
     gemeindeschluessel       text,
     objectclass_id           int,
     height                   double precision,
