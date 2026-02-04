@@ -6,6 +6,9 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+# PROFILE = "linear"
+PROFILE = "basedata"
+
 num_workers = 3
 ags_list = {"09780139", "05119000", "09185149"}
 # - "09780139"  # Sonthofen (BY)
@@ -23,7 +26,7 @@ def run_ags(ags):
         return
 
     process = subprocess.Popen(
-        ["bash", SCRIPT_DIR / "run.sh", "linear", ags],
+        ["bash", SCRIPT_DIR / "run.sh", PROFILE, ags],
         start_new_session=True,
     )
 
