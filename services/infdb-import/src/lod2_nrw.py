@@ -81,6 +81,7 @@ def load(infdb: InfDB) -> bool:
             "-P",
             str(params["exposed_port"]),
             f"--import-mode={import_mode}",
+            # "--log-level=warn",
             str(gml_path),
         ]
         utils.do_cmd(cmd_parts)
