@@ -2,10 +2,10 @@
 CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}
 (
     id                SERIAL,
+    ags_id TEXT,
     feature_id        integer,
     objectid          text,
     gemeindeschluessel text,
-    ags_id TEXT,
     objectclass_id    int,
     height            double precision,
     groundsurface_flaeche        double precision,
@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}
 
 CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.{table_name} USING GIST (geom);
 CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.{table_name} USING GIST (centroid);
-CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.{table_name} (id, objectid, building_function_code);
+CREATE INDEX IF NOT EXISTS building_function_code_idx ON {output_schema}.{table_name} (building_function_code);
 CREATE INDEX IF NOT EXISTS buildings_lod2_feature_id_idx ON {output_schema}.{table_name} (feature_id);
-CREATE INDEX IF NOT EXISTS buildings_lod2_gks_objectid_idx ON {output_schema}.{table_name} (gemeindeschluessel, objectid);
+CREATE INDEX IF NOT EXISTS buildings_lod2_gks_objectid_idx ON {output_schema}.{table_name} (gemeindeschluessel);
+CREATE INDEX IF NOT EXISTS buildings_lod2_objectid_idx ON {output_schema}.{table_name} (objectid);
 CREATE INDEX IF NOT EXISTS buildings_lod2_ags_id_idx ON {output_schema}.{table_name} (ags_id);

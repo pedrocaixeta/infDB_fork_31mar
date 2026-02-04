@@ -101,6 +101,13 @@ def main() -> None:
         status = "OK" if process.exitcode == 0 else "FAILED"
         log.info("Process %s done (%d out of %d) - status: %s", process.name, cnt, len(processes), status)
 
+    # Create building_surface
+    with infdb.connect() as db:
+        db.execute_sql_file(
+                    "sql/building_surface.sql",
+                    {"output_schema": "opendata",
+                     "table_name": "building_surface"})
+
     # Summarize successes and failures
     successful = [p.name for p in processes if p.exitcode == 0]
     failed = [p.name for p in processes if p.exitcode != 0]

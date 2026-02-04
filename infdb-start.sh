@@ -26,7 +26,7 @@ echo "=== Pull latest docker images ==="
 docker compose pull
 
 echo "=== Starting infDB ==="
-docker compose "$@" #up -d --build
+docker compose up "$@" # -d --build
 
 # echo "=== Importing data infDB ==="
 # bash infdb-import.sh
