@@ -9,12 +9,14 @@ from pathlib import Path
 # PROFILE = "linear"
 # PROFILE = "basedata"
 PROFILE = sys.argv[1] if len(sys.argv) > 1 else "basedata"
+print(f"Using profile: {PROFILE}")
 
 num_workers = 3
 ags_list = {"09780139", "05119000", "09185149"}
 # - "09780139"  # Sonthofen (BY)
 # - "05119000" # Oberhausen (NRW)
 # - "09185149" # Neuburg a. d. Donau (BY)
+print(f"AGS to process: {', '.join(sorted(ags_list))}")
 
 SCRIPT_DIR = Path(__file__).parent
 running_processes = set()
