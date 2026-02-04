@@ -101,10 +101,6 @@ def main() -> None:
         status = "OK" if process.exitcode == 0 else "FAILED"
         log.info("Process %s done (%d out of %d) - status: %s", process.name, cnt, len(processes), status)
 
-    # # Run buildings_lod2.sql ONCE here (after all joins to prevent race conditions)
-    # utils.create_buildings_lod2_table(region="BY", infdb=infdb)
-    # utils.create_buildings_lod2_table(region="NRW", infdb=infdb)
-
     # Summarize successes and failures
     successful = [p.name for p in processes if p.exitcode == 0]
     failed = [p.name for p in processes if p.exitcode != 0]
