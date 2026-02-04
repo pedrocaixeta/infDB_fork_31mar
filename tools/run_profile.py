@@ -7,7 +7,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 # PROFILE = "linear"
-PROFILE = "basedata"
+# PROFILE = "basedata"
+PROFILE = sys.argv[1] if len(sys.argv) > 1 else "basedata"
 
 num_workers = 3
 ags_list = {"09780139", "05119000", "09185149"}
