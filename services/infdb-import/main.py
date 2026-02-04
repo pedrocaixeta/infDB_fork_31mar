@@ -1,6 +1,6 @@
 import multiprocessing as mp
 from typing import Callable, List
-
+import sys
 from infdb import InfDB
 
 from src import (
@@ -71,22 +71,21 @@ def main() -> None:
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
-    processes.append(mp.Process(target=_run_loader, args=(need.load,), name="need"))
-    processes.append(mp.Process(target=_run_loader, args=(tabula.load,), name="tabula"))
-    processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
-    processes.append(mp.Process(target=_run_loader, args=(plz.load,), name="plz"))
-    processes.append(mp.Process(target=_run_loader, args=(basemap.load,), name="basemap"))
-    processes.append(mp.Process(target=_run_loader, args=(census2022.load,), name="census2022"))
-    processes.append(mp.Process(target=_run_loader, args=(openmeteo.load,), name="openmeteo"))
-    processes.append(mp.Process(target=_run_loader, args=(kwp_nrw.load,), name="kwp_nrw"))
-    processes.append(mp.Process(target=_run_loader, args=(kwp_nrw_oberhausen.load,), name="kwp_nrw_oberhausen"))
-    processes.append(mp.Process(target=_run_loader, args=(gebaeude_neuburg.load,), name="gebaeude-neuburg"))
-    processes.append(
-        mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
-    )
+    # processes.append(mp.Process(target=_run_loader, args=(need.load,), name="need"))
+    # processes.append(mp.Process(target=_run_loader, args=(tabula.load,), name="tabula"))
+    # processes.append(mp.Process(target=_run_loader, args=(plz.load,), name="plz"))
+    # processes.append(mp.Process(target=_run_loader, args=(basemap.load,), name="basemap"))
+    # processes.append(mp.Process(target=_run_loader, args=(census2022.load,), name="census2022"))
+    # processes.append(mp.Process(target=_run_loader, args=(openmeteo.load,), name="openmeteo"))
+    # processes.append(mp.Process(target=_run_loader, args=(kwp_nrw.load,), name="kwp_nrw"))
+    # processes.append(mp.Process(target=_run_loader, args=(kwp_nrw_oberhausen.load,), name="kwp_nrw_oberhausen"))
+    # processes.append(mp.Process(target=_run_loader, args=(gebaeude_neuburg.load,), name="gebaeude-neuburg"))
+    # processes.append(
+    #     mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim"))
 
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
     processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
+    # processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
 
     for process in processes:
         process.start()
@@ -102,40 +101,8 @@ def main() -> None:
         log.info("Process %s done (%d out of %d) - status: %s", process.name, cnt, len(processes), status)
 
     # Run buildings_lod2.sql ONCE here (after all joins to prevent race conditions)
-    try:
-        ags_list = utils.fetch_scope_ags_from_db(infdb)
 
-        ags_by = [s for s in ags_list if s.startswith("09")]
-        ags_nrw = [s for s in ags_list if s.startswith("05")]
 
-        def fmt(lst):
-            return ",".join(f"'{s}'" for s in lst)
-
-        with infdb.connect() as db:
-            log.info("buildings_lod2: dropping table opendata.buildings_lod2 (if exists)")
-            db.execute_query("DROP TABLE IF EXISTS opendata.buildings_lod2;")
-            log.info("buildings_lod2: drop done")
-
-            if ags_by:
-                log.info("buildings_lod2: starting Bavaria (09...)")
-                db.execute_sql_file(
-                    "sql/buildings_lod2.sql",
-                    {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_by)},
-                )
-                log.info("buildings_lod2: Bavaria completed")
-
-            if ags_nrw:
-                log.info("buildings_lod2: starting NRW (05...)")
-                db.execute_sql_file(
-                    "sql/buildings_lod2.sql",
-                    {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_nrw)},
-                )
-                log.info("buildings_lod2: NRW completed")
-
-            log.info("buildings_lod2: finished (BY+NRW)")
-
-    except Exception:
-        log.exception("buildings_lod2.sql failed")
 
     # Summarize successes and failures
     successful = [p.name for p in processes if p.exitcode == 0]

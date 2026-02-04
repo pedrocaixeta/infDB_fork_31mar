@@ -4,13 +4,14 @@
 -- 00_cleanup.sql
 -- Cleanup existing buildings table if it exists
 --------------------------------------------------------------
+DROP SCHEMA IF EXISTS {output_schema} CASCADE;
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 
 --------------------------------------------------------------
 -- 02_create_buildings_table.sql
 -- Create buildings table
 --------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS {output_schema}.buildings_lod2
+CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} PARTITION OF {output_schema}.{table_name} FOR VALUES IN ('{ags_id}');
 (
     id                SERIAL PRIMARY KEY,
     feature_id        integer,
@@ -35,11 +36,12 @@ CREATE TABLE IF NOT EXISTS {output_schema}.buildings_lod2
     geom              geometry,
     centroid          geometry
 );
-CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings_lod2 USING GIST (geom);
-CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.buildings_lod2 USING GIST (centroid);
-CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_lod2 (id, objectid, building_function_code);
-CREATE INDEX IF NOT EXISTS buildings_lod2_feature_id_idx ON {output_schema}.buildings_lod2 (feature_id);
-CREATE INDEX IF NOT EXISTS buildings_lod2_gks_objectid_idx ON {output_schema}.buildings_lod2 (gemeindeschluessel, objectid);
+-- done in parent table
+-- CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.{table_name} USING GIST (geom);
+-- CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.{table_name} USING GIST (centroid);
+-- CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.{table_name} (id, objectid, building_function_code);
+-- CREATE INDEX IF NOT EXISTS {table_name}_feature_id_idx ON {output_schema}.{table_name} (feature_id);
+-- CREATE INDEX IF NOT EXISTS {table_name}_gks_objectid_idx ON {output_schema}.{table_name} (gemeindeschluessel, objectid);
 
 --------------------------------------------------------------
 -- 03_fill_id_object_id_building.sql
@@ -49,7 +51,7 @@ WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
                            FROM property
                            WHERE name = 'Gemeindeschluessel')
 
-INSERT INTO {output_schema}.buildings_lod2 (feature_id, objectclass_id, objectid, gemeindeschluessel, building_function_code)
+INSERT INTO {output_schema}.{table_name} (feature_id, objectclass_id, objectid, gemeindeschluessel, building_function_code)
 SELECT f.id AS 
        feature_id,
        f.objectclass_id,
@@ -78,7 +80,7 @@ AND gsd.val_string IN ({gemeindeschluessel});  -- filter by gemeindeschluessel
 -- WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
 --                            FROM property
 --                            WHERE name = 'Gemeindeschluessel')
--- UPDATE {output_schema}.buildings_lod2 b
+-- UPDATE {output_schema}.{table_name} b
 -- SET gemeindeschluessel = fnd.val_string
 -- FROM gemeindeschluessel_data fnd
 -- WHERE b.feature_id = fnd.feature_id;
@@ -91,7 +93,7 @@ WITH height_data AS (SELECT p.feature_id, p.val_double
                      FROM property p
                      WHERE p.name = 'value'
                        AND p.parent_id IN (SELECT id FROM property WHERE name = 'height'))
-UPDATE {output_schema}.buildings_lod2 b
+UPDATE {output_schema}.{table_name} b
 SET height = hd.val_double
 FROM height_data hd
 WHERE b.feature_id = hd.feature_id
@@ -99,7 +101,7 @@ WHERE b.feature_id = hd.feature_id
 
 -- -- delete buildings below a height threshold
 -- DELETE
--- FROM {output_schema}.buildings_lod2
+-- FROM {output_schema}.{table_name}
 -- WHERE height < 3.5;
 
 
@@ -126,7 +128,7 @@ WITH ground_data AS (
             f.id AS feature_id,
             gd.geometry_properties ->> 'objectId' AS root_object_id,
             child ->> 'objectId' AS child_object_id
-        FROM {output_schema}.buildings_lod2 b
+        FROM {output_schema}.{table_name} b
         JOIN feature f ON f.id = b.feature_id
         JOIN geometry_data gd ON f.id = gd.feature_id
         CROSS JOIN LATERAL jsonb_array_elements(gd.geometry_properties -> 'children') AS child
@@ -154,7 +156,7 @@ WITH ground_data AS (
             JOIN group_710
                   ON group_901.child_object_id = group_710.child_object_id
 )
-UPDATE {output_schema}.buildings_lod2 b
+UPDATE {output_schema}.{table_name} b
 SET groundsurface_flaeche = ground_data.area,
     geom       = ground_data.geom,
     centroid   = ST_Centroid(ground_data.geom)
@@ -164,7 +166,7 @@ WHERE b.objectid = ground_data.objectid
 
 -- -- delete buildings below an area threshold
 -- DELETE
--- FROM {output_schema}.buildings_lod2
+-- FROM {output_schema}.{table_name}
 -- WHERE buildings.floor_area < 12;
 
 -----------------------------------------------------------------
@@ -174,7 +176,7 @@ WHERE b.objectid = ground_data.objectid
 WITH floor_number_data AS (SELECT feature_id, val_int
                            FROM property
                            WHERE name = 'storeysAboveGround')
-UPDATE {output_schema}.buildings_lod2 b
+UPDATE {output_schema}.{table_name} b
 SET storeysAboveGround = GREATEST(fnd.val_int, 1)
 FROM floor_number_data fnd
 WHERE b.feature_id = fnd.feature_id
@@ -183,9 +185,9 @@ WHERE b.feature_id = fnd.feature_id
 -- -- fill in missing floor_number values
 -- WITH average_floor_height AS (SELECT building_use_id,
 --                                      PERCENTILE_CONT(0.5) WITHIN GROUP ( ORDER BY (height / floor_number) ) as height_per_floor
---                               FROM {output_schema}.buildings_lod2
+--                               FROM {output_schema}.{table_name}
 --                               GROUP BY building_use_id)
--- UPDATE {output_schema}.buildings_lod2 b
+-- UPDATE {output_schema}.{table_name} b
 -- SET storeysAboveGround = GREATEST(ROUND(height / COALESCE(afh.height_per_floor, height)), 1)
 -- FROM average_floor_height afh
 -- WHERE b.storeysAboveGround IS NULL
@@ -205,11 +207,11 @@ WITH split_addresses AS (
          (regexp_match(trim(a.street), '\s*(\d+[\w,]*)$'))[1] AS house_number,
          a.street AS original_street,
          unnest(string_to_array(a.street, ';')) AS individual_street
-  FROM {output_schema}.buildings_lod2 b
+  FROM {output_schema}.{table_name} b
   JOIN property p ON b.feature_id = p.feature_id
   JOIN address  a ON p.val_address_id = a.id
 )
-UPDATE {output_schema}.buildings_lod2 b
+UPDATE {output_schema}.{table_name} b
 SET street = sad.street,
     house_number = sad.house_number,
     city = sad.city,

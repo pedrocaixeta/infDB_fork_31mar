@@ -6,6 +6,7 @@ import shlex
 import subprocess
 import tempfile
 import time
+import sys
 from pathlib import Path
 from typing import Iterable, List, Optional, Union
 from urllib.parse import urljoin, urlparse
@@ -991,3 +992,56 @@ def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
         log.info("Prepared %d per-scope clip geometries (exact).", len(results))
 
     return results
+
+
+def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
+    log = infdb.get_worker_logger()
+
+    match region:
+        case "BY":
+            ags_id = "09"
+        case "NRW":
+            ags_id = "05"
+        case _:
+            log.error(f"Region {region} not supported for buildings_lod2.sql")
+            sys.exit(1)
+
+    ags_list = fetch_scope_ags_from_db(infdb)
+    ags_filtered = [s for s in ags_list if s.startswith(ags_id)]
+
+    if ags_filtered:
+
+        def fmt(lst):
+            return ",".join(f"'{s}'" for s in lst)
+
+        output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
+        table_name = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"])
+
+        TEMP_OUTPUT_SCHEMA = "bld_temp"
+        TEMP_TABLE_NAME = f"{table_name}_{region}"
+
+        try:
+            with infdb.connect() as db:
+                # Create central building table
+                db.execute_sql_file("sql/create_buildings_table.sql",
+                                    {"output_schema": output_schema,
+                                    "table_name": table_name})
+                log.info(f"Created central buildings_lod2: {output_schema}.{table_name}")
+
+                # Create helper table
+                log.info(f"Dropping table {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME}")
+                db.execute_query(f"DROP TABLE IF EXISTS {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME};")
+                log.info(f"{TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} drop done")
+
+                log.info(f"buildings_lod2: starting {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} ({ags_id}...)")
+                db.execute_sql_file(
+                    "sql/buildings_lod2.sql",
+                    {"output_schema": TEMP_OUTPUT_SCHEMA,
+                     "table_name": TEMP_TABLE_NAME,
+                        "gemeindeschluessel": fmt(ags_filtered),
+                        "ags_id": ags_id},
+                )
+                log.info(f"{TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} completed")
+
+        except Exception:
+            infdb.get_logger().exception(f"{TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} failed")
