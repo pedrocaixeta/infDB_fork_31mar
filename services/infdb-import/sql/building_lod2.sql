@@ -1,201 +1,143 @@
--- SQL script to create and populate a buildings table from 3D City DB.
+-- OPTIMIZED SINGLE-PASS BUILDINGS LOADER
+-- Combines all data extraction in CTEs and executes a single INSERT
+--------------------------------------------------------------
 
---------------------------------------------------------------
--- 00_cleanup.sql
--- Cleanup existing buildings table if it exists
---------------------------------------------------------------
--- DROP SCHEMA IF EXISTS {output_schema} CASCADE;
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 
---------------------------------------------------------------
--- 02_create_buildings_table.sql
--- Create buildings table partition
---------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} PARTITION OF opendata.building_lod2 FOR VALUES IN ('{ags_id}');
--- done in parent table
--- CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.{table_name} USING GIST (geom);
--- CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.{table_name} USING GIST (centroid);
--- CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.{table_name} (id, objectid, building_function_code);
--- CREATE INDEX IF NOT EXISTS {table_name}_feature_id_idx ON {output_schema}.{table_name} (feature_id);
--- CREATE INDEX IF NOT EXISTS {table_name}_gks_objectid_idx ON {output_schema}.{table_name} (gemeindeschluessel, objectid);
+CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} 
+    PARTITION OF opendata.building_lod2 
+    FOR VALUES IN ('{ags_id}');
 
---------------------------------------------------------------
--- 03_fill_id_object_id_building.sql
--- Fill buildings with corresponding identifier (id, feature_id, objectid and building_function_code columns)
---------------------------------------------------------------
-WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
-                           FROM property
-                           WHERE name = 'Gemeindeschluessel')
+-- Single-pass insert with all data joined via CTEs
+WITH 
+-- A. Base Buildings (Filtered by Municipality)
+base_buildings AS (
+    SELECT 
+        f.id AS feature_id,
+        f.objectclass_id,
+        f.objectid,
+        p_func.val_string AS building_function_code,
+        p_gs.val_string AS gemeindeschluessel,
+        substring(p_gs.val_string, 1, 2) AS ags_id
+    FROM feature f
+    JOIN property p_func ON f.id = p_func.feature_id
+    JOIN property p_gs ON f.id = p_gs.feature_id
+    WHERE f.objectclass_id = 901
+      AND p_func.name = 'function'
+      AND p_func.val_string LIKE '31001_%'
+      AND p_gs.name = 'Gemeindeschluessel'
+      AND p_gs.val_string IN ({gemeindeschluessel})
+),
 
-INSERT INTO {output_schema}.{table_name} (feature_id, objectclass_id, objectid, gemeindeschluessel, ags_id, building_function_code)
-SELECT f.id AS 
-       feature_id,
-       f.objectclass_id,
-       f.objectid,
-       gsd.val_string as gemeindeschluessel,
-       substring(gsd.val_string, 1, 2) as ags_id,
-    --    {output_schema}.classify_building_use(p.val_string) as building_use,
-       p.val_string                                     as building_function_code
-FROM feature f
-         JOIN property p ON f.id = p.feature_id
-JOIN gemeindeschluessel_data gsd ON f.id = gsd.feature_id
-WHERE f.objectclass_id = 901 -- =building
-  AND p.name = 'function'
-  AND p.val_string LIKE '31001_%'  -- only allow buildings
-  -- AND p.val_string <> '31001_2463' -- exclude garages
-  -- AND p.val_string <> '31001_2513' -- exclude water containers
--- ORDER BY f.id
-AND gsd.val_string IN ({gemeindeschluessel});  -- filter by gemeindeschluessel
+-- B. Height Data (Deduped)
+height_data AS (
+    SELECT DISTINCT ON (p.feature_id) 
+        p.feature_id, 
+        p.val_double
+    FROM property p
+    WHERE p.name = 'value'
+      AND p.parent_id IN (SELECT id FROM property WHERE name = 'height')
+    ORDER BY p.feature_id, p.id DESC
+),
 
--- -----------------------------------------------------------------
--- -- 0X_fill_gemeindeschluessel.sql
--- -- fill gemeindeschluessel column
--- -----------------------------------------------------------------
--- -- depricated, now done in 03_fill_id_object_id_building.sql
--- -- just kept for reference
--- -- Patrick Buchenberg 2024-12-19
--- WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
---                            FROM property
---                            WHERE name = 'Gemeindeschluessel')
--- UPDATE {output_schema}.{table_name} b
--- SET gemeindeschluessel = fnd.val_string
--- FROM gemeindeschluessel_data fnd
--- WHERE b.feature_id = fnd.feature_id;
+-- C. Floor Data (Deduped)
+floor_data AS (
+    SELECT DISTINCT ON (feature_id)
+        feature_id, 
+        val_int
+    FROM property
+    WHERE name = 'storeysAboveGround'
+    ORDER BY feature_id, id DESC
+),
 
---------------------------------------------------------------
--- 04_fill_height.sql
--- fill height column
---------------------------------------------------------------
-WITH height_data AS (SELECT p.feature_id, p.val_double
-                     FROM property p
-                     WHERE p.name = 'value'
-                       AND p.parent_id IN (SELECT id FROM property WHERE name = 'height'))
-UPDATE {output_schema}.{table_name} b
-SET height = hd.val_double
-FROM height_data hd
-WHERE b.feature_id = hd.feature_id
-  AND b.gemeindeschluessel IN ({gemeindeschluessel});
+-- D. Address Data (Deduped & Parsed)
+address_data AS (
+    SELECT DISTINCT ON (p.feature_id)
+        p.feature_id,
+        regexp_replace(trim(a.street), '\s*\d+[\w,]*$', '') AS street,
+        (regexp_match(trim(a.street), '\s*(\d+[\w,]*)$'))[1] AS house_number,
+        a.city,
+        a.country,
+        a.zip_code,
+        a.state
+    FROM property p
+    JOIN address a ON p.val_address_id = a.id
+    WHERE p.feature_id IN (SELECT feature_id FROM base_buildings)
+    ORDER BY p.feature_id, a.id DESC
+),
 
--- -- delete buildings below a height threshold
--- DELETE
--- FROM {output_schema}.{table_name}
--- WHERE height < 3.5;
-
-
---------------------------------------------------------------
--- 05_fill_floor_area_geom.sql
--- fill geom and floor_area columns
---------------------------------------------------------------
---------------------------------------------------------------
--- This query extracts building ground surfaces from the 3D City DB
--- geometry hierarchy by:
--- 1. Finding buildings (objectclass_id 901) and their objectids of their child surface geometries
--- 2. Matching those references to ground surfaces (objectclass_id 710)
--- 3. Calculating the area of each ground surface geometry
--- 4. Updating the buildings table with:
---    - groundsurface_flaeche: ground surface area in square meters
---    - geom: the ground surface geometry (footprint)
---    - centroid: calculated center point of the geometry
--- Author: Patrick Buchenberg - Hackthon@Darmstadt
---------------------------------------------------------------
-WITH ground_data AS (
-    WITH group_901 AS (
+-- E. Geometry Data (Extract ground surfaces via JSONB navigation - optimized)
+geometry_data AS (
+    WITH building_child_ids AS (
+        -- First collect all child_object_ids from our buildings
         SELECT
-            f.objectid AS objectid,
-            f.id AS feature_id,
-            gd.geometry_properties ->> 'objectId' AS root_object_id,
+            bb.feature_id,
             child ->> 'objectId' AS child_object_id
-        FROM {output_schema}.{table_name} b
-        JOIN feature f ON f.id = b.feature_id
+        FROM base_buildings bb
+        JOIN geometry_data gd ON bb.feature_id = gd.feature_id
+        CROSS JOIN LATERAL jsonb_array_elements(gd.geometry_properties -> 'children') AS child
+    ),
+    ground_surface_geoms AS (
+        -- Then only look up geometries for those specific child_object_ids
+        SELECT
+            child ->> 'objectId' AS child_object_id,
+            gd.geometry
+        FROM feature f
         JOIN geometry_data gd ON f.id = gd.feature_id
         CROSS JOIN LATERAL jsonb_array_elements(gd.geometry_properties -> 'children') AS child
-        WHERE f.objectclass_id = 901
-          AND b.gemeindeschluessel IN ({gemeindeschluessel})
-    ),
-    group_710 AS (
-         SELECT
-             feature.objectid AS objectid,
-             gd.geometry_properties ->> 'objectId' as root_object_id,
-             child ->> 'objectId' as child_object_id,
-            gd.geometry
-         FROM feature
-                  JOIN geometry_data gd ON feature.id = gd.feature_id
-                  CROSS JOIN LATERAL jsonb_array_elements(gd.geometry_properties -> 'children') AS child
-         WHERE objectclass_id = 710
+        WHERE f.objectclass_id = 710
+          AND (child ->> 'objectId') IN (SELECT child_object_id FROM building_child_ids)
     )
-    SELECT
-        group_901.objectid as objectid,
-        group_901.feature_id as feature_id,
-        group_710.objectid as ground_surface_objectid,
-        group_710.geometry as geom,
-        st_area(group_710.geometry) as area
-    FROM group_901
-            JOIN group_710
-                  ON group_901.child_object_id = group_710.child_object_id
+    SELECT DISTINCT ON (bc.feature_id)
+        bc.feature_id,
+        gs.geometry AS geom,
+        st_area(gs.geometry) AS area,
+        ST_Centroid(gs.geometry) AS centroid
+    FROM building_child_ids bc
+    JOIN ground_surface_geoms gs ON bc.child_object_id = gs.child_object_id
+    ORDER BY bc.feature_id
 )
-UPDATE {output_schema}.{table_name} b
-SET groundsurface_flaeche = ground_data.area,
-    geom       = ground_data.geom,
-    centroid   = ST_Centroid(ground_data.geom)
-FROM ground_data
-WHERE b.objectid = ground_data.objectid
-  AND b.gemeindeschluessel IN ({gemeindeschluessel});
 
--- -- delete buildings below an area threshold
--- DELETE
--- FROM {output_schema}.{table_name}
--- WHERE buildings.floor_area < 12;
-
------------------------------------------------------------------
--- 07_fill_floor_number.sql
--- fill floor_number column
------------------------------------------------------------------
-WITH floor_number_data AS (SELECT feature_id, val_int
-                           FROM property
-                           WHERE name = 'storeysAboveGround')
-UPDATE {output_schema}.{table_name} b
-SET storeysAboveGround = GREATEST(fnd.val_int, 1)
-FROM floor_number_data fnd
-WHERE b.feature_id = fnd.feature_id
-  AND b.gemeindeschluessel IN ({gemeindeschluessel});
-
--- -- fill in missing floor_number values
--- WITH average_floor_height AS (SELECT building_use_id,
---                                      PERCENTILE_CONT(0.5) WITHIN GROUP ( ORDER BY (height / floor_number) ) as height_per_floor
---                               FROM {output_schema}.{table_name}
---                               GROUP BY building_use_id)
--- UPDATE {output_schema}.{table_name} b
--- SET storeysAboveGround = GREATEST(ROUND(height / COALESCE(afh.height_per_floor, height)), 1)
--- FROM average_floor_height afh
--- WHERE b.storeysAboveGround IS NULL
---   AND b.building_use_id = afh.building_use_id;
-
----------------------------------------------------------------
--- 99_fill_address_id.sql
--- fill address related columns
-----------------------------------------------------------------
-WITH split_addresses AS (
-  SELECT b.feature_id,
-         a.city,
-         a.country,
-         a.zip_code,
-         a.state,
-         regexp_replace(trim(a.street), '\s*\d+[\w,]*$', '') AS street,
-         (regexp_match(trim(a.street), '\s*(\d+[\w,]*)$'))[1] AS house_number,
-         a.street AS original_street,
-         unnest(string_to_array(a.street, ';')) AS individual_street
-  FROM {output_schema}.{table_name} b
-  JOIN property p ON b.feature_id = p.feature_id
-  JOIN address  a ON p.val_address_id = a.id
+-- Execute single INSERT with all data
+INSERT INTO {output_schema}.{table_name} (
+    feature_id, 
+    objectclass_id, 
+    objectid, 
+    gemeindeschluessel, 
+    ags_id, 
+    building_function_code, 
+    height, 
+    storeysAboveGround,
+    groundsurface_flaeche, 
+    geom, 
+    centroid,
+    street, 
+    house_number, 
+    city, 
+    country, 
+    zip_code, 
+    state
 )
-UPDATE {output_schema}.{table_name} b
-SET street = sad.street,
-    house_number = sad.house_number,
-    city = sad.city,
-    country = sad.country,
-    zip_code = sad.zip_code,
-    state = sad.state
-    -- original_street = sad.original_street
-FROM split_addresses sad
-WHERE b.feature_id = sad.feature_id
-  AND b.gemeindeschluessel IN ({gemeindeschluessel});
+SELECT 
+    bb.feature_id,
+    bb.objectclass_id,
+    bb.objectid,
+    bb.gemeindeschluessel,
+    bb.ags_id,
+    bb.building_function_code,
+    hd.val_double,
+    GREATEST(fd.val_int, 1),
+    gd.area,
+    gd.geom,
+    gd.centroid,
+    ad.street,
+    ad.house_number,
+    ad.city,
+    ad.country,
+    ad.zip_code,
+    ad.state
+FROM base_buildings bb
+LEFT JOIN height_data hd ON bb.feature_id = hd.feature_id
+LEFT JOIN floor_data fd ON bb.feature_id = fd.feature_id
+LEFT JOIN geometry_data gd ON bb.feature_id = gd.feature_id
+LEFT JOIN address_data ad ON bb.feature_id = ad.feature_id;
