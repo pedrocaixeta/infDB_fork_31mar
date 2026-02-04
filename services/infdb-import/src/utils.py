@@ -1017,7 +1017,7 @@ def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
         output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
         table_name = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"])
 
-        TEMP_OUTPUT_SCHEMA = "bld_temp"
+        TEMP_OUTPUT_SCHEMA = "bld_tmp"
         TEMP_TABLE_NAME = f"{table_name}_{region}"
 
         try:
@@ -1028,10 +1028,10 @@ def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
                                     "table_name": table_name})
                 log.info(f"Created central buildings_lod2: {output_schema}.{table_name}")
 
-                # Create helper table
-                log.info(f"Dropping table {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME}")
-                db.execute_query(f"DROP TABLE IF EXISTS {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME};")
-                log.info(f"{TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} drop done")
+                # # Create helper table
+                # log.info(f"Dropping table {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME}")
+                # db.execute_query(f"DROP TABLE IF EXISTS {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME};")
+                # log.info(f"{TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} drop done")
 
                 log.info(f"buildings_lod2: starting {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} ({ags_id}...)")
                 db.execute_sql_file(

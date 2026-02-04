@@ -65,6 +65,7 @@ def main() -> None:
     # # Drop schema "opendata" for clean development runs
     # with infdb.connect() as db:  # InfdbClient context
     #     db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
+    #     db.execute_query("DROP SCHEMA IF EXISTS bld_tmp CASCADE;")
 
     # Ensure that administrative areas are loaded for scope
     bkg.load(infdb)
@@ -84,8 +85,8 @@ def main() -> None:
     #     mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim"))
 
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
-    # processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
-    # processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
+    processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
+    processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
 
     for process in processes:
         process.start()
@@ -100,9 +101,9 @@ def main() -> None:
         status = "OK" if process.exitcode == 0 else "FAILED"
         log.info("Process %s done (%d out of %d) - status: %s", process.name, cnt, len(processes), status)
 
-    # Run buildings_lod2.sql ONCE here (after all joins to prevent race conditions)
-
-    utils.create_buildings_lod2_table(region="BY", infdb=infdb)
+    # # Run buildings_lod2.sql ONCE here (after all joins to prevent race conditions)
+    # utils.create_buildings_lod2_table(region="BY", infdb=infdb)
+    # utils.create_buildings_lod2_table(region="NRW", infdb=infdb)
 
     # Summarize successes and failures
     successful = [p.name for p in processes if p.exitcode == 0]

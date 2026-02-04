@@ -4,7 +4,7 @@
 -- 00_cleanup.sql
 -- Cleanup existing buildings table if it exists
 --------------------------------------------------------------
-DROP SCHEMA IF EXISTS {output_schema} CASCADE;
+-- DROP SCHEMA IF EXISTS {output_schema} CASCADE;
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 
 --------------------------------------------------------------
