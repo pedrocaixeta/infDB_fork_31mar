@@ -631,6 +631,7 @@ infdb-import:
               start_time: "2020-01-01"
               end_time: "2024-12-31"
               temporal: hourly  # options: hourly, daily
+          grid_resolution: 100km
           data:
               - temperature_2m
               - wind_speed_10m
