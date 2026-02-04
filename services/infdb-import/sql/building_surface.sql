@@ -1,5 +1,8 @@
--- DROP TABLE IF EXISTS citydb.surface_prefix;
+DROP TABLE IF EXISTS citydb.surface_prefix;
 CREATE TABLE IF NOT EXISTS citydb.surface_prefix AS
+    WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
+                           FROM citydb.property
+                           WHERE name = 'Gemeindeschluessel')
     SELECT
         id AS surface_id,
         objectid AS surface_objectid,
@@ -7,12 +10,18 @@ CREATE TABLE IF NOT EXISTS citydb.surface_prefix AS
         split_part(objectid, '_', 2) || '_' ||
         split_part(objectid, '_', 3) AS building_objectid,
         objectclass_id
-    FROM feature
+        -- gsd.val_string as gemeindeschluessel,
+        -- substring(gsd.val_string, 1, 2) as ags_id
+    FROM citydb.feature
     WHERE objectclass_id IN (709, 710, 712);
     CREATE INDEX IF NOT EXISTS idx_surface_prefix_building_objectid
         ON citydb.surface_prefix (building_objectid);
     CREATE INDEX IF NOT EXISTS idx_surface_prefix_surface_id
         ON citydb.surface_prefix (surface_id);
+    -- CREATE INDEX IF NOT EXISTS idx_surface_prefix_ags_id
+    --     ON citydb.surface_prefix (ags_id);
+    -- CREATE INDEX IF NOT EXISTS idx_surface_prefix_gemeindeschluessel
+    --     ON citydb.surface_prefix (gemeindeschluessel);
 
 
 -- DROP TABLE IF EXISTS {output_schema}.{table_name};
@@ -20,7 +29,7 @@ CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} AS
     SELECT
         sp.surface_objectid AS surface_gmlid,
         sp.objectclass_id,
-
+        -- sp.gemeindeschluessel,
         CASE sp.objectclass_id
             WHEN 709 THEN 'WallSurface'
             WHEN 710 THEN 'GroundSurface'
@@ -69,15 +78,17 @@ CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} AS
                     END
         ) AS z_max_asl
 
-    FROM surface_prefix sp
-             JOIN geometry_data gd
+    FROM citydb.surface_prefix sp
+             JOIN citydb.geometry_data gd
                   ON gd.feature_id = sp.surface_id
-             LEFT JOIN property p
+             LEFT JOIN citydb.property p
                        ON p.feature_id = sp.surface_id
-
+    -- WHERE sp.gemeindeschluessel IN ({gemeindeschluessel})
+    
     GROUP BY
         sp.surface_objectid,
         sp.objectclass_id,
+        -- sp.gemeindeschluessel,
         sp.building_objectid,
         gd.geometry;
 CREATE INDEX IF NOT EXISTS idx_buildings_surfaces_building_objectid

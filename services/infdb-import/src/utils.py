@@ -1028,11 +1028,7 @@ def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
                                     "table_name": table_name})
                 log.info(f"Created central buildings_lod2: {output_schema}.{table_name}")
 
-                # # Create helper table
-                # log.info(f"Dropping table {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME}")
-                # db.execute_query(f"DROP TABLE IF EXISTS {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME};")
-                # log.info(f"{TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} drop done")
-
+                # Create building table for the region
                 log.info(f"buildings_lod2: starting {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} ({ags_id}...)")
                 db.execute_sql_file(
                     "sql/building_lod2.sql",

@@ -85,8 +85,8 @@ def main() -> None:
     #     mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim"))
 
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
-    processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
-    processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
+    # processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
+    # processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
 
     for process in processes:
         process.start()
@@ -106,7 +106,8 @@ def main() -> None:
         db.execute_sql_file(
                     "sql/building_surface.sql",
                     {"output_schema": "opendata",
-                     "table_name": "building_surface"})
+                     "table_name": "building_surface",
+                     "gemeindeschluessel": infdb.get_config_value([infdb.get_toolname(), "scope"])})
 
     # Summarize successes and failures
     successful = [p.name for p in processes if p.exitcode == 0]
