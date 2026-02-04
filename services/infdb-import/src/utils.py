@@ -1023,7 +1023,7 @@ def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
         try:
             with infdb.connect() as db:
                 # Create central building table
-                db.execute_sql_file("sql/create_buildings_table.sql",
+                db.execute_sql_file("sql/create_building_table.sql",
                                     {"output_schema": output_schema,
                                     "table_name": table_name})
                 log.info(f"Created central buildings_lod2: {output_schema}.{table_name}")
@@ -1035,7 +1035,7 @@ def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
 
                 log.info(f"buildings_lod2: starting {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} ({ags_id}...)")
                 db.execute_sql_file(
-                    "sql/buildings_lod2.sql",
+                    "sql/building_lod2.sql",
                     {"output_schema": TEMP_OUTPUT_SCHEMA,
                      "table_name": TEMP_TABLE_NAME,
                         "gemeindeschluessel": fmt(ags_filtered),
