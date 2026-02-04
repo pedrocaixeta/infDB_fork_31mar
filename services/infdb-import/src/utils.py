@@ -995,6 +995,14 @@ def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
 
 
 def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
+    """
+    Creates the flat buildings_lod2 table for the specified region by filtering the source data based on AGS codes.
+    
+    :param region: Region identifier (e.g., "BY" for Bavaria, "NRW" for North Rhine-Westphalia)
+    :type region: str
+    :param infdb: instance of InfDB for database access and logging
+    :type infdb: InfDB
+    """
     log = infdb.get_worker_logger()
 
     match region:
