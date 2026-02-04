@@ -84,7 +84,7 @@ def main() -> None:
     #     mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim"))
 
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
-    processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
+    # processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
     # processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
 
     for process in processes:
@@ -102,7 +102,7 @@ def main() -> None:
 
     # Run buildings_lod2.sql ONCE here (after all joins to prevent race conditions)
 
-
+    utils.create_buildings_lod2_table(region="BY", infdb=infdb)
 
     # Summarize successes and failures
     successful = [p.name for p in processes if p.exitcode == 0]

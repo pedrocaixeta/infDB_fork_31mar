@@ -9,33 +9,9 @@ CREATE SCHEMA IF NOT EXISTS {output_schema};
 
 --------------------------------------------------------------
 -- 02_create_buildings_table.sql
--- Create buildings table
+-- Create buildings table partition
 --------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} PARTITION OF {output_schema}.{table_name} FOR VALUES IN ('{ags_id}');
-(
-    id                SERIAL PRIMARY KEY,
-    feature_id        integer,
-    objectid          text,
-    gemeindeschluessel text,
-    objectclass_id    int,
-    height            double precision,
-    groundsurface_flaeche        double precision,
-    storeysaboveground      integer,
-    -- building_use      text NOT NULL,
-    building_function_code   text NOT NULL,
-    -- building_type     text,
-    -- occupants         int,
-    -- households        int,
-    -- construction_year text,
-    zip_code          text,
-    street            text,
-    house_number     text,
-    city              text,
-    country          text,
-    state            text,
-    geom              geometry,
-    centroid          geometry
-);
+CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} PARTITION OF opendata.building_lod2 FOR VALUES IN ('{ags_id}');
 -- done in parent table
 -- CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.{table_name} USING GIST (geom);
 -- CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.{table_name} USING GIST (centroid);
@@ -51,12 +27,13 @@ WITH gemeindeschluessel_data AS (SELECT feature_id, val_string
                            FROM property
                            WHERE name = 'Gemeindeschluessel')
 
-INSERT INTO {output_schema}.{table_name} (feature_id, objectclass_id, objectid, gemeindeschluessel, building_function_code)
+INSERT INTO {output_schema}.{table_name} (feature_id, objectclass_id, objectid, gemeindeschluessel, ags_id, building_function_code)
 SELECT f.id AS 
        feature_id,
        f.objectclass_id,
        f.objectid,
        gsd.val_string as gemeindeschluessel,
+       substring(gsd.val_string, 1, 2) as ags_id,
     --    {output_schema}.classify_building_use(p.val_string) as building_use,
        p.val_string                                     as building_function_code
 FROM feature f
