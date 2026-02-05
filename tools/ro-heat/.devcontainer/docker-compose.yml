@@ -1,7 +1,7 @@
-version: '3.8'
 services:
   # Update this to the name of the service you want to work with in your docker-compose.yml file
   ro-heat:
+    profiles: []
     # Uncomment if you want to override the service's Dockerfile to one in the .devcontainer 
     # folder. Note that the path of the Dockerfile and context is relative to the *primary* 
     # docker-compose.yml file (the first in the devcontainer.json "dockerComposeFile"
@@ -17,14 +17,15 @@ services:
        - .:/app:cached # Mount the current directory to /app in the container
     env_file:
       - ../../.env  # repo root .env (dev only)
+      # - ../.env # service specific .env (dev only)
+
+    depends_on: {}
 
     # Uncomment the next four lines if you will use a ptrace-based debugger like C++, Go, and Rust.
     # cap_add:
     #   - SYS_PTRACE
     # security_opt:
     #   - seccomp:unconfined
-    env_file:
-      - ../../.env  # repo root .env (dev only)
     # Overrides default command so things don't shut down after the process ends.
     command: ["/bin/sh", "-c", "uv sync && exec sleep infinity"]
  

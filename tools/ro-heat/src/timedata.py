@@ -133,7 +133,7 @@ def get_hourly_temperature_2m(objectid, database_connection, start_time=None, en
 def get_distinct_building_ids(database_connection):
     query = """
             SELECT DISTINCT objectid
-            FROM opendata.buildings_lod2 \
+            FROM opendata.building_lod2 \
             """
     df = pd.read_sql(sql=query, con=database_connection)
     return df["objectid"].tolist()

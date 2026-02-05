@@ -13,7 +13,7 @@ ro-heat:
     config-infdb: "config-infdb.yml" # only filename - change path in ".env" file "CONFIG_INFDB_PATH"
     logging:
         path: "ro-heat.log"
-        level: "DEBUG" # ERROR, WARNING, INFO, DEBUG
+        level: "INFO" # ERROR, WARNING, INFO, DEBUG
     hosts:
         postgres:
             user: None
@@ -25,7 +25,7 @@ ro-heat:
     data:
         input:
             schema: basedata
-            simulation_year: 2024
+            simulation_year: 2023
             random_seed: 42
             method: 1R0C # 1R1C or 1R0C
         refurbishment:

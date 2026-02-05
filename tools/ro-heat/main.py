@@ -43,6 +43,9 @@ def main():
     method = infdbhandler.get_config_value(["ro-heat", "data", "input", "method"])
 
     try:
+        sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
+        infdbclient_citydb.execute_query(sql)
+
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         infdbclient_citydb.execute_query(sql)
         infdblog.info(f"output schema: {output_schema} created successfully")
@@ -128,16 +131,14 @@ def main():
         heating_setpoint = 20.0
 
         if method == "1R0C":
-            full_path = os.path.join("sql", "heat-demand-r.sql")
-            # with open(full_path, "r", encoding="utf-8") as file:
-            #     sql_content = file.read()
             format_params = {
                 "ags": ags,
                 "start_time": start_time,
                 "end_time": end_time,
                 "temp_in": heating_setpoint
             }
-            infdbclient_citydb.execute_sql_file(full_path, format_params=format_params)
+            infdbclient_citydb.execute_sql_file(os.path.join("sql", "heat-demand-r.sql"), format_params=format_params)
+            infdbclient_citydb.execute_sql_file(os.path.join("sql", "debug_demand.sql"), format_params=format_params)
 
             # Summary
             # # TODO: Adapt output format to EnTiSe format
@@ -207,7 +208,7 @@ def main():
             raise ValueError("Method must be 1R0C or 1R1C")
 
     except Exception as e:
-        infdblog.error(f"Something went wrong: {str(e)}")
+        infdblog.exception()
         infdbhandler.stop_logger()
         raise e
 

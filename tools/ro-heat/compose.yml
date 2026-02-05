@@ -1,6 +1,5 @@
 services:
     ro-heat:
-        profiles: [ "linear" ]
         build:
             context: .
             dockerfile: Dockerfile
@@ -11,8 +10,10 @@ services:
             - /app/.venv # for development only
         extra_hosts:
             - "host.docker.internal:host-gateway"
-        env_file:
-            - .env
-        depends_on:
-            infdb-basedata:
-                condition: service_completed_successfully
+        # environment:
+        #     - AGS: 09780139
+        # env_file:
+        #     - ro-heat.env
+        # depends_on:
+        #     infdb-basedata:
+        #         condition: service_completed_successfully
