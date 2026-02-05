@@ -14,5 +14,7 @@ include:
   - ro-heat/compose.yml
   - buildings-to-street/compose.yml
   - sunpot/docker-compose.yml
+  - infdb-basedata-buildings/compose.yml
+  - infdb-basedata-ways/compose.yml
 
 # Note: Individual tool dependencies are defined in their respective compose files.
