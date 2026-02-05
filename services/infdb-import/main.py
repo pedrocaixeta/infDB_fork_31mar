@@ -1,6 +1,6 @@
 import multiprocessing as mp
 from typing import Callable, List
-import sys
+
 from infdb import InfDB
 
 from src import (
@@ -44,6 +44,7 @@ def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
             pass
         # Force garbage collection to clean up any remaining references
         import gc
+
         gc.collect()
 
 
@@ -93,7 +94,8 @@ def main() -> None:
     processes.append(mp.Process(target=_run_loader, args=(kwp_nrw_oberhausen.load,), name="kwp_nrw_oberhausen"))
     processes.append(mp.Process(target=_run_loader, args=(gebaeude_neuburg.load,), name="gebaeude-neuburg"))
     processes.append(
-        mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim"))
+        mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
+    )
 
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
     processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
@@ -124,15 +126,17 @@ def main() -> None:
     # Create building_surface
     with infdb.connect() as db:
         db.execute_sql_file(
-                    "sql/building_surface.sql",
-                    {"output_schema": "opendata",
-                     "table_name": "building_surface",
-                     "gemeindeschluessel": infdb.get_config_value([infdb.get_toolname(), "scope"])})
+            "sql/building_surface.sql",
+            {
+                "output_schema": "opendata",
+                "table_name": "building_surface",
+                "gemeindeschluessel": infdb.get_config_value([infdb.get_toolname(), "scope"]),
+            },
+        )
 
     # Summarize successes and failures using stored results
     successful = [name for name, exitcode in process_results if exitcode == 0]
     failed = [name for name, exitcode in process_results if exitcode != 0]
-
 
     if successful:
         log.info("Successful processes (%d/%d): %s", len(successful), len(processes), ", ".join(successful))
@@ -147,13 +151,15 @@ def main() -> None:
     # Stop the central listener explicitly
     log.info("Processes done")
     infdb.stop_logger()
-    
+
     # Clean up remaining multiprocessing resources
     import gc
+
     gc.collect()
-    
+
     # Give time for cleanup to complete
     import time
+
     time.sleep(0.1)
 
 
