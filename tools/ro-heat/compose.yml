@@ -1,19 +1,19 @@
 services:
     ro-heat:
+        profiles: [ "linear" ]
         build:
             context: .
             dockerfile: Dockerfile
         volumes:
-            - ./configs:/app/configs #:ro # for configs
-            - ./:/app # for development only
-            - ../../src/infdb_package:/app/mnt/infdb_package
-            - /app/.venv # for development only
+            - ./configs:/workspaces/ro-heat/configs #:ro # for configs
+            - ./:/workspaces/ro-heat # for development only
+            - ../../src/infdb_package:/workspaces/infdb_package
+            - /workspaces/ro-heat/.venv
+            - .vscode:/workspaces/.vscode:ro # for development only
         extra_hosts:
             - "host.docker.internal:host-gateway"
-        # environment:
-        #     - AGS: 09780139
-        # env_file:
-        #     - ro-heat.env
-        # depends_on:
-        #     infdb-basedata:
-        #         condition: service_completed_successfully
+        env_file:
+            - ro-heat.env
+        depends_on:
+            infdb-basedata:
+                condition: service_completed_successfully
