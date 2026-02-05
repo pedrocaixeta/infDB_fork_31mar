@@ -3,6 +3,8 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
+        profiles: 
+            - basedata-buildings
         volumes:
             # - ./configs:/workspaces/infdb-basedata-buildings/configs:ro  # for production
             - .:/workspaces/infdb-basedata-buildings # for development only

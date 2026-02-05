@@ -53,6 +53,9 @@ def main():
     log = infdb.get_logger()
     log.info(f"Starting {infdb.get_toolname()} tool")
 
+    ags = infdb.get_env_variable("AGS")
+    log.info("AGS environment variable: %s", ags)
+
     try:
         
         tool = infdb.get_toolname()
@@ -77,6 +80,7 @@ def main():
         classes_with_obj_filter = list(klasse_objektart_filter.keys())
 
         format_params = {
+            "ags": ags,
             "input_schema": input_schema,
             "output_schema": output_schema,
             "connection_line_segmentation": str(

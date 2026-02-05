@@ -5,12 +5,19 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from datetime import datetime, timezone
+
+# PROFILE = "linear"
+# PROFILE = "basedata"
+PROFILE = sys.argv[1] if len(sys.argv) > 1 else "basedata"
 
 num_workers = 3
-ags_list = {"09780139", "05119000", "09185149"}
+#ags_list = {"09780139", "05119000", "09185149"}
+ags_list = {"09184136", "09184148"}
 # - "09780139"  # Sonthofen (BY)
 # - "05119000" # Oberhausen (NRW)
 # - "09185149" # Neuburg a. d. Donau (BY)
+
 
 SCRIPT_DIR = Path(__file__).parent
 running_processes = set()
@@ -23,7 +30,7 @@ def run_ags(ags):
         return
 
     process = subprocess.Popen(
-        ["bash", SCRIPT_DIR / "run.sh", "linear", ags],
+        ["bash", SCRIPT_DIR / "run.sh", PROFILE, ags],
         start_new_session=True,
     )
 
