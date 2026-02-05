@@ -10,7 +10,7 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-import:
-    name: "heili3-neub" #"forchheim"  # Name of the infdb-import instance
+    name: "oberh-neub-sonth" #"forchheim"  # Name of the infdb-import instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich (BY)
         # - "09780139"  # Sonthofen (BY)
@@ -18,6 +18,8 @@ infdb-import:
         # - "05117000" # Dümpten (NRW)
         - "05158012" # Heiligenhausen (NRW)
         - "09185149" # Neuburg a. d. Donau (BY)
+        # - "09%" # Bavaria (BY)
+        # - "05%" # North Rhine-Westphalia (NRW)
     multiproccesing: 
         status: active
         max_cores: 2    # max cores since of memory limitations to 2
