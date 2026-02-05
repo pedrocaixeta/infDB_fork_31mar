@@ -1,20 +1,33 @@
 services:
+    basedata-changelog:
+        profiles:
+            - basedata-buildings
+        build:
+            context: ./liquibase
+            dockerfile: Dockerfile
+        env_file:
+            - env_changelog.env
+        volumes:
+            - ./liquibase/changelog/:/liquibase/changelog:ro # only for development
+            - ./liquibase/changelog/changelog-master.yml:/liquibase/changelog-master.yml:ro # only for development
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+
     infdb-basedata-buildings:
+        profiles:
+            - basedata-buildings
         build:
             context: .
             dockerfile: Dockerfile
-        profiles: 
-            - basedata-buildings
+        depends_on:
+            basedata-changelog:
+                condition: service_completed_successfully
         volumes:
-            # - ./configs:/workspaces/infdb-basedata-buildings/configs:ro  # for production
-            - .:/workspaces/infdb-basedata-buildings # for development only
-            - ../../src/infdb_package:/workspaces/infdb_package
-            - /workspaces/infdb-basedata-buildings/.venv # Exclude .venv from volume mount
-            - .vscode:/workspaces/.vscode:ro
+            - .:/app/ #:ro # for source code # for development only
+            - ../../src/infdb_package:/app/mnt/infdb_package
+            - /app/.venv # Exclude .venv from volume mount # for development only
         extra_hosts:
             - "host.docker.internal:host-gateway"
         env_file:
-            - ../../.env          # root env (DB creds, CONFIG_INFDB_PATH, etc.)
-            - .env                # optional tool-local overrides (if you have any)
-        environment:
-            - UV_LINK_MODE=copy
+            - ../../.env  # Load root environment variables first
+            - env_infdb_basedata_buildings.env
