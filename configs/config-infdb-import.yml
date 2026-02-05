@@ -10,12 +10,14 @@
 #   connection parameters (user, password, db, host, exposed_port, epsg)
 #
 infdb-import:
-    name: "oberh_neub_sonth" #"forchheim"  # Name of the infdb-import instance
+    name: "oberh-neub-sonth" #"forchheim"  # Name of the infdb-import instance
     scope:  # AGS (Amtlicher Gemeindeschlüssel)
         # - "09162000"  # Munich (BY)
         - "09780139"  # Sonthofen (BY)
         - "05119000" # Oberhausen (NRW)
         - "09185149" # Neuburg a. d. Donau (BY)
+        # - "09%" # Bavaria (BY)
+        # - "05%" # North Rhine-Westphalia (NRW)
     multiproccesing: 
         status: active
         max_cores: 2    # max cores since of memory limitations to 2
@@ -82,7 +84,7 @@ infdb-import:
                     table_name: tatsaechliche_nutzung
                     url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
         lod2-nrw:
-            status: not-active
+            status: active
             import-mode: skip # delete
             base_url: "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/lod2_gml/"
             tile_size_m: 1000
@@ -629,6 +631,7 @@ infdb-import:
               start_time: "2020-01-01"
               end_time: "2024-12-31"
               temporal: hourly  # options: hourly, daily
+          grid_resolution: 100km
           data:
               - temperature_2m
               - wind_speed_10m

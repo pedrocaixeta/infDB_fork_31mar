@@ -5,7 +5,7 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
-        shm_size: "1g" # increase shared memory within docker container
+        shm_size: "4gb" # increase shared memory within docker container
         restart: unless-stopped
         environment:
             POSTGRES_DB: ${SERVICES_POSTGRES_DB}

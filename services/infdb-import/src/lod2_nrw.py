@@ -81,9 +81,13 @@ def load(infdb: InfDB) -> bool:
             "-P",
             str(params["exposed_port"]),
             f"--import-mode={import_mode}",
+            # "--log-level=warn",
             str(gml_path),
         ]
         utils.do_cmd(cmd_parts)
+
+        # ==================== 5. Flat building table ====================
+        utils.create_buildings_lod2_table(region="NRW", infdb=infdb)
 
         log.info("LOD2-NRW data loaded successfully")
         sys.exit(0)

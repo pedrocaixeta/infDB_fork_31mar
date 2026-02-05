@@ -28,12 +28,24 @@ def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
     infdb = InfDB(tool_name="infdb-import")
     try:
         load_fn(infdb)
+    except Exception as e:
+        # Log the exception before cleanup
+        try:
+            log = infdb.get_logger()
+            log.error(f"Error in {load_fn.__name__}: {e}", exc_info=True)
+        except Exception:
+            pass
+        raise
     finally:
-        # prevents QueueListener/_monitor thread exceptions on process exit
+        # Ensure proper cleanup to prevent semaphore leaks
         try:
             infdb.stop_logger()
         except Exception:
             pass
+        # Force garbage collection to clean up any remaining references
+        import gc
+
+        gc.collect()
 
 
 def main() -> None:
@@ -65,6 +77,7 @@ def main() -> None:
     # # Drop schema "opendata" for clean development runs
     # with infdb.connect() as db:  # InfdbClient context
     #     db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
+    #     db.execute_query("DROP SCHEMA IF EXISTS bld_tmp CASCADE;")
 
     # Ensure that administrative areas are loaded for scope
     bkg.load(infdb)
@@ -73,7 +86,6 @@ def main() -> None:
     processes: List[mp.Process] = []
     processes.append(mp.Process(target=_run_loader, args=(need.load,), name="need"))
     processes.append(mp.Process(target=_run_loader, args=(tabula.load,), name="tabula"))
-    processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
     processes.append(mp.Process(target=_run_loader, args=(plz.load,), name="plz"))
     processes.append(mp.Process(target=_run_loader, args=(basemap.load,), name="basemap"))
     processes.append(mp.Process(target=_run_loader, args=(census2022.load,), name="census2022"))
@@ -87,6 +99,7 @@ def main() -> None:
 
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
     processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
+    processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
 
     for process in processes:
         process.start()
@@ -96,50 +109,34 @@ def main() -> None:
     log.info("Processes started")
 
     # Wait for all processes to finish and collect status
+    process_results = []
     for cnt, process in enumerate(processes, 1):
         process.join()
-        status = "OK" if process.exitcode == 0 else "FAILED"
+        exitcode = process.exitcode
+        status = "OK" if exitcode == 0 else "FAILED"
         log.info("Process %s done (%d out of %d) - status: %s", process.name, cnt, len(processes), status)
+        process_results.append((process.name, exitcode))
+        # Explicitly close the process to release resources
+        process.close()
 
-    # Run buildings_lod2.sql ONCE here (after all joins to prevent race conditions)
-    try:
-        ags_list = utils.fetch_scope_ags_from_db(infdb)
+    # # Create buildings_lod2 tables for BY and NRW for development/testing
+    # utils.create_buildings_lod2_table(region="BY", infdb=infdb)
+    # utils.create_buildings_lod2_table(region="NRW", infdb=infdb)
 
-        ags_by = [s for s in ags_list if s.startswith("09")]
-        ags_nrw = [s for s in ags_list if s.startswith("05")]
+    # Create building_surface
+    with infdb.connect() as db:
+        db.execute_sql_file(
+            "sql/building_surface.sql",
+            {
+                "output_schema": "opendata",
+                "table_name": "building_surface",
+                "gemeindeschluessel": infdb.get_config_value([infdb.get_toolname(), "scope"]),
+            },
+        )
 
-        def fmt(lst):
-            return ",".join(f"'{s}'" for s in lst)
-
-        with infdb.connect() as db:
-            log.info("buildings_lod2: dropping table opendata.buildings_lod2 (if exists)")
-            db.execute_query("DROP TABLE IF EXISTS opendata.buildings_lod2;")
-            log.info("buildings_lod2: drop done")
-
-            if ags_by:
-                log.info("buildings_lod2: starting Bavaria (09...)")
-                db.execute_sql_file(
-                    "sql/buildings_lod2.sql",
-                    {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_by)},
-                )
-                log.info("buildings_lod2: Bavaria completed")
-
-            if ags_nrw:
-                log.info("buildings_lod2: starting NRW (05...)")
-                db.execute_sql_file(
-                    "sql/buildings_lod2.sql",
-                    {"output_schema": "opendata", "gemeindeschluessel": fmt(ags_nrw)},
-                )
-                log.info("buildings_lod2: NRW completed")
-
-            log.info("buildings_lod2: finished (BY+NRW)")
-
-    except Exception:
-        log.exception("buildings_lod2.sql failed")
-
-    # Summarize successes and failures
-    successful = [p.name for p in processes if p.exitcode == 0]
-    failed = [p.name for p in processes if p.exitcode != 0]
+    # Summarize successes and failures using stored results
+    successful = [name for name, exitcode in process_results if exitcode == 0]
+    failed = [name for name, exitcode in process_results if exitcode != 0]
 
     if successful:
         log.info("Successful processes (%d/%d): %s", len(successful), len(processes), ", ".join(successful))
@@ -154,6 +151,16 @@ def main() -> None:
     # Stop the central listener explicitly
     log.info("Processes done")
     infdb.stop_logger()
+
+    # Clean up remaining multiprocessing resources
+    import gc
+
+    gc.collect()
+
+    # Give time for cleanup to complete
+    import time
+
+    time.sleep(0.1)
 
 
 if __name__ == "__main__":
