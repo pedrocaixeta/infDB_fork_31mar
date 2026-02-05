@@ -13,7 +13,6 @@ def main() -> None:
     """
     # Load InfDB facade (config + logging)
     infdb = InfDB(tool_name="infdb-basedata-buildings", config_path="configs")
-    ags = infdb.get_env_variable("AGS")
 
     # Logger
     log = infdb.get_logger()
@@ -40,9 +39,7 @@ def main() -> None:
 
     log.info("Input schema: %s", input_schema)
     log.info("Output schema: %s", output_schema)
-    WAYS_SQL_DIR: str = os.path.join("sql", "ways_sql")
     BUILDINGS_SQL_DIR: str = os.path.join("sql", "buildings_sql")
-    # CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
     # Database work (context-managed)
     with infdb.connect() as db:
 
