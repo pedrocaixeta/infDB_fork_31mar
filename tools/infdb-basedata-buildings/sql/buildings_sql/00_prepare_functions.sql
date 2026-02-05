@@ -1,6 +1,9 @@
---liquibase formatted sql
---changeset marvin.huang:1.0.1.1 labels:infdb-basedata,infdb-basedata-buildings endDelimiter:@@ rollbackEndDelimiter:@@
--- CreateFunction rollback is not automatically supported and requires custom rollback (Drop)
+-- Set up pgrouting
+SET SEARCH_PATH = public;
+CREATE EXTENSION pgrouting CASCADE;
+SET SEARCH_PATH = ${output_schema}, public;
+
+-- define building use classification function
 CREATE OR REPLACE FUNCTION ${output_schema}.classify_building_use(funktion TEXT)
     RETURNS TEXT AS
 $$
@@ -276,8 +279,7 @@ $$ LANGUAGE plpgsql IMMUTABLE
 --rollback DROP FUNCTION IF EXISTS ${output_schema}.classify_building_use(TEXT);
 @@
 
---changeset marvin.huang:1.0.1.2 labels:infdb-basedata,infdb-basedata-buildings endDelimiter:@@ rollbackEndDelimiter:@@
--- Allow replace if it database already has it
+-- define building use classification function
 CREATE OR REPLACE FUNCTION ${output_schema}.assign_weighted_year(
     vor1919 double precision,
     a1919bis1948 double precision,

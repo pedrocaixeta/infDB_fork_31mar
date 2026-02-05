@@ -1,27 +1,9 @@
 services:
-    basedata-changelog:
-        profiles:
-            - basedata-buildings
-        build:
-            context: ./liquibase
-            dockerfile: Dockerfile
-        env_file:
-            - env_changelog.env
-        volumes:
-            - ./liquibase/changelog/:/liquibase/changelog:ro # only for development
-            - ./liquibase/changelog/changelog-master.yml:/liquibase/changelog-master.yml:ro # only for development
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
-
     infdb-basedata-buildings:
-        profiles:
-            - basedata-buildings
+        profiles: [ "linear", "pylovo", "basedata-buildings" ]
         build:
             context: .
             dockerfile: Dockerfile
-        depends_on:
-            basedata-changelog:
-                condition: service_completed_successfully
         volumes:
             - .:/app/ #:ro # for source code # for development only
             - ../../src/infdb_package:/app/mnt/infdb_package
@@ -30,4 +12,4 @@ services:
             - "host.docker.internal:host-gateway"
         env_file:
             - ../../.env  # Load root environment variables first
-            - env_infdb_basedata_buildings.env
+            - .env
