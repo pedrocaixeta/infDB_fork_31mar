@@ -4,9 +4,9 @@ import os
 import random
 import shlex
 import subprocess
+import sys
 import tempfile
 import time
-import sys
 from pathlib import Path
 from typing import Iterable, List, Optional, Union
 from urllib.parse import urljoin, urlparse
