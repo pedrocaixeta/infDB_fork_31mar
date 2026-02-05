@@ -1,23 +1,3 @@
--- WITH wall_data AS (SELECT building_objectid,
---                           SUM(area) AS wall_surface_area
---                    FROM (SELECT regexp_replace(f.objectid, '_[^_]*-.*$', '') AS building_objectid,
---                                 CAST(p.val_string AS double precision)       AS area
---                          FROM feature f
---                                   JOIN geometry_data gd ON f.id = gd.feature_id
---                                   JOIN property p ON gd.feature_id = p.feature_id
---                          WHERE f.objectclass_id = 709 -- WallSurface
---                            AND p.name = 'Flaeche') sub
---                    GROUP BY building_objectid),
---      roof_data AS (SELECT building_objectid,
---                           SUM(area) AS roof_surface_area
---                    FROM (SELECT regexp_replace(f.objectid, '_[^_]*-.*$', '') AS building_objectid,
---                                 CAST(p.val_string AS double precision)       AS area
---                          FROM feature f
---                                   JOIN geometry_data gd ON f.id = gd.feature_id
---                                   JOIN property p ON gd.feature_id = p.feature_id
---                          WHERE f.objectclass_id = 712 -- RoofSurface
---                            AND p.name = 'Flaeche') sub
---                    GROUP BY building_objectid)
 WITH wall_data AS (
         SELECT building_objectid,
                SUM(area) AS wall_surface_area
