@@ -1,17 +1,14 @@
-DROP TABLE IF EXISTS ro_heat.annual_heating_demand;
-CREATE TABLE ro_heat.annual_heating_demand AS
-    SElECT
+-- DROP TABLE IF EXISTS ro_heat.annual_heating_demand;
+
+CREATE TABLE IF NOT EXISTS ro_heat.annual_heating_demand (
+    building_objectid uuid PRIMARY KEY,
+    "heating:demand[Wh]" double precision
+);
+
+INSERT INTO ro_heat.annual_heating_demand (building_objectid, "heating:demand[Wh]")
+    SELECT
         bldrc.building_objectid,
-        -- bldrc.resistance,
-        -- SUM(ts.value) as temp_sum,
-        -- count(ts.value) as count_temp,
-        -- (SUM(ts.value)-count(ts.value)*{temp_in}) as temp_diff_sum,
-        -- count(ts.value)*{temp_in} as temp_in_sum,
-        (count(ts.value)*{temp_in}-SUM(ts.value))/bldrc.resistance as "heating:demand[Wh]"
-    --     ts.ts_metadata_id,
-    --     opendata.building_lod2.groundsurface_flaeche,
-    --     opendata.building_lod2.storeysaboveground,
-    --     ((count(ts.value)*{temp_in}-SUM(ts.value))/bldrc.resistance)/(opendata.building_lod2.groundsurface_flaeche*opendata.building_lod2.storeysaboveground)/1000 as "heating:demand_per_area[kWh/m²]"
+        (count(ts.value)*{temp_in}-SUM(ts.value))/bldrc.resistance AS "heating:demand[Wh]"
     FROM
         ro_heat.buildings_rc AS bldrc
     JOIN
@@ -30,4 +27,7 @@ CREATE TABLE ro_heat.annual_heating_demand AS
         AND ts.time <  '{end_time}'
         AND basedata.buildings.gemeindeschluessel LIKE '{ags}'
         AND ts.value < {temp_in}
-    GROUP BY bldrc.building_objectid, bldrc.resistance;
+    GROUP BY bldrc.building_objectid, bldrc.resistance
+ON CONFLICT (building_objectid)
+DO UPDATE SET
+    "heating:demand[Wh]" = EXCLUDED."heating:demand[Wh]";
