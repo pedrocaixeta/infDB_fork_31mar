@@ -11,7 +11,7 @@ CREATE SCHEMA IF NOT EXISTS {output_schema};
 -- 02_create_buildings_table.sql
 -- Create buildings table
 --------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS {output_schema}.buildings_lod2
+CREATE TABLE IF NOT EXISTS {output_schema}.building_lod2
 (
     id                       SERIAL PRIMARY KEY,
     feature_id               integer UNIQUE,
@@ -32,12 +32,12 @@ CREATE TABLE IF NOT EXISTS {output_schema}.buildings_lod2
     centroid                 geometry
 );
 
-CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.buildings_lod2 USING GIST (geom);
-CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.buildings_lod2 USING GIST (centroid);
-CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.buildings_lod2 (id, objectid, building_function_code);
-CREATE INDEX IF NOT EXISTS buildings_lod2_feature_id_idx ON {output_schema}.buildings_lod2 (feature_id);
-CREATE INDEX IF NOT EXISTS buildings_lod2_objectid_idx ON {output_schema}.buildings_lod2 (objectid);
-CREATE INDEX IF NOT EXISTS buildings_lod2_gks_idx ON {output_schema}.buildings_lod2 (gemeindeschluessel);
+CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.building_lod2 USING GIST (geom);
+CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.building_lod2 USING GIST (centroid);
+CREATE INDEX IF NOT EXISTS idx_building_type_check ON {output_schema}.building_lod2 (id, objectid, building_function_code);
+CREATE INDEX IF NOT EXISTS building_lod2_feature_id_idx ON {output_schema}.building_lod2 (feature_id);
+CREATE INDEX IF NOT EXISTS building_lod2_objectid_idx ON {output_schema}.building_lod2 (objectid);
+CREATE INDEX IF NOT EXISTS building_lod2_gks_idx ON {output_schema}.building_lod2 (gemeindeschluessel);
 
 --------------------------------------------------------------
 -- Step 1: Create temp table with base building data
@@ -171,7 +171,7 @@ ANALYZE tmp_address_data;
 --------------------------------------------------------------
 -- Step 6: Single INSERT with all data and ON CONFLICT for updates
 --------------------------------------------------------------
-INSERT INTO {output_schema}.buildings_lod2 (
+INSERT INTO {output_schema}.building_lod2 (
     feature_id,
     objectclass_id,
     objectid,
