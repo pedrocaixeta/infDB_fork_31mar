@@ -1,55 +1,63 @@
-"""
-Main entry point for the infdb-basedata-buildings tool.
-Handles InfDB initialization, database connection, logging, and demo execution.
-"""
-
-# Import packages
 import os
+import time
+from typing import Any, Dict
 
 from infdb import InfDB
 
 
-def main():
-    """
-    Initializes InfDB handler, sets up logging, connects to the database,
-    and runs the demo function. Handles exceptions and logs errors.
-    """
+def main() -> None:
+    """Run base-data SQL pipelines (WAYS, BUILDINGS, CONNECTIONS) against Postgres.
 
-    # Initialize InfDB handler
+    Loads configuration and logging via `InfDB`, prepares format parameters, drops
+    the output schema (if present), and executes the SQL directories in sequence.
+    """
+    # Load InfDB facade (config + logging)
     infdb = InfDB(tool_name="infdb-basedata-buildings", config_path="configs")
+    ags = infdb.get_env_variable("AGS")
 
-    # Start message
+    # Logger
     log = infdb.get_logger()
-    log.info(f"Starting {infdb.get_toolname()} tool")
+    ags = infdb.get_env_variable("AGS")
+    log.info("Starting %s tool", infdb.get_toolname())
+    log.info("AGS environment variable: %s", ags)
 
-    try:
+    # Config
+    input_schema = infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"])
+    output_schema = infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"])
+    census_building_type_resolution = infdb.get_config_value(
+        [infdb.get_toolname(), "data", "census_building_type_resolution"]
+    )
+    epsg = infdb.get_db_parameters_dict().get("epsg")
 
-        # ===========================================================
-        # Start your added sql scripts in folder "sql"
-        # ===========================================================
-        log.info("Running SQL scripts ...")
-        format_params = {
-            "input_schema": infdb.get_config_value([infdb.get_toolname(), "data", "input_schema"]),
-            "output_schema": infdb.get_config_value([infdb.get_toolname(), "data", "output_schema"]),
-            "list_gemeindeschluessel": infdb.get_config_value([infdb.get_toolname(), "data", "list_gemeindeschluessel"]),
-            "EPSG": infdb.get_config_value([infdb.get_toolname(), "data", "EPSG"]),
-            "use_address_information": str(
-                infdb.get_config_value([infdb.get_toolname(), "data", "use_address_information"])
-            ).lower(),  # -> "true" / "false"
-        }
-        SQL_DIR = os.path.join("sql")  # add subfolders here if needed ("sql/subfolder")
-        infdb.connect().execute_sql_files(SQL_DIR, format_params=format_params)
+    format_params: Dict[str, Any] = {
+        "ags": ags,
+        "input_schema": input_schema,
+        "output_schema": output_schema,
+        "list_gemeindeschluessel": ags,
+        "EPSG": epsg,
+        "census_building_type_resolution": census_building_type_resolution,
+    }
 
-        # ===========================================================
-        # Demonstrate database querying - remove or comment out if not needed
-        # ===========================================================
-        
-        infdb.stop_logger()
+    log.info("Input schema: %s", input_schema)
+    log.info("Output schema: %s", output_schema)
+    WAYS_SQL_DIR: str = os.path.join("sql", "ways_sql")
+    BUILDINGS_SQL_DIR: str = os.path.join("sql", "buildings_sql")
+    # CONNECTIONS_SQL_DIR: str = os.path.join("sql", "connections")
+    # Database work (context-managed)
+    with infdb.connect() as db:
 
-    except Exception as e:
-        log.error(f"Something went wrong: {str(e)}")
-        infdb.stop_logger()
-        raise e
+        # Execute BUILDINGS scripts
+        # if you wish to fully reset buildings table, use the following line:
+        # DELETE FROM public.databasechangelog WHERE labels like '%buildings%';
+        start_time = time.time()
+        log.info("Running BUILDINGS SQL scripts")
+        db.execute_sql_files(BUILDINGS_SQL_DIR, format_params=format_params)
+        end_time = time.time()
+        log.info("BUILDINGS SQL scripts completed in %.2f seconds", end_time - start_time)
+
+
+    log.info("Successfully finished %s tool", infdb.get_toolname())
+    infdb.stop_logger()
 
 
 if __name__ == "__main__":
