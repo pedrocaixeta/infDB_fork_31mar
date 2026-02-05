@@ -55,7 +55,7 @@ def database_demo(infdb):
         GeoDataFrame: Buildings with heat demand data and geometry.
     """
     engine = infdb.get_db_engine()
-    sql = "SELECT * FROM opendata.buildings_lod2"
+    sql = "SELECT * FROM opendata.building_lod2"
     gdf_buildings = gpd.read_postgis(sql, engine)
     gdf_buildings.head()
 
@@ -83,7 +83,7 @@ def database_demo_sqlalchemy():
     db_connection_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
 
     engine = create_engine(db_connection_url)
-    sql = "SELECT * FROM opendata.buildings_lod2"
+    sql = "SELECT * FROM opendata.building_lod2"
     gdf_buildings = gpd.read_postgis(sql, engine)
     gdf_buildings.head()
 

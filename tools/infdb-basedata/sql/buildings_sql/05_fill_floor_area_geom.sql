@@ -7,7 +7,7 @@ WITH ground_data AS (
         feature_id,
         groundsurface_flaeche          as area,
         ST_Transform(ST_Force2D(b.geom), {EPSG})     as geom
-    FROM {input_schema}.buildings_lod2 b
+    FROM {input_schema}.building_lod2 b
     WHERE b.gemeindeschluessel = '{ags}'
 
 )
