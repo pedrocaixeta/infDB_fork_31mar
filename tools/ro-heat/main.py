@@ -2,10 +2,12 @@ import os
 
 import numpy as np
 import pandas as pd
+
 # entise package has to type stubs
 from entise.core.generator import TimeSeriesGenerator  # type: ignore
 from infdb import InfDB
-from src import refurbishment, timedata, tabula_handling
+
+from src import refurbishment, tabula_handling, timedata
 
 # Parameters
 construction_year_col = "construction_year"
@@ -43,8 +45,8 @@ def main():
     method = infdbhandler.get_config_value(["ro-heat", "data", "input", "method"])
 
     try:
-        sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
-        infdbclient_citydb.execute_query(sql)
+        # sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
+        # infdbclient_citydb.execute_query(sql)
 
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         infdbclient_citydb.execute_query(sql)
@@ -64,13 +66,17 @@ def main():
         infdblog.debug(f"Loaded {len(buildings)} buildings from the database.")
         infdblog.debug(buildings.head())
 
-        buildings[construction_year_col] = refurbishment.sample_construction_year(buildings, simulation_year,
-                                                                                  construction_year_col, rng)
+        buildings[construction_year_col] = refurbishment.sample_construction_year(
+            buildings, simulation_year, construction_year_col, rng
+        )
 
-        refurbishment_simulation_parameters = {n: {"distribution": lambda gen, parameters: gen.normal(**parameters),
-                                                   "distribution_parameters": {"loc": i['lifespan_mean'],
-                                                                               "scale": i['lifespan_spread']}, } for
-                                               n, i in refurbishment_config.items()}
+        refurbishment_simulation_parameters = {
+            n: {
+                "distribution": lambda gen, parameters: gen.normal(**parameters),
+                "distribution_parameters": {"loc": i["lifespan_mean"], "scale": i["lifespan_spread"]},
+            }
+            for n, i in refurbishment_config.items()
+        }
 
         infdblog.debug("Starting refurbishment simulation")
         refurbed_df = refurbishment.simulate_refurbishment(
@@ -84,18 +90,24 @@ def main():
         infdblog.debug(refurbed_df.info())
         infdblog.debug(refurbed_df.head())
 
-        refurbishment_quotas = {n: {"refurbed_fraction": i['quota']} for n, i in refurbishment_config.items()}
+        refurbishment_quotas = {n: {"refurbed_fraction": i["quota"]} for n, i in refurbishment_config.items()}
 
         infdblog.debug("Starting harmonization with refurbishment quotas")
-        harmonized_df = refurbishment.harmonize_with_quota(refurbed_df, refurbishment_quotas, rng, infdblog,
-                                                           age_column=construction_year_col, )
+        harmonized_df = refurbishment.harmonize_with_quota(
+            refurbed_df,
+            refurbishment_quotas,
+            rng,
+            infdblog,
+            age_column=construction_year_col,
+        )
         infdblog.debug(harmonized_df.info())
         infdblog.debug("Harmonization with refurbishment quotas completed")
 
         infdblog.debug("Writing harmonized refurbishment data to database")
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_refurbished_status CASCADE")
-        harmonized_df.to_sql("buildings_refurbished_status", engine, if_exists="replace", schema=output_schema,
-                             index=False)
+        harmonized_df.to_sql(
+            "buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, index=False
+        )
 
         infdblog.debug("Starting construction of building elements")
         full_path = os.path.join("sql", "02_get_tabula_elements.sql")
@@ -106,15 +118,15 @@ def main():
         tabula_structure = tabula_handling.create_tabula_structure(tabula_elements)
 
         # TODO: Remove if AGS handling is in place
-        harmonized_df = harmonized_df[harmonized_df['building_objectid'].str.startswith('DEBY')]
+        harmonized_df = harmonized_df[harmonized_df["building_objectid"].str.startswith("DEBY")]
 
-        harmonized_df[['resistance', 'capacitance']] = harmonized_df.apply(
-            lambda row: tabula_handling.calculate_rc_values(tabula_structure, row), axis=1,
-            result_type="expand")
+        harmonized_df[["resistance", "capacitance"]] = harmonized_df.apply(
+            lambda row: tabula_handling.calculate_rc_values(tabula_structure, row), axis=1, result_type="expand"
+        )
         infdblog.debug("Done with construction of building elements")
 
         infdblog.debug("Writing R & C values")
-        rc_values = harmonized_df[['building_objectid', 'resistance', 'capacitance']]
+        rc_values = harmonized_df[["building_objectid", "resistance", "capacitance"]]
         rc_values.to_sql(
             "buildings_rc",
             con=engine,
@@ -132,13 +144,16 @@ def main():
 
         if method == "1R0C":
             format_params = {
+                "output_schema": output_schema,
                 "ags": ags,
                 "start_time": start_time,
                 "end_time": end_time,
-                "temp_in": heating_setpoint
+                "temp_in": heating_setpoint,
             }
-            infdbclient_citydb.execute_sql_file(os.path.join("sql", "heat-demand-r.sql"), format_params=format_params)
-            infdbclient_citydb.execute_sql_file(os.path.join("sql", "debug_demand.sql"), format_params=format_params)
+            infdbclient_citydb.execute_sql_file(
+                os.path.join("sql", "03_heat-demand-r.sql"), format_params=format_params
+            )
+            infdbclient_citydb.execute_sql_file(os.path.join("sql", "04_debug_demand.sql"), format_params=format_params)
 
             # Summary
             # # TODO: Adapt output format to EnTiSe format
@@ -146,7 +161,6 @@ def main():
             # infdbclient_citydb.execute_query(sql)
 
         elif method == "1R1C":
-
             bld2ts = timedata.get_bld2ts(database_connection=engine)
 
             all_ts_df = timedata.get_all_timeseries_data(
@@ -176,7 +190,7 @@ def main():
             ).drop(columns=["bld_objectid"])
 
             # entise_input = entise_input[1:100]
-            
+
             # Initialize the generator
             gen = TimeSeriesGenerator()
             gen.add_objects(entise_input)

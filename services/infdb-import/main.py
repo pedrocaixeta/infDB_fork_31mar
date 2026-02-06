@@ -119,9 +119,9 @@ def main() -> None:
         # Explicitly close the process to release resources
         process.close()
 
-    # # Create buildings_lod2 tables for BY and NRW for development/testing
-    # utils.create_buildings_lod2_table(region="BY", infdb=infdb)
-    # utils.create_buildings_lod2_table(region="NRW", infdb=infdb)
+    # # Create building_lod2 tables for BY and NRW for development/testing
+    # utils.create_building_lod2_table(region="BY", infdb=infdb)
+    # utils.create_building_lod2_table(region="NRW", infdb=infdb)
 
     # Create building_surface
     with infdb.connect() as db:

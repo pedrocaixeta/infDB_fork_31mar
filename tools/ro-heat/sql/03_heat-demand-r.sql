@@ -1,16 +1,16 @@
--- DROP TABLE IF EXISTS ro_heat.annual_heating_demand;
+-- DROP TABLE IF EXISTS {output_schema}.annual_heating_demand;
 
-CREATE TABLE IF NOT EXISTS ro_heat.annual_heating_demand (
-    building_objectid uuid PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS {output_schema}.annual_heating_demand (
+    building_objectid text PRIMARY KEY,
     "heating:demand[Wh]" double precision
 );
 
-INSERT INTO ro_heat.annual_heating_demand (building_objectid, "heating:demand[Wh]")
+INSERT INTO {output_schema}.annual_heating_demand (building_objectid, "heating:demand[Wh]")
     SELECT
         bldrc.building_objectid,
         (count(ts.value)*{temp_in}-SUM(ts.value))/bldrc.resistance AS "heating:demand[Wh]"
     FROM
-        ro_heat.buildings_rc AS bldrc
+        {output_schema}.buildings_rc AS bldrc
     JOIN
         basedata.bld2ts
         ON bldrc.building_objectid = basedata.bld2ts.bld_objectid

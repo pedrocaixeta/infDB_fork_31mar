@@ -10,8 +10,9 @@ from sqlalchemy import MetaData, Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 
-def write_ts_data(dict_df: dict[str, DataFrame], engine, infdbclient_citydb, infdbhandler: InfDB, infdblog,
-                  output_schema):
+def write_ts_data(
+    dict_df: dict[str, DataFrame], engine, infdbclient_citydb, infdbhandler: InfDB, infdblog, output_schema
+):
     infdblog.debug("Writing EnTiSe output time series to database")
 
     # Create metadata table if not exists
@@ -99,6 +100,7 @@ def write_ts_data(dict_df: dict[str, DataFrame], engine, infdbclient_citydb, inf
 
     infdblog.info("Ro-heat successfully completed")
     infdbhandler.stop_logger()
+
 
 def get_hourly_temperature_2m(objectid, database_connection, start_time=None, end_time=None):
     query = f"""

@@ -1,6 +1,6 @@
 services:
     ro-heat:
-        profiles: [ "linear" ]
+        profiles: [ "linear", "heat" ]
         build:
             context: .
             dockerfile: Dockerfile
