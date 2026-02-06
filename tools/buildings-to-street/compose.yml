@@ -18,5 +18,5 @@ services:
         depends_on:
             infdb-basedata:
                 condition: service_completed_successfully
-            process-streets:
-                condition: service_completed_successfully
+            # process-streets:
+            #     condition: service_completed_successfully
