@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS citydb.surface_prefix AS
     --     ON citydb.surface_prefix (gemeindeschluessel);
 
 
--- DROP TABLE IF EXISTS {output_schema}.{table_name};
+DROP TABLE IF EXISTS {output_schema}.{table_name};
 CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} AS
     SELECT
         sp.surface_objectid AS surface_gmlid,
