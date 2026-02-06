@@ -5,7 +5,7 @@ from . import eureca_code
 
 
 def create_tabula_structure(tabula_rows: DataFrame) -> DataFrame:
-    tabula_rows['materials'] = tabula_rows.apply(
+    tabula_rows["materials"] = tabula_rows.apply(
         lambda x: eureca_code.Material(
             x["material_name"],
             x["thickness"],
@@ -19,7 +19,8 @@ def create_tabula_structure(tabula_rows: DataFrame) -> DataFrame:
     # TODO: Explicitly sort by layer_index according to EUReCA specification
     constructions = (
         tabula_rows.groupby(["building_type", "element_name", "construction_data", "start_year", "end_year"])[
-            "materials"]
+            "materials"
+        ]
         .apply(list)
         .reset_index()
     )
@@ -56,30 +57,30 @@ def create_tabula_structure(tabula_rows: DataFrame) -> DataFrame:
 def calculate_rc_values(tabula: DataFrame, row: Series) -> tuple[float, float]:
     overall_r = 0.0
     overall_c = 0.0
-    components = tabula['element_name'].unique()
+    components = tabula["element_name"].unique()
     for component in components:
         component_tabula = tabula[tabula.element_name == component]
         match = resolve_construction(component_tabula, component, row)
 
-        if component in ['Ceiling', 'Floor']:
-            area = row['floor_area'] * max(row['floor_number'] - 1, 1)
-        elif component == 'InnerWall':
-            area = row['floor_area'] * max(row['floor_number'] - 1, 1) * 2.5
-        elif component == 'Rooftop':
-            area = row['roof_area']
-        elif component == 'OuterWall':
-            area = row['wall_area']
-        elif component == 'Window':
-            area = row['window_area']
-        elif component == 'GroundFloor':
-            area = row['floor_area']
+        if component in ["Ceiling", "Floor"]:
+            area = row["floor_area"] * max(row["floor_number"] - 1, 1)
+        elif component == "InnerWall":
+            area = row["floor_area"] * max(row["floor_number"] - 1, 1) * 2.5
+        elif component == "Rooftop":
+            area = row["roof_area"]
+        elif component == "OuterWall":
+            area = row["wall_area"]
+        elif component == "Window":
+            area = row["window_area"]
+        elif component == "GroundFloor":
+            area = row["floor_area"]
         else:
             raise Exception(f"Unknown component: {component}")
 
         # Only "OuterWall","GroundFloor", "Rooftop","Window" contribute to R value
         if component in ["OuterWall", "GroundFloor", "Rooftop", "Window"]:
-            overall_r = overall_r + (area / match['R'])
-        overall_c = overall_c + (match['C'] * area)
+            overall_r = overall_r + (area / match["R"])
+        overall_c = overall_c + (match["C"] * area)
 
     return 1 / overall_r, overall_c
 
@@ -87,46 +88,43 @@ def calculate_rc_values(tabula: DataFrame, row: Series) -> tuple[float, float]:
 def resolve_construction(tabula: DataFrame, component: str, row: Series) -> Series:
     # Get the corresponding refurbishment year
     # 'GroundFloor', 'Ceiling', 'Floor', 'InnerWall' are not refurbished, therefore,  refurb_year = construction_year
-    if component in ['GroundFloor', 'Ceiling', 'Floor', 'InnerWall']:
-        refurb_year = row['construction_year']
-    elif component == 'Rooftop':
-        refurb_year = row['rooftop']
-    elif component == 'OuterWall':
-        refurb_year = row['outer_wall']
-    elif component == 'Window':
-        refurb_year = row['window']
+    if component in ["GroundFloor", "Ceiling", "Floor", "InnerWall"]:
+        refurb_year = row["construction_year"]
+    elif component == "Rooftop":
+        refurb_year = row["rooftop"]
+    elif component == "OuterWall":
+        refurb_year = row["outer_wall"]
+    elif component == "Window":
+        refurb_year = row["window"]
     else:
         raise ValueError(f"Unknown construction type: {component}")
 
     # 'Ceiling', 'Floor', 'InnerWall' are not building type specific and have no refurbishment options
-    if component in ['Ceiling', 'Floor', 'InnerWall']:
-        building_type = 'standard'
-        construction_string = 'tabula_de_standard'
+    if component in ["Ceiling", "Floor", "InnerWall"]:
+        building_type = "standard"
+        construction_string = "tabula_de_standard"
     # For all other components check if refurb_year == construction year and build the corresponding string
     else:
-        building_type = row['building_type']
-        if refurb_year == row['construction_year']:
-            construction_string = f'tabula_de_standard_1_{building_type}'
+        building_type = row["building_type"]
+        if refurb_year == row["construction_year"]:
+            construction_string = f"tabula_de_standard_1_{building_type}"
         else:
-            construction_string = f'tabula_de_retrofit_1_{building_type}'
+            construction_string = f"tabula_de_retrofit_1_{building_type}"
 
-    candidates = tabula[(tabula.building_type == building_type)
-                        & (tabula.construction_data == construction_string)]
+    candidates = tabula[(tabula.building_type == building_type) & (tabula.construction_data == construction_string)]
 
     if candidates.empty:
         raise ValueError(f"No TABULA construction found for row: {row}")
 
     # Check for direct match, i.e., refurb year in TABULA interval
-    match = candidates[
-        (candidates.start_year <= refurb_year)
-        & (candidates.end_year >= refurb_year)]
+    match = candidates[(candidates.start_year <= refurb_year) & (candidates.end_year >= refurb_year)]
 
     # If there's no direct match, fall back to closest
     if match.empty:
         dist = np.where(
             refurb_year < candidates.start_year.to_numpy(),
             candidates.start_year.to_numpy() - refurb_year,
-            refurb_year - candidates.end_year.to_numpy()
+            refurb_year - candidates.end_year.to_numpy(),
         )
 
         # argmin = index of closest range

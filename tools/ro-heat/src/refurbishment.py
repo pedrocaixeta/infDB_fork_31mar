@@ -5,8 +5,12 @@ from numpy.random import Generator
 from pandas import DataFrame
 
 
-def sample_construction_year(buildings: DataFrame, end_of_simulation_year: int, construction_year_col: str,
-                             random_number_generator: Generator, ):
+def sample_construction_year(
+    buildings: DataFrame,
+    end_of_simulation_year: int,
+    construction_year_col: str,
+    random_number_generator: Generator,
+):
     random_years = np.full(len(buildings), np.nan)
 
     # Define class-to-range mapping
@@ -31,12 +35,12 @@ def sample_construction_year(buildings: DataFrame, end_of_simulation_year: int, 
 
 
 def simulate_refurbishment(
-        df: DataFrame,
-        until_year: int,
-        parameters: Dict[str, Dict[str, Any]],
-        random_number_generator: Generator,
-        fill_value: int = 0,
-        age_column: str = "age",
+    df: DataFrame,
+    until_year: int,
+    parameters: Dict[str, Dict[str, Any]],
+    random_number_generator: Generator,
+    fill_value: int = 0,
+    age_column: str = "age",
 ) -> DataFrame:
     """
     Simulate component refurbishments by drawing inter-refurbishment intervals from
@@ -63,9 +67,7 @@ def simulate_refurbishment(
         # Keep sampling while at least one object is still <= until_year
         while any(df[age_column] + refurbishment_offsets.sum(axis=1) <= until_year):
             refurbishment_offsets[f"{component}_{n_refurbs}"] = (
-                distribution(random_number_generator, dist_params)
-                .round()
-                .astype(int)
+                distribution(random_number_generator, dist_params).round().astype(int)
             )
             n_refurbs += 1
 
@@ -78,19 +80,18 @@ def simulate_refurbishment(
         refurb_years_masked = refurb_years_masked.drop(columns=zero_cols)
 
         # If never refurbished, take the original construction year
-        refurb_years_masked = refurb_years_masked.mask(refurb_years_masked == fill_value,
-                                                       df[age_column], axis=0)
+        refurb_years_masked = refurb_years_masked.mask(refurb_years_masked == fill_value, df[age_column], axis=0)
         df[component] = refurb_years_masked.max(axis=1)
 
     return df
 
 
 def harmonize_with_quota(
-        df: DataFrame,
-        parameters: Dict[str, Dict[str, Any]],
-        random_number_generator: Generator,
-        logger,
-        age_column: str = "age",
+    df: DataFrame,
+    parameters: Dict[str, Dict[str, Any]],
+    random_number_generator: Generator,
+    logger,
+    age_column: str = "age",
 ) -> DataFrame:
     """
     Enforce that at most target_fraction of buildings are refurbished
@@ -118,9 +119,7 @@ def harmonize_with_quota(
             f"target={n_refurbishment_target}, actually={n_actually_refurbed}, to_drop={n_to_drop}"
         )
         if n_refurbishment_target > n_actually_refurbed:
-            logger.warning(
-                f"Refurbishment quota for component {component} cannot be met; keeping all refurbishments."
-            )
+            logger.warning(f"Refurbishment quota for component {component} cannot be met; keeping all refurbishments.")
         # Sample n_to_drop indices to drop from the actually_refurbished_buildings
         idx_to_drop = actually_refurbished_buildings.sample(n_to_drop, random_state=random_number_generator).index
         # Drop the refurbishment by setting the components age to the building age
