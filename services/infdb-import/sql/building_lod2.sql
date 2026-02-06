@@ -4,6 +4,7 @@
 
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 
+DROP TABLE IF EXISTS {output_schema}.{table_name};
 CREATE TABLE IF NOT EXISTS {output_schema}.{table_name} 
     PARTITION OF opendata.building_lod2 
     FOR VALUES IN ('{ags_id}');
