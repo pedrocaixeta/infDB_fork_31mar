@@ -1,5 +1,5 @@
 -- Summary: Estimates and populates the floor_number for buildings. It
--- prioritizes existing data from buildings_lod2, validating it against
+-- prioritizes existing data from building_lod2, validating it against
 -- building height. Missing values are derived using average floor heights
 -- per building use or standard fallback values.
 
@@ -17,7 +17,7 @@ SELECT
     -- Calculate if the source floors make sense given the height
     -- Typical floor height should be between 2.5m and 5m
 FROM {output_schema}.buildings b
-LEFT JOIN {input_schema}.buildings_lod2 l ON b.feature_id = l.feature_id
+LEFT JOIN {input_schema}.building_lod2 l ON b.feature_id = l.feature_id
 ;
 CREATE INDEX ON temp_floor_number_data (feature_id);
 CREATE INDEX ON temp_floor_number_data (validated_floors);

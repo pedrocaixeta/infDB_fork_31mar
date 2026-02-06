@@ -15,6 +15,8 @@ infdb-import:
         # - "09162000"  # Munich (BY)
         - "09780139"  # Sonthofen (BY)
         - "05119000" # Oberhausen (NRW)
+        # - "05117000" # Dümpten (NRW)
+        # - "05158012" # Heiligenhausen (NRW)
         - "09185149" # Neuburg a. d. Donau (BY)
         # - "09%" # Bavaria (BY)
         # - "05%" # North Rhine-Westphalia (NRW)
@@ -631,7 +633,7 @@ infdb-import:
               start_time: "2020-01-01"
               end_time: "2024-12-31"
               temporal: hourly  # options: hourly, daily
-          grid_resolution: 100km
+          grid_resolution: 1km
           data:
               - temperature_2m
               - wind_speed_10m

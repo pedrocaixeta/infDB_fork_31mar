@@ -199,3 +199,11 @@ docs/mkdocs/site
 
 # JOSS compilation files
 jats/*
+
+# QGIS Web Client generated configurations
+services/qgis_webclient/volumes/config/default/featureInfoConfig.json
+services/qgis_webclient/volumes/config/default/legendConfig.json
+services/qgis_webclient/volumes/config/default/mapViewerConfig.json
+services/qgis_webclient/volumes/config/default/ogcConfig.json
+services/qgis_webclient/volumes/config/default/permissions.json
+services/qgis_webclient/volumes/config/default/printConfig.json

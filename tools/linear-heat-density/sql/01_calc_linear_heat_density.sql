@@ -37,9 +37,9 @@ street_heat_demand AS (
         {heat_demand_schema}.{heat_demand_table} AS h
     ON
         bts.building_id::text = {heat_demand_id_expr}
+    WHERE bts.gemeindeschluessel = '{ags}'
     GROUP BY
         bts.street_id
-    WHERE bts.gemeindeschluessel = '{ags}'
 )
 -- Insert or update records with calculated linear heat density
 INSERT INTO {output_schema}.{output_table}
@@ -51,8 +51,8 @@ SELECT
     -- Calculate linear heat density (heat demand per meter of street)
     CASE WHEN sl.street_length > 0 
         THEN COALESCE(shd.total_heat_demand, 0) / sl.street_length 
-        ELSE 0,
-    sl.gemeindeschluessel 
+        ELSE 0 END,
+    '{ags}' 
 
 FROM
     street_lengths AS sl

@@ -23,5 +23,23 @@ ro-heat:
             exposed_port: None
             epsg: None
     data:
-        input_schema: basedata
-        output_schema: ro_heat   # needs to be snake_case
+        input:
+            schema: basedata
+            simulation_year: 2023
+            random_seed: 42
+            method: 1R0C # 1R1C or 1R0C
+        refurbishment:
+            outer_wall:
+                quota: 0.33
+                lifespan_mean: 40
+                lifespan_spread: 10
+            rooftop:
+                quota: 0.63
+                lifespan_mean: 50
+                lifespan_spread: 10
+            window:
+                quota: 0.9
+                lifespan_mean: 30
+                lifespan_spread: 10
+        output:
+            schema: ro_heat   # needs to be snake_case

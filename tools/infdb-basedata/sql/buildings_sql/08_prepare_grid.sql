@@ -28,7 +28,7 @@ FROM (
 ) AS g
 WHERE EXISTS (
     SELECT 1
-    FROM {input_schema}.buildings_lod2 b
+    FROM {input_schema}.building_lod2 b
     WHERE g.geom && b.geom -- prefilter with bounding box &&
       AND ST_Contains(g.geom, ST_Centroid(b.geom))
       AND b.gemeindeschluessel = '{ags}'
@@ -84,7 +84,7 @@ FROM (
 ) AS g
 WHERE EXISTS (
     SELECT 1
-    FROM {input_schema}.buildings_lod2 b
+    FROM {input_schema}.building_lod2 b
     WHERE g.geom && b.geom
       AND ST_Contains(g.geom, ST_Centroid(b.geom))
       AND b.gemeindeschluessel = '{ags}'

@@ -192,16 +192,6 @@ class Material:
             value = float(value)
         except ValueError as e:
             raise TypeError(f"Material {self.name}, conductivity is not a float: {value}") from e
-        if value < material_limits["conductivity"][0] or value > material_limits["conductivity"][1]:
-            # Value in [m]. Take a look to units
-            # Check if thickenss is outside
-            raise MaterialPropertyOutsideBoundaries(
-                self.name,
-                "conductivity",
-                lim=material_limits["conductivity"],
-                unit=units["conductivity"],
-                value=value,
-            )
         self._cond = value
 
     @property
@@ -395,10 +385,10 @@ class Construction(object):
 
     tot_heat_trans_coef = pd.DataFrame(
         {
-            "Outside": [25, 25, 1000, 7.7, 6.7, 6.7],
-            "Inside": [7.7, 7.7, 7.7, 7.7, 6.7, 6.7],
+            "Outside": [25, 25, 25, 1000, 7.7, 6.7, 6.7],
+            "Inside": [7.7, 7.7, 7.7, 7.7, 7.7, 6.7, 6.7],
         },
-        index=["ExtWall", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"],
+        index=["ExtWall", "Window", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"],
     )
 
     rad_heat_trans_coef = 5.0
@@ -426,6 +416,7 @@ class Construction(object):
                 )
         if construction_type not in [
             "ExtWall",
+            "Window",
             "Roof",
             "GroundFloor",
             "IntWall",
@@ -434,7 +425,7 @@ class Construction(object):
         ]:
             raise WrongConstructionType(
                 f"Construction {name}. construction type {construction_type} not in "
-                '["ExtWall", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"]'
+                '["ExtWall", "Window", "Roof", "GroundFloor", "IntWall", "IntCeiling", "IntFloor"]'
             )
         self.name = name
         self.construction_type = construction_type
@@ -478,7 +469,8 @@ class Construction(object):
         # Run ISO13790params and vdi6007params to calculate further parameters
 
         self._ISO13790_params()
-        self._VDI6007_params()
+        # Commented out for performance reasons
+        # self._VDI6007_params()
 
     def _ISO13790_params(self):
         """Calculates ISO13790 params: k_int, k_est"""

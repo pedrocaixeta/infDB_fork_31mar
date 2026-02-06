@@ -24,8 +24,8 @@ buildings-to-street:
             epsg: None
     data:
         streets:
-            schema: process_streets
-            table: segments
+            schema: opendata
+            table: basemap_verkehrslinie
             id-column: id
             geom-column: geom
         buildings:

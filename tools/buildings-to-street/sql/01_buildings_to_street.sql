@@ -22,7 +22,6 @@ SELECT
     ST_ShortestLine(b.{buildings_geom}, s.{streets_geom}) AS geom
 FROM
     {buildings_schema}.{buildings_table} b
-WHERE b.gemeindeschluessel = '{ags}'
 JOIN LATERAL (
     SELECT s.*
     FROM {streets_schema}.{streets_table} s
@@ -30,6 +29,7 @@ JOIN LATERAL (
     ORDER BY b.{buildings_geom} <-> s.{streets_geom}
     LIMIT 1
 ) s ON true
+WHERE b.gemeindeschluessel = '{ags}'
 ON CONFLICT (building_id) DO UPDATE SET
     street_id = EXCLUDED.street_id,
     nearest_distance = EXCLUDED.nearest_distance,

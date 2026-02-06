@@ -994,9 +994,9 @@ def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
     return results
 
 
-def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
+def create_building_lod2_table(region: str, infdb: InfDB) -> None:
     """
-    Creates the flat buildings_lod2 table for the specified region by filtering the source data based on AGS codes.
+    Creates the flat building_lod2 table for the specified region by filtering the source data based on AGS codes.
 
     :param region: Region identifier (e.g., "BY" for Bavaria, "NRW" for North Rhine-Westphalia)
     :type region: str
@@ -1011,7 +1011,7 @@ def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
         case "NRW":
             ags_id = "05"
         case _:
-            log.error(f"Region {region} not supported for buildings_lod2.sql")
+            log.error(f"Region {region} not supported for building_lod2.sql")
             sys.exit(1)
 
     ags_list = fetch_scope_ags_from_db(infdb)
@@ -1036,10 +1036,10 @@ def create_buildings_lod2_table(region: str, infdb: InfDB) -> None:
                 db.execute_sql_file(
                     "sql/create_building_table.sql", {"output_schema": output_schema, "table_name": table_name}
                 )
-                log.info(f"Created central buildings_lod2: {output_schema}.{table_name}")
+                log.info(f"Created central building_lod2: {output_schema}.{table_name}")
 
                 # Create building table for the region
-                log.info(f"buildings_lod2: starting {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} ({ags_id}...)")
+                log.info(f"building_lod2: starting {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} ({ags_id}...)")
                 db.execute_sql_file(
                     "sql/building_lod2.sql",
                     {
