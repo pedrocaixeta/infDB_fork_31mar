@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import numpy as np
 from pandas import DataFrame, Series
 
@@ -5,16 +7,23 @@ from . import eureca_code
 
 
 def create_tabula_structure(tabula_rows: DataFrame) -> DataFrame:
-    tabula_rows["materials"] = [
+    def _as_str(value: Any) -> str:
+        return cast(str, value)
+
+    def _as_float(value: Any) -> float:
+        return float(value)
+
+    materials = [
         eureca_code.Material(
-            row.material_name,
-            row.thickness,
-            row.thermal_conduc,
-            row.heat_capac,
-            row.density,
+            _as_str(row.material_name),
+            _as_float(row.thickness),
+            _as_float(row.thermal_conduc),
+            _as_float(row.heat_capac),
+            _as_float(row.density),
         )
         for row in tabula_rows.itertuples(index=False)
     ]
+    tabula_rows["materials"] = Series(materials, index=tabula_rows.index, dtype="object")
 
     # TODO: Explicitly sort by layer_index according to EUReCA specification
     constructions = (
@@ -40,15 +49,21 @@ def create_tabula_structure(tabula_rows: DataFrame) -> DataFrame:
     construction_objects = [
         eureca_code.Construction(
             name=f"B{row.construction_data}_{row.element_name}_{row.start_year}_{row.end_year}",
-            materials_list=row.materials,
-            construction_type=tabula_eureca_element_name_mapping[row.element_name],
+            materials_list=cast(list[Any], row.materials),
+            construction_type=tabula_eureca_element_name_mapping[_as_str(row.element_name)],
         )
         for row in constructions.itertuples(index=False)
     ]
 
     # Extract construction R and C values
-    constructions["R"] = [obj.thermal_resistance for obj in construction_objects]
-    constructions["C"] = [obj.k_int for obj in construction_objects]
+    constructions["R"] = Series(
+        [obj.thermal_resistance for obj in construction_objects],
+        index=constructions.index,
+    )
+    constructions["C"] = Series(
+        [obj.k_int for obj in construction_objects],
+        index=constructions.index,
+    )
     constructions["C"] = constructions["C"].fillna(0.0)
 
     return constructions
