@@ -32,7 +32,7 @@ buildings-to-street:
             schema: basedata
             table: buildings
             id-column: objectid
-            geom-column: geom
+            geom-column: centroid
         output:
             schema: buildings_to_street
             table: buildings_to_streets
