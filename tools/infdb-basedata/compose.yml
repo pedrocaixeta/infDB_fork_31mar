@@ -1,7 +1,6 @@
 services:
     basedata-changelog:
         profiles: [ "linear", "pylovo", "basedata", "heat" ]
-        container_name: basedata-changelog
         build:
             context: ./liquibase
             dockerfile: Dockerfile

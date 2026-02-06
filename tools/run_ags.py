@@ -11,11 +11,29 @@ from pathlib import Path
 PROFILE = sys.argv[1] if len(sys.argv) > 1 else "basedata"
 print(f"Using profile: {PROFILE}")
 
-num_workers = 3
-ags_list = {"09780139", "05119000", "09185149"}
-# - "09780139"  # Sonthofen (BY)
-# - "05119000" # Oberhausen (NRW)
-# - "09185149" # Neuburg a. d. Donau (BY)
+num_workers = 1
+ags_list = {
+    "09276111",
+    "09179111",
+    "09675112",
+    "09774111",
+    "09772114",
+    "09273119",
+    "09272116",
+    "09271126",
+    "09272140",
+    "09272152",
+}
+"09276111", # Achslach
+"09179111", # Adelshofen
+"09675112", # Albertshofen
+"09774111", # Aletshausen
+"09772114", # Allmannshofen
+"09273119", # Biburg
+"09272116", # Eppenschlag
+"09271126", # Hunding
+"09272140", # Ringelai
+"09272152"  # Zenting
 print(f"AGS to process: {', '.join(sorted(ags_list))}")
 
 SCRIPT_DIR = Path(__file__).parent
@@ -29,7 +47,7 @@ def run_ags(ags):
         return
 
     process = subprocess.Popen(
-        ["bash", SCRIPT_DIR / "run.sh", PROFILE, ags],
+        ["bash", SCRIPT_DIR / "run-profile.sh", PROFILE, ags],
         start_new_session=True,
     )
 
