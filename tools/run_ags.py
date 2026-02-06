@@ -24,16 +24,16 @@ ags_list = {
     "09272140",
     "09272152",
 }
-"09276111", # Achslach
-"09179111", # Adelshofen
-"09675112", # Albertshofen
-"09774111", # Aletshausen
-"09772114", # Allmannshofen
-"09273119", # Biburg
-"09272116", # Eppenschlag
-"09271126", # Hunding
-"09272140", # Ringelai
-"09272152"  # Zenting
+# "09276111", # Achslach
+# "09179111", # Adelshofen
+# "09675112", # Albertshofen
+# "09774111", # Aletshausen
+# "09772114", # Allmannshofen
+# "09273119", # Biburg
+# "09272116", # Eppenschlag
+# "09271126", # Hunding
+# "09272140", # Ringelai
+# "09272152"  # Zenting
 print(f"AGS to process: {', '.join(sorted(ags_list))}")
 
 SCRIPT_DIR = Path(__file__).parent
