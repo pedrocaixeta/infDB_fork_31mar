@@ -58,6 +58,8 @@ def simulate_refurbishment(
 
     for component, cfg in parameters.items():
         distribution = cfg.get("distribution")
+        if distribution is None:
+            raise ValueError(f"Missing distribution for component '{component}'.")
         dist_params = dict(cfg["distribution_parameters"])
         dist_params["size"] = df.shape[0]
 
