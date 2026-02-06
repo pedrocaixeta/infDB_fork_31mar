@@ -87,7 +87,7 @@ def write_ts_data(
 
     # Upload using baseline
     upload_start = time.perf_counter()
-    timedata.upload_timeseries_baseline(
+    upload_timeseries_baseline(
         engine=engine,
         output_schema=output_schema,
         table_name=table_name,

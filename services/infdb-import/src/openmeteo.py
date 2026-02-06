@@ -9,7 +9,7 @@ import pandas as pd
 import requests_cache
 from retry_requests import retry
 
-from . import bkg, utils
+from . import utils
 
 # ============================== Constants ==============================
 
@@ -101,7 +101,7 @@ def fetch_timeseries(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB, vari
 
         lat_str = ",".join(map(str, batch_df["latitude"].tolist()))
         lon_str = ",".join(map(str, batch_df["longitude"].tolist()))
-        
+
         # Request all variables in a single API call
         variables_str = ",".join(variables)
         params: Dict[str, str] = {
@@ -128,7 +128,7 @@ def fetch_timeseries(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB, vari
             grid_id = batch_df.iloc[i]["id"]
             longitude = response.Longitude()
             latitude = response.Latitude()
-            
+
             # Process each variable
             for var_idx, variable_name in enumerate(variables):
                 variable_data = hourly.Variables(var_idx).ValuesAsNumpy()
@@ -198,7 +198,9 @@ def fetch_timeseries(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB, vari
 
                     conn = engine.raw_connection()
                     cur = conn.cursor()
-                    copy_sql = f"COPY {db_schema}.{table_name} (ts_metadata_id, time, value) FROM STDIN WITH (FORMAT csv)"
+                    copy_sql = (
+                        f"COPY {db_schema}.{table_name} (ts_metadata_id, time, value) FROM STDIN WITH (FORMAT csv)"
+                    )
                     cur.copy_expert(copy_sql, buf)
                     conn.commit()
                     cur.close()
@@ -256,7 +258,7 @@ def load(infdb: InfDB) -> bool:
         if not variables:
             log.warning("No variables configured in openmeteo.data, defaulting to temperature_2m")
             variables = ["temperature_2m"]
-        
+
         log.info("Fetching variables: %s", ", ".join(variables))
         fetch_timeseries(pd_dataframe, engine, infdb, variables)
 
