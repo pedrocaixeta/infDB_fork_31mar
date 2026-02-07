@@ -9,10 +9,10 @@ CREATE TABLE citydb.surface_prefix AS
         objectclass_id
     FROM feature
     WHERE objectclass_id IN (709, 710, 712);
-    CREATE INDEX idx_surface_prefix_building_objectid
-        ON citydb.surface_prefix (building_objectid);
-    CREATE INDEX idx_surface_prefix_surface_id
-        ON citydb.surface_prefix (surface_id);
+CREATE INDEX idx_surface_prefix_building_objectid
+    ON citydb.surface_prefix (building_objectid);
+CREATE INDEX idx_surface_prefix_surface_id
+    ON citydb.surface_prefix (surface_id);
 
 
 DROP TABLE IF EXISTS opendata.buildings_surfaces;
