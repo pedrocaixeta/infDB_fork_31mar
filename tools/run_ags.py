@@ -13,27 +13,30 @@ print(f"Using profile: {PROFILE}")
 
 num_workers = 1
 ags_list = {
-    "09276111",
-    "09179111",
-    "09675112",
-    "09774111",
-    "09772114",
-    "09273119",
-    "09272116",
-    "09271126",
-    "09272140",
-    "09272152",
+    # Top 10 Biggest Cities in Bavaria
+    "09162000", # München
+    "09564000", # Nürnberg
+    "09761000", # Augsburg
+    "09362000", # Regensburg
+    "09161000", # Ingolstadt
+    "09663000", # Würzburg
+    "09563000", # Fürth
+    "09562000", # Erlangen
+    "09461000", # Bamberg
+    "09462000", # Bayreuth
+
+    # # Additional Requested Municipalities
+    # "09276111", # Bayerisch Eisenstein
+    # "09179111", # Adelshofen (Oberbayern)
+    # "09675112", # Albertshofen
+    # "09774111", # Aletshausen
+    # "09772114", # Allmannshofen
+    # "09273119", # Biburg
+    # "09272116", # Eppenschlag
+    # "09271126", # Hunding
+    # "09272140", # Ringelai
+    # "09272152", # Zenting
 }
-# "09276111", # Achslach
-# "09179111", # Adelshofen
-# "09675112", # Albertshofen
-# "09774111", # Aletshausen
-# "09772114", # Allmannshofen
-# "09273119", # Biburg
-# "09272116", # Eppenschlag
-# "09271126", # Hunding
-# "09272140", # Ringelai
-# "09272152"  # Zenting
 print(f"AGS to process: {', '.join(sorted(ags_list))}")
 
 SCRIPT_DIR = Path(__file__).parent

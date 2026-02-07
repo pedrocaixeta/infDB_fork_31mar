@@ -12,6 +12,11 @@ Profiles available:
 # bash tools/run.sh PROFILE AGS_ID
 bash tools/run.sh linear 09780139
 ```
+Run several profiles in parallel:
+```bash
+# python3 tools/run_ags.py PROFILE
+python3 tools/run_ags.py linear
+```
 
 
 ## Run Tool Single Service
@@ -19,4 +24,3 @@ bash tools/run.sh linear 09780139
 # bash tools/run-single-service.sh TOOL AGS
 bash tools/run-single-service.sh buildings-to-street 09780139
 ```
-
