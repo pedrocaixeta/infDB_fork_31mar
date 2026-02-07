@@ -18,7 +18,8 @@ set +a
 # Extract SERVICE and additional parameter
 SERVICE="${1:-$SERVICE}"
 PARAM="${2:-$AGS}"
+OPTIONS="${3:-$OPTIONS}"
 
 echo "Starting docker compose single service $SERVICE"
 export AGS="$PARAM"
-docker compose -f "$(dirname "$0")/compose.yml" up --no-deps --remove-orphans "$SERVICE"
+docker compose -f "$(dirname "$0")/compose.yml" up --no-deps --remove-orphans "$SERVICE" $OPTIONS
