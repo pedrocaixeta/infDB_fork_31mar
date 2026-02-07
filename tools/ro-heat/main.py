@@ -63,8 +63,8 @@ def main():
         sql_content = sql_content.format(**format_params)
         buildings = pd.read_sql(sql_content, engine)
 
-        infdblog.debug(f"Loaded {len(buildings)} buildings from the database.")
-        infdblog.debug(buildings.head())
+        infdblog.info(f"Loaded {len(buildings)} buildings from the database.")
+        # infdblog.debug(buildings.head())
 
         buildings[construction_year_col] = refurbishment.sample_construction_year(
             buildings, simulation_year, construction_year_col, rng
@@ -78,7 +78,7 @@ def main():
             for n, i in refurbishment_config.items()
         }
 
-        infdblog.debug("Starting refurbishment simulation")
+        infdblog.info("Starting refurbishment simulation")
         refurbed_df = refurbishment.simulate_refurbishment(
             buildings,
             simulation_year,
@@ -87,12 +87,12 @@ def main():
             age_column=construction_year_col,
         )
         infdblog.debug("Refurbishment simulation completed")
-        infdblog.debug(refurbed_df.info())
-        infdblog.debug(refurbed_df.head())
+        # infdblog.debug(refurbed_df.info())
+        # infdblog.debug(refurbed_df.head())
 
         refurbishment_quotas = {n: {"refurbed_fraction": i["quota"]} for n, i in refurbishment_config.items()}
 
-        infdblog.debug("Starting harmonization with refurbishment quotas")
+        infdblog.info("Starting harmonization with refurbishment quotas")
         harmonized_df = refurbishment.harmonize_with_quota(
             refurbed_df,
             refurbishment_quotas,
@@ -100,16 +100,16 @@ def main():
             infdblog,
             age_column=construction_year_col,
         )
-        infdblog.debug(harmonized_df.info())
+        # infdblog.debug(harmonized_df.info())
         infdblog.debug("Harmonization with refurbishment quotas completed")
 
-        infdblog.debug("Writing harmonized refurbishment data to database")
+        infdblog.info("Writing harmonized refurbishment data to database")
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_refurbished_status CASCADE")
         harmonized_df.to_sql(
             "buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, index=False
         )
 
-        infdblog.debug("Starting construction of building elements")
+        infdblog.info("Starting construction of building elements")
         full_path = os.path.join("sql", "02_get_tabula_elements.sql")
         with open(full_path, "r", encoding="utf-8") as file:
             sql_content = file.read()
@@ -125,7 +125,7 @@ def main():
         )
         infdblog.debug("Done with construction of building elements")
 
-        infdblog.debug("Writing R & C values")
+        infdblog.info("Writing R & C values")
         rc_values = harmonized_df[["building_objectid", "resistance", "capacitance"]]
         rc_values.to_sql(
             "buildings_rc",
@@ -136,7 +136,7 @@ def main():
             method="multi",
         )
         infdblog.debug("Done writing R & C values")
-        infdblog.debug(f"Running heat demand estimation with method {method}")
+        infdblog.info(f"Running heat demand estimation with method {method}")
 
         start_time = f"{simulation_year}-01-01"
         end_time = f"{simulation_year}-12-31"
