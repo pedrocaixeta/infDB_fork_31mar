@@ -14,5 +14,12 @@ set +a
 export UID
 export GID=$(id -g)
 
+# Check if configs/config-infdb-import.yml file exists, if not create from template
+if [ ! -f configs/config-infdb-import.yml ]; then
+    echo "=== Creating config-infdb-import.yml from template ==="
+    cp configs/config-infdb-import.yml.template configs/config-infdb-import.yml
+    echo "=== config-infdb-import.yml file created. Please review and customize it as needed. ==="
+fi
+
 # Run the importer script
 docker compose --profile "opendata" up "$@" #--build

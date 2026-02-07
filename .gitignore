@@ -194,6 +194,7 @@ src/infdb_package/docs
 src/infdb_package/site
 
 .env
+configs/config-infdb-import.yml
 
 docs/mkdocs/site
 
