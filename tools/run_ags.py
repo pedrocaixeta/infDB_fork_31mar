@@ -12,7 +12,7 @@ PROFILE = sys.argv[1] if len(sys.argv) > 1 else "basedata"
 print(f"Using profile: {PROFILE}")
 
 num_workers = 1
-ags_list = {
+ags_list = (
     # Top 10 Biggest Cities in Bavaria
     "09162000", # München
     "09564000", # Nürnberg
@@ -36,8 +36,8 @@ ags_list = {
     # "09271126", # Hunding
     # "09272140", # Ringelai
     # "09272152", # Zenting
-}
-print(f"AGS to process: {', '.join(sorted(ags_list))}")
+)
+print(f"AGS to process: {', '.join(ags_list)}")
 
 SCRIPT_DIR = Path(__file__).parent
 running_processes = set()
