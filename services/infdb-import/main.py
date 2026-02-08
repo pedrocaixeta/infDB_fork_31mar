@@ -137,7 +137,17 @@ def main() -> None:
         )
 
         db.execute_sql_file(
-            "sql/surface.sql",
+            "sql/bld.sql",
+            {
+                "output_schema": output_schema,
+                "table_name": table_name,
+                "ags": fmt(ags_list),
+                "ags_id": "09",
+            },
+        )
+
+        db.execute_sql_file(
+            "sql/sur.sql",
             {
                 "output_schema": output_schema,
                 "table_name": table_name,
