@@ -9,54 +9,95 @@ CREATE INDEX IF NOT EXISTS idx_property_val_string ON property(val_string);
 CREATE INDEX IF NOT EXISTS idx_feature_objectclass ON feature(objectclass_id);
 
 CREATE SCHEMA IF NOT EXISTS {output_schema};
+-- A. Base Buildings (Filtered by Municipality)
+DROP TABLE IF EXISTS building_base;
+CREATE TEMP TABLE building_base AS
+SELECT
+    f.id AS feature_id,
+    f.objectclass_id,
+    f.objectid,
+    MAX(CASE WHEN p.name = 'function' THEN p.val_string END) AS building_function_code,
+    p_gs.val_string AS gemeindeschluessel,
+    LEFT(p_gs.val_string, 2) AS ags_id
+FROM feature f
+    INNER JOIN property p ON f.id = p.feature_id
+    INNER JOIN property p_gs ON f.id = p_gs.feature_id
+WHERE f.objectclass_id = 901
+    AND p.name = 'function'
+    AND p.val_string >= '31001_' AND p.val_string < '31002'
+    AND p_gs.name = 'Gemeindeschluessel'
+    AND p_gs.val_string IN ({ags})  -- FILTER FIRST
+GROUP BY f.id, f.objectclass_id, f.objectid, p_gs.val_string;
 
 
--- A. Building_lod2 Table
-DROP TABLE IF EXISTS {output_schema}.{table_name}_lod2;
-CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}_lod2
+-- Drop existing partition to avoid conflict with wrong ags_id value
+DROP TABLE IF EXISTS {output_schema}.{table_name}_lod2 CASCADE;
+
+-- Create partition for the correct ags_id - extracted from building_base
+CREATE TABLE {output_schema}.{table_name}_lod2
     PARTITION OF opendata.building_lod2 
     FOR VALUES IN ('{ags_id}');
 
+-- Then just INSERT without re-joining property
 INSERT INTO {output_schema}.{table_name}_lod2 (
-    ags_id,
-    feature_id,
-    objectid,
-    gemeindeschluessel,
-    objectclass_id,
-    height,
-    storeysaboveground,
-    building_function_code,
-    zip_code,
-    street,
-    house_number,
-    city,
-    country,
-    state
+    ags_id, feature_id, objectid, gemeindeschluessel, objectclass_id,
+    height, storeysaboveground, building_function_code, zip_code, street, 
+    house_number, city, country, state
 )
-    SELECT
-        LEFT(MAX(CASE WHEN p.name = 'Gemeindeschluessel' THEN p.val_string END), 2) AS ags_id,
-        f.id AS feature_id,
-        f.objectid,
-        MAX(CASE WHEN p.name = 'Gemeindeschluessel' THEN p.val_string END) AS gemeindeschluessel,
-        f.objectclass_id,
-        MAX(CASE WHEN p.name = 'value' AND p.parent_id IN (SELECT id FROM property WHERE name = 'height') THEN p.val_double END) AS height,
-        MAX(CASE WHEN p.name = 'storeysAboveGround' THEN p.val_int END) AS storeysaboveground,
-        MAX(CASE WHEN p.name = 'function' THEN p.val_string END) AS building_function_code,
-        -- table address
-        a.zip_code,
-        regexp_replace(trim(a.street), '\s*\d+[\w,]*$', '') AS street,
-        (regexp_match(trim(a.street), '\s*(\d+[\w,]*)$'))[1] AS house_number,
-        a.city,
-        a.country,
-        a.state
-    FROM feature f
-            JOIN property p ON f.id = p.feature_id
-    JOIN address a ON p.val_address_id = a.id
-    WHERE f.objectclass_id = 901
-    AND p.name IN ('function', 'Gemeindeschluessel', 'height', 'storeysAboveGround')
-    AND (p.name = 'function' AND p.val_string >= '31001_' AND p.val_string < '31002')
-    AND (p.name = 'Gemeindeschluessel' AND p.val_string IN ({ags}))
-    GROUP BY f.id, f.objectclass_id, f.objectid, a.street, a.city, a.country, a.zip_code, a.state;
+SELECT
+    bb.ags_id,
+    bb.feature_id,
+    bb.objectid,
+    bb.gemeindeschluessel,
+    bb.objectclass_id,
+    MAX(CASE WHEN p.name = 'value' AND p.parent_id IN (SELECT id FROM property WHERE name = 'height') THEN p.val_double END) AS height,
+    MAX(CASE WHEN p.name = 'storeysAboveGround' THEN p.val_int END) AS storeysaboveground,
+    bb.building_function_code,
+    a.zip_code,
+    regexp_replace(trim(a.street), '\s*\d+[\w,]*$', '') AS street,
+    (regexp_match(trim(a.street), '\s*(\d+[\w,]*)$'))[1] AS house_number,
+    a.city, a.country, a.state
+FROM building_base bb
+    LEFT JOIN property p ON bb.feature_id = p.feature_id AND p.name IN ('value', 'storeysAboveGround')
+    LEFT JOIN address a ON p.val_address_id = a.id
+GROUP BY bb.feature_id, bb.objectclass_id, bb.objectid, bb.building_function_code, 
+         bb.gemeindeschluessel, bb.ags_id, a.zip_code, a.street, a.city, a.country, a.state;
+
+-- SELECT
+--     LEFT(gemeindeschluessel, 2) AS ags_id,
+--     f.id AS feature_id,
+--     f.objectid,
+--     gemeindeschluessel,
+--     f.objectclass_id,
+--     height,
+--     storeys_above_ground AS storeysaboveground,
+--     building_function_code,
+--     adr.zip_code,
+--     regexp_replace(trim(adr.street), '\s*\d+[\w,]*$', '') AS street,
+--     (regexp_match(trim(adr.street), '\s*(\d+[\w,]*)$'))[1] AS house_number,
+--     adr.city,
+--     adr.country,
+--     adr.state
+-- FROM (
+--     -- Aggregate all properties per feature
+--     SELECT
+--         f.id,
+--         f.objectclass_id,
+--         f.objectid,
+--         MAX(CASE WHEN p.name = 'Gemeindeschluessel' THEN p.val_string END) AS gemeindeschluessel,
+--         MAX(CASE WHEN p.name = 'function' THEN p.val_string END) AS building_function_code,
+--         MAX(CASE WHEN p.name = 'storeysAboveGround' THEN p.val_int END) AS storeys_above_ground,
+--         MAX(CASE WHEN p.name = 'value' AND p.parent_id IN (SELECT id FROM property WHERE name = 'height') THEN p.val_double END) AS height
+--     FROM feature f
+--     JOIN property p ON f.id = p.feature_id
+--     WHERE f.objectclass_id = 901
+--         AND p.name IN ('function', 'Gemeindeschluessel', 'storeysAboveGround', 'value')
+--     GROUP BY f.id, f.objectclass_id, f.objectid
+-- ) fb
+-- JOIN address adr ON p.val_address_id = adr.id
+-- WHERE fb.building_function_code >= '31001_' 
+--     AND fb.building_function_code < '31002'
+--     AND fb.gemeindeschluessel IN ({ags});
 
 CREATE INDEX IF NOT EXISTS idx_building_lod2_objectid ON {output_schema}.{table_name}_lod2 (objectid);
 CREATE INDEX IF NOT EXISTS idx_building_lod2_gemeindeschluessel ON {output_schema}.{table_name}_lod2 (gemeindeschluessel);

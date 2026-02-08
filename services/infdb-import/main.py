@@ -80,26 +80,26 @@ def main() -> None:
     #     db.execute_query("DROP SCHEMA IF EXISTS bld_tmp CASCADE;")
 
     # Ensure that administrative areas are loaded for scope
-    bkg.load(infdb)
+    # bkg.load(infdb)
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
-    processes.append(mp.Process(target=_run_loader, args=(need.load,), name="need"))
-    processes.append(mp.Process(target=_run_loader, args=(tabula.load,), name="tabula"))
-    processes.append(mp.Process(target=_run_loader, args=(plz.load,), name="plz"))
-    processes.append(mp.Process(target=_run_loader, args=(basemap.load,), name="basemap"))
-    processes.append(mp.Process(target=_run_loader, args=(census2022.load,), name="census2022"))
-    processes.append(mp.Process(target=_run_loader, args=(openmeteo.load,), name="openmeteo"))
-    processes.append(mp.Process(target=_run_loader, args=(kwp_nrw.load,), name="kwp_nrw"))
-    processes.append(mp.Process(target=_run_loader, args=(kwp_nrw_oberhausen.load,), name="kwp_nrw_oberhausen"))
-    processes.append(mp.Process(target=_run_loader, args=(gebaeude_neuburg.load,), name="gebaeude-neuburg"))
-    processes.append(
-        mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
-    )
+    # processes.append(mp.Process(target=_run_loader, args=(need.load,), name="need"))
+    # processes.append(mp.Process(target=_run_loader, args=(tabula.load,), name="tabula"))
+    # processes.append(mp.Process(target=_run_loader, args=(plz.load,), name="plz"))
+    # processes.append(mp.Process(target=_run_loader, args=(basemap.load,), name="basemap"))
+    # processes.append(mp.Process(target=_run_loader, args=(census2022.load,), name="census2022"))
+    # processes.append(mp.Process(target=_run_loader, args=(openmeteo.load,), name="openmeteo"))
+    # processes.append(mp.Process(target=_run_loader, args=(kwp_nrw.load,), name="kwp_nrw"))
+    # processes.append(mp.Process(target=_run_loader, args=(kwp_nrw_oberhausen.load,), name="kwp_nrw_oberhausen"))
+    # processes.append(mp.Process(target=_run_loader, args=(gebaeude_neuburg.load,), name="gebaeude-neuburg"))
+    # processes.append(
+    #     mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
+    # )
 
-    # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
-    processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
-    processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
+    # # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
+    # processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
+    # processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
 
     for process in processes:
         process.start()
@@ -124,13 +124,25 @@ def main() -> None:
     # utils.create_building_lod2_table(region="NRW", infdb=infdb)
 
     # Create building_surface
+    ags_list = utils.fetch_scope_ags_from_db(infdb)
+
+    def fmt(lst):
+            return ",".join(f"'{s}'" for s in ags_list)
     with infdb.connect() as db:
+        output_schema = "c_tmp"
+        table_name = "building"
+
         db.execute_sql_file(
-            "sql/building_surface.sql",
+            "sql/create_building_table.sql", {"output_schema": "opendata", "table_name": "building_lod2"}
+        )
+
+        db.execute_sql_file(
+            "sql/surface.sql",
             {
-                "output_schema": "opendata",
-                "table_name": "building_surface",
-                "gemeindeschluessel": infdb.get_config_value([infdb.get_toolname(), "scope"]),
+                "output_schema": output_schema,
+                "table_name": table_name,
+                "ags": fmt(ags_list),
+                "ags_id": "09",
             },
         )
 

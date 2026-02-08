@@ -1,4 +1,5 @@
--- DROP TABLE IF EXISTS {output_schema}.{table_name};
+CREATE SCHEMA IF NOT EXISTS {output_schema};
+DROP TABLE IF EXISTS {output_schema}.{table_name};
 CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}
 (
     id                SERIAL,
@@ -27,8 +28,8 @@ CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}
     PRIMARY KEY (id, ags_id)
 ) PARTITION BY LIST (ags_id);
 
-CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.{table_name} USING GIST (geom);
-CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.{table_name} USING GIST (centroid);
+-- CREATE INDEX IF NOT EXISTS building_geom_idx ON {output_schema}.{table_name} USING GIST (geom);
+-- CREATE INDEX IF NOT EXISTS building_centroid_idx ON {output_schema}.{table_name} USING GIST (centroid);
 CREATE INDEX IF NOT EXISTS building_function_code_idx ON {output_schema}.{table_name} (building_function_code);
 CREATE INDEX IF NOT EXISTS building_lod2_feature_id_idx ON {output_schema}.{table_name} (feature_id);
 CREATE INDEX IF NOT EXISTS building_lod2_gks_objectid_idx ON {output_schema}.{table_name} (gemeindeschluessel);
