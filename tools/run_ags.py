@@ -14,16 +14,20 @@ print(f"Using profile: {PROFILE}")
 num_workers = 1
 ags_list = (
     # Top 10 Biggest Cities in Bavaria
-    "09162000", # München
-    "09564000", # Nürnberg
-    "09761000", # Augsburg
-    "09362000", # Regensburg
-    "09161000", # Ingolstadt
-    "09663000", # Würzburg
-    "09563000", # Fürth
-    "09562000", # Erlangen
-    "09461000", # Bamberg
-    "09462000", # Bayreuth
+    # "09162000", # München
+    # "09564000", # Nürnberg
+    # "09761000", # Augsburg
+    # "09362000", # Regensburg
+    # "09161000", # Ingolstadt
+    # "09663000", # Würzburg
+    # "09563000", # Fürth
+    # "09562000", # Erlangen
+    # "09461000", # Bamberg
+    # "09462000", # Bayreuth
+    # Additional Requested Municipalities
+    "09780139", # Sonthofen (BY)
+    "09185149", # Neuburg a. d. Donau (BY)
+    "09163000", # Rosenheim (BY)
 
     # # Additional Requested Municipalities
     # "09276111", # Bayerisch Eisenstein
