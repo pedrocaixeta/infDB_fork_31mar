@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}
     gemeindeschluessel text,
     objectclass_id    int,
     height            double precision,
-    groundsurface_flaeche        double precision,
+    -- groundsurface_flaeche        double precision,
     storeysaboveground      integer,
     -- building_use      text NOT NULL,
     building_function_code   text NOT NULL,
@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}
     city              text,
     country          text,
     state            text,
-    geom              geometry,
-    centroid          geometry,
+    -- geom              geometry,
+    -- centroid          geometry,
     PRIMARY KEY (id, ags_id)
 ) PARTITION BY LIST (ags_id);
 
