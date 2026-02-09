@@ -50,6 +50,12 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
             );
             CREATE INDEX IF NOT EXISTS {table_name}_geom_idx
             ON {schema}.{table_name} USING GIST (geom);
+            CREATE INDEX IF NOT EXISTS {table_name}_resolution_idx
+            ON {schema}.{table_name} (resolution_meters);
+            CREATE INDEX IF NOT EXISTS {table_name}_x_mp_y_mp_idx
+            ON {schema}.{table_name} (x_mp, y_mp);
+            CREATE INDEX IF NOT EXISTS {table_name}_name_idx
+            ON {schema}.{table_name} (name);
         """
         db.execute_query(ddl)
 

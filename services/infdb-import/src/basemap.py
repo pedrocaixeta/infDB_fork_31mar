@@ -54,6 +54,14 @@ def load(infdb: InfDB) -> None:
                 download_file, layers, schema, infdb, prefix=prefix, layer_names=layer_names, overwrite=False
             )
 
+        with infdb.connect() as db:
+            log.info("Creating index on id column for %s.%s_verkehrslinie", schema, prefix)
+            ddl = f"""
+                CREATE INDEX IF NOT EXISTS {prefix}_verkehrslinie_id_idx
+                ON {schema}.{prefix}_verkehrslinie (id);
+            """
+            db.execute_query(ddl)
+
         log.info("Basemap data loaded successfully")
         sys.exit(0)
     except Exception as err:
