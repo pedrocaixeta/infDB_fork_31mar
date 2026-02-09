@@ -1,3 +1,6 @@
+-- serialize this init section across containers
+SELECT pg_advisory_lock(hashtext('infdb_basedata_init'));
+
 --Create buildings table
 CREATE TABLE IF NOT EXISTS {output_schema}.buildings
 (
@@ -30,3 +33,6 @@ CREATE INDEX IF NOT EXISTS idx_buildings_building_type ON {output_schema}.buildi
 CREATE INDEX IF NOT EXISTS idx_buildings_gemeindeschluessel ON {output_schema}.buildings (gemeindeschluessel);
 CREATE INDEX IF NOT EXISTS idx_buildings_feature_id ON {output_schema}.buildings (feature_id);
 CREATE INDEX IF NOT EXISTS idx_buildings_height ON {output_schema}.buildings (height);
+
+-- unlock init section across containers
+SELECT pg_advisory_unlock(hashtext('infdb_basedata_init'));
