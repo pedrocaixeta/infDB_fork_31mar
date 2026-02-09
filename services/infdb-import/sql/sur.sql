@@ -32,7 +32,7 @@ SELECT
     sid2.objectid,
     sid.objectclass_id,
     oc.classname,
-    gd.geometry
+    gd.geometry as geom
 --     debugging columns:
 --     sid.child_object_id,
 --     sid.feature_id,
@@ -46,12 +46,12 @@ WHERE sid.objectclass_id IN (709, 710, 712);    -- 709: RoofSurface, 710: WallSu
 CREATE INDEX IF NOT EXISTS idx_surface_objectid ON {output_schema}.{table_name}_surface (objectid);
 CREATE INDEX IF NOT EXISTS idx_surface_objectclass_id ON {output_schema}.{table_name}_surface (objectclass_id);
 CREATE INDEX IF NOT EXISTS idx_surface_classname ON {output_schema}.{table_name}_surface (classname);
-CREATE INDEX IF NOT EXISTS idx_surface_geometry ON {output_schema}.{table_name}_surface USING GIST(geometry);
+CREATE INDEX IF NOT EXISTS idx_surface_geometry ON {output_schema}.{table_name}_surface USING GIST(geom);
 
 -- Create a view for easier access to building geometries (e.g., for export)
 CREATE OR REPLACE VIEW {output_schema}.{table_name}_geometry AS
 SELECT
     s.objectid,
-    gd.geometry AS geom
+    s.geom
 FROM {output_schema}.{table_name}_surface s
 WHERE s.objectclass_id = 712
