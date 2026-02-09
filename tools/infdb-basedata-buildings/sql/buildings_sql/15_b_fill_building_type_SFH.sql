@@ -4,24 +4,24 @@
 
 -- Step 2: Single Family Houses (SFH):
 -- Typically have larger floor area, 1-2 floors, and few or no neighbors
-UPDATE {output_schema}.buildings
+UPDATE temp_buildings
 SET building_type = 'SFH'
 WHERE building_use = 'Residential'
   AND building_type IS NULL
   AND ((floor_area < 350 AND floor_number <= 3 AND
         NOT EXISTS (SELECT 1
                     FROM temp_touching_neighbors
-                    WHERE temp_touching_neighbors.a_id = {output_schema}.buildings.id)) OR
+                    WHERE temp_touching_neighbors.a_id = temp_buildings.id)) OR
        (floor_area < 200 AND floor_number <= 2 AND
         NOT EXISTS (SELECT 1
                     FROM temp_touching_neighbor_counts
-                    WHERE temp_touching_neighbor_counts.id = {output_schema}.buildings.id
+                    WHERE temp_touching_neighbor_counts.id = temp_buildings.id
                       AND count >= 2)));
 
 -- Create Vertex set of buildings which could be of type 'SFH'
 CREATE TEMP TABLE filtered_buildings AS (
     SELECT id, geom, height, gemeindeschluessel
-    FROM {output_schema}.buildings
+    FROM temp_buildings
     WHERE
         building_use = 'Residential'
     AND (building_type = 'SFH'
@@ -80,17 +80,16 @@ CREATE INDEX IF NOT EXISTS building_components_component_idx
 WITH seed_components AS (
   SELECT DISTINCT bc.component
   FROM building_components bc
-  JOIN {output_schema}.buildings b
+  JOIN temp_buildings b
     ON b.id = bc.id
   WHERE b.building_type = 'SFH'
 )
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET building_type = 'SFH'
 FROM building_components bc
 JOIN seed_components sc
   ON sc.component = bc.component
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.id = bc.id;
+WHERE b.id = bc.id;
 
 -- release memory
 DROP TABLE IF EXISTS filtered_buildings;

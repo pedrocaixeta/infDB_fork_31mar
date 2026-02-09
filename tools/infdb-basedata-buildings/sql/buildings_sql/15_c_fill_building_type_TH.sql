@@ -3,7 +3,7 @@
 -- graph-based clustering to label linear structures of similar buildings.
 
 -- Identify buildings with medium floor area, 2-3 floors, 1-2 neighbors and a similar floor area to their neighbors (within 20%)
-UPDATE {output_schema}.buildings
+UPDATE temp_buildings
 SET building_type = 'TH'
 WHERE building_use = 'Residential'
   AND building_type IS NULL
@@ -11,11 +11,11 @@ WHERE building_use = 'Residential'
 
         EXISTS (SELECT 1
                 FROM temp_touching_neighbor_counts
-                WHERE temp_touching_neighbor_counts.id = {output_schema}.buildings.id
+                WHERE temp_touching_neighbor_counts.id = temp_buildings.id
                   AND count BETWEEN 1 AND 2) AND
         EXISTS (SELECT 1
                 FROM temp_touching_neighbors
-                WHERE temp_touching_neighbors.a_id = {output_schema}.buildings.id
+                WHERE temp_touching_neighbors.a_id = temp_buildings.id
                   AND ABS(temp_touching_neighbors.a_area - temp_touching_neighbors.b_area) /
                       GREATEST(temp_touching_neighbors.a_area, temp_touching_neighbors.b_area) < 0.2))
     );
@@ -59,7 +59,7 @@ WHERE building_use = 'Residential'
 -- Create Vertex set of buildings which could be of type 'TH'
 CREATE TEMP TABLE filtered_buildings AS (
     SELECT id, geom, floor_area, floor_number, height, gemeindeschluessel
-    FROM {output_schema}.buildings
+    FROM temp_buildings
     WHERE building_use = 'Residential'
     AND (building_type = 'TH'
         OR( building_type IS NULL
@@ -119,17 +119,16 @@ CREATE INDEX IF NOT EXISTS building_components_component_idx
 WITH seed_components AS (
   SELECT DISTINCT bc.component
   FROM building_components bc
-  JOIN {output_schema}.buildings b
+  JOIN temp_buildings b
     ON b.id = bc.id
   WHERE b.building_type = 'TH'
 )
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET building_type = 'TH'
 FROM building_components bc
 JOIN seed_components sc
   ON sc.component = bc.component
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.id = bc.id;
+WHERE b.id = bc.id;
 
 
 

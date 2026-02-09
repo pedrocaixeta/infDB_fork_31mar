@@ -8,19 +8,18 @@ CREATE TEMP TABLE temp_building_with_grid_year AS
 SELECT b.id   AS building_id,
        b.geom AS building_geom,
        g.*
-FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid_100m g
+FROM temp_buildings b
+    JOIN temp_buildings_grid_100m g
     ON g.geom && b.centroid
         AND ST_Contains(g.geom, b.centroid)
-WHERE b.gemeindeschluessel = '{ags}'
-  AND g.id IS NOT NULL;
+WHERE g.id IS NOT NULL;
 
 CREATE INDEX ON temp_building_with_grid_year(building_id);
 
 -- Step 2: Assign construction year using weighted random distribution
 -- Note: This version uses a WITH clause to prepare weights and cumulative ranges.
 --       Then assigns a construction_year based on a random number weighted by those counts.
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET construction_year = sub.assigned_year
 FROM (SELECT building_id,
              {output_schema}.assign_weighted_year(
@@ -45,8 +44,7 @@ FROM (SELECT building_id,
                    a2020undspaeter,
                    random() AS r
             FROM temp_building_with_grid_year) year_probs) sub
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.id = sub.building_id;
+WHERE b.id = sub.building_id;
 
 
 -- Handle buildings without construction_year using nearest neighbor
@@ -56,7 +54,7 @@ CREATE TEMP TABLE temp_nearest_grid_year AS
 SELECT
     b.id AS building_id,
     nearest.*
-FROM {output_schema}.buildings b
+FROM temp_buildings b
 CROSS JOIN LATERAL (
     SELECT g.id,
            g.vor1919,
@@ -67,7 +65,7 @@ CROSS JOIN LATERAL (
            g.a2001bis2010,
            g.a2011bis2019,
            g.a2020undspaeter
-    FROM {output_schema}.buildings_grid_100m g
+    FROM temp_buildings_grid_100m g
     WHERE g.id IS NOT NULL
       AND (COALESCE(NULLIF(g.vor1919, 'NaN'::double precision), 0) +
            COALESCE(NULLIF(g.a1919bis1948, 'NaN'::double precision), 0) +
@@ -80,11 +78,10 @@ CROSS JOIN LATERAL (
     ORDER BY g.geom <-> b.centroid
     LIMIT 1
 ) nearest
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.construction_year IS NULL;
+WHERE b.construction_year IS NULL;
 
 -- Step 4: Assign construction year using the same weighted random logic
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET construction_year = sub.assigned_year
 FROM (SELECT building_id,
              {output_schema}.assign_weighted_year(
