@@ -1,3 +1,9 @@
+CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index
+    ON citydb.geometry_data USING gin (geometry_properties);
+CREATE INDEX IF NOT EXISTS idx_property_name ON property(name);
+CREATE INDEX IF NOT EXISTS idx_property_val_string ON property(val_string);
+CREATE INDEX IF NOT EXISTS idx_feature_objectclass ON feature(objectclass_id);
+
 -- Create indexes on the temporary table for faster joins
 DROP TABLE IF EXISTS {output_schema}.{table_name}_ids;
 CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}_ids AS (
@@ -41,3 +47,11 @@ CREATE INDEX IF NOT EXISTS idx_surface_objectid ON {output_schema}.{table_name}_
 CREATE INDEX IF NOT EXISTS idx_surface_objectclass_id ON {output_schema}.{table_name}_surface (objectclass_id);
 CREATE INDEX IF NOT EXISTS idx_surface_classname ON {output_schema}.{table_name}_surface (classname);
 CREATE INDEX IF NOT EXISTS idx_surface_geometry ON {output_schema}.{table_name}_surface USING GIST(geometry);
+
+-- Create a view for easier access to building geometries (e.g., for export)
+CREATE OR REPLACE VIEW {output_schema}.{table_name}_geometry AS
+SELECT
+    s.objectid,
+    gd.geometry AS geom
+FROM {output_schema}.{table_name}_surface s
+WHERE s.objectclass_id = 712
