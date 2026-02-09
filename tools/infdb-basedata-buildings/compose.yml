@@ -12,4 +12,4 @@ services:
             - "host.docker.internal:host-gateway"
         env_file:
             - ../../.env  # Load root environment variables first
-            - .env
+            - env_infdb_basedata_buildings.env
