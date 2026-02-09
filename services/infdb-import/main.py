@@ -84,22 +84,22 @@ def main() -> None:
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
-    # processes.append(mp.Process(target=_run_loader, args=(need.load,), name="need"))
-    # processes.append(mp.Process(target=_run_loader, args=(tabula.load,), name="tabula"))
-    # processes.append(mp.Process(target=_run_loader, args=(plz.load,), name="plz"))
-    # processes.append(mp.Process(target=_run_loader, args=(basemap.load,), name="basemap"))
-    # processes.append(mp.Process(target=_run_loader, args=(census2022.load,), name="census2022"))
-    # processes.append(mp.Process(target=_run_loader, args=(openmeteo.load,), name="openmeteo"))
-    # processes.append(mp.Process(target=_run_loader, args=(kwp_nrw.load,), name="kwp_nrw"))
-    # processes.append(mp.Process(target=_run_loader, args=(kwp_nrw_oberhausen.load,), name="kwp_nrw_oberhausen"))
-    # processes.append(mp.Process(target=_run_loader, args=(gebaeude_neuburg.load,), name="gebaeude-neuburg"))
-    # processes.append(
-    #     mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
-    # )
+    processes.append(mp.Process(target=_run_loader, args=(need.load,), name="need"))
+    processes.append(mp.Process(target=_run_loader, args=(tabula.load,), name="tabula"))
+    processes.append(mp.Process(target=_run_loader, args=(plz.load,), name="plz"))
+    processes.append(mp.Process(target=_run_loader, args=(basemap.load,), name="basemap"))
+    processes.append(mp.Process(target=_run_loader, args=(census2022.load,), name="census2022"))
+    processes.append(mp.Process(target=_run_loader, args=(openmeteo.load,), name="openmeteo"))
+    processes.append(mp.Process(target=_run_loader, args=(kwp_nrw.load,), name="kwp_nrw"))
+    processes.append(mp.Process(target=_run_loader, args=(kwp_nrw_oberhausen.load,), name="kwp_nrw_oberhausen"))
+    processes.append(mp.Process(target=_run_loader, args=(gebaeude_neuburg.load,), name="gebaeude-neuburg"))
+    processes.append(
+        mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
+    )
 
-    # # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
-    # processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
-    # processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
+    # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
+    processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
+    processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
 
     for process in processes:
         process.start()
@@ -119,9 +119,9 @@ def main() -> None:
         # Explicitly close the process to release resources
         process.close()
 
-    # Create building_lod2 tables for BY and NRW for development/testing
-    utils.create_building_lod2_table(object_id_prefix="DEBY", infdb=infdb)
-    # utils.create_building_lod2_table(region="DENW", infdb=infdb)
+    # # Create building_lod2 tables for BY and NRW for development/testing
+    # utils.create_building_lod2_table(object_id_prefix="DEBY", infdb=infdb)
+    # # utils.create_building_lod2_table(region="DENW", infdb=infdb)
 
     # Create building surface tables for BY and NRW
     utils.create_building_surface_table(infdb=infdb)
