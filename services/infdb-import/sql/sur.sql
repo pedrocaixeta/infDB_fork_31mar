@@ -7,19 +7,21 @@ SELECT
     f.objectid,
     child ->> 'objectId' AS child_object_id,
     gd.id AS geometry_data_id,
-    gd.objectclass_id,
+    f.objectclass_id,
     gd.geometry
 FROM feature f
     JOIN geometry_data gd ON f.id = gd.feature_id
     CROSS JOIN LATERAL jsonb_array_elements(gd.geometry_properties -> 'children') AS child
 WHERE f.objectclass_id IN (709, 710, 712, 901)
+    -- AND f.objectid LIKE '{object_id_prefix}%'
     AND (child ->> 'objectId') IS NOT NULL;
 
 -- Only 2 critical indexes
 CREATE INDEX idx_surface_ids_child_object_id ON {output_schema}.{table_name}_ids (child_object_id);
 CREATE INDEX idx_surface_ids_objectid ON {output_schema}.{table_name}_ids (objectid);
 
-CREATE TABLE {output_schema}.{table_name}_surface AS
+DROP TABLE IF EXISTS {output_schema}.{table_name};
+CREATE TABLE {output_schema}.{table_name} AS
 SELECT
     sid2.objectid,
     sid.objectclass_id,

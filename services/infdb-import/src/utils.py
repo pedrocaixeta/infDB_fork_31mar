@@ -994,24 +994,24 @@ def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
     return results
 
 
-def create_building_lod2_table(region: str, infdb: InfDB) -> None:
+def create_building_lod2_table(object_id_prefix: str, infdb: InfDB) -> None:
     """
-    Creates the flat building_lod2 table for the specified region by filtering the source data based on AGS codes.
+    Creates the flat building_lod2 table for the specified object_id_prefix by filtering the source data based on AGS codes.
 
-    :param region: Region identifier (e.g., "BY" for Bavaria, "NRW" for North Rhine-Westphalia)
-    :type region: str
+    :param object_id_prefix: Object ID prefix (e.g., "DEBY" for Bavaria, "DENW" for North Rhine-Westphalia)
+    :type object_id_prefix: str
     :param infdb: instance of InfDB for database access and logging
     :type infdb: InfDB
     """
     log = infdb.get_worker_logger()
 
-    match region:
-        case "BY":
+    match object_id_prefix:
+        case "DEBY":
             ags_id = "09"
-        case "NRW":
+        case "DENW":
             ags_id = "05"
         case _:
-            log.error(f"Region {region} not supported for building_lod2.sql")
+            log.error(f"Region {object_id_prefix} not supported for building_lod2.sql")
             sys.exit(1)
 
     ags_list = fetch_scope_ags_from_db(infdb)
@@ -1025,10 +1025,10 @@ def create_building_lod2_table(region: str, infdb: InfDB) -> None:
         output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
         table_name = infdb.get_config_value(
             [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
-        )
+        ) + "_lod2"
 
         TEMP_OUTPUT_SCHEMA = "bld_tmp"
-        TEMP_TABLE_NAME = f"{table_name}_{region}"
+        TEMP_TABLE_NAME = f"{table_name}_{object_id_prefix.lower()}"
 
         try:
             with infdb.connect() as db:
@@ -1041,15 +1041,52 @@ def create_building_lod2_table(region: str, infdb: InfDB) -> None:
                 # Create building table for the region
                 log.info(f"building_lod2: starting {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} ({ags_id}...)")
                 db.execute_sql_file(
-                    "sql/building_lod2.sql",
+                    "sql/bld.sql",
                     {
                         "output_schema": TEMP_OUTPUT_SCHEMA,
                         "table_name": TEMP_TABLE_NAME,
-                        "gemeindeschluessel": fmt(ags_filtered),
+                        "ags": fmt(ags_filtered),
                         "ags_id": ags_id,
+                        "object_id_prefix": object_id_prefix,
                     },
                 )
                 log.info(f"{TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} completed")
 
         except Exception:
             infdb.get_logger().exception(f"{TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} failed")
+
+
+def create_building_surface_table(infdb: InfDB) -> None:
+    """
+    Creates the flat building_lod2 table for the specified object_id_prefix by filtering the source data based on AGS codes.
+
+    :param object_id_prefix: Object ID prefix (e.g., "DEBY" for Bavaria, "DENW" for North Rhine-Westphalia)
+    :type object_id_prefix: str
+    :param infdb: instance of InfDB for database access and logging
+    :type infdb: InfDB
+    """
+    log = infdb.get_worker_logger()
+
+    OUTPUT_SCHEMA = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
+    table_name = infdb.get_config_value(
+        [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
+    ) + "_surface"
+    TABLE_NAME = table_name
+
+    try:
+        with infdb.connect() as db:
+
+            # Create building surface table
+            log.info(f"building_surface: starting {OUTPUT_SCHEMA}.{TABLE_NAME}")
+            db.execute_sql_file(
+                "sql/sur.sql",
+                {
+                    "output_schema": OUTPUT_SCHEMA,
+                    "table_name": TABLE_NAME,
+                    "object_id_prefix": "replace-me",
+                },
+            )
+            log.info(f"{OUTPUT_SCHEMA}.{TABLE_NAME} completed")
+
+    except Exception:
+        infdb.get_logger().exception(f"{OUTPUT_SCHEMA}.{TABLE_NAME} failed")

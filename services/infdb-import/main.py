@@ -120,41 +120,44 @@ def main() -> None:
         process.close()
 
     # # Create building_lod2 tables for BY and NRW for development/testing
-    # utils.create_building_lod2_table(region="BY", infdb=infdb)
-    # utils.create_building_lod2_table(region="NRW", infdb=infdb)
+    utils.create_building_lod2_table(object_id_prefix="DEBY", infdb=infdb)
+    # utils.create_building_lod2_table(region="DENW", infdb=infdb)
 
-    # Create building_surface
-    ags_list = utils.fetch_scope_ags_from_db(infdb)
+    utils.create_building_surface_table(infdb=infdb)
 
-    def fmt(lst):
-            return ",".join(f"'{s}'" for s in ags_list)
-    with infdb.connect() as db:
-        output_schema = "c_tmp"
-        table_name = "building"
+    # # Create building_surface
+    # ags_list = utils.fetch_scope_ags_from_db(infdb)
 
-        db.execute_sql_file(
-            "sql/create_building_table.sql", {"output_schema": "opendata", "table_name": "building_lod2"}
-        )
+    # def fmt(lst):
+    #         return ",".join(f"'{s}'" for s in ags_list)
+    # with infdb.connect() as db:
+    #     output_schema = "c_tmp"
+    #     table_name = "building"
 
-        db.execute_sql_file(
-            "sql/bld.sql",
-            {
-                "output_schema": output_schema,
-                "table_name": table_name,
-                "ags": fmt(ags_list),
-                "ags_id": "09",
-            },
-        )
+    #     db.execute_sql_file(
+    #         "sql/create_building_table.sql", {"output_schema": "opendata", "table_name": "building_lod2"}
+    #     )
 
-        db.execute_sql_file(
-            "sql/sur.sql",
-            {
-                "output_schema": output_schema,
-                "table_name": table_name,
-                "ags": fmt(ags_list),
-                "ags_id": "09",
-            },
-        )
+    #     db.execute_sql_file(
+    #         "sql/bld.sql",
+    #         {
+    #             "output_schema": output_schema,
+    #             "table_name": table_name,
+    #             "ags": fmt(ags_list),
+    #             "ags_id": "09",
+    #             "region": "DEBY",
+    #         },
+    #     )
+
+    #     db.execute_sql_file(
+    #         "sql/sur.sql",
+    #         {
+    #             "output_schema": output_schema,
+    #             "table_name": table_name,
+    #             "ags": fmt(ags_list),
+    #             "ags_id": "09",
+    #         },
+    #     )
 
     # Summarize successes and failures using stored results
     successful = [name for name, exitcode in process_results if exitcode == 0]
