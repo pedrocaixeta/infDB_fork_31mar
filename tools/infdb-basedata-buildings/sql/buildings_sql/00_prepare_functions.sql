@@ -1,10 +1,13 @@
+-- Create schme if not exists
+CREATE SCHEMA IF NOT EXISTS {output_schema};
+
 -- Set up pgrouting
 SET SEARCH_PATH = public;
-CREATE EXTENSION pgrouting CASCADE;
-SET SEARCH_PATH = ${output_schema}, public;
+CREATE EXTENSION IF NOT EXISTS pgrouting CASCADE;
+SET SEARCH_PATH = {output_schema}, public;
 
 -- define building use classification function
-CREATE OR REPLACE FUNCTION ${output_schema}.classify_building_use(funktion TEXT)
+CREATE OR REPLACE FUNCTION {output_schema}.classify_building_use(funktion TEXT)
     RETURNS TEXT AS
 $$
 BEGIN
@@ -275,12 +278,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE
                     STRICT;
-@@
---rollback DROP FUNCTION IF EXISTS ${output_schema}.classify_building_use(TEXT);
-@@
+
+--rollback DROP FUNCTION IF EXISTS {output_schema}.classify_building_use(TEXT);
 
 -- define building use classification function
-CREATE OR REPLACE FUNCTION ${output_schema}.assign_weighted_year(
+CREATE OR REPLACE FUNCTION {output_schema}.assign_weighted_year(
     vor1919 double precision,
     a1919bis1948 double precision,
     a1949bis1978 double precision,
@@ -342,6 +344,5 @@ BEGIN
     RETURN '2020-';
 END;
 $$ LANGUAGE plpgsql;
-@@
---rollback DROP FUNCTION IF EXISTS ${output_schema}.assign_weighted_year(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision);
-@@
+
+--rollback DROP FUNCTION IF EXISTS {output_schema}.assign_weighted_year(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision);
