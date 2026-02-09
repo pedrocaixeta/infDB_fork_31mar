@@ -19,9 +19,11 @@ set +a
 PROFILE="${1:-$PROFILE}"
 PARAM="${2:-$AGS}"
 OPTIONS="${3:-}"
+PROJECT="infdb_${PROFILE}_${PARAM}"
 
 echo "Starting docker compose..."
 export AGS="$PARAM"
 docker compose -f "$(dirname "$0")/compose.yml" \
+    -p "$PROJECT" \
     --profile "$PROFILE" \
      up --remove-orphans $OPTIONS
