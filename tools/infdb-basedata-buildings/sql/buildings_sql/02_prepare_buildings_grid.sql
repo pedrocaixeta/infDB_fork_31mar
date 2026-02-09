@@ -1,3 +1,6 @@
+-- serialize this init section across containers
+SELECT pg_advisory_lock(hashtext('infdb_basedata_init'));
+
 -- Create buildings grids
 -- 100m
 CREATE TABLE IF NOT EXISTS {output_schema}.buildings_grid_100m(
@@ -105,3 +108,6 @@ ALTER TABLE {output_schema}.bld2ts
     ADD COLUMN IF NOT EXISTS geom geometry;
 CREATE INDEX IF NOT EXISTS idx_bld2ts_objectid ON {output_schema}.bld2ts (bld_objectid);
 CREATE UNIQUE INDEX IF NOT EXISTS unique_bld_ts ON {output_schema}.bld2ts (bld_objectid, ts_metadata_name);
+
+-- unlock init section across containers
+SELECT pg_advisory_unlock(hashtext('infdb_basedata_init'));

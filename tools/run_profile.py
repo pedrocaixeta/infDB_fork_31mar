@@ -13,7 +13,7 @@ PROFILE = sys.argv[1] if len(sys.argv) > 1 else "basedata"
 
 num_workers = 3
 #ags_list = {"09780139", "05119000", "09185149"}
-ags_list = {"09184136", "09184148"}
+ags_list = {"09162000", "09564000", "09761000"}
 # - "09780139"  # Sonthofen (BY)
 # - "05119000" # Oberhausen (NRW)
 # - "09185149" # Neuburg a. d. Donau (BY)

@@ -1,3 +1,6 @@
+-- serialize this init section across containers
+SELECT pg_advisory_lock(hashtext('infdb_basedata_init'));
+
 -- Create schme if not exists
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 
@@ -346,3 +349,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 --rollback DROP FUNCTION IF EXISTS {output_schema}.assign_weighted_year(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision);
+
+-- unlock init section across containers
+SELECT pg_advisory_unlock(hashtext('infdb_basedata_init'));
