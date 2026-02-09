@@ -6,7 +6,7 @@
 -- Step 4: Multi-Family Houses (MFH):
 -- Buildings with 2-3 floors, multiple units but smaller than apartment buildings
 -- Often have some neighbors but not as many as apartment buildings
-UPDATE {output_schema}.buildings
+UPDATE temp_buildings
 SET building_type = 'MFH'
 WHERE building_use = 'Residential'
   AND building_type IS NULL
@@ -14,14 +14,14 @@ WHERE building_use = 'Residential'
         (floor_area > 150 AND
          EXISTS (SELECT 1
                  FROM temp_touching_neighbor_counts
-                 WHERE temp_touching_neighbor_counts.id = {output_schema}.buildings.id
+                 WHERE temp_touching_neighbor_counts.id = temp_buildings.id
                    AND count BETWEEN 1 AND 3))
     ));
 
 -- Create Vertex set of buildings which could be of type 'MFH'
 CREATE TEMP TABLE filtered_buildings AS (
     SELECT id, geom, height, gemeindeschluessel
-    FROM {output_schema}.buildings
+    FROM temp_buildings
     WHERE building_use = 'Residential'
     AND (building_type = 'MFH'
         OR( building_type IS NULL
@@ -78,17 +78,16 @@ CREATE INDEX IF NOT EXISTS building_components_component_idx
 WITH seed_components AS (
   SELECT DISTINCT bc.component
   FROM building_components bc
-  JOIN {output_schema}.buildings b
+  JOIN temp_buildings b
     ON b.id = bc.id
   WHERE b.building_type = 'MFH'
 )
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET building_type = 'MFH'
 FROM building_components bc
 JOIN seed_components sc
   ON sc.component = bc.component
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.id = bc.id;
+WHERE b.id = bc.id;
 
 -- release memory
 DROP TABLE IF EXISTS filtered_buildings;

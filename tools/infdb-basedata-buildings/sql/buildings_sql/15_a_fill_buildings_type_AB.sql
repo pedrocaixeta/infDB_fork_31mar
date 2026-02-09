@@ -10,7 +10,7 @@
 -- Step 1: Apartment Buildings (AB):
 -- Step 1a: identify buildings which are typically apartment buildings based on their own attributes
 -- Typically have <4+ floors and many neighbors> or <3+ floors and 3+ neighbors> or <floor area > 1500>
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET building_type = 'AB'
 WHERE b.building_use = 'Residential'
   AND b.building_type IS NULL
@@ -36,7 +36,7 @@ WHERE b.building_use = 'Residential'
 DROP TABLE IF EXISTS filtered_buildings;
 CREATE TEMP TABLE filtered_buildings AS (
   SELECT id, geom, height, gemeindeschluessel
-  FROM {output_schema}.buildings
+  FROM temp_buildings
   WHERE building_use = 'Residential'
     AND (building_type IS NULL OR building_type = 'AB')
   --AND b1.floor_number >= 3
@@ -100,17 +100,16 @@ CREATE INDEX IF NOT EXISTS building_components_component_idx
 WITH seed_components AS (
   SELECT DISTINCT bc.component
   FROM building_components bc
-  JOIN {output_schema}.buildings b
+  JOIN temp_buildings b
     ON b.id = bc.id
   WHERE b.building_type = 'AB'
 )
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET building_type = 'AB'
 FROM building_components bc
 JOIN seed_components sc
   ON sc.component = bc.component
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.id = bc.id;
+WHERE b.id = bc.id;
 
 -- release memory
 DROP TABLE IF EXISTS filtered_buildings;

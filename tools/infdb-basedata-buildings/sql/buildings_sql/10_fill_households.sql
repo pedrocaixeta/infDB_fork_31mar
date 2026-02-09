@@ -10,12 +10,11 @@ SELECT b.id AS building_id,
        b.occupants,
        d.id as haushaltsgroesse_id,
        d.durchschnhhgroesse
-FROM {output_schema}.buildings b
-         JOIN {output_schema}.buildings_grid_100m d
+FROM temp_buildings b
+         JOIN temp_buildings_grid_100m d
              ON d.geom && b.geom AND
              ST_Contains(d.geom, ST_Centroid(b.geom))
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.occupants IS NOT NULL
+WHERE b.occupants IS NOT NULL
   AND b.building_use = 'Residential'; -- already ensured by above clause
 
 CREATE INDEX ON temp_building_hh_grid (building_id);
@@ -30,7 +29,7 @@ FROM temp_building_hh_grid;
 CREATE INDEX ON temp_building_households (building_id);
 
 -- Step 3: Update original building table
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET households = bh.estimated_households
 FROM temp_building_households bh
 WHERE b.id = bh.building_id;
@@ -44,11 +43,11 @@ SELECT
     b.id AS building_id,
     -- (bo.weight / bo.total_weight) * nearest.nearest_einwohner * (bo.total_weight / cw.total_weight) as assigned_occupants, -- ratio of building weight * closest occupancy count * ratio of total weights
     GREATEST(ROUND((bo.weight / cw.total_weight) * nearest.nearest_einwohner)::int, 1) as assigned_occupants
-FROM {output_schema}.buildings b
+FROM temp_buildings b
 CROSS JOIN LATERAL (
     SELECT g.id as bevoelkerungszahl_id,
            g.einwohner as nearest_einwohner
-    FROM {output_schema}.buildings_grid_100m g
+    FROM temp_buildings_grid_100m g
     WHERE g.id IS NOT NULL
       AND g.einwohner IS NOT NULL
     ORDER BY g.geom <-> ST_Centroid(b.geom)
@@ -56,8 +55,7 @@ CROSS JOIN LATERAL (
 ) nearest
 JOIN temp_building_occupants bo ON b.id = bo.building_id
 JOIN temp_cell_weights cw ON nearest.bevoelkerungszahl_id = cw.bevoelkerungszahl_id
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.occupants IS NULL
+WHERE b.occupants IS NULL
   AND b.building_use = 'Residential';
 
 -- release memory

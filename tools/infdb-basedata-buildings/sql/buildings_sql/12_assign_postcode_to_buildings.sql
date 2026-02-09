@@ -15,9 +15,8 @@ INSERT INTO temp_postcode_{EPSG} (plz, geom)
 SELECT plz::int, ST_Transform(geom, {EPSG})
 FROM {input_schema}."postcodes_germany";
 
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET postcode = plz::int
 FROM temp_postcode_{EPSG} p
-WHERE b.gemeindeschluessel = '{ags}'
-  AND p.geom && b.geom -- prefilter with bounding box &&
+WHERE p.geom && b.geom -- prefilter with bounding box &&
   AND ST_Contains(p.geom, b.centroid);

@@ -4,7 +4,7 @@
 -- per building use or standard fallback values.
 
 -- Create statistics on buildings to avoid nested loop join
-ANALYZE {output_schema}.buildings;
+ANALYZE temp_buildings;
 
 -- Step 1: Use storeysAboveGround from LOD2 data where available and reasonable
 -- Use temp table because original table is not indexed
@@ -16,8 +16,10 @@ SELECT
     l.storeysAboveGround AS validated_floors
     -- Calculate if the source floors make sense given the height
     -- Typical floor height should be between 2.5m and 5m
-FROM {output_schema}.buildings b
-LEFT JOIN {input_schema}.buildings_lod2 l ON b.feature_id = l.feature_id
+FROM temp_buildings b
+LEFT JOIN {input_schema}.building_view l
+       ON b.feature_id = l.feature_id
+      AND l.gemeindeschluessel = '{ags}'
 ;
 CREATE INDEX ON temp_floor_number_data (feature_id);
 CREATE INDEX ON temp_floor_number_data (validated_floors);
@@ -29,7 +31,7 @@ WHERE validated_floors = 0
     OR height  > 6.0 * validated_floors; -- Too tall per floor, suspicious
 
 
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET floor_number = fnd.validated_floors
 FROM temp_floor_number_data fnd
 WHERE b.feature_id = fnd.feature_id;
@@ -41,11 +43,11 @@ WITH average_floor_height AS (
         building_use_id,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (height / NULLIF(floor_number, 0))) as median_height_per_floor,
         COUNT(*) as sample_count
-    FROM {output_schema}.buildings
+    FROM temp_buildings
     WHERE floor_number IS NOT NULL AND floor_number > 0
     GROUP BY building_use_id
 )
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET floor_number = GREATEST(ROUND(b.height / afh.median_height_per_floor), 1)
 FROM average_floor_height afh
 WHERE b.floor_number IS NULL
@@ -55,7 +57,7 @@ WHERE b.floor_number IS NULL
 
 -- Step 3: For remaining buildings, use overall median floor height by building use
 -- Residential: ~3.0m, Commercial: ~3.5m, Public: ~3.5m
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET floor_number = GREATEST(
     ROUND(
         b.height /
@@ -70,16 +72,14 @@ SET floor_number = GREATEST(
 WHERE b.floor_number IS NULL;
 
 -- Step 4: Final fallback for any remaining buildings (use 3.2m average)
-UPDATE {output_schema}.buildings
+UPDATE temp_buildings
 SET floor_number = GREATEST(ROUND(height / 3.2), 1)
-WHERE gemeindeschluessel = '{ags}'
-  AND floor_number IS NULL
+WHERE floor_number IS NULL
   AND height IS NOT NULL;
 
 -- Step 5: Set minimum of 1 floor for buildings without height data
-UPDATE {output_schema}.buildings
+UPDATE temp_buildings
 SET floor_number = 1
-WHERE gemeindeschluessel = '{ags}'
-  AND floor_number IS NULL;
+WHERE floor_number IS NULL;
 
 DROP TABLE IF EXISTS temp_floor_number_data;

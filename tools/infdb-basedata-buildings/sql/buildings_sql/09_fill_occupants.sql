@@ -10,11 +10,10 @@ SELECT b.id                    AS building_id,
        b.height * b.floor_area AS weight,
        g.id                    as bevoelkerungszahl_id,
        g.einwohner
-FROM {output_schema}.buildings b
-    JOIN {output_schema}.buildings_grid_100m g
+FROM temp_buildings b
+    JOIN temp_buildings_grid_100m g
     ON ST_Contains(g.geom, b.centroid)
 WHERE b.building_use = 'Residential'
-  AND b.gemeindeschluessel = '{ags}'
   AND b.centroid && g.geom;  -- Bounding box filter before spatial query
 
 CREATE INDEX ON temp_building_weights (bevoelkerungszahl_id);
@@ -47,11 +46,10 @@ FROM temp_building_weights bw
               ON bw.bevoelkerungszahl_id = cw.bevoelkerungszahl_id;
 
 -- Step 4: Update the original building table
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET occupants = bo.assigned_occupants
 FROM temp_building_occupants bo
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.id = bo.building_id;
+WHERE b.id = bo.building_id;
 
 -- Handle buildings without occupants using nearest neighbor
 -- Step 5: Find nearest grid cell with occupancy data for each unassigned building
@@ -61,11 +59,11 @@ SELECT
     b.id AS building_id,
     -- (bo.weight / bo.total_weight) * nearest.nearest_einwohner * (bo.total_weight / cw.total_weight) as assigned_occupants, -- ratio of building weight * closest occupancy count * ratio of total weights
     GREATEST(ROUND((bo.weight / cw.total_weight) * nearest.nearest_einwohner)::int, 1) as assigned_occupants
-FROM {output_schema}.buildings b
+FROM temp_buildings b
 CROSS JOIN LATERAL (
     SELECT g.id as bevoelkerungszahl_id,
            g.einwohner as nearest_einwohner
-    FROM {output_schema}.buildings_grid_100m g
+    FROM temp_buildings_grid_100m g
     WHERE g.id IS NOT NULL
       AND g.einwohner IS NOT NULL
     ORDER BY g.geom <-> b.centroid
@@ -76,11 +74,10 @@ JOIN temp_cell_weights cw ON nearest.bevoelkerungszahl_id = cw.bevoelkerungszahl
 WHERE b.occupants IS NULL AND b.building_use = 'Residential';
 
 -- Step 6: Update the original building table with the nearest estimations
-UPDATE {output_schema}.buildings b
+UPDATE temp_buildings b
 SET occupants = ngo.assigned_occupants
 FROM temp_nearest_grid_occupants ngo
-WHERE b.gemeindeschluessel = '{ags}'
-  AND b.id = ngo.building_id;
+WHERE b.id = ngo.building_id;
 
 -- release memory
 DROP TABLE IF EXISTS temp_building_weights;
