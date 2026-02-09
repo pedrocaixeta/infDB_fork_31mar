@@ -1,7 +1,7 @@
-CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index
-    ON citydb.geometry_data USING gin (geometry_properties);
-CREATE INDEX IF NOT EXISTS idx_property_name ON property(name);
-CREATE INDEX IF NOT EXISTS idx_property_val_string ON property(val_string);
+ANALYZE feature;
+ANALYZE geometry_data;
+
+CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index ON citydb.geometry_data USING GIN (geometry_properties);
 CREATE INDEX IF NOT EXISTS idx_feature_objectclass ON feature(objectclass_id);
 
 -- Create indexes on the temporary table for faster joins
@@ -23,10 +23,12 @@ CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}_ids AS (
 CREATE INDEX IF NOT EXISTS idx_surface_ids_objectid ON {output_schema}.{table_name}_ids (objectid);
 CREATE INDEX IF NOT EXISTS idx_surface_ids_child_object_id ON {output_schema}.{table_name}_ids (child_object_id);
 CREATE INDEX IF NOT EXISTS idx_surface_ids_objectclass_id ON {output_schema}.{table_name}_ids (objectclass_id);
+CREATE INDEX IF NOT EXISTS idx_surface_ids_feature_id ON {output_schema}.{table_name}_ids (feature_id);
+CREATE INDEX IF NOT EXISTS idx_surface_ids_geometry_data_id ON {output_schema}.{table_name}_ids (geometry_data_id);
 
 
 -- Create building surfaces table
-DROP TABLE IF EXISTS {output_schema}.{table_name}_surface;
+DROP TABLE IF EXISTS {output_schema}.{table_name}_surface CASCADE;
 CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}_surface AS
 SELECT
     sid2.objectid,

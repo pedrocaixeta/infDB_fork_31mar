@@ -1,13 +1,9 @@
--- ANALYZE feature;
--- ANALYZE property;
--- ANALYZE geometry_data;
+ANALYZE feature;
+ANALYZE property;
 
--- CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index
---     ON citydb.geometry_data USING gin (geometry_properties);
--- CREATE INDEX IF NOT EXISTS idx_property_name ON property(name);
--- CREATE INDEX IF NOT EXISTS idx_property_val_string ON property(val_string);
--- CREATE INDEX IF NOT EXISTS idx_property_parent_id ON property(parent_id) WHERE parent_id IS NOT NULL;
--- CREATE INDEX IF NOT EXISTS idx_feature_objectclass ON feature(objectclass_id);
+
+CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index ON citydb.geometry_data USING gin (geometry_properties);
+CREATE INDEX IF NOT EXISTS idx_feature_objectclass ON feature(objectclass_id);
 
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 
