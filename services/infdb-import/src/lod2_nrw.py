@@ -87,7 +87,7 @@ def load(infdb: InfDB) -> bool:
         utils.do_cmd(cmd_parts)
 
         # ==================== 5. Flat building table ====================
-        utils.create_building_lod2_table(region="NRW", infdb=infdb)
+        utils.create_building_lod2_table(object_id_prefix="DENW", infdb=infdb)
 
         log.info("LOD2-NRW data loaded successfully")
         sys.exit(0)

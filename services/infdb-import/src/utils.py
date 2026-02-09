@@ -1027,16 +1027,16 @@ def create_building_lod2_table(object_id_prefix: str, infdb: InfDB) -> None:
             [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
         ) + "_lod2"
 
-        TEMP_OUTPUT_SCHEMA = "bld_tmp"
+        TEMP_OUTPUT_SCHEMA = "tmp_bld"
         TEMP_TABLE_NAME = f"{table_name}_{object_id_prefix.lower()}"
 
         try:
             with infdb.connect() as db:
-                # Create central building table
-                db.execute_sql_file(
-                    "sql/create_building_table.sql", {"output_schema": output_schema, "table_name": table_name}
-                )
-                log.info(f"Created central building_lod2: {output_schema}.{table_name}")
+                # # Create central building table
+                # db.execute_sql_file(
+                #     "sql/create_building_table.sql", {"output_schema": output_schema, "table_name": table_name}
+                # )
+                # log.info(f"Created central building_lod2: {output_schema}.{table_name}")
 
                 # Create building table for the region
                 log.info(f"building_lod2: starting {TEMP_OUTPUT_SCHEMA}.{TEMP_TABLE_NAME} ({ags_id}...)")
@@ -1070,8 +1070,8 @@ def create_building_surface_table(infdb: InfDB) -> None:
     OUTPUT_SCHEMA = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
     table_name = infdb.get_config_value(
         [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
-    ) + "_surface"
-    TABLE_NAME = table_name
+    )
+    TABLE_NAME = table_name + "_surface"
 
     try:
         with infdb.connect() as db:
@@ -1083,6 +1083,7 @@ def create_building_surface_table(infdb: InfDB) -> None:
                 {
                     "output_schema": OUTPUT_SCHEMA,
                     "table_name": TABLE_NAME,
+                    "bld_table_name": table_name,
                     "object_id_prefix": "replace-me",
                 },
             )
@@ -1090,3 +1091,21 @@ def create_building_surface_table(infdb: InfDB) -> None:
 
     except Exception:
         infdb.get_logger().exception(f"{OUTPUT_SCHEMA}.{TABLE_NAME} failed")
+
+
+def create_table_building(infdb: InfDB) -> None:
+
+    log = infdb.get_worker_logger()
+
+    output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
+    table_name = infdb.get_config_value(
+            [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
+        ) + "_lod2"
+    
+    log.info("Creating building surface table...")
+    
+    with infdb.connect() as db:
+        # Create central building table
+        db.execute_sql_file(
+            "sql/create_building_table.sql", {"output_schema": output_schema, "table_name": table_name}
+        )

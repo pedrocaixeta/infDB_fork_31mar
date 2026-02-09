@@ -64,7 +64,6 @@ def main() -> None:
 
     # Root logger and the running QueueListener (started by InfdbLogger internally)
     log = infdb.get_logger()
-    # log_queue = infdb.infdblogger.log_queue # Uncomment when wetterdienst is supported again
 
     log.info("Starting loader.............................................")
     log.info("-------------------------------------------------------------")
@@ -75,12 +74,16 @@ def main() -> None:
     #     package.load(infdb)
 
     # # Drop schema "opendata" for clean development runs
-    # with infdb.connect() as db:  # InfdbClient context
-    #     db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
-    #     db.execute_query("DROP SCHEMA IF EXISTS bld_tmp CASCADE;")
+    log.info("Dropping schemas for clean development run...")
+    with infdb.connect() as db:  # InfdbClient context
+        db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
+        db.execute_query("DROP SCHEMA IF EXISTS tmp_bld CASCADE;")
 
     # Ensure that administrative areas are loaded for scope
-    # bkg.load(infdb)
+    bkg.load(infdb)
+
+    utils.create_table_building(infdb=infdb)
+
     # Launch data loading in parallel
     mp.freeze_support()
     processes: List[mp.Process] = []
@@ -96,7 +99,6 @@ def main() -> None:
     processes.append(
         mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
     )
-
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
     processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
     processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
@@ -118,10 +120,6 @@ def main() -> None:
         process_results.append((process.name, exitcode))
         # Explicitly close the process to release resources
         process.close()
-
-    # # Create building_lod2 tables for BY and NRW for development/testing
-    # utils.create_building_lod2_table(object_id_prefix="DEBY", infdb=infdb)
-    # # utils.create_building_lod2_table(region="DENW", infdb=infdb)
 
     # Create building surface tables for BY and NRW
     utils.create_building_surface_table(infdb=infdb)

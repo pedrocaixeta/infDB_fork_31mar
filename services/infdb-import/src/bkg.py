@@ -36,7 +36,8 @@ def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear
     # Build base table
     with infdb.connect() as db:
         if clear_existing:
-            db.execute_query(f"DROP TABLE IF EXISTS {schema}.{table_name};")
+            log.info("Dropping existing geogitter table %s.%s ...", schema, table_name)
+            db.execute_query(f"DROP TABLE IF EXISTS {schema}.{table_name} CASCADE;")
 
         log.info("Creating %s table schema if needed...", table_name)
         ddl = f"""

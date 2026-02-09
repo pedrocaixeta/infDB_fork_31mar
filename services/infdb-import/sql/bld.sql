@@ -1,7 +1,6 @@
 ANALYZE feature;
 ANALYZE property;
 
-
 CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index ON citydb.geometry_data USING gin (geometry_properties);
 CREATE INDEX IF NOT EXISTS idx_feature_objectclass ON feature(objectclass_id);
 CREATE INDEX IF NOT EXISTS idx_feature_objectid ON feature(objectid);
@@ -9,7 +8,7 @@ CREATE INDEX IF NOT EXISTS idx_feature_objectid ON feature(objectid);
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 
 -- Drop existing partition to avoid conflict with wrong ags_id value
-DROP TABLE IF EXISTS {output_schema}.{table_name} CASCADE;
+-- DROP TABLE IF EXISTS {output_schema}.{table_name} CASCADE;
 CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}
     PARTITION OF opendata.building_lod2 
     FOR VALUES IN ('{ags_id}');
@@ -60,17 +59,3 @@ SELECT
 FROM base_buildings bb
     LEFT JOIN citydb.address adr ON bb.address_id = adr.id;
 -- WHERE bb.gemeindeschluessel IN ({ags});  -- either or test what performs better with the filter on the base_buildings CTE or here on the final result
-
-
-
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_objectid ON {output_schema}.{table_name} (objectid);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_gemeindeschluessel ON {output_schema}.{table_name} (gemeindeschluessel);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_ags_id ON {output_schema}.{table_name} (ags_id);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_height ON {output_schema}.{table_name} (height);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_storeys ON {output_schema}.{table_name} (storeysaboveground);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_street ON {output_schema}.{table_name} (street);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_house_number ON {output_schema}.{table_name} (house_number);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_city ON {output_schema}.{table_name} (city);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_country ON {output_schema}.{table_name} (country);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_zip_code ON {output_schema}.{table_name} (zip_code);
--- CREATE INDEX IF NOT EXISTS idx_building_lod2_state ON {output_schema}.{table_name} (state);
