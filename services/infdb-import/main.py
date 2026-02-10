@@ -70,10 +70,16 @@ def main() -> None:
     log.info("-------------------------------------------------------------")
 
     # Download opendata package for development directly (original guard)
-    # if utils.if_active("package", infdb):
+    # if utils.if_active("package", infdb):00
     #     package.load(infdb)
 
-    # # Drop schema "opendata" for clean development runs
+    # Drop schema "opendata" for clean development runs (preserves original behavior of always dropping "opendata" early on).
+    log.info("Terminating other connections to avoid deadlocks during schema drop...")
+    with infdb.connect() as db:
+        db.execute_query("""SELECT pg_terminate_backend(pid)
+                            FROM pg_stat_activity
+                            WHERE pid <> pg_backend_pid() ;""")
+
     log.info("Dropping schemas for clean development run...")
     with infdb.connect() as db:  # InfdbClient context
         db.execute_query("DROP SCHEMA IF EXISTS opendata CASCADE;")
