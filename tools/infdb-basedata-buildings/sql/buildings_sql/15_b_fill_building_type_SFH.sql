@@ -30,35 +30,18 @@ CREATE TEMP TABLE filtered_buildings AS (
             AND floor_number <= 2
         )
     )
-)
-;
+);
 
 CREATE INDEX IF NOT EXISTS idx_filtered_buildings_geom ON filtered_buildings USING GIST (geom);
 CREATE INDEX IF NOT EXISTS idx_filtered_buildings_id ON filtered_buildings(id);
 CREATE INDEX IF NOT EXISTS idx_filtered_buildings_ags ON filtered_buildings(gemeindeschluessel);
 
--- edges in graph show neighbourhood relation
-CREATE TEMP TABLE building_edges(
-    id SERIAL PRIMARY KEY,
-    source INT,
-    target INT,
-    cost DOUBLE PRECISION,
-    reverse_cost DOUBLE PRECISION
-);
-INSERT INTO building_edges(source, target, cost, reverse_cost)
-SELECT  b1.id AS source,
-        b2.id AS target,
-        1.0   AS cost, -- undirected graph, therefore both direction are 1.0
-        1.0   AS reverse_cost
-FROM filtered_buildings b1
-JOIN LATERAL (
-    SELECT id
-    FROM filtered_buildings b2
-    WHERE b1.id < b2.id
-      AND b1.gemeindeschluessel = b2.gemeindeschluessel
-      AND b2.geom && ST_Expand(b1.geom, 0.01)
-      AND ST_DWithin(b1.geom, b2.geom, 0.01)
-) b2 ON true;
+-- edges in graph show neighbourhood relation with pre-computed neighbors from previous step
+CREATE TEMP TABLE building_edges AS
+SELECT ROW_NUMBER() OVER () AS id, n.a_id AS source, n.b_id AS target, 1.0 AS cost, 1.0 AS reverse_cost
+FROM temp_touching_neighbors n
+WHERE EXISTS (SELECT 1 FROM filtered_buildings fb WHERE fb.id = n.a_id)
+  AND EXISTS (SELECT 1 FROM filtered_buildings fb WHERE fb.id = n.b_id);
 
 CREATE INDEX IF NOT EXISTS building_edges_source_idx ON building_edges(source);
 CREATE INDEX IF NOT EXISTS building_edges_target_idx ON building_edges(target);
@@ -76,7 +59,7 @@ CREATE INDEX IF NOT EXISTS building_components_id_idx
 CREATE INDEX IF NOT EXISTS building_components_component_idx
     ON building_components(component);
 
--- find all neighbourhood components which already have building_type 'SFH' from 1a and mark them as 'SFH' too.
+-- find all neighbourhood components which already have building_type 'SFH' and mark them as 'SFH' too.
 WITH seed_components AS (
   SELECT DISTINCT bc.component
   FROM building_components bc
