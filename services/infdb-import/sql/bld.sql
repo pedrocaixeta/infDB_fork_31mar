@@ -1,9 +1,7 @@
 -- ANALYZE feature;
 -- ANALYZE property;
 
-CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index ON citydb.geometry_data USING gin (geometry_properties);
-CREATE INDEX IF NOT EXISTS idx_feature_objectclass ON feature(objectclass_id);
-CREATE INDEX IF NOT EXISTS idx_feature_objectid ON feature(objectid);
+-- Indexes are now created in utils.create_table_building() to avoid deadlocks in parallel processing
 
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 

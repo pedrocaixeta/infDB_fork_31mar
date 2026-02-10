@@ -18,8 +18,11 @@ WHERE f.objectclass_id IN (709, 710, 712, 901)
     AND (child ->> 'objectId') IS NOT NULL;
 
 -- Only 2 critical indexes
-CREATE INDEX IF NOT EXISTS idx_surface_ids_child_object_id ON tmp_bld.{table_name}_ids (child_object_id);
 CREATE INDEX IF NOT EXISTS idx_surface_ids_objectid ON tmp_bld.{table_name}_ids (objectid);
+CREATE INDEX IF NOT EXISTS idx_surface_ids_child_object_id ON tmp_bld.{table_name}_ids (child_object_id);
+CREATE INDEX IF NOT EXISTS idx_surface_ids_geometry_data_id ON tmp_bld.{table_name}_ids (geometry_data_id);
+CREATE INDEX IF NOT EXISTS idx_surface_ids_objectclass_id ON tmp_bld.{table_name}_ids (objectclass_id);
+
 
 DROP TABLE IF EXISTS {output_schema}.{table_name} CASCADE;
 CREATE TABLE {output_schema}.{table_name} AS
@@ -35,12 +38,21 @@ FROM tmp_bld.{table_name}_ids sid
     JOIN objectclass oc ON oc.id = sid.objectclass_id
     JOIN geometry_data gd ON gd.id = sid.geometry_data_id
 WHERE sid.objectclass_id IN (709, 710, 712);
+CREATE INDEX IF NOT EXISTS {table_name}_objectid_idx ON {output_schema}.{table_name} (objectid);
+CREATE INDEX IF NOT EXISTS {table_name}_objectclass_id_idx ON {output_schema}.{table_name} (objectclass_id);
+CREATE INDEX IF NOT EXISTS {table_name}_geom_idx ON {output_schema}.{table_name} USING GIST (geom);
+
+
 
 DROP TABLE IF EXISTS {output_schema}.{bld_table_name}_view;
-CREATE OR REPLACE VIEW {output_schema}.{bld_table_name}_view AS
+CREATE MATERIALIZED VIEW {output_schema}.{bld_table_name}_view AS
 SELECT 
     bld.*,
-    sur.geom
+    sur.geom,
+    ST_Centroid(sur.geom) AS centroid
 FROM {output_schema}.building_lod2 bld
 JOIN {output_schema}.{table_name} sur ON bld.objectid = sur.objectid
 WHERE sur.objectclass_id = 710; -- 710 = ground surface
+CREATE INDEX IF NOT EXISTS {bld_table_name}_view_objectid_idx ON {output_schema}.{bld_table_name}_view (objectid);
+CREATE INDEX IF NOT EXISTS {bld_table_name}_view_geom_idx ON {output_schema}.{bld_table_name}_view USING GIST (geom);
+CREATE INDEX IF NOT EXISTS {bld_table_name}_view_centroid_idx ON {output_schema}.{bld_table_name}_view USING GIST (centroid);
