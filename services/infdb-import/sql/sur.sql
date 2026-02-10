@@ -30,6 +30,7 @@ SELECT
     sid2.building_objectid,
     sid.objectclass_id,
     oc.classname,
+    ST_Area(gd.geometry) AS area,
     gd.geometry AS geom
 FROM tmp_bld.{table_name}_ids sid
     JOIN tmp_bld.{table_name}_ids sid2 
@@ -55,7 +56,7 @@ FROM {output_schema}.building_lod2 bld
 JOIN {output_schema}.{table_name} sur ON bld.objectid = sur.building_objectid
 WHERE sur.objectclass_id = 710; -- 710 = ground surface
 
-CREATE INDEX IF NOT EXISTS {bld_table_name}_view_building_objectid_idx ON {output_schema}.{bld_table_name}_view (building_objectid);
+CREATE INDEX IF NOT EXISTS {bld_table_name}_view_objectid_idx ON {output_schema}.{bld_table_name}_view (objectid);
 CREATE INDEX IF NOT EXISTS {bld_table_name}_view_id_idx ON {output_schema}.{bld_table_name}_view (id);
 CREATE INDEX IF NOT EXISTS {bld_table_name}_view_ags_id_idx ON {output_schema}.{bld_table_name}_view (ags_id);
 CREATE INDEX IF NOT EXISTS {bld_table_name}_view_feature_id_idx ON {output_schema}.{bld_table_name}_view (feature_id);
