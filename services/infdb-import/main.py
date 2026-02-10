@@ -73,7 +73,7 @@ def main() -> None:
     # if utils.if_active("package", infdb):00
     #     package.load(infdb)
 
-    # Drop schema "opendata" for clean development runs (preserves original behavior of always dropping "opendata" early on).
+    # Drop schema "opendata" and "tmp_bld" for clean development runs
     log.info("Terminating other connections to avoid deadlocks during schema drop...")
     with infdb.connect() as db:
         db.execute_query("""SELECT pg_terminate_backend(pid)
