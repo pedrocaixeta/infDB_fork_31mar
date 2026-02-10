@@ -5,15 +5,11 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from datetime import datetime, timezone
 
 # PROFILE = "linear"
 # PROFILE = "basedata"
-PROFILE = sys.argv[1] if len(sys.argv) > 1 else "basedata"
+# PROFILE = "basedata-buildings"
 
-<<<<<<<< HEAD:tools/run_ags.py
-# PROFILE = "linear"
-# PROFILE = "basedata"
 PROFILE = sys.argv[1] if len(sys.argv) > 1 else "basedata"
 print(f"Using profile: {PROFILE}")
 
@@ -34,6 +30,7 @@ ags_list = (
     "09780139",  # Sonthofen (BY)
     "09185149",  # Neuburg a. d. Donau (BY)
     "09163000",  # Rosenheim (BY)
+    # - Oberhausen (NRW)
     # # Additional Requested Municipalities
     # "09276111", # Bayerisch Eisenstein
     # "09179111", # Adelshofen (Oberbayern)
@@ -47,15 +44,6 @@ ags_list = (
     # "09272152", # Zenting
 )
 print(f"AGS to process: {', '.join(ags_list)}")
-========
-num_workers = 3
-#ags_list = {"09780139", "05119000", "09185149"}
-ags_list = {"09184136", "09184148"}
-# - "09780139"  # Sonthofen (BY)
-# - "05119000" # Oberhausen (NRW)
-# - "09185149" # Neuburg a. d. Donau (BY)
->>>>>>>> 5521146 (infdb-basedata-ways is implemented for parallel ags processing):tools/run_profile.py
-
 
 SCRIPT_DIR = Path(__file__).parent
 running_processes = set()
@@ -68,11 +56,7 @@ def run_ags(ags):
         return
 
     process = subprocess.Popen(
-<<<<<<<< HEAD:tools/run_ags.py
         ["bash", SCRIPT_DIR / "run-profile.sh", PROFILE, ags],
-========
-        ["bash", SCRIPT_DIR / "run.sh", PROFILE, ags],
->>>>>>>> 5521146 (infdb-basedata-ways is implemented for parallel ags processing):tools/run_profile.py
         start_new_session=True,
     )
 
