@@ -1,5 +1,5 @@
-ANALYZE feature;
-ANALYZE geometry_data;
+-- ANALYZE feature;
+-- ANALYZE geometry_data;
 
 CREATE SCHEMA IF NOT EXISTS tmp_bld;
 DROP TABLE IF EXISTS tmp_bld.{table_name}_ids;

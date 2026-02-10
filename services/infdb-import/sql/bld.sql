@@ -1,5 +1,5 @@
-ANALYZE feature;
-ANALYZE property;
+-- ANALYZE feature;
+-- ANALYZE property;
 
 CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index ON citydb.geometry_data USING gin (geometry_properties);
 CREATE INDEX IF NOT EXISTS idx_feature_objectclass ON feature(objectclass_id);
