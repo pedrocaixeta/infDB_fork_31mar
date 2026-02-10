@@ -9,7 +9,8 @@ WITH ground_data AS (
         ST_Area(ST_Transform(ST_Force2D(b.geom), {EPSG})) as area,
         ST_Transform(ST_Force2D(b.geom), {EPSG})     as geom
     FROM {input_schema}.building_view b
-    WHERE b.gemeindeschluessel = '{ags}' AND b.objectclass_id = 710;
+    WHERE b.gemeindeschluessel = '{ags}'
+      AND b.objectclass_id = 710
 
 )
 UPDATE temp_buildings b
