@@ -6,7 +6,7 @@ WITH ground_data AS (
     SELECT
         objectid as building_objectid,
         feature_id,
-        ST_Area(ST_Transform(ST_Force2D(b.geom), {EPSG})) as area,
+        groundsurface_flaeche as area,
         ST_Transform(ST_Force2D(b.geom), {EPSG})     as geom
     FROM {input_schema}.building_view b
     WHERE b.gemeindeschluessel = '{ags}'
