@@ -15,5 +15,5 @@ services:
         env_file:
             - ro-heat.env
         depends_on:
-            infdb-basedata:
+            infdb-basedata-buildings:
                 condition: service_completed_successfully
