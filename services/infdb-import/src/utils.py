@@ -1104,12 +1104,25 @@ def create_table_building(infdb: InfDB) -> None:
     table_name = (
         infdb.get_config_value(
             [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
-        )
-        + "_lod2"
-    )
-
-    log.info("Creating building surface table...")
-
+        ) + "_lod2"
+    
+    log.info("Creating building table and indexes...")
+    
     with infdb.connect() as db:
+        # Create indexes on shared citydb tables BEFORE parallel processing
+        log.info("Creating indexes on citydb.geometry_data and feature...")
+        db.execute_query("""
+            CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index 
+            ON citydb.geometry_data USING gin (geometry_properties);
+        """)
+        db.execute_query("""
+            CREATE INDEX IF NOT EXISTS idx_feature_objectclass 
+            ON feature(objectclass_id);
+        """)
+        db.execute_query("""
+            CREATE INDEX IF NOT EXISTS idx_feature_objectid 
+            ON feature(objectid);
+        """)
+        
         # Create central building table
         db.execute_sql_file("sql/create_building_table.sql", {"output_schema": output_schema, "table_name": table_name})

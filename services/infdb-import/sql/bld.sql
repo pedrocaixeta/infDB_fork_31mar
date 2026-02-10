@@ -1,9 +1,7 @@
-ANALYZE feature;
-ANALYZE property;
+-- ANALYZE feature;
+-- ANALYZE property;
 
-CREATE INDEX IF NOT EXISTS geometry_data_geometry_properties_index ON citydb.geometry_data USING gin (geometry_properties);
-CREATE INDEX IF NOT EXISTS idx_feature_objectclass ON feature(objectclass_id);
-CREATE INDEX IF NOT EXISTS idx_feature_objectid ON feature(objectid);
+-- Indexes are now created in utils.create_table_building() to avoid deadlocks in parallel processing
 
 CREATE SCHEMA IF NOT EXISTS {output_schema};
 
@@ -37,8 +35,8 @@ WITH base_buildings AS (
         AND f.objectid LIKE '{object_id_prefix}%'
         AND p.name IN ('function', 'Gemeindeschluessel', 'storeysAboveGround', 'address', 'value') -- add 'height' if height_parent_id is used
     GROUP BY f.id, f.objectclass_id, f.objectid
-    HAVING MAX(CASE WHEN p.name = 'function' THEN p.val_string END) >= '31001_'
-    AND MAX(CASE WHEN p.name = 'function' THEN p.val_string END) < '31002'
+    -- HAVING MAX(CASE WHEN p.name = 'function' THEN p.val_string END) >= '31001_'
+    -- AND MAX(CASE WHEN p.name = 'function' THEN p.val_string END) < '31002'
     -- AND MAX(CASE WHEN p.name = 'Gemeindeschluessel' THEN p.val_string END) IN ({ags})
 )
 SELECT
