@@ -1105,6 +1105,7 @@ def create_table_building(infdb: InfDB) -> None:
         infdb.get_config_value(
             [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
         ) + "_lod2"
+    )
     
     log.info("Creating building table and indexes...")
     
