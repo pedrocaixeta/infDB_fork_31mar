@@ -25,10 +25,9 @@ ags_list = (
     # "09461000", # Bamberg
     # "09462000", # Bayreuth
     # Additional Requested Municipalities
-    "09780139", # Sonthofen (BY)
-    "09185149", # Neuburg a. d. Donau (BY)
-    "09163000", # Rosenheim (BY)
-
+    "09780139",  # Sonthofen (BY)
+    "09185149",  # Neuburg a. d. Donau (BY)
+    "09163000",  # Rosenheim (BY)
     # # Additional Requested Municipalities
     # "09276111", # Bayerisch Eisenstein
     # "09179111", # Adelshofen (Oberbayern)
