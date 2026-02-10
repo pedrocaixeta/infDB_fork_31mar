@@ -996,7 +996,8 @@ def get_clip_geometries_per_scope(target_crs: int, infdb: InfDB):
 
 def create_building_lod2_table(object_id_prefix: str, infdb: InfDB) -> None:
     """
-    Creates the flat building_lod2 table for the specified object_id_prefix by filtering the source data based on AGS codes.
+    Creates the flat building_lod2 table for the specified object_id_prefix
+    by filtering the source data based on AGS codes.
 
     :param object_id_prefix: Object ID prefix (e.g., "DEBY" for Bavaria, "DENW" for North Rhine-Westphalia)
     :type object_id_prefix: str
@@ -1022,7 +1023,6 @@ def create_building_lod2_table(object_id_prefix: str, infdb: InfDB) -> None:
         def fmt(lst):
             return ",".join(f"'{s}'" for s in lst)
 
-        output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
         table_name = infdb.get_config_value(
             [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
         ) + "_lod2"
@@ -1058,7 +1058,8 @@ def create_building_lod2_table(object_id_prefix: str, infdb: InfDB) -> None:
 
 def create_building_surface_table(infdb: InfDB) -> None:
     """
-    Creates the flat building_lod2 table for the specified object_id_prefix by filtering the source data based on AGS codes.
+    Creates the flat building_lod2 table for the specified object_id_prefix
+    by filtering the source data based on AGS codes.
 
     :param object_id_prefix: Object ID prefix (e.g., "DEBY" for Bavaria, "DENW" for North Rhine-Westphalia)
     :type object_id_prefix: str
