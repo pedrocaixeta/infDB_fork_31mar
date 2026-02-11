@@ -1,3 +1,4 @@
+import logging
 import os
 import signal
 import subprocess
@@ -6,12 +7,25 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+# Setup logging
+SCRIPT_DIR = Path(__file__).parent
+log_file = SCRIPT_DIR / "tools.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logger = logging.getLogger(__name__)
+
 # PROFILE = "linear"
 # PROFILE = "basedata"
 # PROFILE = "basedata-buildings"
 
-PROFILE = sys.argv[1] if len(sys.argv) > 1 else "basedata"
-print(f"Using profile: {PROFILE}")
+PROFILE = sys.argv[1] if len(sys.argv) > 1 else "linear"
+logger.info(f"Using profile: {PROFILE}")
 
 num_workers = 1
 ags_list = (
@@ -43,9 +57,7 @@ ags_list = (
     # "09272140", # Ringelai
     # "09272152", # Zenting
 )
-print(f"AGS to process: {', '.join(ags_list)}")
-
-SCRIPT_DIR = Path(__file__).parent
+logger.info(f"AGS to process: {', '.join(ags_list)}")
 running_processes = set()
 running_lock = threading.Lock()
 stop_event = threading.Event()
@@ -58,14 +70,20 @@ def run_ags(ags):
     process = subprocess.Popen(
         ["bash", SCRIPT_DIR / "run-profile.sh", PROFILE, ags],
         start_new_session=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
     )
 
     with running_lock:
         running_processes.add(process)
 
     try:
+        for line in process.stdout:
+            logger.info(f"[{ags}] {line.rstrip()}")
         process.wait()
         if process.returncode != 0:
+            logger.error(f"Process failed with return code {process.returncode} for AGS {ags}")
             raise subprocess.CalledProcessError(process.returncode, process.args)
     finally:
         with running_lock:
@@ -73,7 +91,7 @@ def run_ags(ags):
 
 
 def signal_handler(sig, frame):
-    print("\nInterrupt received, stopping Docker...")
+    logger.info("\nInterrupt received, stopping Docker...")
     stop_event.set()
     with running_lock:
         for process in list(running_processes):
@@ -91,5 +109,5 @@ if __name__ == "__main__":
             for future in as_completed(futures):
                 future.result()
     except KeyboardInterrupt:
-        print("\nOperation cancelled by user")
+        logger.info("\nOperation cancelled by user")
         sys.exit(0)
