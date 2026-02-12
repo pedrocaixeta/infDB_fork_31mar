@@ -4,6 +4,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -104,10 +105,13 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
+        start_time = time.time()
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             futures = [executor.submit(run_ags, ags) for ags in ags_list]
             for future in as_completed(futures):
                 future.result()
+        end_time = time.time()
+        logger.info(f"Total execution time: {end_time - start_time:.2f} seconds")
     except KeyboardInterrupt:
         logger.info("\nOperation cancelled by user")
         sys.exit(0)
