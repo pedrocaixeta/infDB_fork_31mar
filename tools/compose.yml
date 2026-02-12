@@ -17,4 +17,9 @@ include:
   - infdb-basedata-buildings/compose.yml
   - infdb-basedata-ways/compose.yml
 
+networks:
+  default:
+    name: ${INFDB_NETWORK:-infdb-infdb-demo_network}
+    external: true
+
 # Note: Individual tool dependencies are defined in their respective compose files.
