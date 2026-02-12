@@ -21,6 +21,9 @@ PARAM="${2:-$AGS}"
 OPTIONS="${3:-}"
 PROJECT="infdb_${PROFILE}_${PARAM}"
 
+# Use the shared infdb network for all tool runs
+export INFDB_NETWORK="${INFDB_NETWORK:-infdb-infdb-demo_network}"
+
 echo "Starting docker compose..."
 export AGS="$PARAM"
 docker compose -f "$(dirname "$0")/compose.yml" \
