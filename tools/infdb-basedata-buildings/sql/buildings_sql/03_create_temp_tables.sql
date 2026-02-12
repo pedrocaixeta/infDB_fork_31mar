@@ -15,3 +15,6 @@ CREATE TEMP TABLE IF NOT EXISTS temp_buildings_grid_1km
 
 CREATE TEMP TABLE IF NOT EXISTS temp_bld2ts
 (LIKE {output_schema}.bld2ts INCLUDING ALL);
+
+CREATE TEMP TABLE IF NOT EXISTS temp_grid_cells
+(LIKE {input_schema}.grid_cells INCLUDING ALL);

@@ -7,7 +7,26 @@
 -- Only keeps grid cells that contain at least one building centroid
 -- Optimized for later joins on x_mp and y_mp coordinates
 
--- Prepare building grid rasters
+-- Prepare building grid cells
+
+-- fill grid_cells temp table
+INSERT INTO temp_grid_cells (id, x_mp, y_mp, name, resolution_meters, geom)
+SELECT
+    g.id,
+    g.x_mp,
+    g.y_mp,
+    g.name,
+    g.resolution_meters,
+    ST_Transform(g.geom, {EPSG}) as geom
+FROM {input_schema}.grid_cells g
+    JOIN {input_schema}.bkg_vg5000_gem bkg ON bkg.ags = '{ags}' AND ST_Intersects(g.geom, bkg.geom)
+WHERE EXISTS (
+    SELECT 1
+    FROM {input_schema}.building_view b
+    WHERE g.geom && b.geom
+      AND ST_Contains(g.geom, ST_Centroid(b.geom))
+      AND b.gemeindeschluessel = '{ags}'
+);
 
 -- 100m building grid raster (write into temp table)
 INSERT INTO temp_buildings_grid_100m (id, x_mp, y_mp, geom)
@@ -16,22 +35,8 @@ SELECT
     g.x_mp,
     g.y_mp,
     g.geom
-FROM (
-    SELECT
-        id,
-        x_mp,
-        y_mp,
-        ST_Transform(geom, {EPSG}) as geom
-    FROM {input_schema}.grid_cells
-    WHERE name='DE_Grid_ETRS89_LAEA_100m'
-) AS g
-WHERE EXISTS (
-    SELECT 1
-    FROM {input_schema}.building_view b
-    WHERE g.geom && b.geom -- prefilter with bounding box
-      AND ST_Contains(g.geom, ST_Centroid(b.geom))
-      AND b.gemeindeschluessel = '{ags}'
-);
+FROM temp_grid_cells g
+WHERE name='DE_Grid_ETRS89_LAEA_100m';
 
 -- 1km building grid raster (write into temp table)
 INSERT INTO temp_buildings_grid_1km (id, x_mp, y_mp, geom)
@@ -40,22 +45,8 @@ SELECT
     g.x_mp,
     g.y_mp,
     g.geom
-FROM (
-    SELECT
-        id,
-        x_mp,
-        y_mp,
-        ST_Transform(geom, {EPSG}) as geom
-    FROM {input_schema}.grid_cells
-    WHERE name='DE_Grid_ETRS89_LAEA_1km'
-) AS g
-WHERE EXISTS (
-    SELECT 1
-    FROM {input_schema}.building_view b
-    WHERE g.geom && b.geom -- prefilter with bounding box
-      AND ST_Contains(g.geom, ST_Centroid(b.geom))
-      AND b.gemeindeschluessel = '{ags}'
-);
+FROM temp_grid_cells g
+WHERE name='DE_Grid_ETRS89_LAEA_1km';
 
 -- Add zensus data to grid cells
 -- Update with population data
