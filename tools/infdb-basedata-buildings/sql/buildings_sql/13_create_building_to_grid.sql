@@ -15,8 +15,24 @@
 -- ON CONFLICT (objectid,id) DO UPDATE
 -- SET resolution_meters = EXCLUDED.resolution_meters;
 
+-- Find nearest time series for each building with temp table
+DROP TABLE IF EXISTS temp_ts_nodes;
 
--- Find nearest time series for each building
+CREATE TEMP TABLE temp_ts_nodes AS
+SELECT
+    m.id,
+    m.name,
+    ST_Transform(m.geom, {EPSG}) as geom_transformed,
+    m.geom as geom_original
+FROM {input_schema}.openmeteo_ts_metadata m
+JOIN {input_schema}.bkg_vg5000_gem bkg
+    ON bkg.ags = '{ags}'
+    AND ST_Intersects(m.geom, bkg.geom);
+
+CREATE INDEX ON temp_ts_nodes USING GIST (geom_transformed);
+
+ANALYZE temp_ts_nodes;
+
 INSERT INTO temp_bld2ts (
     bld_objectid,
     ts_metadata_id,
@@ -33,11 +49,8 @@ CROSS JOIN LATERAL (
     SELECT
         m.id,
         m.name,
-        ST_Transform(m.geom, {EPSG}) <-> bld.geom AS dist
-    FROM {input_schema}.openmeteo_ts_metadata m
-    JOIN {input_schema}.bkg_vg5000_gem bkg
-        ON bkg.ags = '{ags}'
-        AND ST_Intersects(m.geom, bkg.geom)
+        m.geom_transformed <-> bld.geom AS dist
+    FROM temp_ts_nodes m
     ORDER BY dist
     LIMIT 1
 ) ts
@@ -49,10 +62,11 @@ SET
     dist             = EXCLUDED.dist
 ;
 
+ANALYZE temp_bld2ts;
 
 UPDATE temp_bld2ts
-SET geom = ST_ShortestLine(bld.centroid, ST_Transform(ts.geom, {EPSG}))
-FROM {input_schema}.building_view bld, {input_schema}.openmeteo_ts_metadata ts
+SET geom = ST_ShortestLine(bld.centroid, ts.geom_transformed)
+FROM {input_schema}.building_view bld, temp_ts_nodes ts
 WHERE bld.gemeindeschluessel = '{ags}'
   AND temp_bld2ts.ts_metadata_id = ts.id
   AND temp_bld2ts.bld_objectid = bld.objectid;

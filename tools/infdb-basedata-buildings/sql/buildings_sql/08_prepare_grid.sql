@@ -48,6 +48,8 @@ SELECT
 FROM temp_grid_cells g
 WHERE name='DE_Grid_ETRS89_LAEA_1km';
 
+ANALYZE temp_buildings_grid_100m;
+
 -- Add zensus data to grid cells
 -- Update with population data
 UPDATE temp_buildings_grid_100m
