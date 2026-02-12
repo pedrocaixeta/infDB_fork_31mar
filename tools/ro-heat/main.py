@@ -153,7 +153,7 @@ def main():
             infdbclient_citydb.execute_sql_file(
                 os.path.join("sql", "03_heat-demand-r.sql"), format_params=format_params
             )
-            infdbclient_citydb.execute_sql_file(os.path.join("sql", "04_debug_demand.sql"), format_params=format_params)
+            # infdbclient_citydb.execute_sql_file(os.path.join("sql", "04_debug_demand.sql"), format_params=format_params)
 
             # Summary
             # # TODO: Adapt output format to EnTiSe format
