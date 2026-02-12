@@ -29,3 +29,6 @@ docker compose -f "$(dirname "$0")/compose.yml" \
      up --remove-orphans \
      --abort-on-container-exit \
      --exit-code-from infdb-basedata-buildings $OPTIONS
+
+# Cleanup containers and networks
+docker compose -f "$(dirname "$0")/compose.yml" -p "$PROJECT" down
