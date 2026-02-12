@@ -23,28 +23,28 @@ logger = logging.getLogger(__name__)
 
 # PROFILE = "linear"
 # PROFILE = "basedata"
-# PROFILE = "basedata-buildings"
+PROFILE = "basedata-buildings"
 
 PROFILE = sys.argv[1] if len(sys.argv) > 1 else "linear"
 logger.info(f"Using profile: {PROFILE}")
 
-num_workers = 1
+num_workers = 5
 ags_list = (
     # Top 10 Biggest Cities in Bavaria
-    # "09162000", # München
-    # "09564000", # Nürnberg
-    # "09761000", # Augsburg
-    # "09362000", # Regensburg
-    # "09161000", # Ingolstadt
-    # "09663000", # Würzburg
-    # "09563000", # Fürth
-    # "09562000", # Erlangen
-    # "09461000", # Bamberg
-    # "09462000", # Bayreuth
+    "09162000", # München
+    "09564000", # Nürnberg
+    "09761000", # Augsburg
+    "09362000", # Regensburg
+    "09161000", # Ingolstadt
+    "09663000", # Würzburg
+    "09563000", # Fürth
+    "09562000", # Erlangen
+    "09461000", # Bamberg
+    "09462000", # Bayreuth
     # Additional Requested Municipalities
-    "09780139",  # Sonthofen (BY)
-    "09185149",  # Neuburg a. d. Donau (BY)
-    "09163000",  # Rosenheim (BY)
+    # "09780139",  # Sonthofen (BY)
+    # "09185149",  # Neuburg a. d. Donau (BY)
+    # "09163000",  # Rosenheim (BY)
     # - Oberhausen (NRW)
     # # Additional Requested Municipalities
     # "09276111", # Bayerisch Eisenstein
