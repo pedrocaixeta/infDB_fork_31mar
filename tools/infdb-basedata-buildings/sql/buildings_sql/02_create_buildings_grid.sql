@@ -37,9 +37,9 @@ CREATE TABLE IF NOT EXISTS {output_schema}.buildings_grid_100m(
 );
 
 -- Create composite index on x_mp and y_mp for efficient joins
-CREATE INDEX IF NOT EXISTS grid_buildings_spatial_coords_idx ON {output_schema}.buildings_grid_100m USING btree (x_mp, y_mp);
+CREATE INDEX IF NOT EXISTS grid_buildings_spatial_coords_idx_100m ON {output_schema}.buildings_grid_100m USING btree (x_mp, y_mp);
 -- Create unique spatial index on geom column for efficient update
-CREATE INDEX IF NOT EXISTS idx_buildings_grid_geom ON {output_schema}.buildings_grid_100m USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_buildings_grid_geom_100m ON {output_schema}.buildings_grid_100m USING GIST (geom);
 
 -- 1km
 CREATE TABLE IF NOT EXISTS {output_schema}.buildings_grid_1km(
@@ -76,9 +76,9 @@ CREATE TABLE IF NOT EXISTS {output_schema}.buildings_grid_1km(
 );
 
 -- Create composite index on x_mp and y_mp for efficient joins
-CREATE INDEX IF NOT EXISTS grid_buildings_spatial_coords_idx ON {output_schema}.buildings_grid_1km USING btree (x_mp, y_mp);
+CREATE INDEX IF NOT EXISTS grid_buildings_spatial_coords_idx_1km ON {output_schema}.buildings_grid_1km USING btree (x_mp, y_mp);
 -- Create unique spatial index on geom column for efficient update
-CREATE INDEX IF NOT EXISTS idx_buildings_grid_geom ON {output_schema}.buildings_grid_1km USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_buildings_grid_geom_1km ON {output_schema}.buildings_grid_1km USING GIST (geom);
 
 -- -- Create building to grid cell mapping
 -- CREATE TABLE IF NOT EXISTS {output_schema}.bld2grid (
