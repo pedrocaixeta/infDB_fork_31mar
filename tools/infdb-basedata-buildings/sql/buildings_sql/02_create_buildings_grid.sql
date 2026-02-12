@@ -80,17 +80,13 @@ CREATE INDEX IF NOT EXISTS grid_buildings_spatial_coords_idx ON {output_schema}.
 -- Create unique spatial index on geom column for efficient update
 CREATE INDEX IF NOT EXISTS idx_buildings_grid_geom ON {output_schema}.buildings_grid_1km USING GIST (geom);
 
--- If AGS should be added, create a new changeset for the part below
--- ALTER TABLE {output_schema}.buildings_grid_100m ADD COLUMN gemeindeschluessel text
--- CREATE INDEX IF NOT EXISTS idx_buildings_grid_gemeindeschluessel ON {output_schema}.buildings_grid_100m (gemeindeschluessel);
-
--- Create building to grid cell mapping
-CREATE TABLE IF NOT EXISTS {output_schema}.bld2grid (
-	objectid text NOT NULL,
-	id text NOT NULL,
-	resolution_meters int4 NULL,
-    CONSTRAINT bld2grid_pkey PRIMARY KEY (objectid, id)
-);
+-- -- Create building to grid cell mapping
+-- CREATE TABLE IF NOT EXISTS {output_schema}.bld2grid (
+-- 	objectid text NOT NULL,
+-- 	id text NOT NULL,
+-- 	resolution_meters int4 NULL,
+--     CONSTRAINT bld2grid_pkey PRIMARY KEY (objectid, id)
+-- );
 
 -- Find nearest time series for each building
 CREATE TABLE IF NOT EXISTS {output_schema}.bld2ts

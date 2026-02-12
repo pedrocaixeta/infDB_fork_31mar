@@ -3,17 +3,17 @@
 -- to find the nearest weather time series metadata (bld2ts) for each
 -- building.
 
--- Create building to grid cell mapping
-INSERT INTO temp_bld2grid (objectid, id, resolution_meters)
-SELECT b.objectid,
-       g.id,
-       g.resolution_meters
-FROM {input_schema}.building_view b
-JOIN {input_schema}.grid_cells g
-    ON ST_Intersects(ST_Transform(g.geom, {EPSG}), b.centroid)
-WHERE b.gemeindeschluessel = '{ags}'
-ON CONFLICT (objectid,id) DO UPDATE
-SET resolution_meters = EXCLUDED.resolution_meters;
+-- -- Create building to grid cell mapping
+-- INSERT INTO temp_bld2grid (objectid, id, resolution_meters)
+-- SELECT b.objectid,
+--        g.id,
+--        g.resolution_meters
+-- FROM {input_schema}.building_view b
+-- JOIN {input_schema}.grid_cells g
+--     ON ST_Intersects(ST_Transform(g.geom, {EPSG}), b.centroid)
+-- WHERE b.gemeindeschluessel = '{ags}'
+-- ON CONFLICT (objectid,id) DO UPDATE
+-- SET resolution_meters = EXCLUDED.resolution_meters;
 
 
 -- Find nearest time series for each building

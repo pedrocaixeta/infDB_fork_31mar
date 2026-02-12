@@ -75,14 +75,14 @@ SET
     a2011bis2019 = EXCLUDED.a2011bis2019,
     a2020undspaeter = EXCLUDED.a2020undspaeter;
 
--- =========================================================
--- bld2grid (global) UPSERT
--- =========================================================
-INSERT INTO {output_schema}.bld2grid
-SELECT * FROM temp_bld2grid
-ON CONFLICT (objectid, id) DO UPDATE
-SET
-    resolution_meters = EXCLUDED.resolution_meters;
+-- -- =========================================================
+-- -- bld2grid (global) UPSERT
+-- -- =========================================================
+-- INSERT INTO {output_schema}.bld2grid
+-- SELECT * FROM temp_bld2grid
+-- ON CONFLICT (objectid, id) DO UPDATE
+-- SET
+--     resolution_meters = EXCLUDED.resolution_meters;
 
 -- =========================================================
 -- bld2ts (global) UPSERT
@@ -103,7 +103,7 @@ SET
 DROP TABLE IF EXISTS temp_buildings;
 DROP TABLE IF EXISTS temp_buildings_grid_100m;
 DROP TABLE IF EXISTS temp_buildings_grid_1km;
-DROP TABLE IF EXISTS temp_bld2grid;
+-- DROP TABLE IF EXISTS temp_bld2grid;
 DROP TABLE IF EXISTS temp_bld2ts;
 
 COMMIT;
