@@ -35,6 +35,9 @@ CROSS JOIN LATERAL (
         m.name,
         ST_Transform(m.geom, {EPSG}) <-> bld.geom AS dist
     FROM {input_schema}.openmeteo_ts_metadata m
+    JOIN {input_schema}.bkg_vg5000_gem bkg
+        ON bkg.ags = '{ags}'
+        AND ST_Intersects(m.geom, bkg.geom)
     ORDER BY dist
     LIMIT 1
 ) ts
