@@ -106,12 +106,26 @@ if __name__ == "__main__":
 
     try:
         start_time = time.time()
+        failed_ags = []
+
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            futures = [executor.submit(run_ags, ags) for ags in ags_list]
-            for future in as_completed(futures):
-                future.result()
+            # Map futures to their AGS for better error reporting
+            future_to_ags = {executor.submit(run_ags, ags): ags for ags in ags_list}
+
+            for future in as_completed(future_to_ags):
+                ags = future_to_ags[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    logger.error(f"AGS {ags} generated an exception: {exc}")
+                    failed_ags.append(ags)
+
         end_time = time.time()
         logger.info(f"Total execution time: {end_time - start_time:.2f} seconds")
+
+        if failed_ags:
+            logger.warning(f"The following AGS failed: {', '.join(failed_ags)}")
+
     except KeyboardInterrupt:
         logger.info("\nOperation cancelled by user")
         sys.exit(0)
