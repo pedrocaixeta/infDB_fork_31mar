@@ -1,5 +1,5 @@
 [project]
-name = "infdb"
+name = "infdb-workspace"
 version = "0.1.0"
 description = "Infrastructure database and tools for kommunale Wärmeplanung"
 authors = [
@@ -11,6 +11,9 @@ dependencies = [
     "infdb",
     "geopandas",
 ]
+
+[tool.uv.sources]
+infdb = { path = "src/infdb_package", editable = true }
 
 [dependency-groups]
 dev = ["flake8==7.1.1"]

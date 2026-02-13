@@ -8,10 +8,24 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import geopandas as gpd
-from infdb import InfDB
+import psycopg2
+# from infdb import InfDB
+# from sqlalchemy import create_engine
 
-infdb = InfDB(tool_name="infdb-data")
-engine = infdb.get_db_engine()
+# infdb = InfDB(tool_name="infdb-data")
+user = "infdb_user"
+password = "infdb"
+host = "localhost"
+port = "54328"
+db = "infdb"
+db_connection_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
+conn = psycopg2.connect(
+    dbname=db,
+    user=user,
+    password=password,
+    host=host,
+    port=port
+)
 sql = """SELECT *
             FROM opendata.bkg_vg5000_gem
             -- WHERE ags like '05%' OR ags like '09%'
@@ -19,7 +33,7 @@ sql = """SELECT *
             ORDER BY ags
             LIMIT 10;
         """
-ags_list = gpd.read_postgis(sql, engine)
+ags_list = gpd.read_postgis(sql, conn, geom_col='geom')
 
 # Setup logging
 SCRIPT_DIR = Path(__file__).parent
@@ -44,9 +58,10 @@ PROFILE = sys.argv[1] if len(sys.argv) > 1 else "linear"
 logger.info(f"Using profile: {PROFILE}")
 
 todo_ags = ags_list["ags"].tolist()
+logger.info(f"Total AGS to process: {len(todo_ags)}")
+logger.info(f"AGS to process: {', '.join(todo_ags)}")
 
 num_workers = 1
-logger.info(f"AGS to process: {', '.join(todo_ags)}")
 running_processes = set()
 running_lock = threading.Lock()
 stop_event = threading.Event()
