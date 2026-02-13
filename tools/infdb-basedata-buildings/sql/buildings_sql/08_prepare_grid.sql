@@ -24,7 +24,7 @@ WHERE EXISTS (
     SELECT 1
     FROM {input_schema}.building_view b
     WHERE g.geom && b.geom
-      AND ST_Contains(g.geom, ST_Centroid(b.geom))
+      AND ST_Contains(g.geom, b.centroid)
       AND b.gemeindeschluessel = '{ags}'
 );
 

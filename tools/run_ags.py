@@ -7,6 +7,19 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+import geopandas as gpd
+from infdb import InfDB
+
+infdb = InfDB(tool_name="infdb-data")
+engine = infdb.get_db_engine()
+sql = """SELECT *
+            FROM opendata.bkg_vg5000_gem
+            -- WHERE ags like '05%' OR ags like '09%'
+            WHERE ags IN ('05119000', '09185149')
+            ORDER BY ags
+            LIMIT 10;
+        """
+ags_list = gpd.read_postgis(sql, engine)
 
 # Setup logging
 SCRIPT_DIR = Path(__file__).parent
@@ -25,70 +38,15 @@ logger = logging.getLogger(__name__)
 # PROFILE = "basedata"
 # PROFILE = "basedata-buildings"
 
+
+
 PROFILE = sys.argv[1] if len(sys.argv) > 1 else "linear"
 logger.info(f"Using profile: {PROFILE}")
 
+todo_ags = ags_list["ags"].tolist()
+
 num_workers = 1
-ags_list = (
-# Top Municipalities by Building Count (Cumulative 50% of Bavaria)
-# "09162000", # München
-# "09564000", # Nürnberg
-# "09761000", # Augsburg
-# "09362000", # Regensburg
-# "09161000", # Ingolstadt
-# "09663000", # Würzburg
-# "09563000", # Fürth
-# "09562000", # Erlangen
-# "09261000", # Landshut
-# "09461000", # Bamberg
-# "09462000", # Bayreuth
-# "09163000", # Rosenheim
-# "09661000", # Aschaffenburg
-# "09762000", # Kempten (Allgäu)
-# "09662000", # Schweinfurt
-# "09363000", # Straubing
-# "09763000", # Memmingen
-# "09463000", # Hof
-# "09361000", # Amberg
-# "09263000", # Passau
-# "09184148", # Schweinfurt
-# "09775169", # Neu-Ulm
-# "09181113", # Dachau
-# "09179118", # Fürstenfeldbruck
-# "09184113", # Aschaffenburg
-# "09177121", # Erding
-# "09178115", # Freising
-# "09184119", # Hanau (beispielhaft für Pendlergürtel)
-# "09262000", # Straubing
-# "09179147", # Germering
-# "09375113", # Beilngries
-# "09189155", # Traunstein
-# "09179121", # Garching b.München
-# "09184120", # Karlstein a.Main
-# "09772115", # Altenmünster
-# "09576132", # Hilpoltstein
-# "09376161", # Schwandorf
-# "09188117", # Ettal
-# "09180121", # Garmisch-Partenkirchen, Markt
-# "09180124", # Lenggries
-# # # ... [List continues through middle-sized towns] ...
-# "09573115", # Ansbach
-# "09779121", # Buchloe
-# "09181140", # Karlsfeld
-"09187148", # Neuburg a.d.Donau
-"05119000", # Oberhausen (NRW)
-# "09279112", # Dingolfing
-# "09174115", # Bad Tölz
-# "09182114", # Ebersberg
-# "09571114", # Altdorf b.Nürnberg
-# "09778129", # Günzburg
-# "09184131", # Mainaschaff
-# "09678146", # Karlstadt
-# "09175115", # Dachau
-# # [Approx. Rank 155 - Threshold for 50%]
-# "09177113", # Berglern
-)
-logger.info(f"AGS to process: {', '.join(ags_list)}")
+logger.info(f"AGS to process: {', '.join(todo_ags)}")
 running_processes = set()
 running_lock = threading.Lock()
 stop_event = threading.Event()
@@ -140,7 +98,7 @@ if __name__ == "__main__":
 
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             # Map futures to their AGS for better error reporting
-            future_to_ags = {executor.submit(run_ags, ags): ags for ags in ags_list}
+            future_to_ags = {executor.submit(run_ags, ags): ags for ags in todo_ags}
 
             for future in as_completed(future_to_ags):
                 ags = future_to_ags[future]

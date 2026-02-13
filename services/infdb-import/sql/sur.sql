@@ -50,7 +50,7 @@ CREATE MATERIALIZED VIEW {output_schema}.{bld_table_name}_view AS
 SELECT 
     bld.*,
     ST_area(sur.geom) AS groundsurface_flaeche,
-    sur.geom,
+    ST_Multi(sur.geom) AS geom,
     ST_Centroid(sur.geom) AS centroid
 FROM {output_schema}.building_lod2 bld
 JOIN {output_schema}.{table_name} sur ON bld.objectid = sur.building_objectid
