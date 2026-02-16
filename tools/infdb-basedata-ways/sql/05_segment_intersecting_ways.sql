@@ -39,6 +39,7 @@ BEGIN
     FOR way IN
         SELECT geom, klasse, ags, id
         FROM ways_tem
+        WHERE ST_GeometryType(geom) = 'ST_LineString'  -- Add this line
     LOOP
         -- STEP 1: FIND INTERSECTING STREET
         -- Search for another way that intersects with the current way
@@ -47,9 +48,10 @@ BEGIN
         SELECT geom, klasse, ags, id
         INTO old_street
         FROM ways_tem AS w
-        WHERE ST_Intersects(ST_LineSubstring(way.geom, 0.01, 0.99), w.geom) -- Limit to middle 98% of line
-          AND w.id != way.id  -- Exclude the current way from intersection search
-        LIMIT 1; -- Only process one intersection at a time
+        WHERE ST_Intersects(ST_LineSubstring(way.geom, 0.01, 0.99), w.geom) 
+            AND w.id != way.id  
+            AND ST_GeometryType(w.geom) = 'ST_LineString'  -- Only select LineString geometries
+        LIMIT 1;
 
         -- STEP 2: VALIDATION CHECK
         -- If no intersecting street is found, skip to next way
