@@ -56,7 +56,7 @@ ANALYZE tmp_bld.{table_name}_ids;
 -- sonst LOGGED lassen für Datensicherheit nach Import)
 DROP TABLE IF EXISTS {output_schema}.{table_name} CASCADE;
 
-CREATE TABLE {output_schema}.{table_name} AS
+CREATE UNLOGGED TABLE {output_schema}.{table_name} AS
 SELECT
     sid2.building_objectid,
     sid.objectclass_id,
@@ -90,7 +90,7 @@ DROP MATERIALIZED VIEW IF EXISTS {output_schema}.{bld_table_name}_view; -- Drop 
 DROP TABLE IF EXISTS {output_schema}.{bld_table_name}_view;
 
 -- Wir nutzen CREATE TABLE statt Materialized View für bessere Performance beim Erstellen
-CREATE TABLE {output_schema}.{bld_table_name}_view AS
+CREATE UNLOGGED TABLE {output_schema}.{bld_table_name}_view AS
 SELECT 
     bld.*,
     sur.area AS groundsurface_flaeche,
