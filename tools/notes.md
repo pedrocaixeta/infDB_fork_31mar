@@ -5,3 +5,4 @@ git pull
 git clean -fdx
 bash infdb-start.sh -d
 bash infdb-import.sh
+python3 tools/run_ags.py linear

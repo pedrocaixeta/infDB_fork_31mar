@@ -29,8 +29,7 @@ conn = psycopg2.connect(
 sql = """SELECT *
             FROM opendata.bkg_vg5000_gem
             WHERE ags LIKE '09%'
-            ORDER BY ags
-            LIMIT 10;
+            ORDER BY ags;
         """
 ags_list = gpd.read_postgis(sql, conn, geom_col='geom')
 
