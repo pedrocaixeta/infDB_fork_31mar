@@ -28,8 +28,7 @@ conn = psycopg2.connect(
 )
 sql = """SELECT *
             FROM opendata.bkg_vg5000_gem
-            -- WHERE ags like '05%' OR ags like '09%'
-            WHERE ags IN ('05119000', '09185149')
+            WHERE ags LIKE '09%'
             ORDER BY ags
             LIMIT 10;
         """
