@@ -50,7 +50,7 @@
 --     gemeindeschluessel,
 --     geom
 -- )
-IF NOT EXISTS CREATE VIEW {output_schema}.debug_demand AS
+CREATE OR REPLACE VIEW {output_schema}.debug_demand AS
 SELECT
     ahd."heating:demand[Wh]",
     ((ahd."heating:demand[Wh]") / (brs.floor_area * brs.floor_number))/1000 AS "heating:demand_per_area[kWh/m²]",
@@ -60,14 +60,14 @@ SELECT
     bbl.id,
     bbl.feature_id,
     bbl.height,
-    bbl.floor_area,
-    bbl.floor_number,
+    -- bbl.floor_area,
+    -- bbl.floor_number,
     bbl.building_use,
     bbl.building_use_id,
-    bbl.building_type,
+    -- bbl.building_type,
     bbl.occupants,
     bbl.households,
-    bbl.construction_year,
+    -- bbl.construction_year,
     bbl.postcode,
     bbl.address_street_id,
     bbl.street,
@@ -78,7 +78,7 @@ SELECT
 FROM {output_schema}.buildings_refurbished_status brs
 JOIN {output_schema}.annual_heating_demand ahd ON brs.building_objectid = ahd.building_objectid
 JOIN {output_schema}.buildings_rc brc ON brs.building_objectid = brc.building_objectid
-JOIN basedata.buildings bbl ON brs.building_objectid = bbl.objectid
+JOIN basedata.buildings bbl ON brs.building_objectid = bbl.objectid;
 -- WHERE bbl.gemeindeschluessel LIKE '{ags}'
 -- ON CONFLICT (building_objectid) DO UPDATE
 -- SET
