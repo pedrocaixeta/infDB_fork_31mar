@@ -63,7 +63,8 @@ SELECT
     oc.classname,
     -- NULLIF verhindert Absturz bei leeren Strings, sicherheitshalber
     -- NULLIF(pd.val_string, '')::double precision AS area, 
-    safe_area_fallback(gd.geometry) AS area,
+    -- safe_area_fallback(gd.geometry) AS area,
+    pd.val_string::double precision AS area,
     ST_Multi(gd.geometry) AS geom
 FROM tmp_bld.{table_name}_ids sid
     -- Join über Integer-Hash statt String (Massiver Speedup)
@@ -75,8 +76,8 @@ FROM tmp_bld.{table_name}_ids sid
     JOIN objectclass oc ON oc.id = sid.objectclass_id
     JOIN geometry_data gd ON gd.id = sid.geometry_data_id
     JOIN property pd ON pd.feature_id = gd.feature_id
-WHERE sid.objectclass_id IN (709, 710, 712); -- sid ist das Gebäude;
---   AND pd.name = 'Flaeche';
+WHERE sid.objectclass_id IN (709, 710, 712) -- sid ist das Gebäude;
+  AND pd.name = 'Flaeche';
 
 -- Indizes auf der Zieltabelle
 CREATE INDEX IF NOT EXISTS {table_name}_building_objectid_idx ON {output_schema}.{table_name} (building_objectid);
