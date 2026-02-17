@@ -40,8 +40,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-logger.info("Dropping schemas for clean development run...")
 with conn.cursor() as cur:  # InfdbClient context
+    logger.info("Terminating other connections to avoid deadlocks during schema drop...")
+    cur.execute("""SELECT pg_terminate_backend(pid)
+                            FROM pg_stat_activity
+                            WHERE pid <> pg_backend_pid() ;""")
+
+    logger.info("Dropping schemas for clean development run...")
     cur.execute("DROP SCHEMA IF EXISTS basedata CASCADE;")
     cur.execute("DROP SCHEMA IF EXISTS buildings_to_street CASCADE;")
     cur.execute("DROP SCHEMA IF EXISTS linear_heat_density CASCADE;")
@@ -69,7 +74,7 @@ todo_ags = ags_list["ags"].tolist()
 logger.info(f"Total AGS to process: {len(todo_ags)}")
 logger.info(f"AGS to process: {', '.join(todo_ags)}")
 
-num_workers = 10
+num_workers = 1
 running_processes = set()
 running_lock = threading.Lock()
 stop_event = threading.Event()
