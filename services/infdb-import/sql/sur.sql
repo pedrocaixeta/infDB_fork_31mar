@@ -29,6 +29,8 @@ CREATE SCHEMA IF NOT EXISTS tmp_bld;
 DROP TABLE IF EXISTS tmp_bld.{table_name}_ids;
 
 -- Wir extrahieren direkt den Hash der ID für den Join, um RAM zu sparen
+-- Use EXPLAIN ANALYZE to diagnose query performance
+-- EXPLAIN ANALYZE
 CREATE UNLOGGED TABLE tmp_bld.{table_name}_ids AS
 SELECT
     f.objectid as building_objectid,
@@ -56,6 +58,7 @@ ANALYZE tmp_bld.{table_name}_ids;
 -- sonst LOGGED lassen für Datensicherheit nach Import)
 DROP TABLE IF EXISTS {output_schema}.{table_name} CASCADE;
 
+-- EXPLAIN ANALYZE
 CREATE UNLOGGED TABLE {output_schema}.{table_name} AS
 SELECT
     sid2.building_objectid,

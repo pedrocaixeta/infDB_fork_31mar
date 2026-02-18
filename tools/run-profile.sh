@@ -29,7 +29,10 @@ export AGS="$PARAM"
 docker compose -f "$(dirname "$0")/compose.yml" \
     -p "$PROJECT" \
     --profile "$PROFILE" \
-     up --remove-orphans \
-
-# Cleanup containers and networks
-docker compose -f "$(dirname "$0")/compose.yml" -p "$PROJECT" down
+    up --remove-orphans
+# Stop and remove containers, networks, images, and volumes created by up
+docker compose -f "$(dirname "$0")/compose.yml" \
+    -p "$PROJECT" \
+    --rmi all \
+    --volumes \
+    down
