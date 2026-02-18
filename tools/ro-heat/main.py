@@ -104,7 +104,7 @@ def main():
         infdblog.debug("Harmonization with refurbishment quotas completed")
 
         infdblog.info("Writing harmonized refurbishment data to database")
-        infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_refurbished_status CASCADE")
+        # infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_refurbished_status CASCADE")
         harmonized_df.to_sql(
             "buildings_refurbished_status", engine, if_exists="append", schema=output_schema, index=False
         )
