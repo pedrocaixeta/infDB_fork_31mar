@@ -28,11 +28,10 @@ echo "Starting docker compose..."
 export AGS="$PARAM"
 docker compose -f "$(dirname "$0")/compose.yml" \
     -p "$PROJECT" \
-    --profile "$PROFILE" \
-    up --remove-orphans
+    --profile "$PROFILE" up\
+    --remove-orphans
 # Stop and remove containers, networks, images, and volumes created by up
 docker compose -f "$(dirname "$0")/compose.yml" \
-    -p "$PROJECT" \
+    -p "$PROJECT" down \
     --rmi all \
     --volumes \
-    down
