@@ -26,12 +26,12 @@ SELECT
     m.geom as geom_original
 FROM {input_schema}.openmeteo_ts_metadata m
 JOIN {input_schema}.bkg_vg5000_gem bkg
-    ON bkg.ags = '{ags}'
-    AND ST_Intersects(m.geom, bkg.geom);
+    ON bkg.ags = '{ags}';
+    -- AND ST_Intersects(m.geom, bkg.geom);
 
 CREATE INDEX ON temp_ts_nodes USING GIST (geom_transformed);
 
-ANALYZE temp_ts_nodes;
+-- ANALYZE temp_ts_nodes;
 
 INSERT INTO temp_bld2ts (
     bld_objectid,
@@ -62,7 +62,7 @@ SET
     dist             = EXCLUDED.dist
 ;
 
-ANALYZE temp_bld2ts;
+-- ANALYZE temp_bld2ts;
 
 UPDATE temp_bld2ts
 SET geom = ST_ShortestLine(bld.centroid, ts.geom_transformed)
