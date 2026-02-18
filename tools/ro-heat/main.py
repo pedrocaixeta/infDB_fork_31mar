@@ -106,7 +106,7 @@ def main():
         infdblog.info("Writing harmonized refurbishment data to database")
         infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_refurbished_status CASCADE")
         harmonized_df.to_sql(
-            "buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, index=False
+            "buildings_refurbished_status", engine, if_exists="append", schema=output_schema, index=False
         )
 
         infdblog.info("Starting construction of building elements")
@@ -130,7 +130,7 @@ def main():
         rc_values.to_sql(
             "buildings_rc",
             con=engine,
-            if_exists="replace",
+            if_exists="append",
             schema=output_schema,
             index=False,
             method="multi",
