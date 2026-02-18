@@ -14,16 +14,7 @@
 -- ============================================================
 
 
--- Mapping table for building reassignment (TEMP is fine)
-DROP TABLE IF EXISTS merged_ways;
-CREATE TEMP TABLE merged_ways (
-    old_way_id_1 text NOT NULL,
-    old_way_id_2 text NOT NULL,
-    new_way_id   text NOT NULL
-);
-CREATE INDEX ON merged_ways (old_way_id_1);
-CREATE INDEX ON merged_ways (old_way_id_2);
-CREATE INDEX ON merged_ways (new_way_id);
+
 
 DO $$
 DECLARE
@@ -105,14 +96,6 @@ BEGIN
             RAISE NOTICE 'Merge insert failed for chain_id=% (count=%). Skipping.', r.chain_id, r.way_count;
             CONTINUE;
         END IF;
-
-        -- Record mapping old -> new for ALL distinct ways in chain
-        INSERT INTO merged_ways (old_way_id_1, old_way_id_2, new_way_id)
-        SELECT
-            x.old_id AS old_way_id_1,
-            x.old_id AS old_way_id_2,  -- same value, so update_assigned_way_id can match either column
-            v_new    AS new_way_id
-        FROM unnest(v_distinct_ways) AS x(old_id);
 
         -- Delete old ways (using distinct ways)
         DELETE FROM ways_tem

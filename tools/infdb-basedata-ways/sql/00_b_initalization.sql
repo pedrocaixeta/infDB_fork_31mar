@@ -1,5 +1,5 @@
 -- ============================================================
--- 00_create_shared_resources.sql
+-- 00_b_initalization.sql
 -- Creates shared functions and tables for parallel AGS processing
 -- 
 -- Purpose:
@@ -291,6 +291,50 @@ BEGIN
                 ON {output_schema}.ways_segmented (ags, id);
             
             RAISE NOTICE '[Init] ✓ Created ways_segmented table with indexes';
+
+
+            -- --------------------------------------------------------
+            -- Table: nodes (global output table)
+            -- Columns:
+            --   ags      text      NOT NULL
+            --   id       text      NOT NULL   -- unique node id (or use uuid)
+            --   way_ids  text[]    NOT NULL   -- list of way ids belonging to the node
+            -- --------------------------------------------------------
+
+            DROP TABLE IF EXISTS {output_schema}.nodes;
+
+            -- Create empty table structure (no rows)
+            CREATE TABLE {output_schema}.nodes AS
+            SELECT
+                CAST(NULL AS text)   AS ags,
+                CAST(NULL AS text)   AS id,
+                CAST(NULL AS text[]) AS way_ids
+            WHERE false;
+
+            -- Constraints
+            ALTER TABLE {output_schema}.nodes
+                ALTER COLUMN ags     SET NOT NULL,
+                ALTER COLUMN id      SET NOT NULL,
+                ALTER COLUMN way_ids SET NOT NULL;
+
+            -- Optional defaults
+            ALTER TABLE {output_schema}.nodes
+                ALTER COLUMN way_ids SET DEFAULT ARRAY[]::text[];
+
+            -- Indexes
+            CREATE INDEX nodes_ags_idx
+                ON {output_schema}.nodes (ags);
+
+            CREATE INDEX nodes_way_ids_gin
+                ON {output_schema}.nodes USING GIN (way_ids);
+
+            -- Prevent duplicates per AGS+id
+            CREATE UNIQUE INDEX nodes_ags_id_ux
+                ON {output_schema}.nodes (ags, id);
+
+            RAISE NOTICE '[Init] ✓ Created nodes table with indexes';
+
+
             
             -- --------------------------------------------------------
             -- Column: buildings.assigned_way_id

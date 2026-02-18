@@ -63,6 +63,5 @@ infdb-basedata-ways:
                 #- "Fahrbahnachse" 
 
         apply_length_filter: True
-        min_length_deadend_junction: 10
-        remove_deadend_deadend: True
+        min_length_meter: 10
         remove_loop: True

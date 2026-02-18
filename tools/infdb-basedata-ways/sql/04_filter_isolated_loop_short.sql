@@ -2,7 +2,7 @@
 -- 04_d_filter_short_and_isolated_ways.sql
 -- Delete ways that are:
 -- 1) Loops (start point = end point)
--- 2) Short dead-end/junction ways (< {min_length_deadend_junction} meters)
+-- 2) Short dead-end/junction ways (< {min_length_meter} meters)
 -- 3) Isolated ways (not connected to any other way)
 -- Then reassign affected buildings to appropriate alternatives
 -- Note: Designed for parallel processing - each AGS in separate container
@@ -19,7 +19,7 @@ CREATE INDEX ON filtered_ways (old_way_id);
 
 DO $$
 DECLARE
-    v_min_length double precision := {min_length_deadend_junction}::double precision;
+    v_min_length double precision := {min_length_meter}::double precision;
     v_snap_tol double precision := 0.25; -- same as merge tolerance
     r RECORD;
     v_connected_way text;
