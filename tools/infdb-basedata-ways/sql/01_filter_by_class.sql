@@ -11,14 +11,5 @@ WHERE
   );
 
 
-DROP TABLE IF EXISTS ways;
-
--- create persistent table with same structure and indexes/constraints
-CREATE TABLE IF NOT EXISTS {output_schema}.ways
-(LIKE ways_tem INCLUDING ALL);
-
--- copy the data
-INSERT INTO {output_schema}.ways
-SELECT * FROM ways_tem;
 
 
