@@ -13,7 +13,7 @@ SELECT
     -- ST_PointOnSurface ist oft schneller und sicherer (garantiert im Polygon) als Centroid für Building-Footprints
     ST_PointOnSurface(sur.geom) AS centroid 
 FROM {output_schema}.building_lod2 bld
-JOIN {output_schema}.{table_name} sur ON bld.objectid = sur.building_objectid
+JOIN {output_schema}.{bld_table_name}_surface sur ON bld.objectid = sur.building_objectid
 WHERE sur.objectclass_id = 710; -- 710 = ground surface
 
 -- Indizes für den View (wie in Ihrem Original, aber GIST für Centroid hinzugefügt)
