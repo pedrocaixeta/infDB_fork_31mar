@@ -34,4 +34,4 @@ docker compose -f "$(dirname "$0")/compose.yml" \
 docker compose -f "$(dirname "$0")/compose.yml" \
     -p "$PROJECT" \
     --profile "$PROFILE" down\
-    --volumes --rmi all --remove-orphans
+    --volumes --remove-orphans  # --rmi all
