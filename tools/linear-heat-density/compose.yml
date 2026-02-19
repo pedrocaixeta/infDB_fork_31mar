@@ -19,5 +19,5 @@ services:
         depends_on:
             ro-heat:
                 condition: service_completed_successfully
-            buildings-to-street:
+            basedata-ways:
                 condition: service_completed_successfully
