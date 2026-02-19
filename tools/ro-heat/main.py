@@ -104,10 +104,14 @@ def main():
         infdblog.debug("Harmonization with refurbishment quotas completed")
 
         infdblog.info("Writing harmonized refurbishment data to database")
-        infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_refurbished_status CASCADE")
         harmonized_df.to_sql(
-            "buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, index=False
+            "temp_buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, index=False
         )
+        format_params_output_schema = {
+            "output_schema": output_schema,
+        }
+        infdbclient_citydb.execute_sql_file(os.path.join("sql", "upsert_buildings_refurbished_status.sql"),
+                                            format_params_output_schema)
 
         infdblog.info("Starting construction of building elements")
         full_path = os.path.join("sql", "02_get_tabula_elements.sql")
@@ -128,13 +132,14 @@ def main():
         infdblog.info("Writing R & C values")
         rc_values = harmonized_df[["building_objectid", "resistance", "capacitance"]]
         rc_values.to_sql(
-            "buildings_rc",
+            "temp_buildings_rc",
             con=engine,
             if_exists="replace",
             schema=output_schema,
             index=False,
             method="multi",
         )
+        infdbclient_citydb.execute_sql_file(os.path.join("sql", "upsert_buildings_rc.sql"), format_params_output_schema)
         infdblog.debug("Done writing R & C values")
         infdblog.info(f"Running heat demand estimation with method {method}")
 
@@ -201,13 +206,15 @@ def main():
             # Summary
             summary.index.name = "building_objectid"
             summary.to_sql(
-                "entise_summary",
+                "temp_entise_summary",
                 con=engine,
                 if_exists="replace",
                 schema=output_schema,
                 index=True,
                 method="multi",
             )
+            infdbclient_citydb.execute_sql_file(os.path.join("sql", "upsert_entise_summary.sql"),
+                                                format_params_output_schema)
 
             infdblog.info(summary.head())
 
