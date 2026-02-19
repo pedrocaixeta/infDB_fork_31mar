@@ -1128,3 +1128,23 @@ def create_table_building(infdb: InfDB) -> None:
 
         # Create central building table
         db.execute_sql_file("sql/create_building_table.sql", {"output_schema": output_schema, "table_name": table_name})
+
+def create_table_building_view(infdb: InfDB) -> None:
+
+    log = infdb.get_worker_logger()
+    output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
+    table_name = infdb.get_config_value(
+            [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
+        )
+    with infdb.connect() as db:
+        # Create building surface table
+        log.info(f"building_surface: starting {output_schema}.{table_name}_view")
+        db.execute_sql_file(
+            "sql/bld_view.sql",
+            {
+                "output_schema": output_schema,
+                "bld_table_name": table_name,
+                "object_id_prefix": "replace-me",
+            },
+        )
+    log.info(f"{output_schema}.{table_name}_view completed")

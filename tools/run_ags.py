@@ -26,12 +26,6 @@ conn = psycopg2.connect(
     host=host,
     port=port
 )
-sql = """SELECT *
-            FROM opendata.bkg_vg5000_gem
-            WHERE ags LIKE '09%'
-            ORDER BY ags;
-        """
-ags_list = gpd.read_postgis(sql, conn, geom_col='geom')
 
 # Setup logging
 SCRIPT_DIR = Path(__file__).parent
@@ -46,6 +40,30 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+with conn.cursor() as cur:  # InfdbClient context
+    logger.info("Terminating other connections to avoid deadlocks during schema drop...")
+    cur.execute("""SELECT pg_terminate_backend(pid)
+                            FROM pg_stat_activity
+                            WHERE pid <> pg_backend_pid() ;""")
+    
+    logger.info("Rolling back any open transactions to prevent locks...")
+    cur.execute("ROLLBACK;")
+    
+    logger.info("Dropping schemas for clean development run...")
+    cur.execute("DROP SCHEMA IF EXISTS basedata CASCADE;")
+    cur.execute("DROP SCHEMA IF EXISTS buildings_to_street CASCADE;")
+    cur.execute("DROP SCHEMA IF EXISTS linear_heat_density CASCADE;")
+    cur.execute("DROP SCHEMA IF EXISTS ro_heat CASCADE;")
+
+sql = """SELECT *
+            FROM opendata.bkg_vg5000_gem
+            WHERE ags LIKE '09%'
+            ORDER BY ags;
+        """
+ags_list = gpd.read_postgis(sql, conn, geom_col='geom')
+
+
+
 # PROFILE = "linear"
 # PROFILE = "basedata"
 # PROFILE = "basedata-buildings"
@@ -59,7 +77,7 @@ todo_ags = ags_list["ags"].tolist()
 logger.info(f"Total AGS to process: {len(todo_ags)}")
 logger.info(f"AGS to process: {', '.join(todo_ags)}")
 
-num_workers = 1
+num_workers = 15
 running_processes = set()
 running_lock = threading.Lock()
 stop_event = threading.Event()

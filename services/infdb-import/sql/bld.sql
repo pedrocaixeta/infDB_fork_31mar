@@ -35,8 +35,8 @@ WITH base_buildings AS (
         AND f.objectid LIKE '{object_id_prefix}%'
         AND p.name IN ('function', 'Gemeindeschluessel', 'storeysAboveGround', 'address', 'value') -- add 'height' if height_parent_id is used
     GROUP BY f.id, f.objectclass_id, f.objectid
-    -- HAVING MAX(CASE WHEN p.name = 'function' THEN p.val_string END) >= '31001_'
-    -- AND MAX(CASE WHEN p.name = 'function' THEN p.val_string END) < '31002'
+    HAVING MAX(CASE WHEN p.name = 'function' THEN p.val_string END) >= '31001_'
+    AND MAX(CASE WHEN p.name = 'function' THEN p.val_string END) < '31002'
     -- AND MAX(CASE WHEN p.name = 'Gemeindeschluessel' THEN p.val_string END) IN ({ags})
 )
 SELECT

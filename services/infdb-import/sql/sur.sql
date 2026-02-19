@@ -29,6 +29,8 @@ CREATE SCHEMA IF NOT EXISTS tmp_bld;
 DROP TABLE IF EXISTS tmp_bld.{table_name}_ids;
 
 -- Wir extrahieren direkt den Hash der ID für den Join, um RAM zu sparen
+-- Use EXPLAIN ANALYZE to diagnose query performance
+-- EXPLAIN ANALYZE
 CREATE UNLOGGED TABLE tmp_bld.{table_name}_ids AS
 SELECT
     f.objectid as building_objectid,
@@ -56,6 +58,7 @@ ANALYZE tmp_bld.{table_name}_ids;
 -- sonst LOGGED lassen für Datensicherheit nach Import)
 DROP TABLE IF EXISTS {output_schema}.{table_name} CASCADE;
 
+-- EXPLAIN ANALYZE
 CREATE UNLOGGED TABLE {output_schema}.{table_name} AS
 SELECT
     sid2.building_objectid,
@@ -84,25 +87,3 @@ CREATE INDEX IF NOT EXISTS {table_name}_building_objectid_idx ON {output_schema}
 -- Spatial Index ist teuer, erst am Ende erstellen
 CREATE INDEX IF NOT EXISTS {table_name}_geom_idx ON {output_schema}.{table_name} USING GIST (geom);
 
--- 6. View Erstellung
--- WARNUNG: Materialized Views verdoppeln den Speicherbedarf. 
--- Wenn diese Daten nicht ständig aktualisiert werden, ist eine "CREATE TABLE AS" besser.
-DROP MATERIALIZED VIEW IF EXISTS {output_schema}.{bld_table_name}_view; -- Drop View statt Table
-DROP TABLE IF EXISTS {output_schema}.{bld_table_name}_view;
-
--- Wir nutzen CREATE TABLE statt Materialized View für bessere Performance beim Erstellen
-CREATE UNLOGGED TABLE {output_schema}.{bld_table_name}_view AS
-SELECT 
-    bld.*,
-    sur.area AS groundsurface_flaeche,
-    ST_Multi(sur.geom) AS geom,
-    -- ST_PointOnSurface ist oft schneller und sicherer (garantiert im Polygon) als Centroid für Building-Footprints
-    ST_PointOnSurface(sur.geom) AS centroid 
-FROM {output_schema}.building_lod2 bld
-JOIN {output_schema}.{table_name} sur ON bld.objectid = sur.building_objectid
-WHERE sur.objectclass_id = 710; -- 710 = ground surface
-
--- Indizes für den View (wie in Ihrem Original, aber GIST für Centroid hinzugefügt)
-CREATE INDEX IF NOT EXISTS {bld_table_name}_view_objectid_idx ON {output_schema}.{bld_table_name}_view (objectid);
-CREATE INDEX IF NOT EXISTS {bld_table_name}_view_geom_idx ON {output_schema}.{bld_table_name}_view USING GIST (geom);
--- ... (restliche Indizes hier einfügen)

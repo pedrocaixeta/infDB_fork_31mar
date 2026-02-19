@@ -130,6 +130,9 @@ def main() -> None:
     # Create building surface tables for BY and NRW
     utils.create_building_surface_table(infdb=infdb)
 
+    # Create building view
+    utils.create_table_building_view(infdb=infdb)
+
     # Summarize successes and failures using stored results
     successful = [name for name, exitcode in process_results if exitcode == 0]
     failed = [name for name, exitcode in process_results if exitcode != 0]

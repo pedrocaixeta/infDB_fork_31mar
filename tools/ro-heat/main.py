@@ -104,9 +104,9 @@ def main():
         infdblog.debug("Harmonization with refurbishment quotas completed")
 
         infdblog.info("Writing harmonized refurbishment data to database")
-        infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_refurbished_status CASCADE")
+        # infdbclient_citydb.execute_query("DROP TABLE IF EXISTS ro_heat.buildings_refurbished_status CASCADE")
         harmonized_df.to_sql(
-            "buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, index=False
+            "buildings_refurbished_status", engine, if_exists="append", schema=output_schema, index=False
         )
 
         infdblog.info("Starting construction of building elements")
@@ -130,7 +130,7 @@ def main():
         rc_values.to_sql(
             "buildings_rc",
             con=engine,
-            if_exists="replace",
+            if_exists="append",
             schema=output_schema,
             index=False,
             method="multi",
@@ -153,7 +153,7 @@ def main():
             infdbclient_citydb.execute_sql_file(
                 os.path.join("sql", "03_heat-demand-r.sql"), format_params=format_params
             )
-            # infdbclient_citydb.execute_sql_file(os.path.join("sql", "04_debug_demand.sql"), format_params=format_params)
+            infdbclient_citydb.execute_sql_file(os.path.join("sql", "04_debug_demand.sql"), format_params=format_params)
 
             # Summary
             # # TODO: Adapt output format to EnTiSe format
