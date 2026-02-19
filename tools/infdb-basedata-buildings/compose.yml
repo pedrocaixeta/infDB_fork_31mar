@@ -1,6 +1,6 @@
 services:
     infdb-basedata-buildings:
-        profiles: [ "linear", "pylovo", "basedata-buildings" ]
+        profiles: [ "linear", "pylovo", "basedata-buildings", "basedata-ways" ]
         image: infdb/basedata-buildings:latest
         build:
             context: .

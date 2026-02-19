@@ -1,11 +1,10 @@
 services:
     infdb-basedata-ways:
+        profiles: [ "linear", "pylovo","basedata-ways"]
         image: infdb/basedata-ways:latest
         build:
             context: .
             dockerfile: Dockerfile
-        profiles: 
-            - basedata-ways
         volumes:
             # - ./configs:/workspaces/infdb-basedata-ways/configs:ro  # for production
             - .:/workspaces/infdb-basedata-ways # for development only
@@ -19,3 +18,6 @@ services:
             - env_infdb_basedata_ways.env
         environment:
             - UV_LINK_MODE=copy
+        depends_on:
+            infdb-basedata-buildings:
+                condition: service_completed_successfully
