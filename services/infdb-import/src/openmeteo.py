@@ -68,11 +68,16 @@ def fetch_timeseries(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB, vari
                 UNIQUE(grid_id, name, type)
             );
 
-            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_id_idx ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} (id);
-            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_name_idx ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} (name);
-            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_type_idx ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} (type);
-            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_resolution_idx ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} (resolution);
-            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_geom_idx ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} USING GIST (geom);
+            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_id_idx
+                ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} (id);
+            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_name_idx
+                ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} (name);
+            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_type_idx
+                ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} (type);
+            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_resolution_idx
+                ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} (resolution);
+            CREATE INDEX IF NOT EXISTS {db_prefix}_ts_metadata_geom_idx
+                ON {db_schema}.{db_prefix}{TS_METADATA_SUFFIX} USING GIST (geom);
             """)
     except Exception as e:
         log.error("Failed to create metadata table: %s", e)
@@ -94,8 +99,10 @@ def fetch_timeseries(pd_dataframe: pd.DataFrame, engine: Any, infdb: InfDB, vari
             timescaledb.segmentby='ts_metadata_id'
         );
 
-        CREATE INDEX IF NOT EXISTS {table_name}_ts_metadata_id_time_idx ON {db_schema}.{table_name} (ts_metadata_id, time);
-        CREATE INDEX IF NOT EXISTS {table_name}_value_idx ON {db_schema}.{table_name} (value);
+        CREATE INDEX IF NOT EXISTS {table_name}_ts_metadata_id_time_idx
+            ON {db_schema}.{table_name} (ts_metadata_id, time);
+        CREATE INDEX IF NOT EXISTS {table_name}_value_idx
+            ON {db_schema}.{table_name} (value);
         """)
 
     log.info("Open-Meteo: processing %d grid locations with variables: %s", len(pd_dataframe), ", ".join(variables))

@@ -29,17 +29,17 @@ WITH street_lengths AS (
 -- Aggregate heat demand for each street from connected buildings
 street_heat_demand AS (
     SELECT
-        bts.street_id,
+        bts.{buildings_to_streets_ways_id_column} as street_id,
         SUM(h.{heat_demand_column}) AS total_heat_demand
     FROM
         {buildings_to_streets_schema}.{buildings_to_streets_table} AS bts
     JOIN
         {heat_demand_schema}.{heat_demand_table} AS h
     ON
-        bts.building_id::text = {heat_demand_id_expr}
+        bts.{buildings_to_streets_building_id_column}::text = {heat_demand_id_expr}
     WHERE bts.gemeindeschluessel = '{ags}'
     GROUP BY
-        bts.street_id
+        bts.{buildings_to_streets_ways_id_column}
 )
 -- Insert or update records with calculated linear heat density
 INSERT INTO {output_schema}.{output_table}

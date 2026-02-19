@@ -53,6 +53,13 @@ def main():
             "buildings_to_streets_table": infdb.get_config_value(
                 [infdb.get_toolname(), "data", "input", "buildings-to-streets", "table"]
             ),
+            "buildings_to_streets_building_id_column": infdb.get_config_value(
+                [infdb.get_toolname(), "data", "input", "buildings-to-streets", "id-building-column"]
+            ),
+            "buildings_to_streets_ways_id_column": infdb.get_config_value(
+                [infdb.get_toolname(), "data", "input", "buildings-to-streets", "id-ways-column"]
+            ),
+
             "streets_schema": infdb.get_config_value([infdb.get_toolname(), "data", "input", "streets", "schema"]),
             "streets_table": infdb.get_config_value([infdb.get_toolname(), "data", "input", "streets", "table"]),
             "streets_id_expr": streets_id_expr,

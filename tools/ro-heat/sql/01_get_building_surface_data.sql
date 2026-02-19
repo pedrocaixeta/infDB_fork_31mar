@@ -4,7 +4,7 @@ WITH wall_data AS (
         FROM opendata.building_surface
         JOIN opendata.building_lod2 ON opendata.building_surface.building_objectid = opendata.building_lod2.objectid
         WHERE 
-                surface_type = 'WallSurface'
+                classname = 'WallSurface'
                 AND opendata.building_lod2.gemeindeschluessel LIKE '{ags}'
         GROUP BY building_objectid),
      
@@ -14,7 +14,7 @@ WITH wall_data AS (
         FROM opendata.building_surface
         JOIN opendata.building_lod2 ON opendata.building_surface.building_objectid = opendata.building_lod2.objectid
         WHERE 
-                surface_type = 'RoofSurface'
+                classname = 'RoofSurface'
                 AND opendata.building_lod2.gemeindeschluessel LIKE '{ags}'
         GROUP BY building_objectid)
 

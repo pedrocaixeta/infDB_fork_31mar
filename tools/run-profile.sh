@@ -21,9 +21,17 @@ PARAM="${2:-$AGS}"
 OPTIONS="${3:-}"
 PROJECT="infdb_${PROFILE}_${PARAM}"
 
+# Use the shared infdb network for all tool runs
+export INFDB_NETWORK="${INFDB_NETWORK:-infdb-infdb-demo_network}"
+
 echo "Starting docker compose..."
 export AGS="$PARAM"
 docker compose -f "$(dirname "$0")/compose.yml" \
     -p "$PROJECT" \
-    --profile "$PROFILE" \
-     up --remove-orphans $OPTIONS
+    --profile "$PROFILE" up\
+    --remove-orphans --abort-on-container-exit
+# Stop and remove containers, networks, images, and volumes created by up
+docker compose -f "$(dirname "$0")/compose.yml" \
+    -p "$PROJECT" \
+    --profile "$PROFILE" down\
+    --volumes --remove-orphans  # --rmi all

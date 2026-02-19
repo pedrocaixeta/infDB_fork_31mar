@@ -1,6 +1,7 @@
 services:
     buildings-to-street:
-        profiles: [ "linear" ]
+        image: infdb/buildings-to-street:latest
+        profiles: [ "buildings-to-street" ]
         build:
             context: .
             dockerfile: Dockerfile
@@ -9,14 +10,14 @@ services:
             - ./configs:/app/configs #:ro # for configs
             - .:/app/ #:ro # for source code # for development only
             - ../../src/infdb_package:/app/mnt/infdb_package
-            - /app/.venv # Exclude .venv from volume mount # for development only
+            # - /app/.venv # Exclude .venv from volume mount # for development only
         extra_hosts:
             - "host.docker.internal:host-gateway"
         env_file:
             - ../../.env
             - .env
         depends_on:
-            infdb-basedata:
+            infdb-basedata-buildings:
                 condition: service_completed_successfully
             # process-streets:
             #     condition: service_completed_successfully

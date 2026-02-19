@@ -22,4 +22,5 @@ OPTIONS="${3:-$OPTIONS}"
 
 echo "Starting docker compose single service $SERVICE"
 export AGS="$PARAM"
-docker compose -f "$(dirname "$0")/compose.yml" up --no-deps --remove-orphans "$SERVICE" $OPTIONS
+docker compose -f "$(dirname "$0")/compose.yml" up --no-deps --remove-orphans $OPTIONS "$SERVICE" 
+docker compose -f "$(dirname "$0")/compose.yml" down --volumes --rmi all --remove-orphans "$SERVICE"
