@@ -1,6 +1,7 @@
 services:
     linear-heat-density:
         profiles: [ "linear" ]
+        image: infdb/linear-heat-density:latest
         build:
             context: .
             dockerfile: Dockerfile
@@ -9,7 +10,7 @@ services:
             - ./configs:/app/configs #:ro # for configs
             - .:/app/ #:ro # for source code # for development only
             - ../../src/infdb_package:/app/mnt/infdb_package
-            - /app/.venv # Exclude .venv from volume mount
+            # - /app/.venv # Exclude .venv from volume mount
         extra_hosts:
             - "host.docker.internal:host-gateway"
         env_file:

@@ -1,5 +1,6 @@
 services:
     infdb-basedata-ways:
+        image: infdb/basedata-ways:latest
         build:
             context: .
             dockerfile: Dockerfile
@@ -9,7 +10,7 @@ services:
             # - ./configs:/workspaces/infdb-basedata-ways/configs:ro  # for production
             - .:/workspaces/infdb-basedata-ways # for development only
             - ../../src/infdb_package:/workspaces/infdb_package
-            - /workspaces/infdb-basedata-ways/.venv # Exclude .venv from volume mount
+            # - /workspaces/infdb-basedata-ways/.venv # Exclude .venv from volume mount
             - .vscode:/workspaces/.vscode:ro
         extra_hosts:
             - "host.docker.internal:host-gateway"
