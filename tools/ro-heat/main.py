@@ -134,7 +134,7 @@ def main():
         rc_values.to_sql(
             "temp_buildings_rc",
             con=engine,
-            if_exists="append",
+            if_exists="replace",
             schema=output_schema,
             index=False,
             method="multi",
