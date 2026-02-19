@@ -449,7 +449,7 @@ def _load_lod2(infdb: InfDB) -> bool:
         # "--log-level=warn",
         str(gml_path),
     ]
-    # utils.do_cmd(" ".join(str(a) for a in cmd_parts))
+    utils.do_cmd(" ".join(str(a) for a in cmd_parts))
 
     # ==================== 5. Flat building table ====================
     utils.create_building_lod2_table(object_id_prefix="DEBY", infdb=infdb)
