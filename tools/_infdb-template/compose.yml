@@ -1,5 +1,8 @@
 services:
     choose-a-name:
+        profiles:
+            - choose-a-name
+        image: infdb/choose-a-name:latest
         build:
             context: .
             dockerfile: Dockerfile
