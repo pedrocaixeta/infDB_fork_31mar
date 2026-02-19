@@ -29,7 +29,7 @@ WITH street_lengths AS (
 -- Aggregate heat demand for each street from connected buildings
 street_heat_demand AS (
     SELECT
-        bts.{buildings_to_streets_ways_id_column},
+        bts.{buildings_to_streets_ways_id_column} as street_id,
         SUM(h.{heat_demand_column}) AS total_heat_demand
     FROM
         {buildings_to_streets_schema}.{buildings_to_streets_table} AS bts
