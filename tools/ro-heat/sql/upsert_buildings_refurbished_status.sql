@@ -10,12 +10,12 @@ CREATE TABLE IF NOT EXISTS {output_schema}.buildings_refurbished_status
     window_area DOUBLE PRECISION,
     outer_wall BIGINT,
     rooftop BIGINT,
-    window BIGINT
+    "window" BIGINT
 );
 
 INSERT INTO {output_schema}.buildings_refurbished_status (
     building_objectid,
-    floor_area
+    floor_area,
     floor_number,
     building_type,
     construction_year,
@@ -24,10 +24,10 @@ INSERT INTO {output_schema}.buildings_refurbished_status (
     window_area,
     outer_wall,
     rooftop,
-    window
+    "window"
 )
 SELECT building_objectid,
-    floor_area
+    floor_area,
     floor_number,
     building_type,
     construction_year,
@@ -36,7 +36,7 @@ SELECT building_objectid,
     window_area,
     outer_wall,
     rooftop,
-    window
+    "window"
 FROM {output_schema}.temp_buildings_refurbished_status
 ON CONFLICT (building_objectid)
 DO UPDATE SET floor_area = EXCLUDED.floor_area,
@@ -48,6 +48,6 @@ roof_area = EXCLUDED.roof_area,
 window_area = EXCLUDED.window_area,
 outer_wall = EXCLUDED.outer_wall,
 rooftop = EXCLUDED.rooftop,
-window = EXCLUDED.window;
+"window" = EXCLUDED."window";
 
 DROP table {output_schema}.temp_buildings_refurbished_status;
