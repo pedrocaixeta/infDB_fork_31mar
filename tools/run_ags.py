@@ -56,7 +56,7 @@ with conn.cursor() as cur:  # InfdbClient context
     cur.execute("DROP SCHEMA IF EXISTS ro_heat CASCADE;")
 
 sql = """SELECT *
-            FROM opendata.bkg_vg5000_gem
+            FROM opendata.scope
             WHERE ags LIKE '09%'
             ORDER BY ags;
         """
@@ -67,6 +67,7 @@ ags_list = gpd.read_postgis(sql, conn, geom_col='geom')
 # PROFILE = "linear"
 # PROFILE = "basedata"
 # PROFILE = "basedata-buildings"
+# PROFILE = "basedata-ways"
 
 
 
