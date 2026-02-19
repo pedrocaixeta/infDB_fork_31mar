@@ -9,3 +9,7 @@ WHERE
     AND klasse IN {classes_with_obj_filter_tuple}
     AND NOT ( {objektart_filter_conditions} )
   );
+
+
+
+

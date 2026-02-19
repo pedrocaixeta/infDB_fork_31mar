@@ -86,6 +86,10 @@ def main():
             "connection_line_segmentation": str(
                 infdb.get_config_value([tool, "data", "connection_line_segmentation"])
             ).lower(),
+            "use_address_information": str(
+               infdb.get_config_value([tool, "data", "use_address_information"])
+            ).lower(),
+            "min_length_meter": infdb.get_config_value([tool, "data", "min_length_meter"]),
             "epsg": epsg,
 
             # NEW: Step 1 filter params
