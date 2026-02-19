@@ -78,7 +78,7 @@ todo_ags = ags_list["ags"].tolist()
 logger.info(f"Total AGS to process: {len(todo_ags)}")
 logger.info(f"AGS to process: {', '.join(todo_ags)}")
 
-num_workers = 15
+num_workers = 5
 running_processes = set()
 running_lock = threading.Lock()
 stop_event = threading.Event()
