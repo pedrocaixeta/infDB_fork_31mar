@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 import pandas as pd
-
 # entise package has to type stubs
 from entise.core.generator import TimeSeriesGenerator  # type: ignore
 from infdb import InfDB
@@ -45,9 +44,6 @@ def main():
     method = infdbhandler.get_config_value(["ro-heat", "data", "input", "method"])
 
     try:
-        # sql = f"DROP SCHEMA IF EXISTS {output_schema} CASCADE;"
-        # infdbclient_citydb.execute_query(sql)
-
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         infdbclient_citydb.execute_query(sql)
         infdblog.info(f"output schema: {output_schema} created successfully")
@@ -63,8 +59,11 @@ def main():
         sql_content = sql_content.format(**format_params)
         buildings = pd.read_sql(sql_content, engine)
 
+        if len(buildings) == 0:
+            infdblog.warning(f"No buildings found for AGS {ags}. Returning without result")
+            return
+
         infdblog.info(f"Loaded {len(buildings)} buildings from the database.")
-        # infdblog.debug(buildings.head())
 
         buildings[construction_year_col] = refurbishment.sample_construction_year(
             buildings, simulation_year, construction_year_col, rng
@@ -87,8 +86,6 @@ def main():
             age_column=construction_year_col,
         )
         infdblog.debug("Refurbishment simulation completed")
-        # infdblog.debug(refurbed_df.info())
-        # infdblog.debug(refurbed_df.head())
 
         refurbishment_quotas = {n: {"refurbed_fraction": i["quota"]} for n, i in refurbishment_config.items()}
 
@@ -100,12 +97,14 @@ def main():
             infdblog,
             age_column=construction_year_col,
         )
-        # infdblog.debug(harmonized_df.info())
+
         infdblog.debug("Harmonization with refurbishment quotas completed")
 
         infdblog.info("Writing harmonized refurbishment data to database")
         harmonized_df.to_sql(
-            "temp_buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, index=False
+            "temp_buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, method="multi",
+            index=False,
+            index_label="building_objectid",
         )
         format_params_output_schema = {
             "output_schema": output_schema,
@@ -121,9 +120,6 @@ def main():
 
         tabula_structure = tabula_handling.create_tabula_structure(tabula_elements)
 
-        # TODO: Remove if AGS handling is in place
-        harmonized_df = harmonized_df[harmonized_df["building_objectid"].str.startswith("DEBY")]
-
         harmonized_df[["resistance", "capacitance"]] = harmonized_df.apply(
             lambda row: tabula_handling.calculate_rc_values(tabula_structure, row), axis=1, result_type="expand"
         )
@@ -136,8 +132,9 @@ def main():
             con=engine,
             if_exists="replace",
             schema=output_schema,
-            index=False,
             method="multi",
+            index=False,
+            index_label="building_objectid",
         )
         infdbclient_citydb.execute_sql_file(os.path.join("sql", "upsert_buildings_rc.sql"), format_params_output_schema)
         infdblog.debug("Done writing R & C values")
@@ -193,8 +190,6 @@ def main():
                 right_on="bld_objectid",
                 how="left",
             ).drop(columns=["bld_objectid"])
-
-            # entise_input = entise_input[1:100]
 
             # Initialize the generator
             gen = TimeSeriesGenerator()
