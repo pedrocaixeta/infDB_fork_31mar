@@ -11,9 +11,9 @@ INSERT INTO {output_schema}.buildings_rc (building_objectid,
 SELECT building_objectid,
        resistance,
        capacitance
-FROM {output_schema}.temp_buildings_rc
+FROM {output_schema}.temp_buildings_rc_{ags}
 ON CONFLICT (building_objectid)
 DO UPDATE SET resistance = EXCLUDED.resistance,
 capacitance = EXCLUDED.capacitance;
 
-DROP table {output_schema}.temp_buildings_rc;
+DROP table {output_schema}.temp_buildings_rc_{ags};

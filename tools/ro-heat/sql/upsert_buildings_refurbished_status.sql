@@ -37,7 +37,7 @@ SELECT building_objectid,
     outer_wall,
     rooftop,
     "window"
-FROM {output_schema}.temp_buildings_refurbished_status
+FROM {output_schema}.temp_buildings_refurbished_status_{ags}
 ON CONFLICT (building_objectid)
 DO UPDATE SET floor_area = EXCLUDED.floor_area,
 floor_number = EXCLUDED.floor_number,
@@ -50,4 +50,4 @@ outer_wall = EXCLUDED.outer_wall,
 rooftop = EXCLUDED.rooftop,
 "window" = EXCLUDED."window";
 
-DROP table {output_schema}.temp_buildings_refurbished_status;
+DROP table {output_schema}.temp_buildings_refurbished_status_{ags};

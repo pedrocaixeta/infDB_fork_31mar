@@ -102,12 +102,13 @@ def main():
 
         infdblog.info("Writing harmonized refurbishment data to database")
         harmonized_df.to_sql(
-            "temp_buildings_refurbished_status", engine, if_exists="replace", schema=output_schema, method="multi",
+            f"temp_buildings_refurbished_status_{ags}", engine, if_exists="replace", schema=output_schema, method="multi",
             index=False,
             index_label="building_objectid",
         )
         format_params_output_schema = {
             "output_schema": output_schema,
+                "ags": ags,
         }
         infdbclient_citydb.execute_sql_file(os.path.join("sql", "upsert_buildings_refurbished_status.sql"),
                                             format_params_output_schema)
@@ -128,7 +129,7 @@ def main():
         infdblog.info("Writing R & C values")
         rc_values = harmonized_df[["building_objectid", "resistance", "capacitance"]]
         rc_values.to_sql(
-            "temp_buildings_rc",
+            f"temp_buildings_rc_{ags}",
             con=engine,
             if_exists="replace",
             schema=output_schema,
