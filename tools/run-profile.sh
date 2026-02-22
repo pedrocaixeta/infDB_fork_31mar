@@ -29,7 +29,7 @@ export AGS="$PARAM"
 docker compose -f "$(dirname "$0")/compose.yml" \
     -p "$PROJECT" \
     --profile "$PROFILE" up\
-    --remove-orphans --abort-on-container-exit
+    --remove-orphans --abort-on-container-failure
 # Stop and remove containers, networks, images, and volumes created by up
 docker compose -f "$(dirname "$0")/compose.yml" \
     -p "$PROJECT" \
