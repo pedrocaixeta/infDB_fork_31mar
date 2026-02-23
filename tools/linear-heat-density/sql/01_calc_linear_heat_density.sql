@@ -24,7 +24,7 @@ WITH street_lengths AS (
     ON
         ST_Intersects(s.{streets_geom}, gem.geom)
     WHERE
-        gem.ags = '{ags}'
+        gem.ags = '{ags}' AND s.klasse <> 'connection_line'
 ),
 -- Aggregate heat demand for each street from connected buildings
 street_heat_demand AS (
