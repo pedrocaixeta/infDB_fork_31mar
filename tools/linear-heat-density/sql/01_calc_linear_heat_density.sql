@@ -19,12 +19,8 @@ WITH street_lengths AS (
         ST_Length(s.{streets_geom}) AS street_length
     FROM
         {streets_schema}.{streets_table} AS s
-    JOIN
-        opendata.bkg_vg5000_gem AS gem
-    ON
-        ST_Intersects(s.{streets_geom}, gem.geom)
     WHERE
-        gem.ags = '{ags}' AND s.klasse <> 'connection_line'
+        s.ags = '{ags}' AND s.klasse <> 'connection_line'
 ),
 -- Aggregate heat demand for each street from connected buildings
 street_heat_demand AS (
