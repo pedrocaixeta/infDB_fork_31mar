@@ -38,7 +38,7 @@ linear-heat-density:
                 schema: ro_heat
                 table: annual_heating_demand
                 id-column: building_objectid
-                heat-demand-column: heating:demand[Wh]
+                heat-demand-column: heating:demand[kWh]
         output:
             schema: linear_heat_density   # needs to be snake_case
             table: linear_heat_density

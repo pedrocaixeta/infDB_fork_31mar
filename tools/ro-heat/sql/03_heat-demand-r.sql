@@ -2,13 +2,13 @@
 
 CREATE TABLE IF NOT EXISTS {output_schema}.annual_heating_demand (
     building_objectid text PRIMARY KEY,
-    "heating:demand[Wh]" double precision
+    "heating:demand[kWh]" double precision
 );
 
-INSERT INTO {output_schema}.annual_heating_demand (building_objectid, "heating:demand[Wh]")
+INSERT INTO {output_schema}.annual_heating_demand (building_objectid, "heating:demand[kWh]")
     SELECT
         bldrc.building_objectid,
-        (count(ts.value)*{temp_in}-SUM(ts.value))/bldrc.resistance AS "heating:demand[Wh]"
+        (count(ts.value)*{temp_in}-SUM(ts.value))/bldrc.resistance/3600/1000 AS "heating:demand[kWh]"
     FROM
         {output_schema}.buildings_rc AS bldrc
     JOIN
@@ -30,4 +30,4 @@ INSERT INTO {output_schema}.annual_heating_demand (building_objectid, "heating:d
     GROUP BY bldrc.building_objectid, bldrc.resistance
 ON CONFLICT (building_objectid)
 DO UPDATE SET
-    "heating:demand[Wh]" = EXCLUDED."heating:demand[Wh]";
+    "heating:demand[kWh]" = EXCLUDED."heating:demand[kWh]";

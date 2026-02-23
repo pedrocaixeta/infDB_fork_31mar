@@ -52,8 +52,8 @@
 -- )
 CREATE OR REPLACE VIEW {output_schema}.debug_demand AS
 SELECT
-    ahd."heating:demand[Wh]",
-    ((ahd."heating:demand[Wh]") / (brs.floor_area * brs.floor_number))/1000 AS "heating:demand_per_area[kWh/m²]",
+    ahd."heating:demand[kWh]",
+    ((ahd."heating:demand[kWh]") / (brs.floor_area * brs.floor_number)) AS "heating:demand_per_area[kWh/m²]",
     brc.resistance,
     brc.capacitance,
     brs.*,
