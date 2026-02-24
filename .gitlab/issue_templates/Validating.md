@@ -9,7 +9,6 @@ Describe the problem here. Include any relevant details about the issue you are 
 Provide any suggestions you have for solving the problem.
 
 ### Location
-
 - gemeindeschluessel: 
 - objectid: 
 - street: 
