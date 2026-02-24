@@ -8,8 +8,13 @@ Describe the problem here. Include any relevant details about the issue you are 
 ### Suggestion how to solve the problem
 Provide any suggestions you have for solving the problem.
 
-### Link
-Copied QWC-URL: https://by.demo.need.energy/ ...
+### Location
+
+- gemeindeschluessel: 
+- objectid: 
+- street: 
+- hous_number: 
+- QWC-URL: https://by.demo.need.energy/ ...
 
 ### Screenshots
 If applicable, add screenshots to help explain your problem.
