@@ -76,3 +76,10 @@ user=citydb_user
 password=citydb_password
 sslmode=disable
 ```
+
+### Git
+```bash
+# Check for uncommitted changes
+git config --global pull.rebase true
+git config --global rebase.autostash true
+```
