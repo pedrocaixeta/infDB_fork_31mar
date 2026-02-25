@@ -88,27 +88,13 @@ BEGIN
             INSERT INTO filtered_ways (old_way_id, new_way_id, old_length_geo, filter_type, connection_count)
             VALUES (r.way_id, v_connected_way, r.length_geo, v_filter_type, v_connection_count);
 
-            -- Log what we're doing
-            IF r.is_loop THEN
-                RAISE NOTICE 'Deleting loop way: % (length: %m, connections: %, connected to: %)',
-                    r.way_id, ROUND(r.way_length::numeric, 2), v_connection_count, COALESCE(v_connected_way, 'NONE');
-            ELSIF r.way_length < v_min_length THEN
-                RAISE NOTICE 'Deleting short way: % (length: %m, min: %m, connections: %, connected to: %)',
-                    r.way_id, ROUND(r.way_length::numeric, 2), v_min_length, v_connection_count, COALESCE(v_connected_way, 'NONE');
-            ELSIF v_connection_count = 0 THEN
-                RAISE NOTICE 'Deleting isolated way: % (length: %m, no connections)',
-                    r.way_id, ROUND(r.way_length::numeric, 2);
-            END IF;
+            
         END IF;
     END LOOP;
 
     -- Delete all filtered ways from ways_tem
     DELETE FROM ways_tem
     WHERE id::text IN (SELECT old_way_id FROM filtered_ways);
-
-    RAISE NOTICE 'Deleted % ways total', (SELECT COUNT(*) FROM filtered_ways);
-    RAISE NOTICE 'Loops with connections: %', (SELECT COUNT(*) FROM filtered_ways WHERE filter_type = 'loop' AND new_way_id IS NOT NULL);
-    RAISE NOTICE 'Loops without connections: %', (SELECT COUNT(*) FROM filtered_ways WHERE filter_type = 'loop' AND new_way_id IS NULL);
 END $$;
 
 -- Transfer length_filter from deleted ways to their replacement ways

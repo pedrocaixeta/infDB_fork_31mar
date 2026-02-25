@@ -44,8 +44,6 @@ BEGIN
 
         -- Require the buffered intersection result to be a LINESTRING (needed for ST_LineInterpolatePoint)
         IF ST_Geometrytype(ST_Intersection(ST_Buffer(way.geom, 0.1), old_street.geom)) != 'ST_LineString' THEN
-            -- Log and skip if intersection geometry type is not supported by this path
-            RAISE NOTICE 'Intersection is not a LineString. Skipping geometry: %', old_street.geom;
             CONTINUE;
         END IF;
 
@@ -94,8 +92,6 @@ BEGIN
         );
 
     END LOOP; -- end scan over ways_tem
-    
-    RAISE NOTICE 'Way connections have been successfully drawn and segmented.';
     
 END;
 $$;

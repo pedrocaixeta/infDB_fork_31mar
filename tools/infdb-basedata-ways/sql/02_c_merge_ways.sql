@@ -77,21 +77,14 @@ BEGIN
         INTO v_geom
         FROM snapped_geoms;
 
-        -- Validate merged geometry
+        -- Skip if merged geometry is NULL/empty
         IF v_geom IS NULL OR ST_IsEmpty(v_geom) THEN
-            RAISE NOTICE 'Merge produced null/empty geometry for chain_id=% (count=%). Skipping.', r.chain_id, r.way_count;
             CONTINUE;
         END IF;
 
         -- Insert merged way into ways_tem
         INSERT INTO ways_tem (id, klasse, objektart, geom, ags, postcode)
         VALUES (v_new, v_klasse, v_objektart, v_geom, v_ags, v_postcode);
-
-        GET DIAGNOSTICS v_rows = ROW_COUNT; -- verify one row inserted
-        IF v_rows <> 1 THEN
-            RAISE NOTICE 'Merge insert failed for chain_id=% (count=%). Skipping.', r.chain_id, r.way_count;
-            CONTINUE;
-        END IF;
 
         -- Delete original ways that were merged (distinct ids)
         DELETE FROM ways_tem
