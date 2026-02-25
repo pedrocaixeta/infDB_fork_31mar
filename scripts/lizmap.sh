@@ -5,4 +5,4 @@ cd lizmap-docker-compose
 docker compose pull
 LIZMAP_PORT=0.0.0.0:8090 docker compose up
 
-cp -J need@need.energy:8081 infdb_validation\ 3.*  need@infdb-bynrw-dev:lizmap-docker-compose/lizmap/instances/infdb
+# scp -J need@need.energy:8081 infdb_validation\ 3.*  need@infdb-bynrw-dev:lizmap-docker-compose/lizmap/instances/infdb
