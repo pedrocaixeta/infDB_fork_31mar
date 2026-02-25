@@ -1,15 +1,47 @@
+-- ============================================================
+-- Persist per-AGS results from temp tables into global output tables
+--
+-- Notes:
+-- - Replaces existing rows for the target `{ags}` to keep outputs idempotent
+-- - Copies final road segments from `ways_tem` into `{output_schema}.ways_segmented`
+-- - Copies final connection line segments from `connection_lines_tem` into `{output_schema}.connection_lines`
+-- - Assumes temp tables contain only valid rows for the current pipeline stage
+-- ============================================================
 
--- 1) Replace rows for this AGS
+
+-- Replace existing segmented ways for this AGS
 DELETE FROM {output_schema}.ways_segmented
-WHERE ags = '{ags}';
+WHERE ags = '{ags}'; -- restrict delete to current AGS scope
 
-INSERT INTO {output_schema}.ways_segmented (ags, id, klasse, objektart, geom, postcode)
+INSERT INTO {output_schema}.ways_segmented (ags, id, klasse, objektart, geom, postcode, length_geo, length_filter, length_connection_line)
 SELECT
-  ags,
-  id,
-  klasse,
-  objektart,
-  geom,
-  postcode
+  ags,                      -- municipality/region id (AGS) as text
+  id,                       -- segment id as text
+  klasse,                   -- feature class
+  objektart,                -- feature type
+  geom,                     -- segment geometry
+  postcode,                 -- postcode enrichment
+  length_geo,               -- stored geometric length
+  length_filter,            -- bookkeeping accumulator
+  length_connection_line    -- bookkeeping accumulator for connection lines
 FROM ways_tem
-WHERE ags = '{ags}';
+WHERE ags = '{ags}';         -- copy only rows for the current AGS
+
+
+-- Replace existing connection lines for this AGS
+DELETE FROM {output_schema}.connection_lines
+WHERE ags = '{ags}'; -- restrict delete to current AGS scope
+
+INSERT INTO {output_schema}.connection_lines (ags, id, klasse, objektart, geom, postcode, length_geo, length_filter, length_connection_line)
+SELECT
+  ags,                      -- municipality/region id (AGS) as text
+  id,                       -- segment id as text
+  klasse,                   -- feature class
+  objektart,                -- feature type
+  geom,                     -- segment geometry
+  postcode,                 -- postcode enrichment
+  length_geo,               -- stored geometric length
+  length_filter,            -- bookkeeping accumulator
+  length_connection_line    -- bookkeeping accumulator for connection lines
+FROM connection_lines_tem
+WHERE ags = '{ags}';          -- copy only rows for the current AGS

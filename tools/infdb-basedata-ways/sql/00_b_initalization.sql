@@ -1,19 +1,16 @@
 -- ============================================================
--- 00_b_initalization.sql
 -- Creates shared functions and tables for parallel AGS processing
 -- 
 -- Purpose:
 --   - Creates shared functions used across all workers
---   - Creates the global ways_segmented output table
---   - Uses advisory lock to prevent race conditions
+--   - Creates global output tables used by all AGS workers
+--   - Uses an advisory lock to prevent race conditions during first-time setup
 --
 -- Safety:
 --   - Uses pg_try_advisory_lock() for atomic coordination
---   - First worker to acquire lock creates resources
---   - Other workers wait 3 seconds then proceed
---   - All workers verify resources exist before continuing
---
--- Expected Duration: ~2-3 seconds for resource creation
+--   - First worker to acquire lock creates resources (idempotently)
+--   - Other workers wait briefly then proceed
+--   - All workers verify critical resources exist before continuing
 -- ============================================================
 
 DO $$
@@ -37,13 +34,8 @@ BEGIN
         -- ============================================================
         -- PATH A: This worker won the lock race
         -- ============================================================
-        RAISE NOTICE '[Init] Lock acquired - checking if resources need creation...';
         
-        -- Check if resources already exist (idempotency check)
-        -- This handles cases where:
-        --   1) Script is run multiple times
-        --   2) Previous run was interrupted
-        --   3) Resources were created manually
+        -- Idempotency check: only create shared resources if missing
         IF NOT EXISTS (
             SELECT 1 FROM pg_tables 
             WHERE schemaname = '{output_schema}' 
@@ -52,25 +44,24 @@ BEGIN
             -- ========================================================
             -- Resources don't exist - create them now
             -- ========================================================
-            RAISE NOTICE '[Init] Creating shared resources...';
             
             -- --------------------------------------------------------
             -- Function 1: update_assigned_way_id
             -- --------------------------------------------------------
-            -- Updates buildings.assigned_way_id based on filtered ways
-            -- with fallback to nearest suitable way
+            -- Updates buildings.assigned_way_id using a mapping table
+            -- Falls back to nearest suitable way when no mapped replacement exists
             CREATE OR REPLACE FUNCTION {output_schema}.update_assigned_way_id(
-                p_ags text,
-                p_mapping_table regclass,
-                p_old_way_col text,
-                p_new_way_col text DEFAULT 'new_way_id'
+                p_ags text,                       -- AGS scope to restrict affected buildings
+                p_mapping_table regclass,         -- mapping table (old->new way ids) passed as relation
+                p_old_way_col text,               -- column name in mapping table for old way id
+                p_new_way_col text DEFAULT 'new_way_id' -- column name in mapping table for new way id
             )
             RETURNS bigint
             LANGUAGE plpgsql
             AS $func$
             DECLARE
-                v_updated bigint := 0;
-                v_sql text;
+                v_updated bigint := 0; -- number of buildings updated in this call
+                v_sql text;            -- dynamic SQL to support flexible mapping table/column inputs
             BEGIN
                 v_sql := format(
                     'WITH buildings_to_reassign AS (
@@ -107,65 +98,65 @@ BEGIN
                     FROM best_replacement br
                     WHERE b.id = br.id
                       AND br.assigned_way_id IS NOT NULL',
-                    p_old_way_col,
-                    p_new_way_col,
-                    p_mapping_table,
-                    p_old_way_col,
-                    p_ags
+                    p_old_way_col, -- formatted identifier for old-way column
+                    p_new_way_col, -- formatted identifier for new-way column
+                    p_mapping_table, -- mapping table relation substituted into query
+                    p_old_way_col, -- join column identifier (old way id)
+                    p_ags -- literal AGS value for scoping
                 );
 
-                EXECUTE v_sql;
-                GET DIAGNOSTICS v_updated = ROW_COUNT;
-                RAISE NOTICE 'Updated % buildings for AGS %', v_updated, p_ags;
+                EXECUTE v_sql; -- execute reassignment update for this AGS
+                GET DIAGNOSTICS v_updated = ROW_COUNT; -- capture affected row count
                 
-                RETURN v_updated;
+                RETURN v_updated; -- return updated building count
             END;
             $func$;
-            
-            RAISE NOTICE '[Init] ✓ Created update_assigned_way_id function';
             
             -- --------------------------------------------------------
             -- Function 2: insert_way_segment
             -- --------------------------------------------------------
-            -- Inserts a new way segment into ways_tem
+            -- Inserts a new segment into ways_tem or connection_lines_tem
             CREATE OR REPLACE FUNCTION {output_schema}.insert_way_segment(
-                p_ags text,
-                p_klasse text,
-                p_geom geometry
+                p_ags text,       -- AGS tag for inserted segment
+                p_klasse text,    -- class determining target table (connection_line vs road)
+                p_geom geometry   -- segment geometry in expected SRID/type
             ) RETURNS void
             LANGUAGE plpgsql
             AS $func$
             DECLARE
-                v_new text;
+                v_new text; -- generated id for the new segment
             BEGIN
-                IF p_geom IS NULL THEN
+                IF p_geom IS NULL THEN -- ignore NULL geometry inserts
                     RETURN;
                 END IF;
 
-                v_new := md5(random()::text || clock_timestamp()::text);
+                v_new := md5(random()::text || clock_timestamp()::text); -- generate unique-ish text id
 
-                INSERT INTO ways_tem (ags, id, klasse, objektart, geom, postcode)
-                VALUES (p_ags, v_new, p_klasse, NULL, p_geom, NULL);
+                IF p_klasse = 'connection_line' THEN -- route connection lines to their temp table
+                    INSERT INTO connection_lines_tem (ags, id, klasse, objektart, geom, postcode)
+                    VALUES (p_ags, v_new, p_klasse, NULL, p_geom, NULL);
+                ELSE -- route all other classes to ways_tem
+                    INSERT INTO ways_tem (ags, id, klasse, objektart, geom, postcode)
+                    VALUES (p_ags, v_new, p_klasse, NULL, p_geom, NULL);
+                END IF;
             END;
             $func$;
-            
-            RAISE NOTICE '[Init] ✓ Created insert_way_segment function';
             
             -- --------------------------------------------------------
             -- Function 3: split_way_at_connection_points
             -- --------------------------------------------------------
-            -- Splits a line geometry into multiple segments at specified points
+            -- Splits a line into multiple LINESTRING parts at ordered points
             CREATE OR REPLACE FUNCTION {output_schema}.split_way_at_connection_points(
-                line geometry, 
-                points geometry[]
+                line geometry,         -- input line geometry to split
+                points geometry[]      -- array of split points along the line
             )
             RETURNS TABLE(part geometry) 
             LANGUAGE plpgsql
             AS $func$
             DECLARE
-                i INTEGER;
-                start_fraction FLOAT := 0;
-                end_fraction FLOAT;
+                i INTEGER;                 -- loop index over point array
+                start_fraction FLOAT := 0; -- start fraction for current substring
+                end_fraction FLOAT;        -- end fraction for current substring
             BEGIN
                 -- Iterate through all split points
                 FOR i IN 1 .. array_length(points, 1)
@@ -191,41 +182,39 @@ BEGIN
             END;
             $func$;
             
-            RAISE NOTICE '[Init] ✓ Created split_way_at_connection_points function';
-            
             -- --------------------------------------------------------
             -- Function 4: generate_building_way_connection_candidates
             -- --------------------------------------------------------
-            -- Creates temp table with building-to-way connection analysis
+            -- Builds a temp table of connection lines from buildings to assigned ways
             CREATE OR REPLACE FUNCTION {output_schema}.generate_building_way_connection_candidates()
             RETURNS void
             LANGUAGE plpgsql
             AS $func$
             BEGIN
-                DROP TABLE IF EXISTS temp_building_connection_candidates;
+                DROP TABLE IF EXISTS temp_building_connection_candidates; -- reset temp table per session
 
                 CREATE TEMP TABLE temp_building_connection_candidates AS
                 WITH b AS (
                     SELECT
-                        b.id               AS building_id,
-                        b.centroid         AS center,
-                        b.assigned_way_id
+                        b.id               AS building_id,      -- building primary key
+                        b.centroid         AS center,           -- building centroid point geometry
+                        b.assigned_way_id                    -- assigned way reference (text)
                     FROM {output_schema}.buildings b
-                    WHERE b.centroid IS NOT NULL
-                      AND b.assigned_way_id IS NOT NULL
+                    WHERE b.centroid IS NOT NULL              -- require centroid for spatial ops
+                      AND b.assigned_way_id IS NOT NULL       -- require assigned way id
                 ),
                 matched AS (
                     SELECT
                         b.building_id,
                         b.center,
-                        w.id               AS old_way_id,
-                        w.geom             AS old_geom,
-                        w.ags              AS old_way_ags
+                        w.id               AS old_way_id,       -- resolved way id in ways_tem
+                        w.geom             AS old_geom,         -- resolved way geometry
+                        w.ags              AS old_way_ags       -- AGS tag of resolved way
                     FROM b
                     JOIN ways_tem w
-                      ON w.id = b.assigned_way_id::text
-                    WHERE w.geom IS NOT NULL
-                      AND w.klasse <> 'connection_line'
+                      ON w.id = b.assigned_way_id::text         -- match on text id
+                    WHERE w.geom IS NOT NULL                    -- require geometry
+                      AND w.klasse <> 'connection_line'         -- exclude connection lines from target ways
                 ),
                 computed AS (
                     SELECT
@@ -234,8 +223,8 @@ BEGIN
                         m.old_way_id,
                         m.old_geom,
                         m.old_way_ags,
-                        ST_ShortestLine(m.center, m.old_geom) AS new_geom,
-                        ST_ClosestPoint(m.old_geom, m.center) AS connection_point
+                        ST_ShortestLine(m.center, m.old_geom) AS new_geom, -- connection line geometry
+                        ST_ClosestPoint(m.old_geom, m.center) AS connection_point -- projected point on way
                     FROM matched m
                 )
                 SELECT DISTINCT ON (building_id)
@@ -249,37 +238,38 @@ BEGIN
                 FROM computed;
 
                 CREATE INDEX temp_candidates_old_way_idx
-                    ON temp_building_connection_candidates (old_way_id);
+                    ON temp_building_connection_candidates (old_way_id); -- lookup by way id
 
                 CREATE INDEX temp_candidates_connection_gix
                     ON temp_building_connection_candidates
-                    USING GIST (connection_point);
+                    USING GIST (connection_point); -- spatial ops on connection points
             END;
             $func$;
-            
-            RAISE NOTICE '[Init] ✓ Created generate_building_way_connection_candidates function';
             
             -- --------------------------------------------------------
             -- Table: ways_segmented (global output table)
             -- --------------------------------------------------------
-            -- Create empty table with same structure as ways_tem
+            -- Create empty table with the same column layout as ways_tem
             CREATE TABLE {output_schema}.ways_segmented AS
             SELECT
-                ags,
-                id,
-                klasse,
-                objektart,
-                geom,
-                postcode
+                ags,                   -- municipality/region id (AGS) as text
+                id,                    -- segment id as text
+                klasse,                -- feature class
+                objektart,             -- feature type
+                geom,                  -- segment geometry
+                postcode,              -- postcode enrichment (filled later)
+                length_geo,            -- stored geometric length
+                length_filter,         -- bookkeeping accumulator
+                length_connection_line -- bookkeeping accumulator for connection lines
             FROM ways_tem
             WHERE false;  -- Creates structure only, no data
 
-            -- Set NOT NULL constraints
+            -- Set required key columns to NOT NULL
             ALTER TABLE {output_schema}.ways_segmented
                 ALTER COLUMN ags SET NOT NULL,
                 ALTER COLUMN id  SET NOT NULL;
 
-            -- Create indexes for performance
+            -- Indexes for scoped reads and spatial predicates
             CREATE INDEX ways_segmented_ags_idx
                 ON {output_schema}.ways_segmented (ags);
 
@@ -290,27 +280,59 @@ BEGIN
             CREATE UNIQUE INDEX ways_segmented_ags_id_ux
                 ON {output_schema}.ways_segmented (ags, id);
             
-            RAISE NOTICE '[Init] ✓ Created ways_segmented table with indexes';
+            -- --------------------------------------------------------
+            -- Table: connection_lines (global output table)
+            -- --------------------------------------------------------
+            -- Create empty table with the same column layout as ways_tem
+            CREATE TABLE {output_schema}.connection_lines AS
+            SELECT
+                ags,                   -- municipality/region id (AGS) as text
+                id,                    -- segment id as text
+                klasse,                -- feature class
+                objektart,             -- feature type
+                geom,                  -- segment geometry
+                postcode,              -- postcode enrichment (filled later)
+                length_geo,            -- stored geometric length
+                length_filter,         -- bookkeeping accumulator
+                length_connection_line -- bookkeeping accumulator for connection lines
+            FROM ways_tem
+            WHERE false;  -- Creates structure only, no data
 
+            -- Set required key columns to NOT NULL
+            ALTER TABLE {output_schema}.connection_lines
+                ALTER COLUMN ags SET NOT NULL,
+                ALTER COLUMN id  SET NOT NULL;
+
+            -- Indexes for scoped reads and spatial predicates
+            CREATE INDEX connection_lines_ags_idx
+                ON {output_schema}.connection_lines (ags);
+
+            CREATE INDEX connection_lines_geom_gix
+                ON {output_schema}.connection_lines USING GIST (geom);
+
+            -- Prevent duplicates per AGS+id
+            CREATE UNIQUE INDEX connection_lines_ags_id_ux
+                ON {output_schema}.connection_lines (ags, id);
+            
             -- --------------------------------------------------------
             -- Table: nodes (global output table)
-            -- Nodes are connection points of streets
+            -- Nodes are street connection points
             -- Columns:
             --   ags      text                          NOT NULL
             --   id       text                          NOT NULL
-            --   geom     geometry(Point)  NOT NULL
+            --   geom     geometry(Point)               NOT NULL
             --   way_ids  text[]                        NOT NULL
             -- --------------------------------------------------------
 
-            DROP TABLE IF EXISTS {output_schema}.nodes;
+            DROP TABLE IF EXISTS {output_schema}.nodes; -- recreate nodes table idempotently
 
             -- Create empty table structure (no rows)
             CREATE TABLE {output_schema}.nodes AS
             SELECT
-                CAST(NULL AS text)            AS ags,
-                CAST(NULL AS text)            AS id,
-                CAST(NULL AS geometry(Point)) AS geom,
-                CAST(NULL AS text[])          AS way_ids
+                CAST(NULL AS text)            AS ags,     -- municipality/region id (AGS) as text
+                CAST(NULL AS text)            AS id,      -- node id as text
+                CAST(NULL AS geometry(Point)) AS geom,    -- node point geometry
+                CAST(NULL AS text[])          AS way_ids  -- associated way ids
             WHERE false;
 
             -- Constraints
@@ -320,25 +342,23 @@ BEGIN
                 ALTER COLUMN geom    SET NOT NULL,
                 ALTER COLUMN way_ids SET NOT NULL;
 
-            -- Optional defaults
+            -- Default empty array for way_ids
             ALTER TABLE {output_schema}.nodes
                 ALTER COLUMN way_ids SET DEFAULT ARRAY[]::text[];
 
             -- Indexes
             CREATE INDEX nodes_ags_idx
-                ON {output_schema}.nodes (ags);
+                ON {output_schema}.nodes (ags); -- AGS scoped filtering
 
             CREATE INDEX nodes_geom_gix
-                ON {output_schema}.nodes USING GIST (geom);
+                ON {output_schema}.nodes USING GIST (geom); -- spatial predicates / nearest-neighbor
 
             CREATE INDEX nodes_way_ids_gin
-                ON {output_schema}.nodes USING GIN (way_ids);
+                ON {output_schema}.nodes USING GIN (way_ids); -- array membership queries
 
             -- Prevent duplicates per AGS+id
             CREATE UNIQUE INDEX nodes_ags_id_ux
                 ON {output_schema}.nodes (ags, id);
-
-            RAISE NOTICE '[Init] ✓ Created nodes table with indexes';
 
 
 
@@ -349,41 +369,31 @@ BEGIN
             -- --------------------------------------------------------
             -- Ensure the column exists (idempotent)
             ALTER TABLE {output_schema}.buildings
-                ADD COLUMN IF NOT EXISTS assigned_way_id text;
-            
-            RAISE NOTICE '[Init] ✓ Ensured buildings.assigned_way_id column exists';
-            
-            RAISE NOTICE '[Init] ✓✓✓ All resources created successfully ✓✓✓';
+                ADD COLUMN IF NOT EXISTS assigned_way_id text; -- assigned way id as text
             
         ELSE
             -- ========================================================
             -- Resources already exist - skip creation
             -- ========================================================
-            RAISE NOTICE '[Init] Resources already exist, skipping creation';
         END IF;
         
         -- Release the lock so other workers can proceed
-        PERFORM pg_advisory_unlock(lock_key);
-        RAISE NOTICE '[Init] Lock released';
+        PERFORM pg_advisory_unlock(lock_key); -- unlock initialization key
         
     ELSE
         -- ============================================================
         -- PATH B: Another worker is creating resources
         -- ============================================================
-        RAISE NOTICE '[Init] Lock not acquired - another worker is initializing';
-        RAISE NOTICE '[Init] Waiting 3 seconds for initialization to complete...';
         
         -- Wait for the other worker to finish
-        -- 3 seconds is sufficient as initialization takes ~2-3 seconds
-        PERFORM pg_sleep(3);
+        PERFORM pg_sleep(3); -- allow initializer to finish creating shared resources
         
-        RAISE NOTICE '[Init] Wait complete - proceeding';
     END IF;
     
     -- ================================================================
     -- STEP 2: Verify resources exist (safety check for all workers)
     -- ================================================================
-    -- This ensures initialization was successful before any worker proceeds
+    -- Ensure initialization succeeded before any worker proceeds
     IF NOT EXISTS (
         SELECT 1 FROM pg_tables 
         WHERE schemaname = '{output_schema}' 
@@ -404,6 +414,5 @@ BEGIN
     -- ================================================================
     -- STEP 3: All clear - ready to proceed
     -- ================================================================
-    RAISE NOTICE '[Init] ✓✓✓ Verification complete - ready for AGS processing ✓✓✓';
     
 END $$;

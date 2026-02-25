@@ -1,132 +1,99 @@
-/*
- * FUNCTION PURPOSE AND OVERVIEW:
- * =============================
- * This function processes a ways network to create proper geometric connections
- * at intersection points. It takes overlapping or crossing line geometries and splits
- * them at their intersection points, ensuring that the network topology is properly
- * segmented.
- * 
- * The main goal is to convert a network where ways may cross without being 
- * topologically connected into a properly segmented network where intersections
- * are represented by shared endpoints between line segments.
- *
- * ALGORITHM OVERVIEW:
- * 1. Iterate through each way in the temp_ways table
- * 2. Find another way that intersects with the current way
- * 3. Calculate the precise intersection point between the two ways
- * 4. Split both intersecting ways at the intersection point
- * 5. Replace original ways with their split segments
- * 6. Continue until all intersections are processed
- *
- * INPUT: Uses data from 'ways_tem' table containing geometric line data
- * OUTPUT: Modified 'ways_tem' table with properly segmented line geometries
- */
+-- ============================================================
+-- Split intersecting ways in ways_tem at intersection points
+--
+-- Notes:
+-- - Iterates over LINESTRING geometries in `ways_tem`
+-- - Finds another LINESTRING that intersects the interior of the current way
+-- - Computes an intersection point (midpoint of the buffered intersection segment)
+-- - Deletes both original ways and reinserts split segments via {output_schema}.insert_way_segment
+-- - Continues until all candidate intersections encountered in the scan are processed
+-- ============================================================
 
 DO $$
 DECLARE
-    -- Record to hold current way being processed (geometry, classification, ID)
+    -- Current way being processed (geometry, classification, AGS, id)
     way               RECORD;
     
-    -- Record to store the calculated intersection point geometry
+    -- Calculated intersection point geometry container
     interpolate_point RECORD;
     
-    -- Record to hold the intersecting street found for current way
+    -- Intersecting way selected for current way
     old_street        RECORD;
     
 BEGIN
-    -- MAIN PROCESSING LOOP: Iterate through all ways in the temporary table
-    -- Each iteration processes one way and finds its intersections with other ways
+    -- Iterate through LINESTRING ways in the temporary table
     FOR way IN
         SELECT geom, klasse, ags, id
         FROM ways_tem
-        WHERE ST_GeometryType(geom) = 'ST_LineString'  -- Add this line
+        WHERE ST_GeometryType(geom) = 'ST_LineString'  -- restrict to LINESTRING geometries
     LOOP
-        -- STEP 1: FIND INTERSECTING STREET
-        -- Search for another way that intersects with the current way
-        -- We use ST_LineSubstring(0.01, 0.99) to exclude the first and last 1% 
-        -- of the line to avoid false intersections at endpoints
+        -- Find one intersecting LINESTRING that intersects the interior of the current way
+        -- ST_LineSubstring(0.01, 0.99) excludes endpoints to avoid endpoint-touch intersections
         SELECT geom, klasse, ags, id
         INTO old_street
         FROM ways_tem AS w
         WHERE ST_Intersects(ST_LineSubstring(way.geom, 0.01, 0.99), w.geom) 
             AND w.id != way.id  
-            AND ST_GeometryType(w.geom) = 'ST_LineString'  -- Only select LineString geometries
+            AND ST_GeometryType(w.geom) = 'ST_LineString'  -- restrict to LINESTRING geometries
         LIMIT 1;
 
-        -- STEP 2: VALIDATION CHECK
-        -- If no intersecting street is found, skip to next way
+        -- Skip if no intersecting way was found
         IF NOT FOUND THEN
             CONTINUE;
         END IF;
 
-        -- STEP 3: GEOMETRY TYPE VALIDATION
-        -- Verify that the intersection of the buffered way and old street creates a LineString
-        -- ST_Buffer(way.geom, 0.1) creates a small buffer around the current way
-        -- The intersection must be a LineString for ST_LineInterpolatePoint to work properly
+        -- Require the buffered intersection result to be a LINESTRING (needed for ST_LineInterpolatePoint)
         IF ST_Geometrytype(ST_Intersection(ST_Buffer(way.geom, 0.1), old_street.geom)) != 'ST_LineString' THEN
-            -- Log problematic geometry for debugging purposes
+            -- Log and skip if intersection geometry type is not supported by this path
             RAISE NOTICE 'Intersection is not a LineString. Skipping geometry: %', old_street.geom;
             CONTINUE;
         END IF;
 
-        -- STEP 4: CALCULATE INTERSECTION POINT
-        -- Find the exact intersection point between the buffered current way and the old street
-        -- ST_LineInterpolatePoint(..., 0.5) gets the midpoint of the intersection line
+        -- Compute intersection point: midpoint of the intersection LINESTRING
         SELECT ST_LineInterpolatePoint(ST_Intersection(ST_Buffer(way.geom, 0.1), old_street.geom), 0.5) AS geom
         INTO interpolate_point;
 
-        -- STEP 5: REMOVE ORIGINAL INTERSECTING STREET
-        -- Delete the original old street since we'll replace it with two segments
+        -- Delete the original intersecting way row before inserting split segments
         DELETE
         FROM ways_tem
         WHERE id = old_street.id;
 
-        -- STEP 6: CREATE SPLIT SEGMENTS FOR OLD STREET
-        -- Split the old street into two parts at the intersection point
-        
-        -- Insert first half of old street (from start to intersection point)
-        -- ST_LineLocatePoint finds the position (0-1) of interpolate_point on old_street
-        -- ST_LineSubstring(geom, 0, position) extracts line from start to that position
+        -- Insert old_street split segment 1: start -> intersection point
         PERFORM {output_schema}.insert_way_segment(
-            old_street.ags,    -- Pass ags parameter
-            old_street.klasse, -- Pass klasse parameter
+            old_street.ags,    -- AGS tag for inserted segment
+            old_street.klasse, -- preserve klasse of original way
             ST_LineSubstring(old_street.geom, 0, ST_LineLocatePoint(
                 old_street.geom, interpolate_point.geom))
         );
         
-        -- Insert second half of old street (from intersection point to end)
-        -- ST_LineSubstring(geom, position, 1) extracts line from position to end
+        -- Insert old_street split segment 2: intersection point -> end
         PERFORM {output_schema}.insert_way_segment(
-            old_street.ags,    -- Pass ags parameter
-            old_street.klasse, -- Pass klasse parameter
+            old_street.ags,    -- AGS tag for inserted segment
+            old_street.klasse, -- preserve klasse of original way
             ST_LineSubstring(old_street.geom, ST_LineLocatePoint(
                 old_street.geom, interpolate_point.geom), 1)
         );
 
-        -- STEP 7: REMOVE ORIGINAL CURRENT WAY
-        -- Delete the current way since we'll replace it with two segments
+        -- Delete the original current way row before inserting split segments
         DELETE FROM ways_tem WHERE id = way.id;
 
-        -- STEP 8: CREATE SPLIT SEGMENTS FOR CURRENT WAY
-        -- Split the current way into two parts at the intersection point
-        
-        -- Insert first half of current way (from start to intersection point)
+        -- Insert current way split segment 1: start -> intersection point
         PERFORM {output_schema}.insert_way_segment(
-            way.ags,    -- Pass ags parameter
-            way.klasse, -- Pass klasse parameter
+            way.ags,    -- AGS tag for inserted segment
+            way.klasse, -- preserve klasse of original way
             ST_LineSubstring(way.geom, 0, ST_LineLocatePoint(
                 way.geom, interpolate_point.geom))
         );
 
-        -- Insert second half of current way (from intersection point to end)
+        -- Insert current way split segment 2: intersection point -> end
         PERFORM {output_schema}.insert_way_segment(
-            way.ags,    -- Pass ags parameter
-            way.klasse, -- Pass klasse parameter
+            way.ags,    -- AGS tag for inserted segment
+            way.klasse, -- preserve klasse of original way
             ST_LineSubstring(way.geom, ST_LineLocatePoint(
                 way.geom, interpolate_point.geom), 1)
         );
 
-    END LOOP; -- End of main processing loop
+    END LOOP; -- end scan over ways_tem
     
     RAISE NOTICE 'Way connections have been successfully drawn and segmented.';
     
