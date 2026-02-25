@@ -1,83 +1,64 @@
-/*
- * SCRIPT PURPOSE AND OVERVIEW:
- * ===========================
- * Assign each building that requires an electrical connection (peak_load_in_kw <> 0)
- * to a suitable way from the existing ways network, and write the chosen way_id into:
- *
- *   {output_schema}.buildings.assigned_way_id
- *
- * DATA SOURCES:
- * - Buildings: {output_schema}.buildings  (expects: id, centroid, peak_load_in_kw, address_street_id)
- * - Ways:      ways_tem       (expects: id, geom, klasse)
- *
- * FLAG:
- * - {use_address_information}::boolean
- *
- *   If TRUE:
- *     1) Try direct match via buildings.address_street_id == ways_tem.id (exclude klasse=110)
- *     2) If no direct match, choose nearest suitable way within 2000 units
- *
- *   If FALSE:
- *     - Always choose nearest suitable way within 2000 units (address ignored)
- *
- * NEAREST-WAY LOGIC:
- * - Exclude ways with klasse = 110
- * - Search radius: 2000 units via ST_DWithin
- * - Avoid extremely-close geometries: ST_Distance > 0.1
- * - KNN ordering: centroid <-> w.geom, take closest (LIMIT 1)
- *
- * OUTPUT:
- * - Adds column assigned_way_id (bigint) if missing
- * - Updates assigned_way_id for buildings with peak_load_in_kw <> 0
- */
+-- ============================================================
+-- Assign buildings to a suitable way (writes buildings.assigned_way_id)
+--
+-- Notes:
+-- - Builds a per-building candidate set scoped to `{ags}` and non-null centroids
+-- - If `{use_address_information}` is TRUE:
+--     - Prefer direct match via buildings.address_street_id = ways_tem.id
+--     - Fallback to nearest suitable way within 2000 units
+-- - If `{use_address_information}` is FALSE:
+--     - Always use nearest suitable way within 2000 units
+-- - Excludes ways where klasse = 'connection_line'
+-- - Uses KNN ordering (centroid <-> geom) to pick the closest way (LIMIT 1)
+-- ============================================================
 
 
 -- 1) Compute best way per building, then update buildings table
 WITH buildings_to_assign AS (
     SELECT
-        b.id,
-        b.address_street_id,
-        b.centroid
+        b.id,               -- building primary key
+        b.address_street_id, -- optional street reference for direct matching
+        b.centroid          -- building centroid used for spatial matching
     FROM {output_schema}.buildings b
     WHERE b.centroid IS NOT NULL
-        AND b.gemeindeschluessel = '{ags}'
+        AND b.gemeindeschluessel = '{ags}' -- restrict to target AGS
 ),
 
 best_way AS (
     SELECT
-        b.id,
-        COALESCE(direct_way.id, nearest_way.id) AS assigned_way_id
+        b.id, -- building id
+        COALESCE(direct_way.id, nearest_way.id) AS assigned_way_id -- direct match preferred, else nearest
     FROM buildings_to_assign b
 
-    -- FIRST PRIORITY (only if flag is TRUE): address_street_id -> ways_tem.id
+    -- Direct match (only when flag is TRUE): address_street_id -> ways_tem.id
     LEFT JOIN ways_tem direct_way
         ON (
             {use_address_information}::boolean
             AND b.address_street_id IS NOT NULL
-            AND direct_way.id = b.address_street_id::text   -- CHANGED: cast to text
-            AND direct_way.klasse <> 'connection_line'
+            AND direct_way.id = b.address_street_id::text   -- cast to text to match ways_tem.id type
+            AND direct_way.klasse <> 'connection_line'      -- exclude connection lines
         )
 
-    -- FALLBACK (or primary if flag is FALSE): nearest suitable way
+    -- Nearest suitable way (fallback or always when flag is FALSE)
     LEFT JOIN LATERAL (
-        SELECT w.id
+        SELECT w.id -- nearest way id
         FROM ways_tem w
-        WHERE w.klasse <> 'connection_line'
-          AND ST_DWithin(b.centroid, w.geom, 2000)
-          AND ST_Distance(b.centroid, w.geom) > 0.1
-        ORDER BY b.centroid <-> w.geom
+        WHERE w.klasse <> 'connection_line'                 -- exclude connection lines
+          AND ST_DWithin(b.centroid, w.geom, 2000)           -- search radius constraint
+          AND ST_Distance(b.centroid, w.geom) > 0.1          -- avoid near-zero distances
+        ORDER BY b.centroid <-> w.geom                       -- KNN: nearest geometry first
         LIMIT 1
     ) nearest_way
         ON (
-            direct_way.id IS NULL
-            OR NOT {use_address_information}::boolean
+            direct_way.id IS NULL                            -- only use fallback if no direct match
+            OR NOT {use_address_information}::boolean         -- or always when address info disabled
         )
 
-    -- ensure we found something
+    -- Require that at least one candidate was found
     WHERE COALESCE(direct_way.id, nearest_way.id) IS NOT NULL
 )
 
 UPDATE {output_schema}.buildings b
-SET assigned_way_id = bw.assigned_way_id
+SET assigned_way_id = bw.assigned_way_id -- write chosen way id
 FROM best_way bw
-WHERE b.id = bw.id;
+WHERE b.id = bw.id; -- join back on building id

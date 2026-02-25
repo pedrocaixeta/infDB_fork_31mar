@@ -1,45 +1,58 @@
--- Ensure column exists (optional if already added earlier)
-ALTER TABLE ways_tem
-  ADD COLUMN IF NOT EXISTS postcode integer;
+-- ============================================================
+-- Populate postcode for ways_tem and connection_lines_tem using postcode polygons
+--
+-- Notes:
+-- - Detects a target SRID once (from postcodes_germany.geom; falls back to {epsg} if SRID is 0/NULL)
+-- - For each table, computes a representative point per geometry (ST_PointOnSurface)
+-- - Transforms that point into the target SRID for consistent spatial predicates
+-- - Joins against {input_schema}.postcodes_germany using bbox prefilter (&&) plus ST_Intersects
+-- - Updates only rows with postcode IS NULL and valid, non-empty geometries
+-- ============================================================
 
-WITH pc_srid AS (
-  SELECT COALESCE(NULLIF(ST_SRID(geom), 0), {epsg}) AS srid
-  FROM {input_schema}."postcodes_germany"
-  WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom)
-  LIMIT 1
-),
-ways_geom AS (
-  SELECT
-    w.ctid AS rid,
-    w.geom AS geom,
-    ST_LineMerge(w.geom) AS merged
-  FROM ways_tem w
-  WHERE w.postcode IS NULL
-    AND w.geom IS NOT NULL
-    AND NOT ST_IsEmpty(w.geom)
-),
-ways_pts AS (
-  SELECT
-    rid,
-    CASE
-      WHEN ST_GeometryType(merged) = 'ST_LineString'
-        THEN ST_LineInterpolatePoint(merged, 0.5)
-      ELSE ST_PointOnSurface(geom)
-    END AS pt
-  FROM ways_geom
-)
-UPDATE ways_tem w
-SET postcode = (
-  SELECT pc.plz::int
-  FROM pc_srid, {input_schema}."postcodes_germany" pc
-  WHERE ways_pts.pt IS NOT NULL
-    AND pc.geom && ST_Transform(ways_pts.pt, pc_srid.srid)
-    AND ST_Intersects(
-      pc.geom,
-      ST_Transform(ways_pts.pt, pc_srid.srid)
-    )
-  ORDER BY pc.plz
-  LIMIT 1
-)
-FROM ways_pts
-WHERE w.ctid = ways_pts.rid;
+-- Precompute the target SRID once
+DO $$
+DECLARE
+    v_srid integer; -- target SRID used for point transformation and intersection checks
+BEGIN
+    SELECT COALESCE(NULLIF(ST_SRID(geom), 0), {epsg}) -- use table SRID if set, else fallback to {epsg}
+    INTO v_srid
+    FROM {input_schema}.postcodes_germany
+    WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom) -- require a valid polygon geometry
+    LIMIT 1;
+
+    -- Update ways_tem
+    UPDATE ways_tem w
+    SET postcode = pc.plz::int -- assign postcode as integer
+    FROM (
+        SELECT
+            ctid AS rid, -- row identifier used for stable join back to ways_tem
+            ST_Transform(ST_PointOnSurface(geom), v_srid) AS pt -- representative point in target SRID
+        FROM ways_tem
+        WHERE postcode IS NULL
+          AND geom IS NOT NULL
+          AND NOT ST_IsEmpty(geom)
+    ) pts
+    JOIN {input_schema}.postcodes_germany pc
+        ON pc.geom && pts.pt -- bbox prefilter for index usage
+       AND ST_Intersects(pc.geom, pts.pt) -- point-in-polygon check
+    WHERE w.ctid = pts.rid; -- update only the intended rows
+
+    -- Update connection_lines_tem
+    UPDATE connection_lines_tem w
+    SET postcode = pc.plz::int -- assign postcode as integer
+    FROM (
+        SELECT
+            ctid AS rid, -- row identifier used for stable join back to connection_lines_tem
+            ST_Transform(ST_PointOnSurface(geom), v_srid) AS pt -- representative point in target SRID
+        FROM connection_lines_tem
+        WHERE postcode IS NULL
+          AND geom IS NOT NULL
+          AND NOT ST_IsEmpty(geom)
+    ) pts
+    JOIN {input_schema}.postcodes_germany pc
+        ON pc.geom && pts.pt -- bbox prefilter for index usage
+       AND ST_Intersects(pc.geom, pts.pt) -- point-in-polygon check
+    WHERE w.ctid = pts.rid; -- update only the intended rows
+
+END;
+$$;

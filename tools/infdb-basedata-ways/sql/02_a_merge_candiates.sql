@@ -1,139 +1,124 @@
 -- ============================================================
--- 04_a_build_merge_candidates.sql  (optimized)
--- Build temporary merge-candidates table for debugging
--- Assumes: ways_tem.geom is LINESTRING (not MULTILINESTRING)
--- Note: Designed for parallel processing - each AGS in separate container
+-- Temporary merge-candidates table to find endpoint-based adjacency
 --
--- Output: merge_candidates (same schema as before, just faster)
+-- Notes:
+-- - Computes start/end points for each LINESTRING in `ways_tem`
+-- - Builds `merge_candidates` with neighbour counts, neighbour id arrays, and nearest neighbour per endpoint
+-- - Uses a configurable distance tolerance via `app.tol_m`
+-- - Uses point-based GiST indexes for faster proximity joins
 -- ============================================================
-DROP TABLE IF EXISTS {output_schema}.merge_candidates;
-DROP TABLE IF EXISTS {output_schema}.merge_candidates_debug;
 
--- ── 0) Tune this if needed (meters; EPSG:25832) ─────────────
+-- Configure endpoint proximity tolerance in meters (coordinate system dependent)
 DO $$ BEGIN
-    PERFORM set_config('app.tol_m', '0.20', false);
+    PERFORM set_config('app.tol_m', '0.20', false); -- distance threshold used by ST_DWithin
 END $$;
 
 
--- ── 1) Precompute endpoints once ─────────────────────────────
---    Indexing points instead of linestrings makes DWithin much cheaper.
-
+-- Precompute endpoints once to reduce repeated ST_StartPoint/ST_EndPoint calls
 DROP TABLE IF EXISTS way_endpoints;
 CREATE TEMP TABLE way_endpoints AS
 SELECT
-    w.id::text        AS way_id,
-    ST_StartPoint(w.geom) AS start_pt,
-    ST_EndPoint(w.geom)   AS end_pt
+    w.id::text            AS way_id,   -- segment id as text
+    ST_StartPoint(w.geom) AS start_pt, -- start endpoint of the linestring
+    ST_EndPoint(w.geom)   AS end_pt    -- end endpoint of the linestring
 FROM ways_tem w
 WHERE w.geom IS NOT NULL
-  AND GeometryType(w.geom) = 'LINESTRING'
+  AND GeometryType(w.geom) = 'LINESTRING' -- require LINESTRING input geometry
   AND NOT ST_IsEmpty(w.geom);
 
-CREATE INDEX way_endpoints_start_gix ON way_endpoints USING gist (start_pt);
-CREATE INDEX way_endpoints_end_gix   ON way_endpoints USING gist (end_pt);
-CREATE INDEX way_endpoints_way_id_ix ON way_endpoints (way_id);
+-- Index endpoints for fast ST_DWithin lookups
+CREATE INDEX way_endpoints_start_gix ON way_endpoints USING gist (start_pt); -- start point spatial index
+CREATE INDEX way_endpoints_end_gix   ON way_endpoints USING gist (end_pt);   -- end point spatial index
+CREATE INDEX way_endpoints_way_id_ix ON way_endpoints (way_id);              -- id lookup/join index
 
 
--- ── 2) Create merge_candidates (same schema as before) ───────
-
+-- Create merge_candidates (schema matches downstream expectations)
 DROP TABLE IF EXISTS merge_candidates;
 CREATE TEMP TABLE merge_candidates (
-    way_id text PRIMARY KEY,
+    way_id text PRIMARY KEY, -- segment id
 
-    start_pt              geometry(Point),
-    start_cnt             integer          NOT NULL,
-    start_neighbor_ids    text[]           NOT NULL,
-    start_nearest_id      text,
-    start_nearest_dist_m  double precision,
+    start_pt              geometry(Point), -- start endpoint geometry
+    start_cnt             integer          NOT NULL, -- neighbour count near start endpoint
+    start_neighbor_ids    text[]           NOT NULL, -- neighbour ids near start endpoint
+    start_nearest_id      text, -- nearest neighbour id near start endpoint
+    start_nearest_dist_m  double precision, -- nearest neighbour distance near start endpoint
 
-    end_pt                geometry(Point),
-    end_cnt               integer          NOT NULL,
-    end_neighbor_ids      text[]           NOT NULL,
-    end_nearest_id        text,
-    end_nearest_dist_m    double precision,
+    end_pt                geometry(Point), -- end endpoint geometry
+    end_cnt               integer          NOT NULL, -- neighbour count near end endpoint
+    end_neighbor_ids      text[]           NOT NULL, -- neighbour ids near end endpoint
+    end_nearest_id        text, -- nearest neighbour id near end endpoint
+    end_nearest_dist_m    double precision, -- nearest neighbour distance near end endpoint
 
-    tol_m                 double precision NOT NULL,
-    created_at            timestamptz DEFAULT now()
+    tol_m                 double precision NOT NULL, -- tolerance used for this computation
+    created_at            timestamptz DEFAULT now() -- creation timestamp
 );
 
-CREATE INDEX merge_candidates_start_pt_gix ON merge_candidates USING gist (start_pt);
-CREATE INDEX merge_candidates_end_pt_gix   ON merge_candidates USING gist (end_pt);
+-- Index endpoints in merge_candidates for downstream spatial filtering
+CREATE INDEX merge_candidates_start_pt_gix ON merge_candidates USING gist (start_pt); -- start point spatial index
+CREATE INDEX merge_candidates_end_pt_gix   ON merge_candidates USING gist (end_pt);   -- end point spatial index
 
 
--- ── 3) Fill merge_candidates ──────────────────────────────────
---
--- Strategy:
---   For each endpoint (start / end), do ONE set-based spatial join
---   against way_endpoints. Aggregate neighbours and nearest in a single pass.
---   LEFT JOIN so isolated ways (cnt=0) still get a row.
-
+-- Fill merge_candidates using set-based endpoint joins
 WITH
 tol AS (
-    SELECT current_setting('app.tol_m')::double precision AS m
+    SELECT current_setting('app.tol_m')::double precision AS m -- tolerance in meters
 ),
 
--- ── 3a) Start-endpoint neighbours ────────────────────────────
+-- Aggregate neighbours for start endpoint
 start_agg AS (
     SELECT
         b.way_id,
 
-        -- number of ways whose geometry comes within tol of this start point
-        COUNT(n.way_id)                                                         AS start_cnt,
-
-        -- all neighbour ids (same ordering as original: alphabetical)
+        COUNT(n.way_id)                                                         AS start_cnt, -- number of neighbours within tolerance
         COALESCE(
             array_agg(n.way_id ORDER BY n.way_id),
             ARRAY[]::text[]
-        )                                                                        AS start_neighbor_ids,
+        )                                                                        AS start_neighbor_ids, -- neighbour ids (sorted)
 
-        -- nearest neighbour: first element when sorted by distance
         (array_agg(n.way_id
-                   ORDER BY ST_Distance(n.start_pt, b.start_pt)   -- point-vs-point, fast
-                            + ST_Distance(n.end_pt,   b.start_pt)  -- take whichever end is closer
-        ))[1]                                                                    AS start_nearest_id,
+                   ORDER BY ST_Distance(n.start_pt, b.start_pt)
+                            + ST_Distance(n.end_pt,   b.start_pt)
+        ))[1]                                                                    AS start_nearest_id, -- nearest neighbour id
 
-        -- distance to nearest neighbour
         MIN(LEAST(
             ST_Distance(n.start_pt, b.start_pt),
             ST_Distance(n.end_pt,   b.start_pt)
-        ))                                                                       AS start_nearest_dist_m
+        ))                                                                       AS start_nearest_dist_m -- nearest neighbour distance
 
     FROM way_endpoints b
-    -- spatial join: neighbours whose ANY endpoint is within tol
     LEFT JOIN way_endpoints n
-           ON n.way_id <> b.way_id
-          AND (   ST_DWithin(n.start_pt, b.start_pt, (SELECT m FROM tol))
-               OR ST_DWithin(n.end_pt,   b.start_pt, (SELECT m FROM tol)))
+           ON n.way_id <> b.way_id -- exclude self
+          AND (   ST_DWithin(n.start_pt, b.start_pt, (SELECT m FROM tol)) -- neighbour start near base start
+               OR ST_DWithin(n.end_pt,   b.start_pt, (SELECT m FROM tol))) -- neighbour end near base start
     GROUP BY b.way_id
 ),
 
--- ── 3b) End-endpoint neighbours ──────────────────────────────
+-- Aggregate neighbours for end endpoint
 end_agg AS (
     SELECT
         b.way_id,
 
-        COUNT(n.way_id)                                                         AS end_cnt,
-
+        COUNT(n.way_id)                                                         AS end_cnt, -- number of neighbours within tolerance
         COALESCE(
             array_agg(n.way_id ORDER BY n.way_id),
             ARRAY[]::text[]
-        )                                                                        AS end_neighbor_ids,
+        )                                                                        AS end_neighbor_ids, -- neighbour ids (sorted)
 
         (array_agg(n.way_id
                    ORDER BY ST_Distance(n.start_pt, b.end_pt)
                             + ST_Distance(n.end_pt,   b.end_pt)
-        ))[1]                                                                    AS end_nearest_id,
+        ))[1]                                                                    AS end_nearest_id, -- nearest neighbour id
 
         MIN(LEAST(
             ST_Distance(n.start_pt, b.end_pt),
             ST_Distance(n.end_pt,   b.end_pt)
-        ))                                                                       AS end_nearest_dist_m
+        ))                                                                       AS end_nearest_dist_m -- nearest neighbour distance
 
     FROM way_endpoints b
     LEFT JOIN way_endpoints n
-           ON n.way_id <> b.way_id
-          AND (   ST_DWithin(n.start_pt, b.end_pt, (SELECT m FROM tol))
-               OR ST_DWithin(n.end_pt,   b.end_pt, (SELECT m FROM tol)))
+           ON n.way_id <> b.way_id -- exclude self
+          AND (   ST_DWithin(n.start_pt, b.end_pt, (SELECT m FROM tol)) -- neighbour start near base end
+               OR ST_DWithin(n.end_pt,   b.end_pt, (SELECT m FROM tol))) -- neighbour end near base end
     GROUP BY b.way_id
 )
 
@@ -147,22 +132,22 @@ SELECT
     b.way_id,
 
     b.start_pt,
-    COALESCE(sa.start_cnt, 0)::integer,
-    COALESCE(sa.start_neighbor_ids, ARRAY[]::text[]),
+    COALESCE(sa.start_cnt, 0)::integer, -- default to 0 neighbours
+    COALESCE(sa.start_neighbor_ids, ARRAY[]::text[]), -- default to empty array
     sa.start_nearest_id,
     sa.start_nearest_dist_m,
 
     b.end_pt,
-    COALESCE(ea.end_cnt, 0)::integer,
-    COALESCE(ea.end_neighbor_ids, ARRAY[]::text[]),
+    COALESCE(ea.end_cnt, 0)::integer, -- default to 0 neighbours
+    COALESCE(ea.end_neighbor_ids, ARRAY[]::text[]), -- default to empty array
     ea.end_nearest_id,
     ea.end_nearest_dist_m,
 
-    (SELECT m FROM tol)
+    (SELECT m FROM tol) -- store tolerance used for the computation
 FROM way_endpoints b
-LEFT JOIN start_agg sa ON sa.way_id = b.way_id
-LEFT JOIN end_agg   ea ON ea.way_id = b.way_id;
+LEFT JOIN start_agg sa ON sa.way_id = b.way_id -- attach start-endpoint aggregates
+LEFT JOIN end_agg   ea ON ea.way_id = b.way_id; -- attach end-endpoint aggregates
 
 
--- ── 4) Cleanup helper table ───────────────────────────────────
+-- Cleanup helper table
 DROP TABLE IF EXISTS way_endpoints;

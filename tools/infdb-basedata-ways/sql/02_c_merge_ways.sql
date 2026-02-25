@@ -1,16 +1,12 @@
 -- ============================================================
--- 04_c_merge_ways_from_chains.sql
 -- Merge ways_tem by chain_candidates
--- - For each chain (array of way_ids), merge all geometries
--- - Insert 1 new way row, delete old ones
--- - Record mapping in merged_ways (old_way_id_1, old_way_id_2, new_way_id)
--- - Update buildings.assigned_way_id via update_assigned_way_id
 --
--- Assumptions:
--- - ways_tem columns: (id text, klasse, objektart, geom, ags, postcode)
--- - ways_tem.geom is LINESTRING
--- - chain_candidates exists and has: (chain_id, way_ids text[], way_count)
--- Note: Designed for parallel processing - each AGS in separate container
+-- Notes:
+-- - For each chain (array of way_ids), merges geometries into a single LINESTRING
+-- - Inserts one new merged way row into `ways_tem`
+-- - Deletes the original way rows that participated in the merge
+-- - Preserves representative attributes (klasse/objektart/ags/postcode) from one member
+-- - Uses snapping before union/linemerge to stabilize merges within a small tolerance
 -- ============================================================
 
 
@@ -18,66 +14,66 @@
 
 DO $$
 DECLARE
-    r RECORD;
-    v_new text;
-    v_rows int;
+    r RECORD; -- current chain row (chain_id, way_ids, way_count)
+    v_new text; -- generated id for the merged way
+    v_rows int; -- affected row count for INSERT verification
 
-    -- attributes chosen from one representative row (first id in chain)
-    v_klasse text;
-    v_objektart text;
-    v_ags text;
-    v_postcode integer;
+    -- Attributes chosen from one representative row (first id in chain)
+    v_klasse text;     -- representative klasse
+    v_objektart text;  -- representative objektart
+    v_ags text;        -- representative AGS
+    v_postcode integer; -- representative postcode
 
-    v_geom geometry;
-    v_distinct_ways text[];
-    v_snap_tol double precision := 0.25; -- slightly larger than detection tolerance (0.20)
+    v_geom geometry; -- merged geometry result
+    v_distinct_ways text[]; -- distinct way ids in the chain
+    v_snap_tol double precision := 0.25; -- snapping tolerance used during merge
 BEGIN
-    -- iterate chains
+    -- Iterate chains (largest first for determinism)
     FOR r IN
         SELECT chain_id, way_ids, way_count
         FROM chain_candidates
         ORDER BY way_count DESC, chain_id
     LOOP
-        -- skip empty / trivial
+        -- Skip empty / trivial chains
         IF r.way_ids IS NULL OR array_length(r.way_ids, 1) IS NULL OR array_length(r.way_ids, 1) < 2 THEN
             CONTINUE;
         END IF;
 
-        -- Get distinct way_ids to avoid processing duplicates
+        -- Collect distinct way_ids to avoid processing duplicates
         SELECT array_agg(DISTINCT x) INTO v_distinct_ways
         FROM unnest(r.way_ids) AS x;
 
-        -- Skip if only 1 distinct way (duplicates don't create a real chain)
+        -- Skip if only one distinct way remains
         IF v_distinct_ways IS NULL OR array_length(v_distinct_ways, 1) < 2 THEN
             CONTINUE;
         END IF;
 
-        -- Generate a new id for merged way
+        -- Generate a new id for the merged way
         v_new := md5(random()::text || clock_timestamp()::text);
 
-        -- Pick attributes from the first way in the chain
+        -- Pick representative attributes from the first way id in the chain
         SELECT w.klasse, w.objektart, w.ags, w.postcode
         INTO v_klasse, v_objektart, v_ags, v_postcode
         FROM ways_tem w
-        WHERE w.id::text = v_distinct_ways[1]
+        WHERE w.id::text = v_distinct_ways[1] -- representative member
         LIMIT 1;
 
-        -- Merge geometry for whole chain with snapping tolerance
+        -- Merge geometry for the whole chain with snapping tolerance
         WITH geom_collection AS (
-            SELECT w.geom
+            SELECT w.geom -- input geometries for this chain
             FROM ways_tem w
             WHERE w.id::text = ANY(v_distinct_ways)
         ),
         all_geoms AS (
-            SELECT ST_Collect(geom) AS ref_geom
+            SELECT ST_Collect(geom) AS ref_geom -- reference geometry for snapping
             FROM geom_collection
         ),
         snapped_geoms AS (
-            SELECT ST_Snap(g.geom, ag.ref_geom, v_snap_tol) AS geom
+            SELECT ST_Snap(g.geom, ag.ref_geom, v_snap_tol) AS geom -- snap each geom to the collection
             FROM geom_collection g
             CROSS JOIN all_geoms ag
         )
-        SELECT ST_LineMerge(ST_Union(geom))
+        SELECT ST_LineMerge(ST_Union(geom)) -- union then line-merge into a single linestring where possible
         INTO v_geom
         FROM snapped_geoms;
 
@@ -87,21 +83,20 @@ BEGIN
             CONTINUE;
         END IF;
 
-        -- Insert merged way
+        -- Insert merged way into ways_tem
         INSERT INTO ways_tem (id, klasse, objektart, geom, ags, postcode)
         VALUES (v_new, v_klasse, v_objektart, v_geom, v_ags, v_postcode);
 
-        GET DIAGNOSTICS v_rows = ROW_COUNT;
+        GET DIAGNOSTICS v_rows = ROW_COUNT; -- verify one row inserted
         IF v_rows <> 1 THEN
             RAISE NOTICE 'Merge insert failed for chain_id=% (count=%). Skipping.', r.chain_id, r.way_count;
             CONTINUE;
         END IF;
 
-        -- Delete old ways (using distinct ways)
+        -- Delete original ways that were merged (distinct ids)
         DELETE FROM ways_tem
         WHERE id::text = ANY(v_distinct_ways);
 
-        -- NOTE: we intentionally inserted the new way first, then deleted old ones
-        -- so that if something fails mid-loop, you still keep geometry in table.
+        -- Insert-before-delete keeps the merged geometry present even if later steps fail
     END LOOP;
 END $$;
