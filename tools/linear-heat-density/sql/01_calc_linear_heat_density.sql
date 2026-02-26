@@ -16,7 +16,7 @@ WITH street_lengths AS (
     SELECT
         {streets_id_expr} AS street_id,
         s.{streets_geom} AS geom,
-        ST_Length(s.{streets_geom}) AS street_length
+        s.length_geo AS street_length
     FROM
         {streets_schema}.{streets_table} AS s
     WHERE
