@@ -202,7 +202,7 @@ def main():
             # Summary
             summary.index.name = "building_objectid"
             summary.to_sql(
-                "temp_entise_summary",
+                f"temp_entise_summary_{ags}",
                 con=engine,
                 if_exists="replace",
                 schema=output_schema,
