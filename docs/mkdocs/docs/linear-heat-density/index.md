@@ -4,7 +4,7 @@ Within the linear heat density demo, we illustrate how to leverage the infDB pla
 This use case demonstrates the integration of various data sources and analytical tools within the infDB ecosystem to derive meaningful metrics for urban energy infrastructure planning.
 
 
-![alt text](qwc-browser.png)
+![alt text](liz-browser.png)
 
 ## Run Linear Heat Density
 To run the complete linear heat density toolchain, use the following command:
