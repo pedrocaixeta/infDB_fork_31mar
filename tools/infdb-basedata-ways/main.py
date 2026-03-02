@@ -83,9 +83,6 @@ def main():
             "ags": ags,
             "input_schema": input_schema,
             "output_schema": output_schema,
-            "connection_line_segmentation": str(
-                infdb.get_config_value([tool, "data", "connection_line_segmentation"])
-            ).lower(),
             "use_address_information": str(
                infdb.get_config_value([tool, "data", "use_address_information"])
             ).lower(),
