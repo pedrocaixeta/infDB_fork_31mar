@@ -248,6 +248,42 @@ BEGIN
                     USING GIST (connection_point); -- spatial ops on connection points
             END;
             $func$;
+
+            -- --------------------------------------------------------
+            -- Function 5: update_assigned_way_id_after_merge
+            -- --------------------------------------------------------
+            -- Updates buildings.assigned_way_id using a mapping table for merged ways
+
+
+            CREATE OR REPLACE FUNCTION {output_schema}.update_assigned_way_id_after_merge(
+                p_ags text
+            )
+            RETURNS bigint
+            LANGUAGE plpgsql
+            AS $func$
+            DECLARE
+                v_updated bigint := 0;
+            BEGIN
+                WITH buildings_to_reassign AS (
+                    SELECT
+                        b.id,
+                        b.centroid,
+                        b.assigned_way_id,
+                        m.new_way_id
+                    FROM {output_schema}.buildings AS b
+                    JOIN merged_ways_mapping m ON b.assigned_way_id = m.old_way_id
+                    WHERE b.gemeindeschluessel = p_ags
+                )
+                UPDATE {output_schema}.buildings AS b
+                SET assigned_way_id = btr.new_way_id
+                FROM buildings_to_reassign btr
+                WHERE b.id = btr.id
+                AND btr.new_way_id IS NOT NULL;
+
+                GET DIAGNOSTICS v_updated = ROW_COUNT;
+                RETURN v_updated;
+            END;
+            $func$;
             
             -- --------------------------------------------------------
             -- Table: ways_per_junction (global output table)

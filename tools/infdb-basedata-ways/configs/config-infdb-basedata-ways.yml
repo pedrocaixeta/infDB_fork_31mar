@@ -25,7 +25,7 @@ infdb-basedata-ways:
     data:
         input_schema: opendata
         output_schema: basedata #also needs to be changed in env_changelog.list if other than basedata
-        use_address_information: false
+        use_address_information: true
         klasse_filter:
             - "Wirtschaftsweg"
             - "Hauptwirtschaftsweg"
