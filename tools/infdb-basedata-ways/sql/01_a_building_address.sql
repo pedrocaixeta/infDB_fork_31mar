@@ -84,18 +84,17 @@ CREATE TEMP TABLE temp_building_addresses AS
 SELECT
     b.id AS building_id,
     b.geom,
+    b.centroid,                                                               -- add centroid for distance calculations
     regexp_replace(trim(individual_street), '\s*\d+[\w,]*$', '') AS street
 FROM {output_schema}.buildings b
-JOIN citydb.property p ON b.feature_id = p.feature_id         -- link building feature -> property
-JOIN citydb.address a ON p.val_address_id = a.id              -- link property -> address
+JOIN citydb.property p ON b.feature_id = p.feature_id
+JOIN citydb.address a ON p.val_address_id = a.id
 CROSS JOIN LATERAL unnest(string_to_array(a.street, ';')) AS individual_street
-WHERE b.gemeindeschluessel = '{ags}';                         -- restrict to the target municipality
+WHERE b.gemeindeschluessel = '{ags}';
 
--- Performance indexes:
--- - B-tree for street-name equality joins
--- - GiST for spatial predicates / distance-based ordering
 CREATE INDEX ON temp_building_addresses(street);
 CREATE INDEX ON temp_building_addresses USING GIST (geom);
+CREATE INDEX ON temp_building_addresses USING GIST (centroid);              -- index centroid for spatial ops
 
 
 -- ============================================================
@@ -129,8 +128,8 @@ FROM (
     JOIN temp_way_names wn
         ON ba.street = wn.name
         OR ba.street = wn.name_kurz
-    WHERE ST_DWithin(ba.geom, wn.geom, 1000)  -- NOTE: distance unit is CRS-dependent (usually meters in projected CRS)
-    ORDER BY ba.building_id, wn.geom <-> ba.geom
+    WHERE ST_DWithin(ba.centroid, wn.geom, 1000)          -- distance from building centroid to way
+    ORDER BY ba.building_id, wn.geom <-> ba.centroid       -- nearest way to centroid as tiebreaker
 ) w
 WHERE b.id = w.building_id
   AND b.gemeindeschluessel = '{ags}'
