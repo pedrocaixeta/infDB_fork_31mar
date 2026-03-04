@@ -198,9 +198,9 @@ class InfdbClient:
     def get_pandas(self, sql: str, engine, format_params: Optional[Dict[str, Any]] = None) -> Any:
         """Helper method to read SQL query results into a pandas DataFrame."""
         if format_params:
-            sql_content = sql.format(**format_params)
+            sql = sql.format(**format_params)
         
-        return pd.read_sql(sql_content, engine)
+        return pd.read_sql(sql, engine)
 
     def get_pandas_sqlfile(self, path: str, engine, format_params: Optional[Dict[str, Any]] = None) -> Any:
         """Helper method to read SQL query files results into a pandas DataFrame."""

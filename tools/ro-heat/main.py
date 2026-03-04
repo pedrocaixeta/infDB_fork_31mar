@@ -138,13 +138,15 @@ def main():
 
         # Start heat demand calculation
         infdblog.info(f"Running heat demand calculation with method {method}")
+        start_time = f"{simulation_year}-01-01"
+        end_time = f"{simulation_year}-12-31"
 
         if method == "1R0C":
             format_params = {
                 "output_schema": output_schema,
                 "ags": ags,
-                "start_time": f"{simulation_year}-01-01",
-                "end_time": f"{simulation_year}-12-31",
+                "start_time": start_time,
+                "end_time": end_time,
                 "temp_in": heating_setpoint,
             }
             infdbclient_citydb.execute_sql_file(
