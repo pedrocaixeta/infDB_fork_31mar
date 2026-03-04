@@ -63,4 +63,5 @@ infdb-basedata-ways:
 
         apply_length_filter: True
         min_length_meter: 10
-        remove_loop: True
+        apply_loop_filter: True
+        apply_isolated_filter: True

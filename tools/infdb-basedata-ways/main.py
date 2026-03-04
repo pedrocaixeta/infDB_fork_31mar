@@ -86,6 +86,15 @@ def main():
             "use_address_information": str(
                infdb.get_config_value([tool, "data", "use_address_information"])
             ).lower(),
+            "apply_length_filter": str(
+               infdb.get_config_value([tool, "data", "apply_length_filter"])
+            ).lower(),
+            "apply_loop_filter": str(
+               infdb.get_config_value([tool, "data", "apply_loop_filter"])
+            ).lower(),
+            "apply_isolated_filter": str(
+               infdb.get_config_value([tool, "data", "apply_isolated_filter"])
+            ).lower(),
             "min_length_meter": infdb.get_config_value([tool, "data", "min_length_meter"]),
             "epsg": epsg,
 
