@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import psycopg2
 import sqlalchemy
 from psycopg2 import OperationalError
+import pandas as pd
 
 from .config import InfdbConfig
 
@@ -193,3 +194,17 @@ class InfdbClient:
             A dictionary of database parameters.
         """
         return dict(self.db_params)
+    
+    def get_pandas(self, sql: str, engine, format_params: Optional[Dict[str, Any]] = None) -> Any:
+        """Helper method to read SQL query results into a pandas DataFrame."""
+        if format_params:
+            sql = sql.format(**format_params)
+        
+        return pd.read_sql(sql, engine)
+
+    def get_pandas_sqlfile(self, path: str, engine, format_params: Optional[Dict[str, Any]] = None) -> Any:
+        """Helper method to read SQL query files results into a pandas DataFrame."""
+        with open(path, "r", encoding="utf-8") as file:
+            sql_content = file.read()
+        
+        return self.get_pandas(sql_content, engine, format_params=format_params)
