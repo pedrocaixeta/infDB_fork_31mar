@@ -5,10 +5,44 @@ icon: material/tools
 # Tools
 The infDB ecosystem includes a variety of tools designed to handle different aspects of data workflows. These so called tools are software that interact with infDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains.
 
-<p align="center">
+Different tools can be linked together to form profiles, which are predefined sequences of tools that work together to achieve a specific goal. For example, a profile might include a data transformation tool followed by a validation tool and then an enrichment tool. By running a profile, you can execute all the included tools in the correct order with minimal effort.
+<!-- <p align="center">
   <img src="../usage/tools.png" alt="infDB logo" width="100"/>
-</p>
+</p> -->
 
+## Run Profile or Tool
+If you want to run a profile (multiple linked tools) or a single tool, you can use the bash script `tools/tools.sh`:
+```bash
+# Profile
+# bash tools/tools.sh -p PROFILE AGS
+bash tools/tools.sh -p linear 09185149
+
+# Single Tool
+# bash tools/tools.sh -t TOOL AGS
+bash tools/tools.sh -t ro-heat 09185149
+```
+
+## Run Multiple AGS
+If you wnat to run a profile or tool for multiple AGS, you can use the `run_ags.py` script directly:
+```bash
+# Profile
+uv run python3 tools/run_ags.py -p linear [-a AGS1,AGS2,... -n NUM_WORKERS -c]
+
+# Single Tool
+uv run python3 tools/run_ags.py -t ro-heat [-a AGS1,AGS2,... -n NUM_WORKERS -c]
+```
+By default, the script will run all available AGS in infDB with 5 parallel workers. You can adjust this with the following optional parameters:
+- `-a AGS1,AGS2,...`: Comma-separated list of AGS
+- `-n NUM_WORKERS`: Number of parallel workers to use (default: 5)
+- `-c`: Clean database before running
+
+AGS:
+- 09780139 Sonthofen
+- 09185149 Neuburg a. d. Donau
+- 05119000 Oberhausen (NRW)
+
+Profiles available:
+- linear
 
 ## Template
 If you want to or create or integrate your own software or scripts into the infDB ecosystem, you can use the template for a devContainer provided by the infDB. A more detailed description can be found under Tools -> [infdb-template](template.md).
