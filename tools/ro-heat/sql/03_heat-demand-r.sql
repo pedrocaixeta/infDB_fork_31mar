@@ -9,7 +9,7 @@ INSERT INTO {output_schema}.annual_heating_demand (building_objectid, "heating:d
     SELECT
         bldrc.building_objectid,
         -- simplified heat demand equation (6.4) in Patrick's phd thesis
-        (count(ts.value)*1/bldrc.resistance)*(avg(ts.value) - {temp_in})/1000 AS "heating:demand[kWh]"
+        (count(ts.value)*1/bldrc.resistance)*({temp_in} - avg(ts.value))/1000 AS "heating:demand[kWh]"
     FROM
         {output_schema}.buildings_rc AS bldrc
     JOIN
@@ -23,7 +23,7 @@ INSERT INTO {output_schema}.annual_heating_demand (building_objectid, "heating:d
     JOIN basedata.buildings
         ON bldrc.building_objectid = basedata.buildings.objectid
     WHERE
-        ts.value < {temp_in} AND    -- constraint of upper equation (Tout < Tin) for all time steps
+        {temp_in} > ts.value AND    -- constraint of upper equation (Tin > Tout) for all time steps
         opendata.openmeteo_ts_metadata.name = 'openmeteo_hourly_temperature_2m'
         AND ts.time  >= '{start_time}'
         AND ts.time <  '{end_time}'
