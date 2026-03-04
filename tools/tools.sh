@@ -1,5 +1,9 @@
 #!/bin/bash
 
+## Usage:
+# Profile: bash tools.sh -p PROFILE AGS
+# Single Tool: bash tools.sh -t TOOLNAME AGS
+
 echo "Loading environment variables from infDB .env file..."
 set -a
 [ -f $(dirname "$0")/../.env ] && . $(dirname "$0")/../.env
@@ -12,8 +16,8 @@ set +a
 
 usage() {
     echo "Usage: $0 (-p <profile> | -t <tool>)"
-    echo "  -p <profile>  Run profile (e.g., linear)"
-    echo "  -t <tool>     Run tool"
+    echo "  -p <profile>  Run profile (e.g., linear) AGS"
+    echo "  -t <tool>     Run tool (e.g., ro-heat) AGS"
     exit 1
 }
 
