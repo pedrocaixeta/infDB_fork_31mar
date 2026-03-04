@@ -39,7 +39,7 @@ BEGIN
         IF NOT EXISTS (
             SELECT 1 FROM pg_tables 
             WHERE schemaname = '{output_schema}' 
-              AND tablename = 'ways_segmented'
+              AND tablename = 'ways_per_junction'
         ) THEN
             -- ========================================================
             -- Resources don't exist - create them now
@@ -115,10 +115,10 @@ BEGIN
             -- --------------------------------------------------------
             -- Function 2: insert_way_segment
             -- --------------------------------------------------------
-            -- Inserts a new segment into ways_tem or connection_lines_tem
+            -- Inserts a new segment into ways_tem, ways_tem_connection, or connection_lines_tem
             CREATE OR REPLACE FUNCTION {output_schema}.insert_way_segment(
                 p_ags text,       -- AGS tag for inserted segment
-                p_klasse text,    -- class determining target table (connection_line vs road)
+                p_klasse text,    -- class determining target table (connection_line vs segmented_way vs road)
                 p_geom geometry   -- segment geometry in expected SRID/type
             ) RETURNS void
             LANGUAGE plpgsql
@@ -134,6 +134,9 @@ BEGIN
 
                 IF p_klasse = 'connection_line' THEN -- route connection lines to their temp table
                     INSERT INTO connection_lines_tem (ags, id, klasse, objektart, geom, postcode)
+                    VALUES (p_ags, v_new, p_klasse, NULL, p_geom, NULL);
+                ELSIF p_klasse = 'segmented_way' THEN -- route segmented ways to ways_tem_connection
+                    INSERT INTO ways_tem_connection (ags, id, klasse, objektart, geom, postcode)
                     VALUES (p_ags, v_new, p_klasse, NULL, p_geom, NULL);
                 ELSE -- route all other classes to ways_tem
                     INSERT INTO ways_tem (ags, id, klasse, objektart, geom, postcode)
@@ -245,12 +248,49 @@ BEGIN
                     USING GIST (connection_point); -- spatial ops on connection points
             END;
             $func$;
+
+            -- --------------------------------------------------------
+            -- Function 5: update_assigned_way_id_after_merge
+            -- --------------------------------------------------------
+            -- Updates buildings.assigned_way_id using a mapping table for merged ways
+
+
+            CREATE OR REPLACE FUNCTION {output_schema}.update_assigned_way_id_after_merge(
+                p_ags text
+            )
+            RETURNS bigint
+            LANGUAGE plpgsql
+            AS $func$
+            DECLARE
+                v_updated bigint := 0;
+            BEGIN
+                WITH buildings_to_reassign AS (
+                    SELECT
+                        b.id,
+                        b.centroid,
+                        b.assigned_way_id,
+                        m.new_way_id
+                    FROM {output_schema}.buildings AS b
+                    JOIN merged_ways_mapping m ON b.assigned_way_id = m.old_way_id
+                    WHERE b.gemeindeschluessel = p_ags
+                )
+                UPDATE {output_schema}.buildings AS b
+                SET assigned_way_id = btr.new_way_id
+                FROM buildings_to_reassign btr
+                WHERE b.id = btr.id
+                AND btr.new_way_id IS NOT NULL;
+
+                GET DIAGNOSTICS v_updated = ROW_COUNT;
+                RETURN v_updated;
+            END;
+            $func$;
             
             -- --------------------------------------------------------
-            -- Table: ways_segmented (global output table)
+            -- Table: ways_per_junction (global output table)
             -- --------------------------------------------------------
             -- Create empty table with the same column layout as ways_tem
-            CREATE TABLE {output_schema}.ways_segmented AS
+            DROP TABLE IF EXISTS {output_schema}.ways_per_junction; -- ensure clean table for this session
+            CREATE TABLE {output_schema}.ways_per_junction AS
             SELECT
                 ags,                   -- municipality/region id (AGS) as text
                 id,                    -- segment id as text
@@ -265,25 +305,61 @@ BEGIN
             WHERE false;  -- Creates structure only, no data
 
             -- Set required key columns to NOT NULL
-            ALTER TABLE {output_schema}.ways_segmented
+            ALTER TABLE {output_schema}.ways_per_junction
                 ALTER COLUMN ags SET NOT NULL,
                 ALTER COLUMN id  SET NOT NULL;
 
             -- Indexes for scoped reads and spatial predicates
-            CREATE INDEX ways_segmented_ags_idx
-                ON {output_schema}.ways_segmented (ags);
+            CREATE INDEX ways_per_junction_ags_idx
+                ON {output_schema}.ways_per_junction (ags);
 
-            CREATE INDEX ways_segmented_geom_gix
-                ON {output_schema}.ways_segmented USING GIST (geom);
+            CREATE INDEX ways_per_junction_geom_gix
+                ON {output_schema}.ways_per_junction USING GIST (geom);
 
             -- Prevent duplicates per AGS+id
-            CREATE UNIQUE INDEX ways_segmented_ags_id_ux
-                ON {output_schema}.ways_segmented (ags, id);
+            CREATE UNIQUE INDEX ways_per_junction_ags_id_ux
+                ON {output_schema}.ways_per_junction (ags, id);
+
+            -- --------------------------------------------------------
+            -- Table: ways_per_connection (global output table)
+            -- --------------------------------------------------------
+            -- Create empty table with the same column layout as ways_tem
+            DROP TABLE IF EXISTS {output_schema}.ways_per_connection; -- ensure clean table for this session
+            CREATE TABLE {output_schema}.ways_per_connection AS
+            SELECT
+                ags,                   -- municipality/region id (AGS) as text
+                id,                    -- segment id as text
+                klasse,                -- feature class
+                objektart,             -- feature type
+                geom,                  -- segment geometry
+                postcode,              -- postcode enrichment (filled later)
+                length_geo,            -- stored geometric length
+                length_filter,         -- bookkeeping accumulator
+                length_connection_line -- bookkeeping accumulator for connection lines
+            FROM ways_tem
+            WHERE false;  -- Creates structure only, no data
+
+            -- Set required key columns to NOT NULL
+            ALTER TABLE {output_schema}.ways_per_connection
+                ALTER COLUMN ags SET NOT NULL,
+                ALTER COLUMN id  SET NOT NULL;
+
+            -- Indexes for scoped reads and spatial predicates
+            CREATE INDEX ways_per_connection_ags_idx
+                ON {output_schema}.ways_per_connection (ags);
+
+            CREATE INDEX ways_per_connection_geom_gix
+                ON {output_schema}.ways_per_connection USING GIST (geom);
+
+            -- Prevent duplicates per AGS+id
+            CREATE UNIQUE INDEX ways_per_connection_ags_id_ux
+                ON {output_schema}.ways_per_connection (ags, id);
             
             -- --------------------------------------------------------
             -- Table: connection_lines (global output table)
             -- --------------------------------------------------------
             -- Create empty table with the same column layout as ways_tem
+            DROP TABLE IF EXISTS {output_schema}.connection_lines; -- ensure clean table for this session
             CREATE TABLE {output_schema}.connection_lines AS
             SELECT
                 ags,                   -- municipality/region id (AGS) as text
@@ -315,7 +391,7 @@ BEGIN
                 ON {output_schema}.connection_lines (ags, id);
             
             -- --------------------------------------------------------
-            -- Table: nodes (global output table)
+            -- Table: nodes_per_connection (global output table)
             -- Nodes are street connection points
             -- Columns:
             --   ags      text                          NOT NULL
@@ -324,10 +400,10 @@ BEGIN
             --   way_ids  text[]                        NOT NULL
             -- --------------------------------------------------------
 
-            DROP TABLE IF EXISTS {output_schema}.nodes; -- recreate nodes table idempotently
+            DROP TABLE IF EXISTS {output_schema}.nodes_per_connection; -- recreate nodes_per_connection table idempotently
 
             -- Create empty table structure (no rows)
-            CREATE TABLE {output_schema}.nodes AS
+            CREATE TABLE {output_schema}.nodes_per_connection AS
             SELECT
                 CAST(NULL AS text)            AS ags,     -- municipality/region id (AGS) as text
                 CAST(NULL AS text)            AS id,      -- node id as text
@@ -336,29 +412,76 @@ BEGIN
             WHERE false;
 
             -- Constraints
-            ALTER TABLE {output_schema}.nodes
+            ALTER TABLE {output_schema}.nodes_per_connection
                 ALTER COLUMN ags     SET NOT NULL,
                 ALTER COLUMN id      SET NOT NULL,
                 ALTER COLUMN geom    SET NOT NULL,
                 ALTER COLUMN way_ids SET NOT NULL;
 
             -- Default empty array for way_ids
-            ALTER TABLE {output_schema}.nodes
+            ALTER TABLE {output_schema}.nodes_per_connection
                 ALTER COLUMN way_ids SET DEFAULT ARRAY[]::text[];
 
             -- Indexes
-            CREATE INDEX nodes_ags_idx
-                ON {output_schema}.nodes (ags); -- AGS scoped filtering
+            CREATE INDEX nodes_per_connection_ags_idx
+                ON {output_schema}.nodes_per_connection (ags); -- AGS scoped filtering
 
-            CREATE INDEX nodes_geom_gix
-                ON {output_schema}.nodes USING GIST (geom); -- spatial predicates / nearest-neighbor
+            CREATE INDEX nodes_per_connection_geom_gix
+                ON {output_schema}.nodes_per_connection USING GIST (geom); -- spatial predicates / nearest-neighbor
 
-            CREATE INDEX nodes_way_ids_gin
-                ON {output_schema}.nodes USING GIN (way_ids); -- array membership queries
+            CREATE INDEX nodes_per_connection_way_ids_gin
+                ON {output_schema}.nodes_per_connection USING GIN (way_ids); -- array membership queries
+
+            
+            -- Prevent duplicates per AGS+id
+            CREATE UNIQUE INDEX nodes_per_connection_ags_id_ux
+                ON {output_schema}.nodes_per_connection (ags, id);
+            
+            -- --------------------------------------------------------
+            -- Table: nodes_per_junction (global output table)
+            -- Nodes are street connection points
+            -- Columns:
+            --   ags      text                          NOT NULL
+            --   id       text                          NOT NULL
+            --   geom     geometry(Point)               NOT NULL
+            --   way_ids  text[]                        NOT NULL
+            -- --------------------------------------------------------
+
+            DROP TABLE IF EXISTS {output_schema}.nodes_per_junction; -- recreate nodes_per_junction table idempotently
+
+            -- Create empty table structure (no rows)
+            CREATE TABLE {output_schema}.nodes_per_junction AS
+            SELECT
+                CAST(NULL AS text)            AS ags,     -- municipality/region id (AGS) as text
+                CAST(NULL AS text)            AS id,      -- node id as text
+                CAST(NULL AS geometry(Point)) AS geom,    -- node point geometry
+                CAST(NULL AS text[])          AS way_ids  -- associated way ids
+            WHERE false;
+
+            -- Constraints
+            ALTER TABLE {output_schema}.nodes_per_junction
+                ALTER COLUMN ags     SET NOT NULL,
+                ALTER COLUMN id      SET NOT NULL,
+                ALTER COLUMN geom    SET NOT NULL,
+                ALTER COLUMN way_ids SET NOT NULL;
+
+            -- Default empty array for way_ids
+            ALTER TABLE {output_schema}.nodes_per_junction
+                ALTER COLUMN way_ids SET DEFAULT ARRAY[]::text[];
+
+            -- Indexes
+            CREATE INDEX nodes_per_junction_ags_idx
+                ON {output_schema}.nodes_per_junction (ags); -- AGS scoped filtering
+
+            CREATE INDEX nodes_per_junction_geom_gix
+                ON {output_schema}.nodes_per_junction USING GIST (geom); -- spatial predicates / nearest-neighbor
+
+            CREATE INDEX nodes_per_junction_way_ids_gin
+                ON {output_schema}.nodes_per_junction USING GIN (way_ids); -- array membership queries
 
             -- Prevent duplicates per AGS+id
-            CREATE UNIQUE INDEX nodes_ags_id_ux
-                ON {output_schema}.nodes (ags, id);
+            CREATE UNIQUE INDEX nodes_per_junction_ags_id_ux
+                ON {output_schema}.nodes_per_junction (ags, id);
 
 
 
@@ -397,9 +520,9 @@ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_tables 
         WHERE schemaname = '{output_schema}' 
-          AND tablename = 'ways_segmented'
+          AND tablename = 'ways_per_junction'
     ) THEN
-        RAISE EXCEPTION '[Init] FATAL ERROR: ways_segmented table does not exist after initialization. Check logs for errors.';
+        RAISE EXCEPTION '[Init] FATAL ERROR: ways_per_junction table does not exist after initialization. Check logs for errors.';
     END IF;
     
     -- Verify critical functions exist
