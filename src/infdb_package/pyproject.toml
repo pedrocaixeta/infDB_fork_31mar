@@ -28,6 +28,7 @@ dependencies = [
     "PyYAML",
     "dotenv",
     "SQLAlchemy",
+    "geopandas",
 ]
 
 [tool.hatch.build.targets.wheel]
