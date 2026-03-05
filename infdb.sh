@@ -47,7 +47,7 @@ cmd_start() {
 
     echo "=== Starting infDB ==="
     if [ "$#" -eq 0 ]; then
-        docker compose up -d --build
+        docker compose up -d
     else
         docker compose up "$@"
     fi
