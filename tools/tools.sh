@@ -28,21 +28,26 @@ fi
 
 # Extract NAME and additional parameters
 NAME="$2"
-PARAM="$3"
+AGS="$3"
 OPTIONS="$4"
+
+# Use the shared infdb network for all tool runs
+export INFDB_NETWORK="${INFDB_NETWORK:-infdb-infdb-demo_network}"
+
+# Get 
+PROJECT="infdb_${AGS}"
+export AGS="$AGS"
 
 case "$1" in
     -p)        
         echo "Running profile: $NAME"
 
-        PROJECT="infdb_${NAME}_${PARAM}"
-        # Use the shared infdb network for all tool runs
-        export INFDB_NETWORK="${INFDB_NETWORK:-infdb-infdb-demo_network}"
-        export AGS="$PARAM"
+        # Start the specified profile
         docker compose -f "$(dirname "$0")/compose.yml" \
             -p "$PROJECT" \
             --profile "$NAME" up\
             --remove-orphans
+        
         # Stop and remove containers, networks, images, and volumes created by up
         docker compose -f "$(dirname "$0")/compose.yml" \
             -p "$PROJECT" \
@@ -52,11 +57,14 @@ case "$1" in
     -t)
         echo "Running tool: $NAME"
         
-        export AGS="$PARAM"
-        docker compose -f "$(dirname "$0")/compose.yml" up --no-deps --remove-orphans $OPTIONS "$NAME" 
-        docker compose -f "$(dirname "$0")/compose.yml" down --volumes --remove-orphans "$NAME"
+        # Start the specified tool without dependencies
+        docker compose -f "$(dirname "$0")/compose.yml" -p "$PROJECT" up --no-deps --remove-orphans $OPTIONS "$NAME"
+
+        # Stop and remove containers, networks, images, and volumes created by up
+        docker compose -f "$(dirname "$0")/compose.yml" -p "$PROJECT" down --volumes --remove-orphans "$NAME"
         ;;
     *)
+        # Explanin usage if the first argument is not -p or -t
         usage
         ;;
 esac

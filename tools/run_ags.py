@@ -51,6 +51,7 @@ def parse_arguments():
         "-a", "--ags-list",
         type=str,
         default=None,
+        dest="ags_list",
         help="Comma-separated AGS codes (optional, use this for manual AGS input)"
     )
     parser.add_argument(
