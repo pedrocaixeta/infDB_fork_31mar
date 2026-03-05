@@ -83,11 +83,17 @@ def main():
             "ags": ags,
             "input_schema": input_schema,
             "output_schema": output_schema,
-            "connection_line_segmentation": str(
-                infdb.get_config_value([tool, "data", "connection_line_segmentation"])
-            ).lower(),
             "use_address_information": str(
                infdb.get_config_value([tool, "data", "use_address_information"])
+            ).lower(),
+            "apply_length_filter": str(
+               infdb.get_config_value([tool, "data", "apply_length_filter"])
+            ).lower(),
+            "apply_loop_filter": str(
+               infdb.get_config_value([tool, "data", "apply_loop_filter"])
+            ).lower(),
+            "apply_isolated_filter": str(
+               infdb.get_config_value([tool, "data", "apply_isolated_filter"])
             ).lower(),
             "min_length_meter": infdb.get_config_value([tool, "data", "min_length_meter"]),
             "epsg": epsg,

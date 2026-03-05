@@ -51,13 +51,6 @@ include:
   # QGIS Web Client - Complete web mapping solution
   - path: services/qgis_webclient/docker-compose.yml
 
-# ==============================================================================
-# VOLUMES
-# ==============================================================================
-volumes:
-  infdb-db-data:
-    name: ${BASE_NAME}-db-data
-
 
 # ==============================================================================
 # NETWORKS

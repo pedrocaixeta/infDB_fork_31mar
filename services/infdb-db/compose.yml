@@ -24,3 +24,7 @@ services:
             interval: 10s
             timeout: 5s
             retries: 5
+
+volumes:
+  infdb-db-data:
+    name: ${BASE_NAME}-db-data

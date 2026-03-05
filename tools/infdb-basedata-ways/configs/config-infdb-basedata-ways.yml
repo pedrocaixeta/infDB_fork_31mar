@@ -25,8 +25,7 @@ infdb-basedata-ways:
     data:
         input_schema: opendata
         output_schema: basedata #also needs to be changed in env_changelog.list if other than basedata
-        connection_line_segmentation: false   # true/false
-        use_address_information: false
+        use_address_information: true
         klasse_filter:
             - "Wirtschaftsweg"
             - "Hauptwirtschaftsweg"
@@ -64,4 +63,5 @@ infdb-basedata-ways:
 
         apply_length_filter: True
         min_length_meter: 10
-        remove_loop: True
+        apply_loop_filter: True
+        apply_isolated_filter: True

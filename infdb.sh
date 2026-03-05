@@ -47,7 +47,7 @@ cmd_start() {
 
     echo "=== Starting infDB ==="
     if [ "$#" -eq 0 ]; then
-        docker compose up -d --build
+        docker compose up -d
     else
         docker compose up "$@"
     fi
@@ -63,12 +63,11 @@ cmd_import() {
 
 cmd_stop() {
     docker compose --profile "*" down
-    echo "Successfully stopped InfDB."
+    echo "Successfully stopped all InfDB services."
 }
 
 cmd_remove() {
-    docker compose --profile "*" down -v --remove-orphans
-    echo "Successfully removed InfDB."
+    docker compose --profile "$1" down -v --remove-orphans
 }
 
 if [ $# -lt 1 ]; then

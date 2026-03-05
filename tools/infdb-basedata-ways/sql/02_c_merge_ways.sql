@@ -9,8 +9,12 @@
 -- - Uses snapping before union/linemerge to stabilize merges within a small tolerance
 -- ============================================================
 
-
-
+DROP TABLE IF EXISTS merged_ways_mapping;
+CREATE TEMP TABLE merged_ways_mapping (
+    old_way_id text NOT NULL,
+    new_way_id text NOT NULL
+);
+CREATE INDEX ON merged_ways_mapping(old_way_id);
 
 DO $$
 DECLARE
@@ -86,10 +90,17 @@ BEGIN
         INSERT INTO ways_tem (id, klasse, objektart, geom, ags, postcode)
         VALUES (v_new, v_klasse, v_objektart, v_geom, v_ags, v_postcode);
 
+        -- Record old->new mapping for building reassignment
+        INSERT INTO merged_ways_mapping (old_way_id, new_way_id)
+        SELECT unnest(v_distinct_ways), v_new;
+
         -- Delete original ways that were merged (distinct ids)
         DELETE FROM ways_tem
         WHERE id::text = ANY(v_distinct_ways);
 
         -- Insert-before-delete keeps the merged geometry present even if later steps fail
     END LOOP;
+
+    PERFORM {output_schema}.update_assigned_way_id_after_merge('{ags}'); -- reassign building connections based on merged_ways_mapping
 END $$;
+

@@ -1,5 +1,5 @@
 -- ============================================================
--- Populate postcode for ways_tem and connection_lines_tem using postcode polygons
+-- Populate postcode for ways_tem, ways_tem_connection, and connection_lines_tem using postcode polygons
 --
 -- Notes:
 -- - Detects a target SRID once (from postcodes_germany.geom; falls back to {epsg} if SRID is 0/NULL)
@@ -28,6 +28,23 @@ BEGIN
             ctid AS rid, -- row identifier used for stable join back to ways_tem
             ST_Transform(ST_PointOnSurface(geom), v_srid) AS pt -- representative point in target SRID
         FROM ways_tem
+        WHERE postcode IS NULL
+          AND geom IS NOT NULL
+          AND NOT ST_IsEmpty(geom)
+    ) pts
+    JOIN {input_schema}.postcodes_germany pc
+        ON pc.geom && pts.pt -- bbox prefilter for index usage
+       AND ST_Intersects(pc.geom, pts.pt) -- point-in-polygon check
+    WHERE w.ctid = pts.rid; -- update only the intended rows
+
+    -- Update ways_tem_connection
+    UPDATE ways_tem_connection w
+    SET postcode = pc.plz::int -- assign postcode as integer
+    FROM (
+        SELECT
+            ctid AS rid, -- row identifier used for stable join back to ways_tem_connection
+            ST_Transform(ST_PointOnSurface(geom), v_srid) AS pt -- representative point in target SRID
+        FROM ways_tem_connection
         WHERE postcode IS NULL
           AND geom IS NOT NULL
           AND NOT ST_IsEmpty(geom)
