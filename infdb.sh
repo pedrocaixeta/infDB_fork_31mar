@@ -63,12 +63,11 @@ cmd_import() {
 
 cmd_stop() {
     docker compose --profile "*" down
-    echo "Successfully stopped InfDB."
+    echo "Successfully stopped all InfDB services."
 }
 
 cmd_remove() {
-    docker compose --profile "*" down -v --remove-orphans
-    echo "Successfully removed InfDB."
+    docker compose --profile "$1" down -v --remove-orphans
 }
 
 if [ $# -lt 1 ]; then
