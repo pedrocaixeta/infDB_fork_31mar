@@ -20,6 +20,14 @@ bash infdb.sh start
 !!! info "Persistence"
     infDB services will continue running in the background until manually stopped, even if the terminal is closed.
 
+## Data Import
+
+The **infdb-import** service usually runs automatically on startup if configured. To trigger a manual import run without restarting the entire stack:
+
+```bash
+bash infdb.sh import
+```
+
 ### Stop infDB
 To stop all running services **without** deleting data:
 
@@ -31,23 +39,12 @@ bash infdb.sh stop
 To stop services **and** delete all stored data (reset):
 
 ```bash
-bash infdb.sh remove
+bash infdb.sh remove PROFILE_NAME
 ```
+PROFILE_NAME can be one of the following, depending on your setup:
+- `db` (database)
+- `opendata` (downloaded import data)
+- `*` (both database and import data)
 
 !!! danger "Data Loss"
     This command will permanently remove all data stored in the database volumes.
-
-## Data Import
-
-The **infdb-import** service usually runs automatically on startup if configured. To trigger a manual import run without restarting the entire stack:
-
-```bash
-bash infdb.sh import
-```
-
-### Removing Docker Volumes
-To manually remove the Docker volumes used by infDB, you can run:
-```bash
-docker volume rm infdb-import-data
-docker volume rm infdb-db-data
-```
