@@ -43,13 +43,13 @@ ensure_from_template() {
 
 cmd_start() {
     echo "=== Pull latest docker images ==="
-    docker compose pull
+    docker compose pull --ignore-buildable
 
     echo "=== Starting infDB ==="
     if [ "$#" -eq 0 ]; then
-        docker compose up -d
+        docker compose up -d --pull never
     else
-        docker compose up "$@"
+        docker compose up --pull never "$@"
     fi
 
     echo "=== Successfully started InfDB. ==="
