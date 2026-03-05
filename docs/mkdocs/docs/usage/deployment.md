@@ -14,7 +14,7 @@ The infDB platform is designed for easy deployment using provided bash scripts t
 To start the configured infDB services:
 
 ```bash
-bash infdb-start.sh up -d --build
+bash infdb.sh start
 ```
 
 !!! info "Persistence"
@@ -24,14 +24,14 @@ bash infdb-start.sh up -d --build
 To stop all running services **without** deleting data:
 
 ```bash
-bash infdb-stop.sh
+bash infdb.sh stop
 ```
 
 ### Remove infDB
 To stop services **and** delete all stored data (reset):
 
 ```bash
-bash infdb-remove.sh
+bash infdb.sh remove
 ```
 
 !!! danger "Data Loss"
@@ -42,12 +42,12 @@ bash infdb-remove.sh
 The **infdb-import** service usually runs automatically on startup if configured. To trigger a manual import run without restarting the entire stack:
 
 ```bash
-bash infdb-import.sh
+bash infdb.sh import
 ```
 
-### Cleaning Import Data
-Downloaded raw data files are stored in a persistent Docker volume (`infdb-import-data`). To reclaim space:
-
+### Removing Docker Volumes
+To manually remove the Docker volumes used by infDB, you can run:
 ```bash
 docker volume rm infdb-import-data
+docker volume rm infdb-db-data
 ```

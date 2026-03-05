@@ -33,31 +33,26 @@ def main():
     # Get configuration values
     input_schema = infdbhandler.get_config_value(["ro-heat", "data", "input", "schema"])
     output_schema = infdbhandler.get_config_value(["ro-heat", "data", "output", "schema"])
-
+    simulation_year = infdbhandler.get_config_value(["ro-heat", "data", "input", "simulation_year"])
+    refurbishment_config = infdbhandler.get_config_value(["ro-heat", "data", "refurbishment"])
+    method = infdbhandler.get_config_value(["ro-heat", "data", "input", "method"])
     random_seed = infdbhandler.get_config_value(["ro-heat", "data", "input", "random_seed"])
+    heating_setpoint = infdbhandler.get_config_value(["ro-heat", "data", "input", "heating_setpoint"])
     rng = np.random.default_rng(seed=random_seed)
 
-    simulation_year = infdbhandler.get_config_value(["ro-heat", "data", "input", "simulation_year"])
-
-    refurbishment_config = infdbhandler.get_config_value(["ro-heat", "data", "refurbishment"])
-
-    method = infdbhandler.get_config_value(["ro-heat", "data", "input", "method"])
-
     try:
+        # Create output schema if it does not exist
         sql = f"CREATE SCHEMA IF NOT EXISTS {output_schema};"
         infdbclient_citydb.execute_query(sql)
         infdblog.info(f"output schema: {output_schema} created successfully")
 
-        # TODO: Refactor with InfdbClient method when available
+        # Get building data from database
         full_path = os.path.join("sql", "01_get_building_surface_data.sql")
-        with open(full_path, "r", encoding="utf-8") as file:
-            sql_content = file.read()
         format_params = {
             "ags": ags,
             "input_schema": input_schema,
         }
-        sql_content = sql_content.format(**format_params)
-        buildings = pd.read_sql(sql_content, engine)
+        buildings = infdbclient_citydb.get_pandas_sqlfile(full_path, engine, format_params=format_params)
 
         if len(buildings) == 0:
             infdblog.warning(f"No buildings found for AGS {ags}. Returning without result")
@@ -65,10 +60,13 @@ def main():
 
         infdblog.info(f"Loaded {len(buildings)} buildings from the database.")
 
+        # Sample construction years for buildings
         buildings[construction_year_col] = refurbishment.sample_construction_year(
             buildings, simulation_year, construction_year_col, rng
         )
 
+        # Sample refurbishment status for buildings
+        infdblog.info("Starting refurbishment simulation")
         refurbishment_simulation_parameters = {
             n: {
                 "distribution": lambda gen, parameters: gen.normal(**parameters),
@@ -76,8 +74,6 @@ def main():
             }
             for n, i in refurbishment_config.items()
         }
-
-        infdblog.info("Starting refurbishment simulation")
         refurbed_df = refurbishment.simulate_refurbishment(
             buildings,
             simulation_year,
@@ -85,10 +81,10 @@ def main():
             rng,
             age_column=construction_year_col,
         )
+        refurbishment_quotas = {n: {"refurbed_fraction": i["quota"]} for n, i in refurbishment_config.items()}
         infdblog.debug("Refurbishment simulation completed")
 
-        refurbishment_quotas = {n: {"refurbed_fraction": i["quota"]} for n, i in refurbishment_config.items()}
-
+        # Harmonize refurbishment status with quotas
         infdblog.info("Starting harmonization with refurbishment quotas")
         harmonized_df = refurbishment.harmonize_with_quota(
             refurbed_df,
@@ -97,7 +93,6 @@ def main():
             infdblog,
             age_column=construction_year_col,
         )
-
         infdblog.debug("Harmonization with refurbishment quotas completed")
 
         infdblog.info("Writing harmonized refurbishment data to database")
@@ -113,14 +108,15 @@ def main():
         infdbclient_citydb.execute_sql_file(os.path.join("sql", "upsert_buildings_refurbished_status.sql"),
                                             format_params_output_schema)
 
+        # Calculate R & C values by constructing building elements
         infdblog.info("Starting construction of building elements")
+        
         full_path = os.path.join("sql", "02_get_tabula_elements.sql")
-        with open(full_path, "r", encoding="utf-8") as file:
-            sql_content = file.read()
-        tabula_elements = pd.read_sql(sql_content, engine)
-
+        tabula_elements = infdbclient_citydb.get_pandas_sqlfile(full_path, engine, format_params=format_params_output_schema)
+        infdblog.debug(f"Loaded {len(tabula_elements)} building elements from the database.")
         tabula_structure = tabula_handling.create_tabula_structure(tabula_elements)
-
+        infdblog.debug("Tabula structure created")
+        
         harmonized_df[["resistance", "capacitance"]] = harmonized_df.apply(
             lambda row: tabula_handling.calculate_rc_values(tabula_structure, row), axis=1, result_type="expand"
         )
@@ -139,11 +135,11 @@ def main():
         )
         infdbclient_citydb.execute_sql_file(os.path.join("sql", "upsert_buildings_rc.sql"), format_params_output_schema)
         infdblog.debug("Done writing R & C values")
-        infdblog.info(f"Running heat demand estimation with method {method}")
 
+        # Start heat demand calculation
+        infdblog.info(f"Running heat demand calculation with method {method}")
         start_time = f"{simulation_year}-01-01"
         end_time = f"{simulation_year}-12-31"
-        heating_setpoint = 20.0
 
         if method == "1R0C":
             format_params = {

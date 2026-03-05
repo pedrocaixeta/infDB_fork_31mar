@@ -31,7 +31,7 @@ linear-heat-density:
                 id-ways-column: assigned_way_id
             streets:
                 schema: basedata # process_streets
-                table: ways_segmented # segments
+                table: ways_per_junction # segments
                 id-column: id
                 geom-column: geom
             heat-demand:
