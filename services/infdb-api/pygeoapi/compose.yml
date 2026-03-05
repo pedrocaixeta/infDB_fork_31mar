@@ -2,6 +2,7 @@ services:
   pygeowatch:
     profiles:
       - api
+    image: infdb/pygeowatch:latest
     build:
       context: .
       dockerfile: Dockerfile

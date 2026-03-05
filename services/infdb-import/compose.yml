@@ -2,6 +2,7 @@ services:
     infdb-import:
         profiles:
             - opendata
+        image: infdb/infdb-import:latest
         build:
             context: .
             dockerfile: Dockerfile
