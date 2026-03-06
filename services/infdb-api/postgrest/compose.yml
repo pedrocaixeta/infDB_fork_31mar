@@ -2,6 +2,7 @@ services:
   pgrstwatch:
     profiles:
       - api
+    image: infdb/pgrstwatch:latest
     build:
       context: .
       dockerfile: Dockerfile

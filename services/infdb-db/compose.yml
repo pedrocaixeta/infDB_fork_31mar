@@ -2,6 +2,7 @@ services:
     postgres:
         profiles:
             - db
+        image: infdb/db:latest
         build:
             context: .
             dockerfile: Dockerfile

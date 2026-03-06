@@ -1082,7 +1082,16 @@ def create_building_surface_table(infdb: InfDB) -> None:
             # Create building surface table
             log.info(f"building_surface: starting {OUTPUT_SCHEMA}.{TABLE_NAME}")
             db.execute_sql_file(
-                "sql/sur.sql",
+                "sql/sur_ids.sql",
+                {
+                    "output_schema": OUTPUT_SCHEMA,
+                    "table_name": TABLE_NAME,
+                    "bld_table_name": table_name,
+                    "object_id_prefix": "replace-me",
+                },
+            )
+            db.execute_sql_file(
+                "sql/sur_table.sql",
                 {
                     "output_schema": OUTPUT_SCHEMA,
                     "table_name": TABLE_NAME,

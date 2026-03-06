@@ -2,6 +2,7 @@ services:
   api:
     profiles:
       - api
+    image: infdb/fastapi:latest
     build:
       context: .
       dockerfile: Dockerfile

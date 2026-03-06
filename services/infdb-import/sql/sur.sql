@@ -1,41 +1,37 @@
 CREATE OR REPLACE FUNCTION public.safe_area_fallback(geom geometry) 
 RETURNS double precision AS $$
 BEGIN
-    -- VERSUCH 1: Exakte 3D-Berechnung (Wissenschaftlich korrekt)
-    -- Versucht, das Polygon in Dreiecke zu zerlegen.
+    -- ATTEMPT 1: Exact 3D calculation (scientifically correct)
+    -- Attempts to decompose the polygon into triangles.
     RETURN GC_3DArea(ST_Tesselate(ST_MakeValid(geom)));
 
 EXCEPTION WHEN OTHERS THEN
-    -- NOTFALL-FALLBACK: Wenn 3D crasht (InternalError), nehmen wir die 2D-Fläche.
-    -- ST_Area(geom) ignoriert Z-Werte, stürzt aber NIEMALS ab.
-    -- Das ist besser als gar kein Wert.
+    -- EMERGENCY FALLBACK: If 3D crashes (InternalError), we use the 2D area.
+    -- ST_Area(geom) ignores Z-values, but NEVER crashes.
+    -- This is better than no value at all.
     RETURN 0;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
+------------------------------------------------------
+-- Create linking table between building and (sub)surfaces
+------------------------------------------------------
 
--- 1. Extension (Syntax-Korrektur: IF NOT EXISTS muss NACH EXTENSION stehen)
 CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;
 
 CREATE SCHEMA IF NOT EXISTS tmp_bld;
 
--- -- 2. Performance-Tuning für die Session (kritisch für große Imports)
--- -- Erlaubt größere Hash-Tabellen im RAM, verhindert Spill-to-Disk
--- SET work_mem = '1GB'; 
--- -- Parallelisierung erzwingen (Anpassen je nach CPU-Kernen, z.B. 4 oder 8)
--- SET max_parallel_workers_per_gather = 4;
-
--- 3. Temporäre Tabelle: UNLOGGED ist der Schlüssel für Speed
+-- 3. Temporary table: UNLOGGED is the key for speed
 DROP TABLE IF EXISTS tmp_bld.{table_name}_ids;
 
--- Wir extrahieren direkt den Hash der ID für den Join, um RAM zu sparen
+-- We extract the ID hash directly for the join to save RAM
 -- Use EXPLAIN ANALYZE to diagnose query performance
 -- EXPLAIN ANALYZE
 CREATE UNLOGGED TABLE tmp_bld.{table_name}_ids AS
 SELECT
     f.objectid as building_objectid,
     child ->> 'objectId' AS child_object_id_text,
-    -- HASHING: Verwandelt den 60-Byte String in einen 4-Byte Integer für den Join
+    -- HASHING: Converts the 60-byte string into a 4-byte integer for the join
     hashtext(child ->> 'objectId') AS child_hash, 
     gd.id AS geometry_data_id,
     f.objectclass_id
@@ -45,17 +41,22 @@ FROM feature f
 WHERE f.objectclass_id IN (709, 710, 712, 901)
     AND (child ->> 'objectId') IS NOT NULL;
 
--- 4. Indizes: Nur die nötigsten. Hash-Index für den Join ist nicht mehr nötig, 
--- da wir bereits gehasht haben. Ein B-Tree auf dem Integer-Hash ist extrem schnell.
+-- 4. Indexes: Only the necessary ones. Hash index for the join is no longer needed, 
+-- since we already hashed. A B-tree on the integer hash is extremely fast.
 CREATE INDEX IF NOT EXISTS idx_tmp_join_hash ON tmp_bld.{table_name}_ids (child_hash);
--- Dieser Index hilft beim Filtern nach Objectclass im Join
+-- This index helps filter by objectclass in the join
 CREATE INDEX IF NOT EXISTS idx_tmp_obj_class ON tmp_bld.{table_name}_ids (objectclass_id);
 
--- Analyse hilft dem Query Planner, die Statistik für den Join zu verstehen
+
+-------------------------------------------------------------
+-- Create the final surface table with area and geometry
+-------------------------------------------------------------
+
+-- Analysis helps the query planner understand statistics for the join
 ANALYZE tmp_bld.{table_name}_ids;
 
--- 5. Erstellen der Resultat-Tabelle (Ebenfalls UNLOGGED wenn es nur ein Zwischenschritt ist, 
--- sonst LOGGED lassen für Datensicherheit nach Import)
+-- 5. Create the result table (Also UNLOGGED if it's only an intermediate step, 
+-- otherwise keep LOGGED for data safety after import)
 DROP TABLE IF EXISTS {output_schema}.{table_name} CASCADE;
 
 -- EXPLAIN ANALYZE
@@ -64,26 +65,25 @@ SELECT
     sid2.building_objectid,
     sid.objectclass_id,
     oc.classname,
-    -- NULLIF verhindert Absturz bei leeren Strings, sicherheitshalber
+    -- NULLIF prevents crashes on empty strings, just in case
     -- NULLIF(pd.val_string, '')::double precision AS area, 
     -- safe_area_fallback(gd.geometry) AS area,
     pd.val_string::double precision AS area,
     ST_Multi(gd.geometry) AS geom
 FROM tmp_bld.{table_name}_ids sid
-    -- Join über Integer-Hash statt String (Massiver Speedup)
+    -- Join on integer hash instead of string (massive speedup)
     JOIN tmp_bld.{table_name}_ids sid2 
         ON sid.child_hash = sid2.child_hash 
-        -- Sicherheits-Check: Falls Hash-Kollision (extrem unwahrscheinlich), prüfen wir den Text
+        -- Safety check: if hash collision (extremely unlikely), we verify the text
         AND sid.child_object_id_text = sid2.child_object_id_text 
-        AND sid2.objectclass_id = 901 -- sid2 ist die Fläche (Surface)
+        AND sid2.objectclass_id = 901 -- sid2 is the surface
     JOIN objectclass oc ON oc.id = sid.objectclass_id
     JOIN geometry_data gd ON gd.id = sid.geometry_data_id
     JOIN property pd ON pd.feature_id = gd.feature_id
-WHERE sid.objectclass_id IN (709, 710, 712) -- sid ist das Gebäude;
-  AND pd.name = 'Flaeche';
+WHERE sid.objectclass_id IN (709, 710, 712); -- sid is the building
+  --AND pd.name = 'Flaeche';
 
--- Indizes auf der Zieltabelle
+-- Indexes on the target table
 CREATE INDEX IF NOT EXISTS {table_name}_building_objectid_idx ON {output_schema}.{table_name} (building_objectid);
--- Spatial Index ist teuer, erst am Ende erstellen
+-- Spatial index is expensive, create it at the end
 CREATE INDEX IF NOT EXISTS {table_name}_geom_idx ON {output_schema}.{table_name} USING GIST (geom);
-

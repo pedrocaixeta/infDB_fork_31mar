@@ -651,7 +651,7 @@ def build_config_on_conn(connection: psycopg.Connection[Any]) -> None:
         config_document: Dict[str, Any] = {
             "server": {
                 "bind": {"host": "0.0.0.0", "port": PYGEOAPI_PORT},  # nosec B104
-                "url": f"http://{PYGEOAPI_HOST}:{PYGEOAPI_PORT}",
+                "url": f"{PYGEOAPI_HOST}",
                 "mimetype": "application/json; charset=UTF-8",
                 "encoding": "utf-8",
                 "gzip": False,
