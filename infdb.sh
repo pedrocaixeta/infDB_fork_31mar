@@ -57,16 +57,18 @@ cmd_start() {
 
 cmd_import() {
     ensure_from_template "configs/config-infdb-import.yml" "configs/config-infdb-import.yml.template"
-    echo "=== Importing data (opendata profile) ==="
-    docker compose --profile "opendata" up "$@"
+    echo "=== Importing data ==="
+    docker compose --profile "import" up "$@"
 }
 
 cmd_stop() {
+    echo "=== Stopping infDB ==="
     docker compose --profile "*" down
     echo "Successfully stopped all InfDB services."
 }
 
 cmd_remove() {
+    echo "=== Removing service $1 including data  ==="
     docker compose --profile "$1" down -v --remove-orphans
 }
 
