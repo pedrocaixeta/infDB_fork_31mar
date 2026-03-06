@@ -42,6 +42,7 @@ To stop services **and** delete all stored data (reset):
 bash infdb.sh remove PROFILE_NAME
 ```
 PROFILE_NAME can be one of the following, depending on your setup:
+
 - `db` (database)
 - `opendata` (downloaded import data)
 - `*` (both database and import data)
