@@ -174,11 +174,11 @@ infdb-import:
                 # - versorgungspunkt
                 # - weitere_nutzung_flaeche
         plz:
-            status: active
-            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$ea73c208-4fae-4ef3-a13e-7cb01a5e657a/plz-5stellig.geojson"
+            status: active 
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/1bb5c9f8-4002-4b43-a148-2489f970c921$6693aeaa-a1c3-4b08-8969-33ea8b9c6cc7/plz-5stellig.geojson"
             protocol: webdav
             username: "infdb"
-            access_token: "letdown subscribe lily catchable landmine sphinx"
+            access_token: "quake taunt tricycle uncrown barista drilling"
             path:
                 base: "{infdb-import/path/opendata}/plz/"
                 processed: "{infdb-import/path/processed}/plz/"
@@ -713,10 +713,9 @@ infdb-import:
 
         gebaeude-neuburg:
             status: not-active
-            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/gebaeudedaten-neuburg.gpkg"
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/1bb5c9f8-4002-4b43-a148-2489f970c921$5720d11a-72a9-4e88-abe1-3291e0711805/gebaeudedaten-neuburg.gpkg"
             protocol: webdav
-            username: "need"
-
+            username: "need-intern"
             path:
                 base: "{infdb-import/path/opendata}/gebaeude-neuburg/"
                 processed: "{infdb-import/path/processed}/gebaeude-neuburg/"
@@ -725,9 +724,9 @@ infdb-import:
                 - "gebaeudedaten_neuburg"
         waermeatlas-hessen-bensheim:
             status: not-active
-            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/BensheimWaermeatlasHessen.gpkg"
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/1bb5c9f8-4002-4b43-a148-2489f970c921$5720d11a-72a9-4e88-abe1-3291e0711805/BensheimWaermeatlasHessen.gpkg"
             protocol: webdav
-            username: "need"
+            username: "need-intern"
             path:
                 base: "{infdb-import/path/opendata}/waermeatlas-hessen-bensheim/"
                 processed: "{infdb-import/path/processed}/waermeatlas-hessen-bensheim/"
@@ -743,9 +742,9 @@ infdb-import:
                 - "Flurstuecke"
         tudo-basemap-ways:
             status: not-active
-            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/cd8ca458-980c-41e6-9cd2-5137f78e039d$e57dd96e-a735-4f09-99df-dd4f1a992a20/TUDO_Basemap_ways.geojson"
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/1bb5c9f8-4002-4b43-a148-2489f970c921$5720d11a-72a9-4e88-abe1-3291e0711805/TUDO_Basemap_ways.geojson"
             protocol: webdav
-            username: "need"
+            username: "need-intern"
             path:
                 base: "{infdb-import/path/opendata}/tudo-basemap-ways/"
                 processed: "{infdb-import/path/processed}/tudo-basemap-ways/"
