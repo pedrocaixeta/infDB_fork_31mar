@@ -7,19 +7,7 @@ from typing import Iterable
 
 import psycopg
 from infdb import InfDB
-from infdb.utils import (
-    atomic_write_text as utils_atomic_write_text,
-)
-from infdb.utils import (
-    build_dsn_from_env,
-    read_env,
-)
-from infdb.utils import (
-    compute_signature as utils_compute_signature,
-)
-from infdb.utils import (
-    read_text as utils_read_text,
-)
+import utils
 from psycopg import Connection
 from psycopg.rows import dict_row
 
@@ -44,22 +32,22 @@ CONF_LINE_RE = re.compile(r'^\s*db-schemas\s*=\s*"(?:[^"\\]|\\.)*"\s*$', re.MULT
 # ============================== Runtime config (cached once) ==============================
 
 
-POSTGRES_HOST: str = str(read_env("SERVICES_POSTGRES_HOST", required=True))
-POSTGRES_PORT_STRING: str = str(read_env("SERVICES_POSTGRES_EXPOSED_PORT", required=True))
-POSTGRES_USER: str = str(read_env("SERVICES_POSTGRES_USER", required=True))
-POSTGRES_PASSWORD: str = str(read_env("SERVICES_POSTGRES_PASSWORD", required=True))
-POSTGRES_DB: str = str(read_env("SERVICES_POSTGRES_DB", required=True))
+POSTGRES_HOST: str = str(utils.read_env("SERVICES_POSTGRES_HOST", required=True))
+POSTGRES_PORT_STRING: str = str(utils.read_env("SERVICES_POSTGRES_EXPOSED_PORT", required=True))
+POSTGRES_USER: str = str(utils.read_env("SERVICES_POSTGRES_USER", required=True))
+POSTGRES_PASSWORD: str = str(utils.read_env("SERVICES_POSTGRES_PASSWORD", required=True))
+POSTGRES_DB: str = str(utils.read_env("SERVICES_POSTGRES_DB", required=True))
 if POSTGRES_PORT_STRING is None:
     raise ValueError("SERVICES_POSTGRES_EXPOSED_PORT is required but not provided.")
 POSTGRES_PORT: int = int(POSTGRES_PORT_STRING)
 
-POSTGREST_PORT_STRING: str = str(read_env("SERVICES_POSTGREST_PORT", required=True))
+POSTGREST_PORT_STRING: str = str(utils.read_env("SERVICES_POSTGREST_PORT", required=True))
 if POSTGREST_PORT_STRING is None:
     raise ValueError("SERVICES_POSTGREST_PORT is required but not provided.")
 POSTGREST_PORT: int = int(POSTGREST_PORT_STRING)
 
 
-DSN: str = build_dsn_from_env(
+DSN: str = utils.build_dsn_from_env(
     user_var=POSTGRES_USER,
     pwd_var=POSTGRES_PASSWORD,
     db_var=POSTGRES_DB,
@@ -74,8 +62,8 @@ MIN_REBUILD_GAP_SECONDS: float = DEFAULT_MIN_RELOAD_GAP_SECONDS
 EXCLUDE_SCHEMAS: list[str] = [s.strip() for s in DEFAULT_EXCLUDE_SCHEMAS_CSV.split(",") if s.strip()]
 
 # File/dir modes (read once)
-CONF_FILE_MODE_STR: str = str(read_env("POSTGREST_CONF_MODE", default="0644"))
-CONF_DIR_MODE_STR: str = str(read_env("POSTGREST_CONF_DIR_MODE", default="0755"))
+CONF_FILE_MODE_STR: str = str(utils.read_env("POSTGREST_CONF_MODE", default="0644"))
+CONF_DIR_MODE_STR: str = str(utils.read_env("POSTGREST_CONF_DIR_MODE", default="0755"))
 
 
 def resolve_conf_path() -> tuple[pathlib.Path, pathlib.Path]:
@@ -108,7 +96,7 @@ def atomic_write_text(text: str, out_path: pathlib.Path) -> None:
     but still apply the file/dir modes that this watcher cares about.
     This preserves your original behavior.
     """
-    utils_atomic_write_text(
+    utils.atomic_write_text(
         text,
         str(out_path),
         file_mode=CONF_FILE_MODE_STR,
@@ -122,7 +110,7 @@ def read_text(path: pathlib.Path) -> str:
     This is now just a thin wrapper around utils.read_text to keep the
     call sites unchanged.
     """
-    return utils_read_text(str(path))
+    return utils.read_text(str(path))
 
 
 # ============================== Config rendering ==============================
@@ -210,7 +198,7 @@ def loop() -> None:
                 # Initial apply
                 schemas = get_user_schemas(conn)
                 # use utils' stable signature builder
-                signature = utils_compute_signature(schemas)
+                signature = utils.compute_signature(schemas)
                 conf_text = read_text(CONF_PATH)
                 new_conf_text = render_conf_with_schemas(conf_text, ",".join(schemas))
                 if new_conf_text != conf_text:
@@ -225,13 +213,13 @@ def loop() -> None:
                 while True:
                     time.sleep(POLL_INTERVAL_SECONDS)
                     schemas = get_user_schemas(conn)
-                    signature = utils_compute_signature(schemas)
+                    signature = utils.compute_signature(schemas)
                     enough_time_elapsed = (time.monotonic() - last_reload_monotonic) >= MIN_REBUILD_GAP_SECONDS
                     if signature != last_signature and enough_time_elapsed:
-                        conf_text = read_text(CONF_PATH)
+                        conf_text = utils.read_text(CONF_PATH)
                         new_conf_text = render_conf_with_schemas(conf_text, ",".join(schemas))
                         if new_conf_text != conf_text:
-                            atomic_write_text(new_conf_text, CONF_PATH)
+                            utils.atomic_write_text(new_conf_text, CONF_PATH)
                             print(f"[{utcnow()}] schemas changed → {schemas or '∅'}; updated config")
                             notify_postgrest_reload(conn, CHANNEL)
                             last_reload_monotonic = time.monotonic()
