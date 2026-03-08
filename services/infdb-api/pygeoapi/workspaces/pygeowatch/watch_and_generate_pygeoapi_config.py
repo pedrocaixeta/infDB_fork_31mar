@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import psycopg
 import yaml
 from infdb import InfDB
-from infdb.utils import atomic_write_yaml, build_dsn_from_env, read_env
+# from infdb.utils import atomic_write_yaml, build_dsn_from_env, read_env
+import utils # import atomic_write_yaml, build_dsn_from_env, read_env
 from psycopg import sql
 from psycopg.rows import dict_row
 
@@ -36,7 +37,7 @@ def _setup_logging() -> logging.Logger:
     Returns:
         Configured logger instance.
     """
-    level = (read_env("LOG_LEVEL", "INFO") or "INFO").upper()
+    level = (utils.read_env("LOG_LEVEL", "INFO") or "INFO").upper()
     level_num = getattr(logging, level, logging.INFO)
     logging.basicConfig(level=level_num, format="%(asctime)s %(levelname)s %(message)s")
     return logging.getLogger(LOGGER_NAME)
@@ -46,38 +47,38 @@ log = infdb.get_worker_logger()
 
 
 # ---------- derived configuration constants (centralized env reads) ----------
-PYGEOAPI_PORT_STRING: str = str(read_env("SERVICES_PYGEOAPI_PORT", required=True))
+PYGEOAPI_PORT_STRING: str = str(utils.read_env("SERVICES_PYGEOAPI_PORT", required=True))
 if PYGEOAPI_PORT_STRING is None:
     raise ValueError("SERVICES_PYGEOAPI_PORT is required but not provided.")
 PYGEOAPI_PORT: int = int(PYGEOAPI_PORT_STRING)
-PYGEOAPI_HOST: str = read_env("SERVICES_PYGEOAPI_BASE_HOST")
+PYGEOAPI_HOST: str = utils.read_env("SERVICES_PYGEOAPI_BASE_HOST")
 if PYGEOAPI_HOST is None:
     raise ValueError("SERVICES_PYGEOAPI_BASE_HOST is required but not provided.")
 
-POSTGRES_USER: str = str(read_env("SERVICES_POSTGRES_USER", required=True))
-POSTGRES_PASSWORD: str = str(read_env("SERVICES_POSTGRES_PASSWORD", required=True))
-POSTGRES_DB: str = str(read_env("SERVICES_POSTGRES_DB", required=True))
-POSTGRES_HOST: str = str(read_env("SERVICES_POSTGRES_HOST", required=True))
-POSTGRES_PORT_STRING: str = str(read_env("SERVICES_POSTGRES_EXPOSED_PORT", required=True))
+POSTGRES_USER: str = str(utils.read_env("SERVICES_POSTGRES_USER", required=True))
+POSTGRES_PASSWORD: str = str(utils.read_env("SERVICES_POSTGRES_PASSWORD", required=True))
+POSTGRES_DB: str = str(utils.read_env("SERVICES_POSTGRES_DB", required=True))
+POSTGRES_HOST: str = str(utils.read_env("SERVICES_POSTGRES_HOST", required=True))
+POSTGRES_PORT_STRING: str = str(utils.read_env("SERVICES_POSTGRES_EXPOSED_PORT", required=True))
 if POSTGRES_PORT_STRING is None:
     raise ValueError("SERVICES_POSTGRES_EXPOSED_PORT is required but not provided.")
 POSTGRES_PORT: int = int(POSTGRES_PORT_STRING)
 
-TARGET_EPSG_STRING: str = str(read_env("SERVICES_POSTGRES_EPSG", required=True))
+TARGET_EPSG_STRING: str = str(utils.read_env("SERVICES_POSTGRES_EPSG", required=True))
 if TARGET_EPSG_STRING is None:
     raise ValueError("SERVICES_POSTGRES_EPSG is required but not provided.")
 TARGET_EPSG: int = int(TARGET_EPSG_STRING)
 
 FALLBACK_EPSG: int = 25832
 
-FORCE_CRS84_ONLY: bool = str(read_env("SERVICES_PYGEOAPI_FORCE_CRS84_ONLY", "false")).lower() in (
+FORCE_CRS84_ONLY: bool = str(utils.read_env("SERVICES_PYGEOAPI_FORCE_CRS84_ONLY", "false")).lower() in (
     "1",
     "true",
     "yes",
     "y",
 )
 
-FORCE_DB_TRANSFORM_TABLES_RAW: str = read_env("FORCE_DB_TRANSFORM_TABLES", "*") or "*"
+FORCE_DB_TRANSFORM_TABLES_RAW: str = utils.read_env("FORCE_DB_TRANSFORM_TABLES", "*") or "*"
 _RAW_ITEMS: List[str] = [t.strip() for t in FORCE_DB_TRANSFORM_TABLES_RAW.split(",") if t.strip()]
 _EXCLUDES: set[str] = {t[1:] for t in _RAW_ITEMS if t.startswith("!")}
 _FORCE_SET: set[str] = {t for t in _RAW_ITEMS if not t.startswith("!")}
@@ -97,7 +98,7 @@ def make_epsg_uri(epsg: int) -> str:
 
 
 # Build DSN using shared package helper (keeps behavior but centralizes env parsing)
-DB_DSN: str = build_dsn_from_env(
+DB_DSN: str = utils.build_dsn_from_env(
     user_var=POSTGRES_USER,
     pwd_var=POSTGRES_PASSWORD,
     db_var=POSTGRES_DB,
@@ -109,6 +110,30 @@ DB_DSN: str = build_dsn_from_env(
 # =========================
 # ======= IO helpers ======
 # =========================
+
+def atomic_write_yaml(data: Any, output_path: str, file_mode: str | None = None, dir_mode: str | None = None) -> str:
+    """
+    Atomically serializes a Python object to YAML and writes to a file.
+
+    Args:
+        data: Python object to serialize to YAML (e.g., dict, list).
+        output_path: Destination file path (absolute or relative). Parent directories
+            will be created if needed.
+        file_mode: Optional file permission mode (octal string, e.g. `"644"` or `"600"`).
+        dir_mode: Optional directory permission mode (octal string) to apply to the
+            destination directory.
+
+    Returns:
+        The absolute path of the written YAML file.
+
+    Raises:
+        ValueError: If `output_path` is empty.
+        yaml.YAMLError: If the object cannot be serialized to YAML.
+        OSError: If writing, syncing, or replacing the file fails (and potentially
+            if applying `file_mode` fails).
+    """
+    yaml_text = yaml.safe_dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    return utils.atomic_write_text(yaml_text, output_path, file_mode=file_mode, dir_mode=dir_mode)
 
 
 class NoAliasDumper(yaml.SafeDumper):
