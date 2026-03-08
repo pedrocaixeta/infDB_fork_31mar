@@ -4,7 +4,7 @@ from typing import Sequence
 
 from infdb import InfDB
 
-from . import utils
+import utils
 
 NAME = "waermeatlas-hessen-bensheim"
 

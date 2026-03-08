@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from wetterdienst.provider.dwd.observation import DwdObservationRequest
 
-from . import utils
+import utils
 
 # ============================== Constants ==============================
 

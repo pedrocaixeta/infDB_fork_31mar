@@ -4,7 +4,7 @@ from typing import Dict
 
 from infdb import InfDB
 
-from . import utils
+import utils
 
 
 def load(infdb: InfDB) -> None:

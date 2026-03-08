@@ -4,7 +4,7 @@ from typing import List, Sequence
 
 from infdb import InfDB
 
-from . import utils
+import utils
 
 
 def load(infdb: InfDB) -> None:

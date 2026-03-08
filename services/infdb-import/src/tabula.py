@@ -7,7 +7,7 @@ import pandas as pd
 from infdb import InfDB
 from sqlalchemy import text
 
-from . import utils
+import utils
 
 # ============================== Constants ==============================
 FILE_ENCODING: str = "utf-8"

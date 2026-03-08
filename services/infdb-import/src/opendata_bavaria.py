@@ -8,7 +8,7 @@ import geopandas as gpd
 from infdb import InfDB
 from sqlalchemy import text
 
-from . import utils
+import utils
 
 # Module logger
 log = logging.getLogger(__name__)
@@ -421,6 +421,7 @@ def _load_lod2(infdb: InfDB) -> bool:
 
         log.info("*.gml import target directory: %s", gml_path)
         utils.download_aria2c(
+            infdb=infdb,
             url=url,
             output_dir=gml_path,
             allow_overwrite=False,
@@ -449,7 +450,7 @@ def _load_lod2(infdb: InfDB) -> bool:
         # "--log-level=warn",
         str(gml_path),
     ]
-    utils.do_cmd(" ".join(str(a) for a in cmd_parts))
+    utils.do_cmd(infdb, " ".join(str(a) for a in cmd_parts))
 
     # ==================== 5. Flat building table ====================
     utils.create_building_lod2_table(object_id_prefix="DEBY", infdb=infdb)

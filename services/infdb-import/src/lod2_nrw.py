@@ -5,7 +5,7 @@ from infdb import InfDB
 from shapely import wkt as shapely_wkt
 from shapely.geometry import box
 
-from . import utils
+import utils
 
 
 def _iter_tiles_for_geom(geom, tile_size_m: int):
@@ -61,7 +61,7 @@ def load(infdb: InfDB) -> bool:
 
         # 3) Download
         if urls:
-            utils.download_aria2c_many(urls, output_dir=gml_path)
+            utils.download_aria2c_many(infdb, urls, output_dir=gml_path)
 
         # 4) Import
         params = infdb.get_db_parameters_dict()
@@ -84,7 +84,7 @@ def load(infdb: InfDB) -> bool:
             # "--log-level=warn",
             str(gml_path),
         ]
-        utils.do_cmd(cmd_parts)
+        utils.do_cmd(infdb, cmd_parts)
 
         # ==================== 5. Flat building table ====================
         utils.create_building_lod2_table(object_id_prefix="DENW", infdb=infdb)

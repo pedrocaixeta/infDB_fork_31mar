@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, List
 
 from infdb import InfDB
 
-from . import utils
+import utils
 
 # ============================== Constants ==============================
 CLIPPED_PREFIX: str = "zensus-2022"

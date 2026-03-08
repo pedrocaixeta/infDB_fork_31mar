@@ -18,7 +18,6 @@ import psycopg2
 import requests
 from bs4 import BeautifulSoup
 from infdb import InfDB
-from infdb.utils import do_cmd as infdb_do_cmd
 from pySmartDL import SmartDL
 
 # ============================== Constants ==============================
@@ -316,6 +315,7 @@ def unzip(zip_files, unzip_dir: str, infdb: InfDB) -> None:
 
 
 def download_aria2c(
+    infdb: InfDB,
     url: str,
     output_dir: str | Path,
     output_filename: str = None,
@@ -365,10 +365,11 @@ def download_aria2c(
     cmd_parts.append(url)
 
     # Execute: pass argv list so subprocess can find `aria2c`
-    do_cmd(cmd_parts)
+    do_cmd(infdb, cmd_parts)
 
 
 def download_aria2c_many(
+    infdb: InfDB,
     urls: List[str],
     output_dir: str | Path,
     connections: int = 8,
@@ -400,10 +401,10 @@ def download_aria2c_many(
 
     cmd_parts.extend(["-d", str(output_dir), "-i", str(url_file)])
 
-    do_cmd(cmd_parts)
+    do_cmd(infdb, cmd_parts)
 
 
-def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
+def do_cmd(infdb: InfDB, cmd: str | List[str], shell: bool = False) -> int:
     """Executes a shell command.
 
     - If `cmd` is a string and shell=False: split into argv via shlex.split (safe).
@@ -412,7 +413,7 @@ def do_cmd(cmd: str | List[str], shell: bool = False) -> int:
     """
     if isinstance(cmd, str) and not shell:
         cmd = shlex.split(cmd)
-    return infdb_do_cmd(cmd, is_shell_interpreted=shell)
+    return infdb_do_cmd(infdb, cmd, is_shell_interpreted=shell)
 
 
 # =================== geospatial / DB import helpers ===================
@@ -1157,3 +1158,48 @@ def create_table_building_view(infdb: InfDB) -> None:
             },
         )
     log.info(f"{output_schema}.{table_name}_view completed")
+
+# ============================== Shell helper ==============================
+
+
+def infdb_do_cmd(infdb: InfDB, cmd: str | List[str], is_shell_interpreted: bool = False) -> int:
+    """
+    Executes a shell command, streaming output to the logger.
+
+    Args:
+        cmd: Command to run. Can be a string or a list of strings.
+        is_shell_interpreted: If True, run command through the shell.
+               Default is False for security. **Warning:** Setting is_shell_interpreted=True
+                 is considered unsafe in general and should be used with caution!
+
+    Returns:
+        The process exit code (0 indicates success; non-zero indicates failure).
+
+    Raises:
+        ValueError: If `cmd` is empty.
+        OSError: If the process cannot be started (e.g., command not found).
+    """
+    
+    log = infdb.get_worker_logger()
+
+    if not cmd:
+        raise ValueError("cmd must be a non-empty string")
+
+    log.info("Executing command: %s", cmd)
+    process = subprocess.Popen(
+        cmd,
+        shell=is_shell_interpreted,  # nosec B602
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    if process.stdout:
+        for line in process.stdout:
+            log.info(line.rstrip())
+    return_code = process.wait()
+    if return_code == 0:
+        log.info("Command completed successfully.")
+    else:
+        log.error("Command failed with return code %s", return_code)
+    return return_code
