@@ -50,17 +50,9 @@ def _build_urls_for_region(region_name: str, region_cfg: dict, infdb: InfDB, log
     urls = []
     for x, y in _iter_tile_origins_for_geom(scope_geom, tile_size_m=tile_size_m):
         # x/y are tile origin coordinates in meters
-        # x_km/y_km are lower-left tile origin coordinates in kilometers
-        # e_km/n_km are provided too, so NRW can use its old-style template
         fname = template.format(
-            x_m=x,
-            y_m=y,
-            x_km=x // 1000,
-            y_km=y // 1000,
             e_km=x // 1000,
             n_km=y // 1000,
-            tile_x=x // tile_size_m,
-            tile_y=y // tile_size_m,
         )
         urls.append(base_url + fname)
 
@@ -105,7 +97,7 @@ def load(infdb: InfDB) -> bool:
             return True
 
         # Download all unique tiles into one shared folder
-        utils.download_aria2c_many(urls, output_dir=gml_path)
+        utils.download_aria2c_many(infdb, urls, output_dir=gml_path)
 
         # Import all downloaded CityGML files from the shared folder
         params = infdb.get_db_parameters_dict()
@@ -129,7 +121,7 @@ def load(infdb: InfDB) -> bool:
             # "--log-level=warn",
             str(gml_path),
         ]
-        utils.do_cmd(cmd_parts)
+        utils.do_cmd(infdb, cmd_parts)
 
         # Create flat building table
         object_id_prefix = infdb.get_config_value(source_cfg + ["object_id_prefix"]) or "DE"
