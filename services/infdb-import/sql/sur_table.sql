@@ -34,7 +34,7 @@ SELECT
     sid.objectclass_id,
     oc.classname,
     -- safe_area_fallback(gd.geometry) AS area, --- area needs to be caluclated if not available as property.
-    MAX(CASE WHEN p.name = 'Flaeche' THEN p.val_string END) AS area, -- works only for bavaria 
+    MAX(CASE WHEN p.name = 'Flaeche' THEN p.val_string END)::double precision AS area, -- works only for bavaria
     ST_Multi(gd.geometry) AS geom
 FROM tmp_bld.{table_name}_ids sid
     JOIN tmp_bld.{table_name}_ids sid2 
