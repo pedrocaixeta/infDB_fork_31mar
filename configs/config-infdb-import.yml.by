@@ -95,6 +95,27 @@ infdb-import:
             path:
                 lod2: "{infdb-import/path/opendata}/lod2-nrw/"
                 gml: "{infdb-import/path/opendata}/lod2-nrw/{infdb-import/name}"
+        lod2:
+            status: active
+            import-mode: skip
+            object_id_prefix: "DE"
+            path:
+                lod2: "{infdb-import/path/opendata}/lod2/"
+                gml: "{infdb-import/path/opendata}/lod2/citygml"
+
+            nrw:
+                status: active
+                state_prefix: "05"
+                base_url: "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/lod2_gml/"
+                tile_size_m: 1000
+                filename_template: "LoD2_32_{e_km}_{n_km}_1_NW.gml"
+
+            bavaria:
+                status: active
+                state_prefix: "09"
+                base_url: "https://download1.bayernwolke.de/a/lod2/citygml/"
+                tile_size_m: 2000
+                filename_template: "{e_km}_{n_km}.gml"
 
         bkg:
             status: active
