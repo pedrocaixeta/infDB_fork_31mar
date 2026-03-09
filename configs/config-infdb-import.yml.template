@@ -74,31 +74,17 @@ infdb-import:
                     # - Higher values (50-100m): Coarse terrain, small files, fast queries
                     target_resolution: 10.0
                     url: "https://geodaten.bayern.de/odd/a/dgm/dgm1/meta/metalink/#scope.meta4"
-                building_lod2:
-                    status: active
-                    name: 3D-Gebäudemodelle (LoD2)
-                    table_name: building
-                    import-mode: skip
-                    url: "https://geodaten.bayern.de/odd/a/lod2/citygml/meta/metalink/#scope.meta4" 
                 tatsaechliche_nutzung:
                     status: not-active
                     name: Tatsächliche Nutzung (TN) 
                     table_name: tatsaechliche_nutzung
                     url: "https://geodaten.bayern.de/odd/m/3/daten/tn/Nutzung_kreis.gpkg"
-        lod2-nrw:
-            status: active
-            import-mode: skip # delete
-            base_url: "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/lod2_gml/"
-            tile_size_m: 1000
-            # Template uses km-grid indices (not meters)
-            filename_template: "LoD2_32_{e_km}_{n_km}_1_NW.gml"
-            path:
-                lod2: "{infdb-import/path/opendata}/lod2-nrw/"
-                gml: "{infdb-import/path/opendata}/lod2-nrw/{infdb-import/name}"
         lod2:
             status: active
             import-mode: skip
             object_id_prefix: "DE"
+            table_name: building
+            schema: opendata
             path:
                 lod2: "{infdb-import/path/opendata}/lod2/"
                 gml: "{infdb-import/path/opendata}/lod2/citygml"
