@@ -8,7 +8,7 @@ import geopandas as gpd
 from infdb import InfDB
 from sqlalchemy import text
 
-import utils
+from . import utils
 
 # Module logger
 log = logging.getLogger(__name__)

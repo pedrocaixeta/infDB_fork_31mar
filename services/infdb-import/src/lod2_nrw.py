@@ -5,7 +5,7 @@ from infdb import InfDB
 from shapely import wkt as shapely_wkt
 from shapely.geometry import box
 
-import utils
+from . import utils
 
 
 def _iter_tiles_for_geom(geom, tile_size_m: int):

@@ -4,7 +4,7 @@ from typing import Sequence, Union
 
 from infdb import InfDB
 
-import utils
+from . import utils
 
 
 def create_geogitter(resolutions: Union[Sequence[str], str], infdb: InfDB, clear_existing: bool = False) -> None:

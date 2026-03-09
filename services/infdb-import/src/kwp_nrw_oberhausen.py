@@ -4,7 +4,7 @@ from typing import List, Sequence
 
 from infdb import InfDB
 
-import utils
+from . import utils
 
 NAME = "kwp-nrw-oberhausen"
 
