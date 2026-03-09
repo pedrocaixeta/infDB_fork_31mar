@@ -39,8 +39,8 @@ infdb-import:
             exposed_port: None
             epsg: None # 3035 (Europe)
         webdav:
-            username: infdb
-            access_token: "letdown subscribe lily catchable landmine sphinx"
+            username: need
+            access_token: "quake taunt tricycle uncrown barista drilling"
     sources:
         package:
             status: not-active
@@ -177,7 +177,7 @@ infdb-import:
             status: active 
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/1bb5c9f8-4002-4b43-a148-2489f970c921$6693aeaa-a1c3-4b08-8969-33ea8b9c6cc7/plz-5stellig.geojson"
             protocol: webdav
-            username: "infdb"
+            username: "need"
             access_token: "quake taunt tricycle uncrown barista drilling"
             path:
                 base: "{infdb-import/path/opendata}/plz/"
