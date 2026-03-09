@@ -1007,6 +1007,12 @@ def create_building_lod2_table(object_id_prefix: str, infdb: InfDB) -> None:
     """
     log = infdb.get_worker_logger()
 
+    # DE means "run both old region-specific implementations"
+    if object_id_prefix == "DE":
+        create_building_lod2_table("DEBY", infdb)
+        create_building_lod2_table("DENW", infdb)
+        return
+
     match object_id_prefix:
         case "DEBY":
             ags_id = "09"
