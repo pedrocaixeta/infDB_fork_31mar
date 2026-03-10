@@ -8,7 +8,7 @@ from . import utils
 
 
 def load(infdb: InfDB) -> bool:
-    """Downloads Gebäude neuburg dataset (if active), ensures schema, and imports configured layers.
+    """Downloads Wärmebedarf datasets for NRW from opencloud (if active), ensures schema, and imports configured layers.
 
     Behavior preserved:
     - Early exit (True) when feature flag `nrw-opencloud` is inactive.
@@ -47,7 +47,7 @@ def load(infdb: InfDB) -> bool:
         filename, *_ = utils.get_file_from_url(url)
 
         file_path = os.path.join(base_path, filename)
-        log.debug("Downloading Gebäude Daten data from %s to %s", url, file_path)
+        log.debug("Downloading NRW Wärmebedatf data from %s to %s", url, file_path)
 
         utils.download_files(url, base_path, infdb, protocol, username=username, access_token=access_token)
 
