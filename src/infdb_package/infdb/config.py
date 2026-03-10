@@ -17,44 +17,41 @@ FILE_ENCODING: str = "utf-8"
 class InfdbConfig:
     """Read and resolve tool-specific YAML config with optional InfDB base merge."""
 
-    def __init__(self, tool_name: str, config_basedir: str) -> None:
+    def __init__(self, tool_name: str, config_path: str, host: str = None) -> None:
         """Initializes the configuration for a tool.
 
         Args:
             tool_name: The tool identifier (used to select the YAML file and section).
-            config_basedir: Base directory containing config files (defaults to 'configs').
+            config_path: Path to the configuration file.
+            host: The host address for the database connection.
         """
         self.tool_name: str = tool_name
         self.log: logging.Logger = logging.getLogger(__name__)
-        self.config_path: str = os.path.join(
-            config_basedir,
-            CONFIG_FILE_TEMPLATE.format(tool=tool_name),
-        )
-        self._CONFIG: Dict[str, Any] = self._merge_configs(self.config_path)
+        self.config_path = config_path
+        self.host = host
+        self._CONFIG: Dict[str, Any] = self._load_config(self.config_path)
 
     def __str__(self) -> str:
         """Returns a string representation of the InfdbConfig."""
-        return f"InfdbConfig(tool='{self.tool_name}', path='{self.config_path}')"
+        return f"InfdbConfig(tool='{self.tool_name}', path='{self.config_path}', host='{self.host}')"
 
     # ---------------- internal helpers ----------------
 
     def _load_config(self, path: str) -> Dict[str, Any]:
         """Loads a YAML file. Raises FileNotFoundError if the file is missing."""
-        if os.path.exists(path):
-            with open(path, "r", encoding=FILE_ENCODING) as file:
-                return yaml.safe_load(file) or {}
+        if path:
+            if os.path.exists(path):
+                with open(path, "r", encoding=FILE_ENCODING) as file:
+                    configs = yaml.safe_load(file) or {}
+            else:
+                self.log.debug("Config file '%s' not found.", path)
+                raise FileNotFoundError(f"Config file '{path}' not found.")
         else:
-            self.log.debug("Config file '%s' not found.", path)
-            raise FileNotFoundError(f"Config file '{path}' not found.")
-
-    def _merge_configs(self, base_path: str) -> Dict[str, Any]:
-        """Loads tool config and (optionally) merges shared InfDB base config, quietly."""
-        self.log.debug("Loading configuration from '%s'", base_path)
-        configs = self._load_config(base_path)
-        if not configs:
-            return {}
+            self.log.debug("No config path provided.")
+            configs = {}
 
         return self._resolve_yaml_placeholders(configs)
+
 
     def _flatten_dict(self, data: Dict[str, Any], parent_key: str = "", sep: str = "/") -> Dict[str, Any]:
         """Flattens nested dictionaries into path-like keys."""
@@ -142,29 +139,47 @@ class InfdbConfig:
         return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     def get_db_parameters(self, db_name: str = "postgres") -> Dict[str, str]:
-        """Returns database connection parameters for a given service from config-toolname.yml.
-
-        Adopt it from environment variables if set to "None".
-        Host is set to "host.docker.internal" if "None".
-
-        Args:
-            db_name: Name of the DB service section to read.
-
-        Returns:
-            Final parameters dictionary for the requested service.
+        """Retrieve database connection parameters for a specified service.
+        
+        Reads database configuration from the config-choose-a-name.yml file and merges it with
+        environment variables. Environment variables take precedence if set, otherwise config
+        file values are used. The host defaults to "host.docker.internal" if not specified.
+        
+        Environment variables are expected in the format: SERVICES_{DB_NAME}_{PARAMETER}
+        (e.g., SERVICES_POSTGRES_PORT, SERVICES_POSTGRES_USER)
+        
+            db_name: Name of the database service section in the config file.
+                    Defaults to "postgres".
+        
+            Dictionary containing database connection parameters with keys:
+            - host: Database host address (defaults to "host.docker.internal")
+            - port: Database port number
+            - user: Username for authentication
+            - password: Password for authentication
+            - dbname: Database name
+            - epsg: EPSG code for the database spatial reference system
+        
+        Note:
+            - Config file values with "None" string are ignored in favor of environment variables
+            - If neither environment variable nor config file value exists, key will be None
         """
+        db_params_service = {}
 
-        db_params_service = self.get_value([self.tool_name, "hosts", db_name])
-        for key in db_params_service:
-            if db_params_service[key] == "None":
-                if key == "host":
-                    db_params_service[key] = "host.docker.internal"
-                else:
-                    db_params_service[key] = os.getenv(f"SERVICES_{db_name.upper()}_{key.upper()}")
+        config_dict = self.get_value([self.tool_name, "hosts", db_name])
+
+        keys = ["exposed_port", "user", "password", "db", "epsg", "host"]
+        for key in keys:
+            db_params_service[key] = self.get_env_parameters(f"SERVICES_{db_name.upper()}_{key.upper()}")
+            if config_dict and key in config_dict and config_dict[key] != "None":
+                db_params_service[key] = config_dict[key]
+
+        # Override host with constructor argument if provided
+        if self.host:
+            db_params_service["host"] = self.host
 
         return db_params_service
 
-    def get_env_parameters(self, key, infdb) -> Optional[str]:
+    def get_env_parameters(self, key) -> Optional[str]:
         """Returns a dictionary of environment variables for this tool.
 
         Args:
@@ -180,7 +195,7 @@ class InfdbConfig:
 
         env_param = os.getenv(key.upper())
         if env_param is None:
-            infdb.get_logger().error(f"Environment variable '{key.upper()}' is not set.")
+            self.log.error(f"Environment variable '{key.upper()}' is not set.")
             raise ValueError(f"Environment variable '{key.upper()}' is not set.")
 
         return env_param

@@ -16,7 +16,7 @@ def main():
     """
 
     # Initialize InfDB handler
-    infdb = InfDB(tool_name="linear-heat-density", config_path="configs")
+    infdb = InfDB(tool_name="linear-heat-density", config_path="configs/config-linear-heat-density.yml")
     log = infdb.get_logger()
     ags = infdb.get_env_variable("AGS")
 

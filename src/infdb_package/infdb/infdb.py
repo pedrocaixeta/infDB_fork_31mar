@@ -5,12 +5,6 @@ from .client import InfdbClient
 from .config import InfdbConfig
 from .logger import InfdbLogger
 
-# ============================== Constants ==============================
-
-DEFAULT_CONFIG_DIR: str = "../configs"
-DEFAULT_LOG_FILE: str = "infdb.log"
-DEFAULT_LOG_LEVEL: str = "INFO"
-
 
 class InfDB:
     """Facade for configuration, logging, and DB connections for InfDB.
@@ -19,21 +13,25 @@ class InfDB:
     class as the single entry point.
     """
 
-    def __init__(self, tool_name: str, config_path: str = DEFAULT_CONFIG_DIR) -> None:
+    def __init__(self, tool_name: str, config_path: str = None, host: str = None) -> None:
         """Initializes the facade with configuration and logging.
 
         Args:
             tool_name: Identifier used to pick the tool section in the config.
-            config_path: Base directory containing YAML configuration files.
+            config_path: Path to the YAML configuration file.
+            host: The host address for the database connection.
         """
         self.tool_name: str = tool_name
         self.config_path: str = config_path
+        self.host: str = host
 
         # Load configuration
-        self.infdbconfig: InfdbConfig = InfdbConfig(tool_name=self.tool_name, config_basedir=self.config_path)
+        self.infdbconfig: InfdbConfig = InfdbConfig(tool_name=self.tool_name, config_path=self.config_path, host=self.host)
 
         # Initialize logging from config, with safe fallbacks
+        DEFAULT_LOG_FILE: str = f"{self.tool_name}.log"
         log_path = self.get_config_value(["logging", "path"], insert_toolname=True) or DEFAULT_LOG_FILE
+        DEFAULT_LOG_LEVEL: str = "INFO"
         level = self.get_config_value(["logging", "level"], insert_toolname=True) or DEFAULT_LOG_LEVEL
         self.infdblogger: InfdbLogger = InfdbLogger(log_path=log_path, level=level)
         self.logger: logging.Logger = self.infdblogger.root_logger
@@ -131,4 +129,4 @@ class InfDB:
         Returns:
             A dictionary of environment variables.
         """
-        return self.infdbconfig.get_env_parameters(key=key, infdb=self)
+        return self.infdbconfig.get_env_parameters(key=key)

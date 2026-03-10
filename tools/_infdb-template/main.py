@@ -18,7 +18,7 @@ def main():
     """
 
     # Initialize InfDB handler
-    infdb = InfDB(tool_name="choose-a-name")
+    infdb = InfDB(tool_name="choose-a-name", config_path="../configs/config-choose-a-name.yml")
     ags = infdb.get_env_variable("AGS")
 
     # Start message
