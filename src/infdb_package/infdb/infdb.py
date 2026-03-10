@@ -13,7 +13,7 @@ class InfDB:
     class as the single entry point.
     """
 
-    def __init__(self, tool_name: str, config_path: str = None, host: str = "host.docker.internal") -> None:
+    def __init__(self, tool_name: str, config_path: str = None, host: str = None) -> None:
         """Initializes the facade with configuration and logging.
 
         Args:
@@ -56,7 +56,7 @@ class InfDB:
 
     # ------------------ database helpers ------------------
 
-    def connect(self, host: str = None) -> InfdbClient:
+    def connect(self) -> InfdbClient:
         """Creates a new database client.
 
         Prefer: `with inf.connect(...) as client: ...`.

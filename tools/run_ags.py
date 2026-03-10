@@ -126,35 +126,21 @@ if __name__ == "__main__":
     # Determine the script directory for relative paths
     SCRIPT_DIR = Path(__file__).parent
 
-    load_dotenv(os.path.join(SCRIPT_DIR, "../.env"))
+    load_dotenv(os.path.join(SCRIPT_DIR, "../.env"), override=True)
+    load_dotenv(os.path.join(SCRIPT_DIR, "tools.env"), override=True)
 
     # Initialize InfDB handler
-    infdb = InfDB(tool_name="run_ags", host="localhost")
-    # infdb.infdbconfig._CONFIG["hosts", "postgres", "host"] = "localhost"  # Override host for local development
-
-    # Setup logging
-    # log_file = SCRIPT_DIR / "tools.log"
-    # logging.basicConfig(
-    #     level=logging.INFO,
-    #     format="%(levelname)s - %(message)s",
-    #     handlers=[
-    #         logging.FileHandler(log_file),
-    #         logging.StreamHandler(sys.stdout),
-    #     ],
-    # )
+    infdb = InfDB(tool_name="run_ags")
     log = infdb.get_logger()
 
     # Parse command-line arguments
     args = parse_arguments()
 
-    # # Connect to the database
-    # conn = infdb.connect(host="localhost")  # Use local connection for development
-
     # Terminate other connections and rollback any open transactions to avoid deadlocks
     log.info(
         "Terminating other connections to avoid deadlocks..."
     )
-    with infdb.connect(host="localhost") as db:
+    with infdb.connect() as db:
         db.execute_query("""SELECT pg_terminate_backend(pid)
                         FROM pg_stat_activity
                         WHERE pid <> pg_backend_pid();""")
@@ -164,7 +150,7 @@ if __name__ == "__main__":
 
     # Drop schemas if -c flag is provided for clean development run
     if args.clean:
-        with infdb.connect(host="localhost") as db:
+        with infdb.connect() as db:
             log.info("Dropping schemas for clean development run...")
             db.execute_query("DROP SCHEMA IF EXISTS basedata CASCADE;")
             db.execute_query(
@@ -194,7 +180,7 @@ if __name__ == "__main__":
                     -- WHERE ags LIKE '09%%'
                     ORDER BY ags;
                 """
-        ags_list = infdb.connect(host="localhost").get_pandas(sql)
+        ags_list = infdb.connect().get_pandas(sql)
         todo_ags = ags_list["ags"].tolist()
     log.info(f"Total AGS to process: {len(todo_ags)}")
     if len(todo_ags) < 20:

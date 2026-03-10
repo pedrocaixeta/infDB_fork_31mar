@@ -17,7 +17,7 @@ FILE_ENCODING: str = "utf-8"
 class InfdbConfig:
     """Read and resolve tool-specific YAML config with optional InfDB base merge."""
 
-    def __init__(self, tool_name: str, config_path: str, host: str) -> None:
+    def __init__(self, tool_name: str, config_path: str, host: str = None) -> None:
         """Initializes the configuration for a tool.
 
         Args:
@@ -52,14 +52,6 @@ class InfdbConfig:
 
         return self._resolve_yaml_placeholders(configs)
 
-    # def _merge_configs(self, base_path: str) -> Dict[str, Any]:
-    #     """Loads tool config and (optionally) merges shared InfDB base config, quietly."""
-    #     self.log.debug("Loading configuration from '%s'", base_path)
-    #     configs = self._load_config(base_path)
-    #     if not configs:
-    #         return {}
-
-    #     return self._resolve_yaml_placeholders(configs)
 
     def _flatten_dict(self, data: Dict[str, Any], parent_key: str = "", sep: str = "/") -> Dict[str, Any]:
         """Flattens nested dictionaries into path-like keys."""
@@ -171,15 +163,19 @@ class InfdbConfig:
             - Config file values with "None" string are ignored in favor of environment variables
             - If neither environment variable nor config file value exists, key will be None
         """
+        db_params_service = {}
 
-        db_params_service = {"host": self.host}
         config_dict = self.get_value([self.tool_name, "hosts", db_name])
 
-        keys = ["exposed_port", "user", "password", "db", "epsg"]
+        keys = ["exposed_port", "user", "password", "db", "epsg", "host"]
         for key in keys:
             db_params_service[key] = self.get_env_parameters(f"SERVICES_{db_name.upper()}_{key.upper()}")
             if config_dict and key in config_dict and config_dict[key] != "None":
                 db_params_service[key] = config_dict[key]
+
+        # Override host with constructor argument if provided
+        if self.host:
+            db_params_service["host"] = self.host
 
         return db_params_service
 
