@@ -13,18 +13,20 @@ class InfDB:
     class as the single entry point.
     """
 
-    def __init__(self, tool_name: str, config_path: str = None) -> None:
+    def __init__(self, tool_name: str, config_path: str = None, host: str = "host.docker.internal") -> None:
         """Initializes the facade with configuration and logging.
 
         Args:
             tool_name: Identifier used to pick the tool section in the config.
             config_path: Path to the YAML configuration file.
+            host: The host address for the database connection.
         """
         self.tool_name: str = tool_name
         self.config_path: str = config_path
+        self.host: str = host
 
         # Load configuration
-        self.infdbconfig: InfdbConfig = InfdbConfig(tool_name=self.tool_name, config_path=self.config_path)
+        self.infdbconfig: InfdbConfig = InfdbConfig(tool_name=self.tool_name, config_path=self.config_path, host=self.host)
 
         # Initialize logging from config, with safe fallbacks
         DEFAULT_LOG_FILE: str = f"{self.tool_name}.log"
@@ -54,7 +56,7 @@ class InfDB:
 
     # ------------------ database helpers ------------------
 
-    def connect(self) -> InfdbClient:
+    def connect(self, host: str = None) -> InfdbClient:
         """Creates a new database client.
 
         Prefer: `with inf.connect(...) as client: ...`.
@@ -127,4 +129,4 @@ class InfDB:
         Returns:
             A dictionary of environment variables.
         """
-        return self.infdbconfig.get_env_parameters(key=key, infdb=self)
+        return self.infdbconfig.get_env_parameters(key=key)

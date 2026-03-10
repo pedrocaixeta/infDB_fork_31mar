@@ -17,21 +17,23 @@ FILE_ENCODING: str = "utf-8"
 class InfdbConfig:
     """Read and resolve tool-specific YAML config with optional InfDB base merge."""
 
-    def __init__(self, tool_name: str, config_path: str) -> None:
+    def __init__(self, tool_name: str, config_path: str, host: str) -> None:
         """Initializes the configuration for a tool.
 
         Args:
             tool_name: The tool identifier (used to select the YAML file and section).
             config_path: Path to the configuration file.
+            host: The host address for the database connection.
         """
         self.tool_name: str = tool_name
         self.log: logging.Logger = logging.getLogger(__name__)
         self.config_path = config_path
+        self.host = host
         self._CONFIG: Dict[str, Any] = self._load_config(self.config_path)
 
     def __str__(self) -> str:
         """Returns a string representation of the InfdbConfig."""
-        return f"InfdbConfig(tool='{self.tool_name}', path='{self.config_path}')"
+        return f"InfdbConfig(tool='{self.tool_name}', path='{self.config_path}', host='{self.host}')"
 
     # ---------------- internal helpers ----------------
 
@@ -170,8 +172,8 @@ class InfdbConfig:
             - If neither environment variable nor config file value exists, key will be None
         """
 
+        db_params_service = {"host": self.host}
         config_dict = self.get_value([self.tool_name, "hosts", db_name])
-        db_params_service = {"host": "host.docker.internal"}
 
         keys = ["exposed_port", "user", "password", "db", "epsg"]
         for key in keys:
