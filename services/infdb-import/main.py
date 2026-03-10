@@ -25,7 +25,7 @@ from src import (
 
 
 def _run_loader(load_fn: Callable[[InfDB], None]) -> None:
-    infdb = InfDB(tool_name="infdb-import")
+    infdb = InfDB(tool_name="infdb-import", config_path="../configs/config-infdb-import.yml")
     try:
         load_fn(infdb)
     except Exception as e:
@@ -60,7 +60,7 @@ def main() -> None:
     """
 
     # Bootstrap InfDB (provides package config + central logging)
-    infdb = InfDB(tool_name="infdb-import")
+    infdb = InfDB(tool_name="infdb-import", config_path="../configs/config-infdb-import.yml")
 
     # Root logger and the running QueueListener (started by InfdbLogger internally)
     log = infdb.get_logger()
