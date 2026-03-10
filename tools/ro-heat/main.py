@@ -14,7 +14,7 @@ construction_year_col = "construction_year"
 
 def main():
     # Load InfDB handler
-    infdbhandler = InfDB(tool_name="ro-heat", config_path="configs")
+    infdbhandler = InfDB(tool_name="ro-heat", config_path="configs/config-ro-heat.yml")
     ags = infdbhandler.get_env_variable("AGS")
 
     # Database connection
@@ -52,7 +52,7 @@ def main():
             "ags": ags,
             "input_schema": input_schema,
         }
-        buildings = infdbclient_citydb.get_pandas_sqlfile(full_path, engine, format_params=format_params)
+        buildings = infdbclient_citydb.get_pandas_sqlfile(full_path, format_params=format_params)
 
         if len(buildings) == 0:
             infdblog.warning(f"No buildings found for AGS {ags}. Returning without result")
@@ -112,7 +112,7 @@ def main():
         infdblog.info("Starting construction of building elements")
         
         full_path = os.path.join("sql", "02_get_tabula_elements.sql")
-        tabula_elements = infdbclient_citydb.get_pandas_sqlfile(full_path, engine, format_params=format_params_output_schema)
+        tabula_elements = infdbclient_citydb.get_pandas_sqlfile(full_path, format_params=format_params_output_schema)
         infdblog.debug(f"Loaded {len(tabula_elements)} building elements from the database.")
         tabula_structure = tabula_handling.create_tabula_structure(tabula_elements)
         infdblog.debug("Tabula structure created")

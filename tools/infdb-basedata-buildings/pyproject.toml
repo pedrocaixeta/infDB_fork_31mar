@@ -7,5 +7,8 @@ dependencies = [
     "PyYAML",
     "dotenv",
     "SQLAlchemy",
-    "infdb @ file:/app/mnt/infdb_package",
+    "infdb",
 ]
+
+[tool.uv.sources]
+infdb = { path = "/app/mnt/infdb_package", editable = true }
