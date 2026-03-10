@@ -42,7 +42,7 @@ Check out the **[Usage Guide](usage/index.md)** to install, configure and run yo
 
 ## Demo
 The **[Linear Heat Density](linear-heat-density/index.md)** use case demonstrates the capabilities of infDB in the context of municipal heat planning (KWP). 
-![](linear-heat-density/qwc-browser.png)
+![](linear-heat-density/liz-browser.png)
 
 ## Contribution
 

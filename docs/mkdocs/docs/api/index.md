@@ -2,11 +2,11 @@
 
 The infDB platform offers several APIs to interact with the database and its services. Below is an overview of the main APIs available:
 
-## [Python Package](pypackage.md)
+## [Python Package](pyinfdb/index.md)
 The python package `infdb` provides a convenient way to interact with the infDB database and services programmatically. It includes functionalities for database connections, configuration management, logging, and utility functions.
 It uses the internal `infdb_package` for direct Python integration.
 
-See [API -> pypackage](pypackage.md) for detailed usage instructions.
+See [API -> pyinfdb](pyinfdb/index.md) for detailed usage instructions.
 
 ## FastAPI
 The FastAPI is currently only forwarding to the PostgREST service.

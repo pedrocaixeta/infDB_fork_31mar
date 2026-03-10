@@ -1,4 +1,4 @@
-# infDB Python Package
+# Python Package pyinfdb
 
 This guide explains how to use the `pyinfdb` python package to interact with your database in a standardized, configuration-driven way.
 
@@ -9,12 +9,11 @@ The `pyinfdb` package is a wrapper around postgresql database connections. It pr
 1. **Configuration**: Loading database credentials and settings from YAML and environment files.
 2. **Connections**: Providing both raw `psycopg2` clients and `SQLAlchemy` engines.
 3. **Logging**: Standardized logging for your tools.
-4. **Utility Functions**: Utilities for common tasks.
 
 ## Installation
 
 ```bash
-pip install pyinfdb
+uv pip install pyinfdb
 ```
 
 ## Quick Start
@@ -108,21 +107,3 @@ try:
 except Exception as e:
     logger.error(f"An error occurred: {e}")
 ```
-
-## API Summary
-
-### `class InfDB(tool_name: str, config_path: str)`
-
-The main entry point.
-
-*   **`connect() -> InfdbClient`**: Returns a context manager for a database client. usage: `with infdb.connect() as client: ...`
-*   **`get_db_engine()`**: Returns a SQLAlchemy `Engine` object.
-*   **`get_logger() -> logging.Logger`**: Returns the standard logger.
-*   **`get_config_dict() -> dict`**: Returns the full loaded configuration as a dictionary.
-
-### `class InfdbClient`
-
-Returned by `connect()`.
-
-*   **`execute_query(query: str, params: tuple)`**: Execute a raw SQL query.
-*   **`execute_file(filepath: str)`**: Execute all SQL commands in a file.
