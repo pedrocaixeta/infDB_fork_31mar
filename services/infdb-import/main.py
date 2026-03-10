@@ -12,6 +12,7 @@ from src import (
     kwp_nrw_oberhausen,
     lod2_nrw,
     need,
+    nrw_opencloud,
     opendata_bavaria,
     openmeteo,
     plz,
@@ -106,6 +107,7 @@ def main() -> None:
         mp.Process(target=_run_loader, args=(waermeatlas_hessen_bensheim.load,), name="waermeatlas_hessen_bensheim")
     )
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
+    processes.append(mp.Process(target=_run_loader, args=(nrw_opencloud.load,), name="nrw_opencloud"))
     processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
     processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
 
