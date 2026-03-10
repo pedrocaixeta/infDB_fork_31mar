@@ -142,25 +142,38 @@ class InfdbConfig:
         return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     def get_db_parameters(self, db_name: str = "postgres") -> Dict[str, str]:
-        """Returns database connection parameters for a given service from config-toolname.yml.
-
-        Adopt it from environment variables if set to "None".
-        Host is set to "host.docker.internal" if "None".
-
-        Args:
-            db_name: Name of the DB service section to read.
-
-        Returns:
-            Final parameters dictionary for the requested service.
+        """Retrieve database connection parameters for a specified service.
+        
+        Reads database configuration from the config-choose-a-name.yml file and merges it with
+        environment variables. Environment variables take precedence if set, otherwise config
+        file values are used. The host defaults to "host.docker.internal" if not specified.
+        
+        Environment variables are expected in the format: SERVICES_{DB_NAME}_{PARAMETER}
+        (e.g., SERVICES_POSTGRES_PORT, SERVICES_POSTGRES_USER)
+        
+            db_name: Name of the database service section in the config file.
+                    Defaults to "postgres".
+        
+            Dictionary containing database connection parameters with keys:
+            - host: Database host address (defaults to "host.docker.internal")
+            - port: Database port number
+            - user: Username for authentication
+            - password: Password for authentication
+            - dbname: Database name
+        
+        Note:
+            - Config file values with "None" string are ignored in favor of environment variables
+            - If neither environment variable nor config file value exists, key will be None
         """
 
-        db_params_service = self.get_value([self.tool_name, "hosts", db_name])
-        for key in db_params_service:
-            if db_params_service[key] == "None":
-                if key == "host":
-                    db_params_service[key] = "host.docker.internal"
-                else:
-                    db_params_service[key] = os.getenv(f"SERVICES_{db_name.upper()}_{key.upper()}")
+        config_dict = self.get_value([self.tool_name, "hosts", db_name])
+        db_params_service = {"host": "host.docker.internal"}
+
+        keys = ["port", "user", "password", "dbname"]
+        for key in keys:
+            db_params_service[key] = os.getenv(f"SERVICES_{db_name.upper()}_{key.upper()}")
+            if config_dict and key in config_dict and config_dict[key] != "None":
+                db_params_service[key] = config_dict[key]
 
         return db_params_service
 
