@@ -751,8 +751,8 @@ infdb-import:
             status: not-active
             url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/1bb5c9f8-4002-4b43-a148-2489f970c921$5720d11a-72a9-4e88-abe1-3291e0711805/Waermebedarf_NRW-allTables.gpkg"
             protocol: webdav
-            username: "need-intern"
-            WEBDAV_NEED_INTERNAL_ACCESS_TOKEN: "estimator coconut scalding division scrunch explode"
+            # username: "need-intern"
+            # WEBDAV_NEED_INTERNAL_ACCESS_TOKEN: "estimator coconut scalding division scrunch explode"
             path:
                 base: "{infdb-import/path/opendata}/nrw-opencloud/"
                 processed: "{infdb-import/path/processed}/nrw-opencloud/"

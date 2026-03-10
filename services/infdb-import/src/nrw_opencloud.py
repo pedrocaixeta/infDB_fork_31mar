@@ -37,11 +37,11 @@ def load(infdb: InfDB) -> bool:
             protocol = "http"
 
         # Get credentials if auth is enabled
-        username = None
-        access_token = None
-        if protocol == "webdav":
-            username = infdb.get_config_value([infdb.get_toolname(), "sources", "nrw-opencloud", "username"])
-            access_token = infdb.get_config_value([infdb.get_toolname(), "sources", "nrw-opencloud","WEBDAV_NEED_INTERNAL_ACCESS_TOKEN"])
+        # username = None
+        # access_token = None
+        # if protocol == "webdav":
+        #     username = infdb.get_config_value([infdb.get_toolname(), "sources", "nrw-opencloud", "username"])
+        #     access_token = infdb.get_config_value([infdb.get_toolname(), "sources", "nrw-opencloud","WEBDAV_NEED_INTERNAL_ACCESS_TOKEN"])
             
 
         filename, *_ = utils.get_file_from_url(url)
@@ -49,7 +49,7 @@ def load(infdb: InfDB) -> bool:
         file_path = os.path.join(base_path, filename)
         log.debug("Downloading NRW Wärmebedatf data from %s to %s", url, file_path)
 
-        utils.download_files(url, base_path, infdb, protocol, username=username, access_token=access_token)
+        utils.download_files(url, base_path, infdb, protocol, username=None, access_token=None)
 
         schema: str = infdb.get_config_value([infdb.get_toolname(), "sources", "nrw-opencloud", "schema"])
 

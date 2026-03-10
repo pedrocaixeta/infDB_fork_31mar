@@ -263,8 +263,16 @@ def download_files(
 
     # Auth path (WebDAV or protected HTTP)
     if protocol == "webdav":
+        if not username:
+            username = os.getenv("WEBDAV_NEED_INTERNAL_USERNAME")
+            log.debug("Using username from environment: %s", username)
+        if not access_token:
+            access_token = os.getenv("WEBDAV_NEED_INTERNAL_ACCESS_TOKEN")
+            log.debug("Using access token from environment: %s", access_token)
+        
         if not username or not access_token:
-            raise ValueError("Username and access_token required when protocol=webdav")
+            log.error("WebDAV protocol requires username and access_token for authentication.")
+
         results = []
         for url in url_list:
             results.append(_requests_download(url, base_path, infdb, username=username, access_token=access_token))
