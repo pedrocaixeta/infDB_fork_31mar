@@ -747,14 +747,14 @@ infdb-import:
                 - "WAH_Baubloecke"
                 - "Hausumringe"
                 - "Flurstuecke"
-        tudo-basemap-ways:
+        nrw-opencloud:
             status: not-active
-            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/1bb5c9f8-4002-4b43-a148-2489f970c921$5720d11a-72a9-4e88-abe1-3291e0711805/TUDO_Basemap_ways.geojson"
+            url: "https://cloud.ocd.need.energy/remote.php/dav/spaces/1bb5c9f8-4002-4b43-a148-2489f970c921$5720d11a-72a9-4e88-abe1-3291e0711805/Waermebedarf_NRW-allTables.gpkg"
             protocol: webdav
             username: "need-intern"
             path:
-                base: "{infdb-import/path/opendata}/tudo-basemap-ways/"
-                processed: "{infdb-import/path/processed}/tudo-basemap-ways/"
+                base: "{infdb-import/path/opendata}/nrw-opencloud/"
+                processed: "{infdb-import/path/processed}/nrw-opencloud/"
             schema: need_intern
             layer: 
                 - "Basemap_Oberhausen_Neuburg_Sonthofen_Verkehrslinie"
