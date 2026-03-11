@@ -1,4 +1,9 @@
-BEGIN;
+DO $$
+DECLARE
+    v_changelog_id BIGINT;
+BEGIN
+
+SELECT public.fn_begin_changelog('infdb-import', '{tool_name}') INTO v_changelog_id;
 
 -- =========================================================
 -- buildings (global)
@@ -8,6 +13,10 @@ WHERE b.gemeindeschluessel = '{ags}';
 
 INSERT INTO {output_schema}.buildings
 SELECT * FROM temp_buildings;
+
+UPDATE {output_schema}.buildings
+SET changelog_id = v_changelog_id
+WHERE gemeindeschluessel = '{ags}';
 
 -- =========================================================
 -- buildings_grid_100m (global) UPSERT
@@ -40,7 +49,8 @@ SET
     a1991bis2000 = EXCLUDED.a1991bis2000,
     a2001bis2010 = EXCLUDED.a2001bis2010,
     a2011bis2019 = EXCLUDED.a2011bis2019,
-    a2020undspaeter = EXCLUDED.a2020undspaeter;
+    a2020undspaeter = EXCLUDED.a2020undspaeter,
+    changelog_id = v_changelog_id;
 
 -- =========================================================
 -- buildings_grid_1km (global) UPSERT
@@ -73,7 +83,8 @@ SET
     a1991bis2000 = EXCLUDED.a1991bis2000,
     a2001bis2010 = EXCLUDED.a2001bis2010,
     a2011bis2019 = EXCLUDED.a2011bis2019,
-    a2020undspaeter = EXCLUDED.a2020undspaeter;
+    a2020undspaeter = EXCLUDED.a2020undspaeter,
+    changelog_id = v_changelog_id;
 
 -- -- =========================================================
 -- -- bld2grid (global) UPSERT
@@ -87,14 +98,15 @@ SET
 -- =========================================================
 -- bld2ts (global) UPSERT
 -- =========================================================
-INSERT INTO {output_schema}.bld2ts (bld_objectid, ts_metadata_id, ts_metadata_name, dist, geom)
-SELECT bld_objectid, ts_metadata_id, ts_metadata_name, dist, geom
+INSERT INTO {output_schema}.bld2ts (bld_objectid, ts_metadata_id, ts_metadata_name, dist, geom, changelog_id)
+SELECT bld_objectid, ts_metadata_id, ts_metadata_name, dist, geom, v_changelog_id
 FROM temp_bld2ts
 ON CONFLICT (bld_objectid, ts_metadata_name) DO UPDATE
 SET
     ts_metadata_id = EXCLUDED.ts_metadata_id,
     dist           = EXCLUDED.dist,
-    geom           = EXCLUDED.geom;
+    geom           = EXCLUDED.geom,
+    changelog_id   = v_changelog_id;
 
 
 -- =========================================================
@@ -106,4 +118,5 @@ DROP TABLE IF EXISTS temp_buildings_grid_1km;
 -- DROP TABLE IF EXISTS temp_bld2grid;
 DROP TABLE IF EXISTS temp_bld2ts;
 
-COMMIT;
+END;
+$$;

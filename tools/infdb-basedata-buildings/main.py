@@ -37,6 +37,7 @@ def main() -> None:
         "EPSG": epsg,
         "census_building_type_resolution": census_building_type_resolution,
         "random_seed": random_seed,
+        "tool_name": infdb.get_toolname(),
     }
 
     log.info("Input schema: %s", input_schema)

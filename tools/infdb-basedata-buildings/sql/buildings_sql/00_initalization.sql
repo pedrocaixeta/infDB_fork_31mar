@@ -435,7 +435,8 @@ BEGIN
                     house_number      text,
                     geom              geometry(MultiPolygon, {EPSG}),
                     centroid          geometry(Point, {EPSG}),
-                    gemeindeschluessel text NOT NULL
+                    gemeindeschluessel text NOT NULL,
+                    changelog_id      BIGINT REFERENCES public.changelog(id) ON DELETE SET NULL
                 );
 
                 -- Create indexes for performance optimization
@@ -486,7 +487,8 @@ BEGIN
                     a1991bis2000 bigint NULL,
                     a2001bis2010 bigint NULL,
                     a2011bis2019 bigint NULL,
-                    a2020undspaeter bigint NULL
+                    a2020undspaeter bigint NULL,
+                    changelog_id      BIGINT REFERENCES public.changelog(id) ON DELETE SET NULL
                 );
 
                 CREATE INDEX IF NOT EXISTS grid_buildings_spatial_coords_idx_100m ON {output_schema}.buildings_grid_100m USING btree (x_mp, y_mp);
@@ -527,7 +529,8 @@ BEGIN
                     a1991bis2000 bigint NULL,
                     a2001bis2010 bigint NULL,
                     a2011bis2019 bigint NULL,
-                    a2020undspaeter bigint NULL
+                    a2020undspaeter bigint NULL,
+                    changelog_id      BIGINT REFERENCES public.changelog(id) ON DELETE SET NULL
                 );
 
                 CREATE INDEX IF NOT EXISTS grid_buildings_spatial_coords_idx_1km ON {output_schema}.buildings_grid_1km USING btree (x_mp, y_mp);
@@ -549,7 +552,8 @@ BEGIN
                     ts_metadata_id int4 NULL,
                     ts_metadata_name text NULL,
                     dist float8 NULL,
-                    geom public.geometry NULL
+                    geom public.geometry NULL,
+                    changelog_id      BIGINT REFERENCES public.changelog(id) ON DELETE SET NULL
                 );
 
                 ALTER TABLE {output_schema}.bld2ts

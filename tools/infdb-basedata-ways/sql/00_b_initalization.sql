@@ -316,6 +316,9 @@ BEGIN
             FROM ways_tem
             WHERE false;  -- Creates structure only, no data
 
+            ALTER TABLE {output_schema}.ways_per_junction
+            ADD COLUMN changelog_id BIGINT REFERENCES public.changelog(id) ON DELETE SET NULL;
+
             -- Set required key columns to NOT NULL
             ALTER TABLE {output_schema}.ways_per_junction
                 ALTER COLUMN ags SET NOT NULL,
@@ -351,6 +354,9 @@ BEGIN
             FROM ways_tem
             WHERE false;  -- Creates structure only, no data
 
+            ALTER TABLE {output_schema}.ways_per_connection
+            ADD COLUMN changelog_id BIGINT REFERENCES public.changelog(id) ON DELETE SET NULL;
+
             -- Set required key columns to NOT NULL
             ALTER TABLE {output_schema}.ways_per_connection
                 ALTER COLUMN ags SET NOT NULL,
@@ -385,6 +391,9 @@ BEGIN
                 length_connection_line -- bookkeeping accumulator for connection lines
             FROM ways_tem
             WHERE false;  -- Creates structure only, no data
+
+            ALTER TABLE {output_schema}.connection_lines
+            ADD COLUMN changelog_id BIGINT REFERENCES public.changelog(id) ON DELETE SET NULL;
 
             -- Set required key columns to NOT NULL
             ALTER TABLE {output_schema}.connection_lines
@@ -422,6 +431,9 @@ BEGIN
                 CAST(NULL AS geometry(Point)) AS geom,    -- node point geometry
                 CAST(NULL AS text[])          AS way_ids  -- associated way ids
             WHERE false;
+
+            ALTER TABLE {output_schema}.nodes_per_connection
+            ADD COLUMN changelog_id BIGINT REFERENCES public.changelog(id) ON DELETE SET NULL;
 
             -- Constraints
             ALTER TABLE {output_schema}.nodes_per_connection
@@ -469,6 +481,9 @@ BEGIN
                 CAST(NULL AS geometry(Point)) AS geom,    -- node point geometry
                 CAST(NULL AS text[])          AS way_ids  -- associated way ids
             WHERE false;
+
+            ALTER TABLE {output_schema}.nodes_per_junction
+            ADD COLUMN changelog_id BIGINT REFERENCES public.changelog(id) ON DELETE SET NULL;
 
             -- Constraints
             ALTER TABLE {output_schema}.nodes_per_junction
