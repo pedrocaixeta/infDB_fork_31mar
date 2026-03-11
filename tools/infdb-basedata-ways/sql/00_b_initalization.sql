@@ -130,6 +130,18 @@ BEGIN
                     RETURN;
                 END IF;
 
+                IF ST_IsEmpty(p_geom) THEN -- ignore empty geometry inserts
+                    RETURN;
+                END IF;
+
+                IF GeometryType(p_geom) <> 'LINESTRING' THEN -- ignore non-linestring inserts
+                    RETURN;
+                END IF;
+
+                IF ST_Length(p_geom) = 0 THEN -- ignore zero-length degenerate linestrings
+                    RETURN;
+                END IF;
+
                 v_new := md5(random()::text || clock_timestamp()::text); -- generate unique-ish text id
 
                 IF p_klasse = 'connection_line' THEN -- route connection lines to their temp table
