@@ -47,7 +47,7 @@ def main():
     """
 
     # Initialize InfDB handler
-    infdb = InfDB(tool_name="infdb-basedata-ways", config_path="configs")
+    infdb = InfDB(tool_name="infdb-basedata-ways", config_path="configs/config-infdb-basedata-ways.yml")
 
     # Start message
     log = infdb.get_logger()

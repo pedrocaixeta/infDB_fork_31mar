@@ -12,7 +12,7 @@ def main() -> None:
     the output schema (if present), and executes the SQL directories in sequence.
     """
     # Load InfDB facade (config + logging)
-    infdb = InfDB(tool_name="infdb-basedata-buildings", config_path="configs")
+    infdb = InfDB(tool_name="infdb-basedata-buildings", config_path="configs/config-infdb-basedata-buildings.yml")
 
     # Logger
     log = infdb.get_logger()

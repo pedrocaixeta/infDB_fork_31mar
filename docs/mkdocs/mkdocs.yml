@@ -27,7 +27,17 @@ plugins:
   - search
   - awesome-pages
   - glightbox
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["../../src/"]
+          options:
+            docstring_style: google
+            show_source: false
+            show_signature_annotations: true
+            members_order: source
+            inherited_members: true
+
 
 nav:
   - Welcome:
@@ -41,7 +51,7 @@ nav:
     - Requirements: usage/requirements.md
     - Get Software: usage/get-software.md
     - Setup: 
-      - Introduction: usage/setup.md
+      - usage/setup/index.md
       - Environment Variables: usage/setup/environment-variables.md
       - YAML Configuration: usage/setup/yaml-configuration.md
     - Deployment: usage/deployment.md
@@ -54,8 +64,7 @@ nav:
     # - Core: infdb/core.md
     - Database: infdb/database.md
     - Services:
-    # - infdb/services.md
-    # - Tools: usage/tools.md
+      - infdb/services/index.md
       - infdb-db: infdb/services/infdb-db.md
       - infdb-import: infdb/services/infdb-import.md
       - pgAdmin: infdb/services/pgadmin.md
@@ -67,13 +76,19 @@ nav:
       - OpenCloud: infdb/services/opencloud.md
   - API: 
     - Introduction: api/index.md
-    - pyinfdb: api/pyinfdb.md
+    - pyinfdb: 
+      - api/pyinfdb/index.md
+      - InfDB Class: api/pyinfdb/infdb.md
+      - InfDBClient Class: api/pyinfdb/client.md
+      - InfDBConfig Class: api/pyinfdb/config.md
+      - InfDBLogger Class: api/pyinfdb/logger.md
+      - infDBIO Class: api/pyinfdb/io.md
+
   - Tools: 
     - Introduction: tools/index.md
     - Dev Container Tool Template: tools/template.md
     - infdb-basedata: tools/infdb-basedata.md
     - pylovo-generation: tools/pylovo-generation.md
-    # - ro-heat: tools/ro-heat.md
   - Linear Heat Density: 
     - Introduction: linear-heat-density/index.md
     - Tools:
@@ -92,7 +107,6 @@ nav:
       - Best Practices: development/guidelines/best-practices.md
     - Documentation: development/documentation.md
     - Code of Conduct: development/code-of-conduct.md
-
     - Tips & Tricks: development/tips-and-tricks.md
 
 

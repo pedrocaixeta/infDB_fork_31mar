@@ -95,7 +95,7 @@ def run_pylovo_generate(infdb: InfDB, ags_list: str) -> None:
 def main() -> None:
     """Main entry point for pylovo-generation tool."""
     # Load InfDB facade (config + logging)
-    infdb = InfDB(tool_name="pylovo-generation", config_path="configs")
+    infdb = InfDB(tool_name="pylovo-generation", config_path="configs/conf-pylovo-generation.yml")
     # Logger
     log = infdb.get_logger()
     log.info("Starting %s tool", infdb.get_toolname())

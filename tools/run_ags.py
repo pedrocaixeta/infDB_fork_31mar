@@ -8,19 +8,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import geopandas as gpd
-import psycopg2
 import argparse
-# from infdb import InfDB
-# from sqlalchemy import create_engine
-
-# infdb = InfDB(tool_name="infdb-data")
-
-# Parameters
-user = "infdb_user"
-password = "infdb"
-host = "localhost"
-port = "54328"
-db = "infdb"
+from infdb import InfDB
+from dotenv import load_dotenv
 
 
 def parse_arguments():
@@ -100,10 +90,10 @@ def run_ags(command, ags):
 
     try:
         for line in process.stdout:
-            logger.info(f"[{ags}] {line.rstrip()}")
+            log.info(f"[{ags}] {line.rstrip()}")
         process.wait()
         if process.returncode != 0:
-            logger.error(f"Process failed with return code {process.returncode} for AGS {ags}")
+            log.error(f"Process failed with return code {process.returncode} for AGS {ags}")
             raise subprocess.CalledProcessError(process.returncode, process.args)
     finally:
         with running_lock:
@@ -122,7 +112,7 @@ def signal_handler(sig, frame):
         KeyboardInterrupt: Always raised to propagate the interrupt.
     """
 
-    logger.info("\nInterrupt received, stopping Docker...")
+    log.info("\nInterrupt received, stopping Docker...")
     stop_event.set()
     with running_lock:
         for process in list(running_processes):
@@ -136,55 +126,40 @@ if __name__ == "__main__":
     # Determine the script directory for relative paths
     SCRIPT_DIR = Path(__file__).parent
 
-    # Setup logging
-    log_file = SCRIPT_DIR / "tools.log"
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout),
-        ],
-    )
-    logger = logging.getLogger(__name__)
+    load_dotenv(os.path.join(SCRIPT_DIR, "../.env"), override=True)
+    load_dotenv(os.path.join(SCRIPT_DIR, "tools.env"), override=True)
+
+    # Initialize InfDB handler
+    infdb = InfDB(tool_name="run_ags")
+    log = infdb.get_logger()
 
     # Parse command-line arguments
     args = parse_arguments()
 
-    # Connect to the database
-    db_connection_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
-    conn = psycopg2.connect(
-        dbname=db,
-        user=user,
-        password=password,
-        host=host,
-        port=port
-    )
-
     # Terminate other connections and rollback any open transactions to avoid deadlocks
-    with conn.cursor() as cur:
-        logger.info(
-            "Terminating other connections to avoid deadlocks..."
-        )
-        cur.execute("""SELECT pg_terminate_backend(pid)
+    log.info(
+        "Terminating other connections to avoid deadlocks..."
+    )
+    with infdb.connect() as db:
+        db.execute_query("""SELECT pg_terminate_backend(pid)
                         FROM pg_stat_activity
                         WHERE pid <> pg_backend_pid();""")
 
-        logger.info("Rolling back any open transactions...")
-        cur.execute("ROLLBACK;")
+        log.info("Rolling back any open transactions...")
+        db.execute_query("ROLLBACK;")
 
     # Drop schemas if -c flag is provided for clean development run
     if args.clean:
-        with conn.cursor() as cur:
-            logger.info("Dropping schemas for clean development run...")
-            cur.execute("DROP SCHEMA IF EXISTS basedata CASCADE;")
-            cur.execute(
+        with infdb.connect() as db:
+            log.info("Dropping schemas for clean development run...")
+            db.execute_query("DROP SCHEMA IF EXISTS basedata CASCADE;")
+            db.execute_query(
                 "DROP SCHEMA IF EXISTS buildings_to_street CASCADE;"
             )
-            cur.execute(
+            db.execute_query(
                 "DROP SCHEMA IF EXISTS linear_heat_density CASCADE;"
             )
-            cur.execute("DROP SCHEMA IF EXISTS ro_heat CASCADE;")
+            db.execute_query("DROP SCHEMA IF EXISTS ro_heat CASCADE;")
 
     # Determine the command to run based on command-line arguments
     if args.profile:
@@ -192,7 +167,7 @@ if __name__ == "__main__":
     elif args.tool:
         command = ("-t", args.tool)
     else:
-        logger.error("Either profile or tool must be specified")
+        log.error("Either profile or tool must be specified")
         sys.exit(1)
 
     # Get AGS list from --ags-list option or database
@@ -202,14 +177,14 @@ if __name__ == "__main__":
         # Fetch available AGS list from infDB
         sql = """SELECT *
                     FROM opendata.scope
-                    -- WHERE ags LIKE '09%'
+                    -- WHERE ags LIKE '09%%'
                     ORDER BY ags;
                 """
-        ags_list = gpd.read_postgis(sql, conn, geom_col='geom')
+        ags_list = infdb.connect().get_pandas(sql)
         todo_ags = ags_list["ags"].tolist()
-    logger.info(f"Total AGS to process: {len(todo_ags)}")
+    log.info(f"Total AGS to process: {len(todo_ags)}")
     if len(todo_ags) < 20:
-        logger.info(f"AGS to process: {', '.join(todo_ags)}")
+        log.info(f"AGS to process: {', '.join(todo_ags)}")
 
     # Setup signal handler for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
@@ -230,15 +205,15 @@ if __name__ == "__main__":
                 try:
                     future.result()
                 except Exception as exc:
-                    logger.error(f"AGS {ags} generated an exception: {exc}")
+                    log.error(f"AGS {ags} generated an exception: {exc}")
                     failed_ags.append(ags)
 
     except KeyboardInterrupt:
-        logger.info("\nOperation cancelled by user")
+        log.info("\nOperation cancelled by user")
         sys.exit(0)
 
     # Log total execution time and any failed AGS
     end_time = time.time()
-    logger.info(f"Total execution time: {end_time - start_time:.2f} seconds")
+    log.info(f"Total execution time: {end_time - start_time:.2f} seconds")
     if failed_ags:
-        logger.warning(f"The following AGS failed: {', '.join(failed_ags)}")
+        log.warning(f"The following AGS failed: {', '.join(failed_ags)}")

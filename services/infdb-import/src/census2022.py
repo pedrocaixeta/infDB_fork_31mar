@@ -104,7 +104,7 @@ def process_dataset(dataset: Dict[str, Any], tool_name: str) -> bool:
     """
     try:
         # Initialize InfDB in each worker process
-        infdb = InfDB(tool_name=tool_name)
+        infdb = InfDB(tool_name=tool_name, config_path="../configs/config-infdb-import.yml")
         log = infdb.get_worker_logger()
 
         log.info("Working on %s", dataset["name"])

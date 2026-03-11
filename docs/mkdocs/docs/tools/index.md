@@ -49,7 +49,7 @@ If you want to or create or integrate your own software or scripts into the infD
 
 ## Python Package
 
-Moreover, there is a python package `infdb` that can be used to interact with the infDB database and services. It provides functionalities for database connections, logging, configuration management, and utility functions. You can find more information about the package in the [API -> pypackage](../api/pypackage.md).
+Moreover, there is a python package `infdb` that can be used to interact with the infDB database and services. It provides functionalities for database connections, logging, configuration management, and utility functions. You can find more information about the package in the [API -> pyinfdb](../api/pyinfdb/index.md).
 
 
 
