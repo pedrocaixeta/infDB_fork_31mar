@@ -10,7 +10,7 @@ from src import (
     gebaeude_neuburg,
     kwp_nrw,
     kwp_nrw_oberhausen,
-    lod2_nrw,
+    lod2,
     need,
     nrw_opencloud,
     opendata_bavaria,
@@ -109,7 +109,7 @@ def main() -> None:
     # processes.append(mp.Process(target=_run_loader, args=(wetterdienst.load,), name="wetterdienst"))
     processes.append(mp.Process(target=_run_loader, args=(nrw_opencloud.load,), name="nrw_opencloud"))
     processes.append(mp.Process(target=_run_loader, args=(opendata_bavaria.load,), name="opendata_bavaria"))
-    processes.append(mp.Process(target=_run_loader, args=(lod2_nrw.load,), name="lod2-nrw"))
+    processes.append(mp.Process(target=_run_loader, args=(lod2.load,), name="lod2"))
 
     for process in processes:
         process.start()
