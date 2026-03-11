@@ -81,8 +81,19 @@ BEGIN
         INTO v_geom
         FROM snapped_geoms;
 
-        -- Skip if merged geometry is NULL/empty
-        IF v_geom IS NULL OR ST_IsEmpty(v_geom) THEN
+        -- Ensure result is always a LINESTRING (extract longest part if MULTILINESTRING)
+        IF GeometryType(v_geom) = 'MULTILINESTRING' THEN
+            SELECT part INTO v_geom
+            FROM (
+                SELECT (ST_Dump(v_geom)).geom AS part
+            ) dumped
+            ORDER BY ST_Length(part) DESC
+            LIMIT 1;
+        END IF;
+
+        -- Skip if NULL/empty/not a linestring after extraction
+        IF v_geom IS NULL OR ST_IsEmpty(v_geom) OR GeometryType(v_geom) <> 'LINESTRING' THEN
+            RAISE WARNING 'Skipping chain % — could not extract valid LINESTRING', r.chain_id;
             CONTINUE;
         END IF;
 
@@ -103,4 +114,3 @@ BEGIN
 
     PERFORM {output_schema}.update_assigned_way_id_after_merge('{ags}'); -- reassign building connections based on merged_ways_mapping
 END $$;
-

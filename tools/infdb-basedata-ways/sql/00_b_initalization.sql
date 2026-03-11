@@ -117,28 +117,40 @@ BEGIN
             -- --------------------------------------------------------
             -- Inserts a new segment into ways_tem, ways_tem_connection, or connection_lines_tem
             CREATE OR REPLACE FUNCTION {output_schema}.insert_way_segment(
-                p_ags text,       -- AGS tag for inserted segment
-                p_klasse text,    -- class determining target table (connection_line vs segmented_way vs road)
-                p_geom geometry   -- segment geometry in expected SRID/type
+                p_ags text,
+                p_klasse text,
+                p_geom geometry
             ) RETURNS void
             LANGUAGE plpgsql
             AS $func$
             DECLARE
-                v_new text; -- generated id for the new segment
+                v_new text;
             BEGIN
                 IF p_geom IS NULL THEN -- ignore NULL geometry inserts
                     RETURN;
                 END IF;
 
-                v_new := md5(random()::text || clock_timestamp()::text); -- generate unique-ish text id
+                IF ST_IsEmpty(p_geom) THEN -- ignore empty geometry inserts
+                    RETURN;
+                END IF;
 
-                IF p_klasse = 'connection_line' THEN -- route connection lines to their temp table
+                IF GeometryType(p_geom) <> 'LINESTRING' THEN -- ignore non-linestring inserts
+                    RETURN;
+                END IF;
+
+                IF ST_Length(p_geom) = 0 THEN -- ignore zero-length degenerate linestrings
+                    RETURN;
+                END IF;
+
+                v_new := md5(random()::text || clock_timestamp()::text);
+
+                IF p_klasse = 'connection_line' THEN
                     INSERT INTO connection_lines_tem (ags, id, klasse, objektart, geom, postcode)
                     VALUES (p_ags, v_new, p_klasse, NULL, p_geom, NULL);
-                ELSIF p_klasse = 'segmented_way' THEN -- route segmented ways to ways_tem_connection
+                ELSIF p_klasse = 'segmented_way' THEN
                     INSERT INTO ways_tem_connection (ags, id, klasse, objektart, geom, postcode)
                     VALUES (p_ags, v_new, p_klasse, NULL, p_geom, NULL);
-                ELSE -- route all other classes to ways_tem
+                ELSE
                     INSERT INTO ways_tem (ags, id, klasse, objektart, geom, postcode)
                     VALUES (p_ags, v_new, p_klasse, NULL, p_geom, NULL);
                 END IF;
