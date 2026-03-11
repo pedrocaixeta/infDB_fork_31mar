@@ -1007,6 +1007,12 @@ def create_building_lod2_table(object_id_prefix: str, infdb: InfDB) -> None:
     """
     log = infdb.get_worker_logger()
 
+    # DE means "run both old region-specific implementations"
+    if object_id_prefix == "DE":
+        create_building_lod2_table("DEBY", infdb)
+        create_building_lod2_table("DENW", infdb)
+        return
+
     match object_id_prefix:
         case "DEBY":
             ags_id = "09"
@@ -1026,7 +1032,7 @@ def create_building_lod2_table(object_id_prefix: str, infdb: InfDB) -> None:
 
         table_name = (
             infdb.get_config_value(
-                [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
+                [infdb.get_toolname(), "sources", "lod2", "table_name"]
             )
             + "_lod2"
         )
@@ -1072,9 +1078,9 @@ def create_building_surface_table(infdb: InfDB) -> None:
     """
     log = infdb.get_worker_logger()
 
-    OUTPUT_SCHEMA = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
+    OUTPUT_SCHEMA = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2", "schema"])
     table_name = infdb.get_config_value(
-        [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
+        [infdb.get_toolname(), "sources", "lod2", "table_name"]
     )
     TABLE_NAME = table_name + "_surface"
 
@@ -1110,10 +1116,10 @@ def create_table_building(infdb: InfDB) -> None:
 
     log = infdb.get_worker_logger()
 
-    output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
+    output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2", "schema"])
     table_name = (
         infdb.get_config_value(
-            [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
+            [infdb.get_toolname(), "sources", "lod2", "table_name"]
         )
         + "_lod2"
     )
@@ -1142,9 +1148,9 @@ def create_table_building(infdb: InfDB) -> None:
 def create_table_building_view(infdb: InfDB) -> None:
 
     log = infdb.get_worker_logger()
-    output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "opendata_bavaria", "schema"])
+    output_schema = infdb.get_config_value([infdb.get_toolname(), "sources", "lod2", "schema"])
     table_name = infdb.get_config_value(
-            [infdb.get_toolname(), "sources", "opendata_bavaria", "datasets", "building_lod2", "table_name"]
+            [infdb.get_toolname(), "sources", "lod2", "table_name"]
         )
     with infdb.connect() as db:
         # Create building surface table
