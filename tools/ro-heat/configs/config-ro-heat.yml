@@ -28,7 +28,7 @@ ro-heat:
             simulation_year: 2023
             heating_setpoint: 20.0 # heating setpoint in °C
             random_seed: 42 # explain this value
-            method: 1R0C # 1R1C or 1R0C
+            method: 1R0C_internal # 1R1C or 1R0C or 1R0C_internal
         refurbishment:
             outer_wall:
                 quota: 0.33
