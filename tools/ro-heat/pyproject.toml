@@ -13,3 +13,4 @@ dependencies = [
 
 [tool.uv.sources]
 infdb = { path = "/workspaces/infdb_package", editable = true }
+entise = { git = "https://github.com/tum-ens/EnTiSe", branch = "develop" }
