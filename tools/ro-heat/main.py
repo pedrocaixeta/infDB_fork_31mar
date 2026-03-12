@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 # entise package has to type stubs
-from entise.core.generator import TimeSeriesGenerator  # type: ignore
+from entise.core.generator import Generator  # type: ignore
 from infdb import InfDB
 
 from src import refurbishment, tabula_handling, timedata
@@ -189,7 +189,7 @@ def main():
             ).drop(columns=["bld_objectid"])
 
             # Initialize the generator
-            gen = TimeSeriesGenerator()
+            gen = Generator()
             gen.add_objects(entise_input)
 
             # Generate time series and summary
