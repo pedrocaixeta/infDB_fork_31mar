@@ -80,6 +80,11 @@ fi
 ensure_from_template ".env" ".env.template"
 export UID GID="$(id -g)"
 
+# Set default platform for Docker to linux/amd64 only on Apple Silicon
+if [[ "$(uname -s)" == "Darwin" ]] && [[ "$(uname -m)" == "arm64" ]]; then
+    export DOCKER_DEFAULT_PLATFORM=linux/amd64
+fi
+
 COMMAND="$1"
 shift
 case "$COMMAND" in
