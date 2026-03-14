@@ -93,17 +93,17 @@ cd infdb-demo
 
 #### Start infDB
 ```bash
-bash infdb-start.sh up -d --build
+bash infdb.sh start
 ```
 
 #### Import Opendata
 ```bash
-bash infdb-import.sh
+bash infdb.sh import
 ```
 
 #### Stop infDB
 ```bash
-bash infdb-stop.sh
+bash infdb.sh stop
 ```
 
 <!-- # Changelog
