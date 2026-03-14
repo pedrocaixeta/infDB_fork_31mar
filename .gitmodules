@@ -7,3 +7,6 @@
 [submodule "services/infdb-opencloud"]
 	path = services/infdb-opencloud
 	url = https://github.com/tum-ens/infDB-opencloud.git
+[submodule "services/infdb-lizmap"]
+	path = services/infdb-lizmap
+	url = https://github.com/tum-ens/infDB-lizmap.git

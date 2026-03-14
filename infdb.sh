@@ -45,9 +45,13 @@ cmd_start() {
     echo "=== Pull latest docker images ==="
     docker compose pull --ignore-buildable
 
+    configure_lizmap
+
     echo "=== Starting infDB ==="
-    if [ "$#" -eq 0 ]; then
-        docker compose up --pull never  -d
+    if [ $# -eq 0 ]; then
+        docker compose up --pull never -d
+    elif [ "$1" = "" ]; then
+        docker compose up --pull never
     else
         docker compose up --pull never "$@"
     fi
@@ -72,12 +76,29 @@ cmd_remove() {
     docker compose --profile "$1" down -v --remove-orphans
 }
 
+configure_lizmap() {
+    if [[ ":${COMPOSE_PROFILES}:" == *":lizmap:"* ]]; then
+        # echo "=== Configuring lizmap ==="
+        cd services/infdb-lizmap
+        ./configure.sh configure
+        cd "$SCRIPT_DIR"
+    fi
+}
+
 if [ $# -lt 1 ]; then
     print_usage
     exit 1
 fi
 
 ensure_from_template ".env" ".env.template"
+
+# Load environment variables from .env if it exists
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    set -o allexport
+    source "$SCRIPT_DIR/.env"
+    set +o allexport
+fi
+
 export UID GID="$(id -g)"
 
 # Set default platform for Docker to linux/amd64 only on Apple Silicon
