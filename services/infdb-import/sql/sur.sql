@@ -27,7 +27,7 @@ DROP TABLE IF EXISTS tmp_bld.{table_name}_ids;
 -- We extract the ID hash directly for the join to save RAM
 -- Use EXPLAIN ANALYZE to diagnose query performance
 -- EXPLAIN ANALYZE
-CREATE UNLOGGED TABLE tmp_bld.{table_name}_ids AS
+CREATE TABLE tmp_bld.{table_name}_ids AS
 SELECT
     f.objectid as building_objectid,
     child ->> 'objectId' AS child_object_id_text,
@@ -60,7 +60,7 @@ ANALYZE tmp_bld.{table_name}_ids;
 DROP TABLE IF EXISTS {output_schema}.{table_name} CASCADE;
 
 -- EXPLAIN ANALYZE
-CREATE UNLOGGED TABLE {output_schema}.{table_name} AS
+CREATE TABLE {output_schema}.{table_name} AS
 SELECT
     sid2.building_objectid,
     sid.objectclass_id,
