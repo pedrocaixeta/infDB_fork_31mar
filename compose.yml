@@ -51,6 +51,12 @@ include:
   # QGIS Web Client - Complete web mapping solution
   - path: services/infdb-qwc/compose.yml
 
+  # ==============================================================================
+  # OPENCLOUD Web Storage (Profile: opencloud)
+  # ==============================================================================
+  # OpenCloud - Web-based file storage and sharing platform
+  - path: services/infdb-opencloud/docker-compose.yml
+
 
 # ==============================================================================
 # NETWORKS
