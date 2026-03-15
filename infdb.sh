@@ -42,12 +42,16 @@ ensure_from_template() {
 }
 
 cmd_start() {
+    configure_lizmap
+
     echo "=== Pull latest docker images ==="
     docker compose pull --ignore-buildable
 
     echo "=== Starting infDB ==="
-    if [ "$#" -eq 0 ]; then
-        docker compose up --pull never  -d
+    if [ $# -eq 0 ]; then
+        docker compose up --pull never -d
+    elif [ "$1" = "" ]; then
+        docker compose up --pull never
     else
         docker compose up --pull never "$@"
     fi
@@ -70,6 +74,22 @@ cmd_stop() {
 cmd_remove() {
     echo "=== Removing service $1 including data  ==="
     docker compose --profile "$1" down -v --remove-orphans
+    if { [[ "$1" == *"lizmap"* ]] || [[ "$1" == *"*"* ]]; }; then
+        cd services/infdb-lizmap
+        ./configure.sh clean
+        cd "$SCRIPT_DIR"
+    fi
+}
+
+configure_lizmap() {
+    echo ${COMPOSE_PROFILES}
+    if [[ ":${COMPOSE_PROFILES}:" == *"lizmap"* ]] && [ ! -d "services/infdb-lizmap/lizmap" ]; then
+        echo "=== Configuring lizmap ==="
+        cd services/infdb-lizmap
+        ./configure.sh configure
+        chmod +x lizmap/etc/postgres.init.d/init-lizmap-db.sh
+        cd "$SCRIPT_DIR"
+    fi
 }
 
 if [ $# -lt 1 ]; then
@@ -78,6 +98,14 @@ if [ $# -lt 1 ]; then
 fi
 
 ensure_from_template ".env" ".env.template"
+
+# Load environment variables from .env if it exists
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    set -o allexport
+    source "$SCRIPT_DIR/.env"
+    set +o allexport
+fi
+
 export UID GID="$(id -g)"
 
 # Set default platform for Docker to linux/amd64 only on Apple Silicon

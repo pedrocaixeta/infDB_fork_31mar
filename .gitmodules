@@ -1,10 +1,12 @@
-[submodule "services/opencloud/opencloud-compose"]
-	path = services/opencloud/opencloud-compose
-	url = https://github.com/opencloud-eu/opencloud-compose.git
-
 [submodule "tools/pylovo-generation/src/pylovo"]
 	path = tools/pylovo-generation/src/pylovo
 	url = https://github.com/tum-ens/pylovo.git
 [submodule "services/infdb-qwc"]
 	path = services/infdb-qwc
 	url = https://github.com/tum-ens/infDB-qwc.git
+[submodule "services/infdb-opencloud"]
+	path = services/infdb-opencloud
+	url = https://github.com/tum-ens/infDB-opencloud.git
+[submodule "services/infdb-lizmap"]
+	path = services/infdb-lizmap
+	url = https://github.com/tum-ens/infDB-lizmap.git
