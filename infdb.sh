@@ -42,10 +42,10 @@ ensure_from_template() {
 }
 
 cmd_start() {
+    configure_lizmap
+
     echo "=== Pull latest docker images ==="
     docker compose pull --ignore-buildable
-
-    configure_lizmap
 
     echo "=== Starting infDB ==="
     if [ $# -eq 0 ]; then
@@ -74,13 +74,20 @@ cmd_stop() {
 cmd_remove() {
     echo "=== Removing service $1 including data  ==="
     docker compose --profile "$1" down -v --remove-orphans
+    if { [[ "$1" == *"lizmap"* ]] || [[ "$1" == *"*"* ]]; }; then
+        cd services/infdb-lizmap
+        ./configure.sh clean
+        cd "$SCRIPT_DIR"
+    fi
 }
 
 configure_lizmap() {
-    if [[ ":${COMPOSE_PROFILES}:" == *":lizmap:"* ]]; then
-        # echo "=== Configuring lizmap ==="
+    echo ${COMPOSE_PROFILES}
+    if [[ ":${COMPOSE_PROFILES}:" == *"lizmap"* ]] && [ ! -d "services/infdb-lizmap/lizmap" ]; then
+        echo "=== Configuring lizmap ==="
         cd services/infdb-lizmap
         ./configure.sh configure
+        chmod +x lizmap/etc/postgres.init.d/init-lizmap-db.sh
         cd "$SCRIPT_DIR"
     fi
 }
