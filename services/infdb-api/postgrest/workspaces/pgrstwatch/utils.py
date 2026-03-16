@@ -1,6 +1,7 @@
 import os
 import logging
-from typing import Optional, cast, Iterable #, List,
+import tempfile
+from typing import Optional, cast, Iterable, Any #, List,
 
 # ============================== Constants ==============================
 
@@ -97,3 +98,82 @@ def compute_signature(items: Iterable[str]) -> str:
         A single string formed by joining `items` with a pipe (`|`) separator.
     """
     return "|".join(items)
+
+
+def _atomic_write(
+    binary: bool, data: Any, output_path: str, file_mode: str | None = None, dir_mode: str | None = None
+) -> str:
+    """
+    Internal: writes text/bytes atomically and optionally set chmods.
+
+    Args:
+        binary: If True, write `data` as bytes using binary mode (`wb`).
+            If False, write `str(data)` using text mode (`w`) with `FILE_ENCODING`.
+        data: The content to write. Must be `bytes` when `binary` is True; otherwise
+            it will be coerced to `str`.
+        output_path: Destination file path (absolute or relative). Parent directories
+            will be created if needed.
+        file_mode: Optional file permission mode (octal string, e.g. `"644"` or `"600"`).
+        dir_mode: Optional directory permission mode (octal string) to apply to the
+            destination directory.
+
+    Returns:
+        The absolute path of the written file.
+
+    Raises:
+        ValueError: If `output_path` is empty.
+        OSError: If writing, syncing, replacing, or chmod operations fail (except
+            directory chmod failures, which are logged and ignored).
+    """
+    if not output_path:
+        raise ValueError("output_path must be a non-empty string")
+
+    path = output_path if os.path.isabs(output_path) else os.path.abspath(output_path)
+    out_dir = os.path.dirname(path)
+    os.makedirs(out_dir, exist_ok=True)
+
+    mode = "wb" if binary else "w"
+    with tempfile.NamedTemporaryFile(
+        mode, delete=False, dir=out_dir, suffix=".tmp", encoding=None if binary else FILE_ENCODING
+    ) as tmp:
+        if binary:
+            tmp.write(data)  # bytes
+        else:
+            tmp.write(str(data))  # text
+        tmp.flush()
+        os.fsync(tmp.fileno())
+        tmp_name = tmp.name
+    os.replace(tmp_name, path)
+
+    if file_mode:
+        os.chmod(path, int(file_mode, 8))
+    if dir_mode:
+        try:
+            os.chmod(out_dir, int(dir_mode, 8))
+        except Exception as exc:
+            log.exception("Exception occurred during _atomic_write(): %s", exc)
+
+    return path
+
+
+def atomic_write_text(text: str, output_path: str, file_mode: str | None = None, dir_mode: str | None = None) -> str:
+    """
+    Atomically writes text to a file. Optionally apply chmod to file/dir.
+
+    Args:
+        text: Text content to write.
+        output_path: Destination file path (absolute or relative). Parent directories
+            will be created if needed.
+        file_mode: Optional file permission mode (octal string, e.g. `"644"` or `"600"`).
+        dir_mode: Optional directory permission mode (octal string) to apply to the
+            destination directory.
+
+    Returns:
+        The absolute path of the written file.
+
+    Raises:
+        ValueError: If `output_path` is empty.
+        OSError: If writing, syncing, or replacing the file fails (and potentially
+            if applying `file_mode` fails).
+    """
+    return _atomic_write(binary=False, data=text, output_path=output_path, file_mode=file_mode, dir_mode=dir_mode)

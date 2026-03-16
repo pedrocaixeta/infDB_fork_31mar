@@ -11,7 +11,7 @@ import utils
 from psycopg import Connection
 from psycopg.rows import dict_row
 
-infdb = InfDB(tool_name="infdb-postgrest", config_path="conf-infdb-postgrest.yml")
+infdb = InfDB(tool_name="infdb-postgrest", config_path="config-infdb-postgrest.yml")
 # ============================== Logging ==============================
 log = infdb.get_worker_logger()
 if not log.handlers:

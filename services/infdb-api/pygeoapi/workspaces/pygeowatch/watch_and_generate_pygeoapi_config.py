@@ -15,7 +15,7 @@ from psycopg.rows import dict_row
 # =========================
 # ===== Module Constants ===
 # =========================
-infdb = InfDB(tool_name="infdb-pygeoapi", config_path="conf-infdb-pygeoapi.yml")
+infdb = InfDB(tool_name="infdb-pygeoapi", config_path="config-infdb-pygeoapi.yml")
 OUTPUT_CONFIG_PATH: pathlib.Path = pathlib.Path("/workspaces/pygeoapi/pygeoapi-config.yml")
 LOGGER_NAME: str = "pygeoapi_config_gen"
 
