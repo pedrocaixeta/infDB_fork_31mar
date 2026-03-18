@@ -33,4 +33,5 @@ FROM {input_schema}.buildings b
         LEFT JOIN wall_data wd ON b.objectid = wd.building_objectid
         LEFT JOIN roof_data rd ON b.objectid = rd.building_objectid
 WHERE b.building_type IS NOT NULL 
-  AND b.gemeindeschluessel LIKE '{ags}';
+  AND b.gemeindeschluessel LIKE '{ags}'
+ORDER BY b.objectid;
