@@ -26,6 +26,7 @@ def main() -> None:
     census_building_type_resolution = infdb.get_config_value(
         [infdb.get_toolname(), "data", "census_building_type_resolution"]
     )
+    random_seed = infdb.get_config_value([infdb.get_toolname(), "data", "random_seed"])
     epsg = infdb.get_db_parameters_dict().get("epsg")
 
     format_params: Dict[str, Any] = {
@@ -35,6 +36,7 @@ def main() -> None:
         "list_gemeindeschluessel": ags,
         "EPSG": epsg,
         "census_building_type_resolution": census_building_type_resolution,
+        "random_seed": random_seed,
     }
 
     log.info("Input schema: %s", input_schema)

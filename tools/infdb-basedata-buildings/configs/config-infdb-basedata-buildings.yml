@@ -15,3 +15,4 @@ infdb-basedata-buildings:
         input_schema: opendata
         output_schema: basedata
         census_building_type_resolution: 1km #1km, 100m
+        random_seed: 0.98 # explain this value
