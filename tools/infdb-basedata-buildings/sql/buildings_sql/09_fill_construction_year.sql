@@ -1,11 +1,16 @@
 -- Summary: Assigns a construction year to each building based on census data
 -- distributions. It uses a weighted random assignment derived from construction
 -- year bands in the corresponding or nearest grid cell.
-
+--
+-- Reproducibility note: We do not use PostgreSQL's session-level random()
+-- here because the same random stream can be consumed in different row orders.
+-- Instead, each building gets a deterministic pseudo-random value derived from
+-- its stable objectid and the configured seed.
 -- Step 1: Create a table with joined buildings and grid cells
 DROP TABLE IF EXISTS temp_building_with_grid_year;
 CREATE TEMP TABLE temp_building_with_grid_year AS
 SELECT b.id   AS building_id,
+    b.objectid AS building_objectid,
        b.geom AS building_geom,
        g.*
 FROM temp_buildings b
@@ -34,6 +39,7 @@ FROM (SELECT building_id,
                      r)
                  AS assigned_year
       FROM (SELECT building_id,
+                   building_objectid,
                    vor1919,
                    a1919bis1948,
                    a1949bis1978,
@@ -42,7 +48,14 @@ FROM (SELECT building_id,
                    a2001bis2010,
                    a2011bis2019,
                    a2020undspaeter,
-                   random() AS r
+                   (
+                       (
+                           get_byte(decode(md5(format('%s:%s', '{random_seed}', building_objectid)), 'hex'), 0)::bigint * 16777216 +
+                           get_byte(decode(md5(format('%s:%s', '{random_seed}', building_objectid)), 'hex'), 1)::bigint * 65536 +
+                           get_byte(decode(md5(format('%s:%s', '{random_seed}', building_objectid)), 'hex'), 2)::bigint * 256 +
+                           get_byte(decode(md5(format('%s:%s', '{random_seed}', building_objectid)), 'hex'), 3)::bigint
+                       )::double precision / 4294967295.0
+                   ) AS r
             FROM temp_building_with_grid_year) year_probs) sub
 WHERE b.id = sub.building_id;
 
@@ -53,6 +66,7 @@ DROP TABLE IF EXISTS temp_nearest_grid_year;
 CREATE TEMP TABLE temp_nearest_grid_year AS
 SELECT
     b.id AS building_id,
+    b.objectid AS building_objectid,
     nearest.*
 FROM temp_buildings b
 CROSS JOIN LATERAL (
@@ -75,7 +89,7 @@ CROSS JOIN LATERAL (
            COALESCE(NULLIF(g.a2001bis2010, 'NaN'::double precision), 0) +
            COALESCE(NULLIF(g.a2011bis2019, 'NaN'::double precision), 0) +
            COALESCE(NULLIF(g.a2020undspaeter, 'NaN'::double precision), 0)) > 0
-    ORDER BY g.geom <-> b.centroid
+    ORDER BY g.geom <-> b.centroid 
     LIMIT 1
 ) nearest
 WHERE b.construction_year IS NULL;
@@ -96,6 +110,7 @@ FROM (SELECT building_id,
                      r)
                  AS assigned_year
       FROM (SELECT building_id,
+                   building_objectid,
                    vor1919,
                    a1919bis1948,
                    a1949bis1978,
@@ -104,7 +119,14 @@ FROM (SELECT building_id,
                    a2001bis2010,
                    a2011bis2019,
                    a2020undspaeter,
-                   random() AS r
+                   (
+                       (
+                           get_byte(decode(md5(format('%s:%s', '{random_seed}', building_objectid)), 'hex'), 0)::bigint * 16777216 +
+                           get_byte(decode(md5(format('%s:%s', '{random_seed}', building_objectid)), 'hex'), 1)::bigint * 65536 +
+                           get_byte(decode(md5(format('%s:%s', '{random_seed}', building_objectid)), 'hex'), 2)::bigint * 256 +
+                           get_byte(decode(md5(format('%s:%s', '{random_seed}', building_objectid)), 'hex'), 3)::bigint
+                       )::double precision / 4294967295.0
+                   ) AS r
             FROM temp_nearest_grid_year) year_probs) sub
 WHERE b.id = sub.building_id
   AND b.construction_year IS NULL;
