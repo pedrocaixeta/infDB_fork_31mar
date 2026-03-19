@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 # entise package has to type stubs
-from entise.core.generator import TimeSeriesGenerator  # type: ignore
+from entise.core.generator import Generator  # type: ignore
 from infdb import InfDB
 
 from src import refurbishment, tabula_handling, timedata
@@ -141,7 +141,7 @@ def main():
         start_time = f"{simulation_year}-01-01"
         end_time = f"{simulation_year}-12-31"
 
-        if method == "1R0C":
+        if method == "1R0C_internal":
             format_params = {
                 "output_schema": output_schema,
                 "ags": ags,
@@ -159,7 +159,7 @@ def main():
             # sql = f"CREATE TABLE IF NOT EXISTS {output_schema};"
             # infdbclient_citydb.execute_query(sql)
 
-        elif method == "1R1C":
+        elif method == "1R1C" or method == "1R0C":
             bld2ts = timedata.get_bld2ts(database_connection=engine)
 
             all_ts_df = timedata.get_all_timeseries_data(
@@ -189,7 +189,7 @@ def main():
             ).drop(columns=["bld_objectid"])
 
             # Initialize the generator
-            gen = TimeSeriesGenerator()
+            gen = Generator()
             gen.add_objects(entise_input)
 
             # Generate time series and summary
