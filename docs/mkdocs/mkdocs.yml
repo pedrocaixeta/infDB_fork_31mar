@@ -88,6 +88,9 @@ nav:
     - Introduction: tools/index.md
     - Dev Container Tool Template: tools/template.md
     - infdb-basedata: tools/infdb-basedata.md
+    - infdb-basedata-ways: 
+      - tools/infdb-basedata-ways/index.md
+      - Data Pipeline: tools/infdb-basedata-ways/data-pipeline.md
     - pylovo-generation: tools/pylovo-generation.md
   - Linear Heat Density: 
     - Introduction: linear-heat-density/index.md
