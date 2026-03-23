@@ -1,5 +1,5 @@
 FROM ghcr.io/astral-sh/uv:python3.12-trixie-slim
-
+RUN apt-get update && apt-get install -y git
 WORKDIR /workspaces/ro-heat
 
 # COPY requiremets into the container
