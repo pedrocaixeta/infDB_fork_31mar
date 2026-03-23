@@ -2,7 +2,7 @@ DO $$
 DECLARE
     v_changelog_id BIGINT;
 BEGIN
-
+-- create a new changelog id and store it in a variable for later reference in the insert statements
 SELECT public.fn_begin_changelog('{tool_name}', 'no comment', session_user::TEXT, '{ags}', '{process_id}') INTO v_changelog_id;
 
 -- =========================================================

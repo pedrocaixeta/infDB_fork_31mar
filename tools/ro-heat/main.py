@@ -103,7 +103,9 @@ def main():
         )
         format_params_output_schema = {
             "output_schema": output_schema,
-                "ags": ags,
+            "ags": ags,
+            "tool_name": infdbhandler.get_toolname(),
+            "process_id": os.getpid(),
         }
         infdbclient_citydb.execute_sql_file(os.path.join("sql", "upsert_buildings_refurbished_status.sql"),
                                             format_params_output_schema)
@@ -148,6 +150,8 @@ def main():
                 "start_time": start_time,
                 "end_time": end_time,
                 "temp_in": heating_setpoint,
+                "tool_name": infdbhandler.get_toolname(),
+                "process_id": os.getpid(),
             }
             infdbclient_citydb.execute_sql_file(
                 os.path.join("sql", "03_heat-demand-r.sql"), format_params=format_params
