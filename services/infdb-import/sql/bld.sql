@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS {output_schema}.{table_name}
     PARTITION OF opendata.building_lod2 
     FOR VALUES IN ('{ags_id}');
 
-SELECT public.fn_begin_changelog('infdb-import', 'no comment', session_user::TEXT) INTO v_changelog_id;
+SELECT public.fn_begin_changelog('infdb-import'::TEXT, 'no comment'::TEXT, session_user::TEXT, NULL::TEXT, NULL::BIGINT) INTO v_changelog_id;
 
 -- INSERT without re-joining property
 INSERT INTO {output_schema}.{table_name} (

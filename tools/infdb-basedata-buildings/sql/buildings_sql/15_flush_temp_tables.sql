@@ -3,7 +3,7 @@ DECLARE
     v_changelog_id BIGINT;
 BEGIN
 
-SELECT public.fn_begin_changelog('{tool_name}', 'no comment', session_user::TEXT) INTO v_changelog_id;
+SELECT public.fn_begin_changelog('{tool_name}', 'no comment', session_user::TEXT, '{ags}', '{process_id}') INTO v_changelog_id;
 
 -- =========================================================
 -- buildings (global)
