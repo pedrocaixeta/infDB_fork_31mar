@@ -48,19 +48,18 @@ AGS can be found on the website of the [Statistisches Bundesamt](https://www.sta
 - 09185149 Neuburg a. d. Donau
 - 05119000 Oberhausen (NRW)
 
-## Dev Container Template
-If you want to or create or integrate your own software or scripts into the infDB ecosystem, you can use the template for a devContainer provided by the infDB. A more detailed description can be found under Tools -> [Dev Container Template](template.md).
+## Tools Template
+If you want to or create or integrate your own software or scripts into the infDB ecosystem, you can use the template for a devContainer provided by the infDB. A more detailed description can be found under Tools -> [Tools Template](dev-container/index.md).
 
 ## Python Package
-
 Moreover, there is a python package `infdb` that can be used to interact with the infDB database and services. It provides functionalities for database connections, logging, configuration management, and utility functions. You can find more information about the package in the [API -> pyinfdb](../api/pyinfdb/index.md).
-
 
 
 ## Currently Integrated Tools
 The following tools are currently integrated with infDB:
 
-- **infDB-basedata**: Containerized pipeline for data transformation, validation, and enrichment
+- **[infDB-basedata-buildings](infdb-basedata-buildings/index.md)**: Containerized pipeline to generate fundamental building data
+- **[infDB-basedata-ways](infdb-basedata-ways/index.md)**: Containerized pipeline to generate fundamental way data
 - **[pylovo-generation](https://github.com/tum-ens/pylovo)**: Python tool for generating synthetic low-voltage distribution grids
 - **[EnTiSe](https://github.com/tum-ens/EnTiSe)**: Python tool for energy time series generation and management
 
