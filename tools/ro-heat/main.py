@@ -38,6 +38,7 @@ def main():
     method = infdbhandler.get_config_value(["ro-heat", "data", "input", "method"])
     random_seed = infdbhandler.get_config_value(["ro-heat", "data", "input", "random_seed"])
     heating_setpoint = infdbhandler.get_config_value(["ro-heat", "data", "input", "heating_setpoint"])
+    heated_area_ratio = infdbhandler.get_config_value(["ro-heat", "data", "input", "Heated_Area_Ratio"])
     rng = np.random.default_rng(seed=random_seed)
 
     try:
@@ -118,7 +119,7 @@ def main():
         infdblog.debug("Tabula structure created")
         
         harmonized_df[["resistance", "capacitance"]] = harmonized_df.apply(
-            lambda row: tabula_handling.calculate_rc_values(tabula_structure, row), axis=1, result_type="expand"
+            lambda row: tabula_handling.calculate_rc_values(tabula_structure, row, heated_area_ratio), axis=1, result_type="expand"
         )
         infdblog.debug("Done with construction of building elements")
 
