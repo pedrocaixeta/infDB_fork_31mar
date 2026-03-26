@@ -9,9 +9,9 @@ set -a
 [ -f $(dirname "$0")/../.env ] && . $(dirname "$0")/../.env
 set +a
 
-echo "Loading environment variables from local .env file..."
+echo "Loading environment variables from local tools.env file..."
 set -a
-[ -f $(dirname "$0")/.env ] && . $(dirname "$0")/.env
+[ -f $(dirname "$0")/tools.env ] && . $(dirname "$0")/tools.env
 set +a
 
 usage() {
