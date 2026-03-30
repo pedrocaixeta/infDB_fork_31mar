@@ -100,12 +100,10 @@ SELECT
     sid2.building_objectid,
     sid.objectclass_id,
     oc.classname,
-    CASE
-        WHEN MAX(CASE WHEN p.name = 'Flaeche' THEN p.val_string END)::double precision > 0
-            AND NOT isnan(MAX(CASE WHEN p.name = 'Flaeche' THEN p.val_string END)::double precision)
-        THEN MAX(CASE WHEN p.name = 'Flaeche' THEN p.val_string END)::double precision
-        ELSE safe_area_fallback(gd.geometry)
-    END AS area,
+    COALESCE(
+        NULLIF(MAX(CASE WHEN p.name = 'Flaeche' THEN p.val_string END)::double precision, 0),
+        safe_area_fallback(gd.geometry)
+    ) AS area,
     ST_Multi(gd.geometry) AS geom
 FROM tmp_bld.{table_name}_ids sid
     JOIN tmp_bld.{table_name}_ids sid2 
