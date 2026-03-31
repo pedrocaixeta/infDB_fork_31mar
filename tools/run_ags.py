@@ -130,7 +130,7 @@ if __name__ == "__main__":
     load_dotenv(os.path.join(SCRIPT_DIR, "tools.env"), override=True)
 
     # Initialize InfDB handler
-    infdb = InfDB(tool_name="run_ags")
+    infdb = InfDB(tool_name="run_ags", host="localhost")
     log = infdb.get_logger()
 
     # Parse command-line arguments
