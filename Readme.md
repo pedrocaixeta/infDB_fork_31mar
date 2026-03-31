@@ -65,20 +65,23 @@ If you want to use the infDB with the default settings just use the [Quick Start
  - Docker Engine: https://docs.docker.com/engine/install/
  - Docker Desktop: https://docs.docker.com/desktop/
 
-### Folder Structure
-The infDB uses the following folder structure:
-  ```
-  infdb/
-  ├── infdb-demo/
-  ├── sonthofen/
-  ├── ...
-  └── muenchen/
+#### Local Folder Structure
+The infDB allows a modular folder structure to manage multiple database instances independently. Each instance represents a separate deployment with its own data, configuration, and services—ideal for handling different regions, projects, or environments.
 ```
+infdb/
+├── infdb-demo/
+├── muenchen/
+├── koeln/
+├── waermeliniendichte/
+├── netzplanung/
+└── ...
+```
+The recommended structure places all instance data in docker managed volumes while keeping each instance's configuration and tools in separate directories (e.g. by region `muenchen/`, `koeln/`). This approach simplifies backups, migrations, and multi-instance management.
 
 ### Quick Start
 You can quickly start an infDB with default configuration and credentials by following these steps:
 
-#### Create Folder for infDB
+First of all, create the main `infdb` directory and navigate into it:
 ```bash
 mkdir infdb
 cd infdb
@@ -87,7 +90,7 @@ cd infdb
 #### Clone infDB
 ``` bash
 # Replace "infdb-demo" by name of instance 
-git clone git@github.com:tum-ens/InfDB.git infdb-demo
+git clone --recurse-submodules git@github.com:tum-ens/InfDB.git infdb-demo
 cd infdb-demo
 ```
 
