@@ -45,13 +45,13 @@ You can either use **SSH** or **HTTPS**:
 === "SSH"
     ``` bash
     # Replace "infdb-demo" by name of instance 
-    git clone git@github.com:tum-ens/InfDB.git infdb-demo 
+    git clone --recurse-submodules git@github.com:tum-ens/InfDB.git infdb-demo
     ```
 
 === "HTTPS"
     ```bash
     # Replace "infdb-demo" by name of instance
-    git clone https://github.com/tum-ens/InfDB.git infdb-demo
+    git clone --recurse-submodules https://github.com/tum-ens/InfDB.git infdb-demo
     ```
 
 Both methods are secure and work identically for cloning, pushing, and pulling. Your choice depends on your workflow preferences and environment constraints.
