@@ -8,6 +8,11 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 pip install uv
 ```
 
+### Git update with submodules
+```bash
+git submodule update --init --recursive
+```
+
 ### Create environment (only once)
 ```bash
 # linux and macos
