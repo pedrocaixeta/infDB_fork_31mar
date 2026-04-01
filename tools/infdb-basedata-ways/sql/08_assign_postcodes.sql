@@ -71,30 +71,12 @@ BEGIN
     ) final_pc
     WHERE w.ctid = final_pc.rid; -- update only the intended rows
 
-    -- Update connection_lines_tem
-    UPDATE connection_lines_tem w
-    SET postcode = final_pc.plz::int -- assign postcode as integer
-    FROM (
-        -- Select the postcode with the maximum intersection length for each road
-        SELECT DISTINCT ON (rid) 
-            rid, 
-            plz
-        FROM (
-            SELECT
-                w.ctid AS rid, -- row identifier used for stable join back to connection_lines_tem
-                pc.plz,
-                ST_Length(ST_Intersection(ST_Transform(w.geom, v_srid), pc.geom)) AS intersect_len -- calculate length within polygon
-            FROM connection_lines_tem w
-            JOIN {input_schema}.postcodes_germany pc
-                ON pc.geom && ST_Transform(w.geom, v_srid) -- bbox prefilter for index usage
-               AND ST_Intersects(pc.geom, ST_Transform(w.geom, v_srid)) -- spatial check
-            WHERE w.postcode IS NULL
-              AND w.geom IS NOT NULL
-              AND NOT ST_IsEmpty(w.geom)
-        ) AS lengths
-        ORDER BY rid, intersect_len DESC -- ensure the longest segment's postcode is chosen
-    ) final_pc
-    WHERE w.ctid = final_pc.rid; -- update only the intended rows
+    -- Update connection_lines_tem from ways_tem
+    UPDATE connection_lines_tem cl
+    SET postcode = w.postcode -- copy postcode directly from the connected way
+    FROM ways_tem w
+    WHERE cl.postcode IS NULL
+    AND cl.connected_way_id = w.id;
 
 END;
 $$;
