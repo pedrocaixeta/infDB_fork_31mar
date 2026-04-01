@@ -4,7 +4,7 @@
 -- Notes:
 -- - Phase 1: Generates building-to-way connection candidates in a temp table
 -- - Phase 2: Inserts connection lines into the connection_lines temp table via insert_way_segment()
---     - If connection point is near the start/end of the way (< 0.1), connect directly to that endpoint
+--     - If connection point is near the start/end of the way (< 0.15), connect directly to that endpoint
 --       and remove the candidate (no splitting required)
 --     - Otherwise, insert the precomputed shortest line (splitting may be applied later)
 -- - Phase 2b: Aggregates connection line lengths per affected way and updates ways_tem.length_connection_line
@@ -29,10 +29,10 @@ BEGIN
         ST_MakeLine(c.center, ST_StartPoint(c.old_geom))   -- connect building center to way start endpoint
     )
     FROM temp_building_connection_candidates c
-    WHERE ST_Distance(ST_StartPoint(c.old_geom), c.connection_point) < 0.1; -- near-start threshold
+    WHERE ST_Distance(ST_StartPoint(c.old_geom), c.connection_point) < 0.15; -- near-start threshold
 
     DELETE FROM temp_building_connection_candidates
-    WHERE ST_Distance(ST_StartPoint(old_geom), connection_point) < 0.1; -- remove handled candidates
+    WHERE ST_Distance(ST_StartPoint(old_geom), connection_point) < 0.15; -- remove handled candidates
 
 
     -- Phase 2: insert connection lines (near-end cases)
@@ -42,10 +42,10 @@ BEGIN
         ST_MakeLine(c.center, ST_EndPoint(c.old_geom))   -- connect building center to way end endpoint
     )
     FROM temp_building_connection_candidates c
-    WHERE ST_Distance(ST_EndPoint(c.old_geom), c.connection_point) < 0.1; -- near-end threshold
+    WHERE ST_Distance(ST_EndPoint(c.old_geom), c.connection_point) < 0.15; -- near-end threshold
 
     DELETE FROM temp_building_connection_candidates
-    WHERE ST_Distance(ST_EndPoint(old_geom), connection_point) < 0.1; -- remove handled candidates
+    WHERE ST_Distance(ST_EndPoint(old_geom), connection_point) < 0.15; -- remove handled candidates
 
 
     -- Phase 2: insert remaining connection lines (mid-point cases)

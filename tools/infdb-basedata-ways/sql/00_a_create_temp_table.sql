@@ -22,7 +22,7 @@ WITH src AS (
   FROM {input_schema}.basemap_verkehrslinie v
   JOIN {input_schema}.bkg_vg5000_gem g
     ON g.ags = '{ags}'                  -- restrict to target AGS
-   AND ST_Intersects(v.geom, g.geom)    -- keep features intersecting the AGS polygon
+   AND ST_Within(ST_Centroid(v.geom), g.geom)    -- keep features whose centroid is within the AGS polygon
 ),
 dumped AS (
   SELECT
