@@ -179,10 +179,7 @@ def main():
             entise_input["hvac"] = method
             entise_input["min_temperature[C]"] = heating_setpoint
             entise_input["max_temperature[C]"] = 24.0
-            if method == "1R1C":
-                entise_input["init_temperature[C]"] = 18.0
-            elif method == "1R0C":
-                entise_input["init_temperature[C]"] = heating_setpoint
+            entise_input["init_temperature[C]"] = heating_setpoint
             entise_input["gains_solar"] = 0.0
             entise_input["ventilation[W K-1]"] = 0.0
 
