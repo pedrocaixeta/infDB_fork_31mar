@@ -11,6 +11,7 @@ SELECT
     sid.objectclass_id,
     oc.classname,
     MAX(CASE WHEN p.name = 'Flaeche' THEN p.val_string END)::double precision AS area, -- works only for bavaria
+    MAX(CASE WHEN p2.name = 'Gemeindeschluessel' THEN p2.val_string END) AS gemeindeschluessel,
     ST_Multi(gd.geometry) AS geom
 FROM tmp_bld.{table_name}_ids sid
     JOIN tmp_bld.{table_name}_ids sid2 
@@ -20,6 +21,8 @@ FROM tmp_bld.{table_name}_ids sid
     JOIN objectclass oc ON oc.id = sid.objectclass_id
     JOIN geometry_data gd ON gd.id = sid.geometry_data_id
     JOIN property p ON p.feature_id = gd.feature_id
+    JOIN feature f ON f.objectid = sid2.building_objectid AND f.objectclass_id = 901
+    JOIN property p2 ON p2.feature_id = f.id AND p2.name = 'Gemeindeschluessel'
 WHERE sid.objectclass_id IN (709, 710, 712) -- sid is the building
 GROUP BY sid2.building_objectid, sid.objectclass_id, oc.classname, gd.geometry;
 

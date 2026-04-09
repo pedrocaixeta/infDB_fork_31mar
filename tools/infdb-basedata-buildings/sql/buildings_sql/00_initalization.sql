@@ -633,6 +633,32 @@ BEGIN
                 RAISE WARNING '[Init] Error creating buildings_grid_1km: %', SQLERRM;
             END;
 
+            -- ============================================================
+            -- SCRIPT: Building Surface Table
+            -- ============================================================
+
+            BEGIN
+                CREATE TABLE IF NOT EXISTS {output_schema}.building_surface AS
+                SELECT
+                    bs.building_objectid,
+                    bs.objectclass_id,
+                    bs.classname,
+                    bs.area,
+                    bs.gemeindeschluessel,
+                    false AS is_synthetic
+                FROM {input_schema}.building_surface bs
+                WHERE false;
+
+                -- Indexes on the target table
+                CREATE INDEX IF NOT EXISTS building_surface_building_objectid_idx ON {output_schema}.building_surface (building_objectid);
+
+                RAISE NOTICE '[Init] ✓ Created building_surface table with indexes';
+            EXCEPTION WHEN duplicate_table THEN
+                RAISE NOTICE '[Init] ✓ building_surface table already exists';
+            WHEN OTHERS THEN
+                RAISE WARNING '[Init] Error creating building_surface table: %', SQLERRM;
+            END;
+
             -- bld2ts table
             BEGIN
                 CREATE TABLE IF NOT EXISTS {output_schema}.bld2ts

@@ -10,6 +10,15 @@ INSERT INTO {output_schema}.buildings
 SELECT * FROM temp_buildings;
 
 -- =========================================================
+-- building_surface (global)
+-- =========================================================
+DELETE FROM {output_schema}.building_surface b
+WHERE b.gemeindeschluessel = '{ags}';
+
+INSERT INTO {output_schema}.building_surface
+SELECT * FROM temp_building_surface;
+
+-- =========================================================
 -- buildings_grid_100m (global) UPSERT
 -- =========================================================
 INSERT INTO {output_schema}.buildings_grid_100m
@@ -105,5 +114,6 @@ DROP TABLE IF EXISTS temp_buildings_grid_100m;
 DROP TABLE IF EXISTS temp_buildings_grid_1km;
 -- DROP TABLE IF EXISTS temp_bld2grid;
 DROP TABLE IF EXISTS temp_bld2ts;
+DROP TABLE IF EXISTS temp_building_surface;
 
 COMMIT;

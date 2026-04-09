@@ -1,35 +1,31 @@
 -- Summary: Updates the geom, centroid, and floor_area columns and
 -- removes small buildings with a floor area of less than 12 square meters.
--- If groundsurface_flaeche is NULL, the floor area is calculated from
--- the building_surface table (objectclass_id = 710) using safe_area_fallback.
 
--- fill geom and floor_area columns
+-- Part 1: fill floor_area from temp_building_surface
 WITH ground_data AS (
     SELECT
-        objectid AS building_objectid,
-        feature_id,
-        groundsurface_flaeche AS area,
-        b.geom
-    FROM {input_schema}.building_view b
-    WHERE b.gemeindeschluessel = '{ags}'
-),
-ground_data_filled AS (
-    SELECT
-        gd.building_objectid,
-        gd.feature_id,
-        COALESCE(gd.area, {output_schema}.safe_area_fallback(bs.geom)) as area,
-        gd.geom
-    FROM ground_data gd
-    LEFT JOIN {input_schema}.building_surface bs
-        ON  bs.building_objectid = gd.building_objectid
-        AND bs.objectclass_id    = 710
-        AND gd.area IS NULL
+        sur.building_objectid,
+        sur.area
+    FROM temp_building_surface sur
+    WHERE sur.objectclass_id = 710 -- 710 = ground surface
 )
 UPDATE temp_buildings b
-SET floor_area = gd.area,
-    geom       = ST_Transform(ST_Force2D(gd.geom), {EPSG}),
-    centroid   = ST_Centroid(ST_Transform(ST_Force2D(gd.geom), {EPSG}))
-FROM ground_data_filled gd
+SET floor_area = gd.area
+FROM ground_data gd
+WHERE b.objectid = gd.building_objectid;
+
+-- Part 2: fill geom and centroid from building_view
+WITH geom_data AS (
+    SELECT
+        feature_id,
+        ST_Transform(ST_Force2D(b.geom), {EPSG}) AS geom
+    FROM {input_schema}.building_view b
+    WHERE b.gemeindeschluessel = '{ags}'
+)
+UPDATE temp_buildings b
+SET geom     = gd.geom,
+    centroid = ST_Centroid(gd.geom)
+FROM geom_data gd
 WHERE b.feature_id = gd.feature_id;
 
 -- delete buildings below an area threshold
