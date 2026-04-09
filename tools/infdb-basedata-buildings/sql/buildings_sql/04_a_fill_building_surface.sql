@@ -17,7 +17,7 @@ SELECT
     bs.building_objectid,
     bs.objectclass_id,
     bs.classname,
-    {output_schema}.safe_area_fallback(ST_Multi(bs.geom)) AS area,
+    {output_schema}.safe_area_fallback(bs.geom) AS area,
     bs.gemeindeschluessel,
     true AS is_synthetic
 FROM {input_schema}.building_surface bs

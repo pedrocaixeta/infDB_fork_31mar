@@ -482,7 +482,7 @@ BEGIN
                     IF total_area = 0 THEN
                         RETURN ROUND(
                             GREATEST(
-                                ST_Area(ST_Transform(ST_SnapToGrid(geom, 0.0001), 0)),
+                                ST_Area(ST_Force2D(ST_SnapToGrid(geom, 0.0001))),
                                 ST_Area(ST_Force2D(ST_RotateX(geom, pi()/2))),
                                 ST_Area(ST_Force2D(ST_RotateY(geom, pi()/2)))
                             )::numeric,
