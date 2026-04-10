@@ -32,7 +32,7 @@ AGS="$3"
 OPTIONS="$4"
 
 # Use the shared infdb network for all tool runs
-export INFDB_NETWORK="${INFDB_NETWORK:-infdb-infdb-demo_network}"
+export INFDB_NETWORK="${INFDB_NETWORK:-infdb-${BASE_NAME}_network}"
 
 # Get 
 PROJECT="infdb_${AGS}"
