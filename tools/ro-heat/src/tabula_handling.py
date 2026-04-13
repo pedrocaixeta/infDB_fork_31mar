@@ -69,7 +69,7 @@ def create_tabula_structure(tabula_rows: DataFrame) -> DataFrame:
     return constructions
 
 
-def calculate_rc_values(tabula: DataFrame, row: Series) -> tuple[float, float]:
+def calculate_rc_values(tabula: DataFrame, row: Series, area_ratio: float =1.0) -> tuple[float, float]:
     overall_r = 0.0
     overall_c = 0.0
     components = tabula["element_name"].unique()
@@ -94,8 +94,8 @@ def calculate_rc_values(tabula: DataFrame, row: Series) -> tuple[float, float]:
 
         # Only "OuterWall","GroundFloor", "Rooftop","Window" contribute to R value
         if component in ["OuterWall", "GroundFloor", "Rooftop", "Window"]:
-            overall_r = overall_r + (area / match["R"])
-        overall_c = overall_c + (match["C"] * area)
+            overall_r = overall_r + (area * area_ratio / match["R"])
+        overall_c = overall_c + (match["C"] * area * area_ratio)
 
     return 1 / overall_r, overall_c
 
