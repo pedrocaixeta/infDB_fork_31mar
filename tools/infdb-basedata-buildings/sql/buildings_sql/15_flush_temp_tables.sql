@@ -10,12 +10,12 @@ INSERT INTO {output_schema}.buildings
 SELECT * FROM temp_buildings;
 
 -- =========================================================
--- building_surface (global)
+-- building_surface_area (global)
 -- =========================================================
-DELETE FROM {output_schema}.building_surface b
+DELETE FROM {output_schema}.building_surface_area b
 WHERE b.gemeindeschluessel = '{ags}';
 
-INSERT INTO {output_schema}.building_surface
+INSERT INTO {output_schema}.building_surface_area
 SELECT * FROM temp_building_surface;
 
 -- =========================================================

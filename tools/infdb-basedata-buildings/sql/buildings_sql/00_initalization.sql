@@ -638,7 +638,7 @@ BEGIN
             -- ============================================================
 
             BEGIN
-                CREATE TABLE IF NOT EXISTS {output_schema}.building_surface AS
+                CREATE TABLE IF NOT EXISTS {output_schema}.building_surface_area AS
                 SELECT
                     bs.building_objectid,
                     bs.objectclass_id,
@@ -650,13 +650,13 @@ BEGIN
                 WHERE false;
 
                 -- Indexes on the target table
-                CREATE INDEX IF NOT EXISTS building_surface_building_objectid_idx ON {output_schema}.building_surface (building_objectid);
+                CREATE INDEX IF NOT EXISTS building_surface_building_objectid_idx ON {output_schema}.building_surface_area (building_objectid);
 
-                RAISE NOTICE '[Init] ✓ Created building_surface table with indexes';
+                RAISE NOTICE '[Init] ✓ Created building_surface_area table with indexes';
             EXCEPTION WHEN duplicate_table THEN
-                RAISE NOTICE '[Init] ✓ building_surface table already exists';
+                RAISE NOTICE '[Init] ✓ building_surface_area table already exists';
             WHEN OTHERS THEN
-                RAISE WARNING '[Init] Error creating building_surface table: %', SQLERRM;
+                RAISE WARNING '[Init] Error creating building_surface_area table: %', SQLERRM;
             END;
 
             -- bld2ts table
@@ -734,6 +734,15 @@ BEGIN
           AND tablename  = 'buildings'
     ) THEN
         RAISE EXCEPTION '[Init] FATAL ERROR: buildings table does not exist after initialization. Check logs for errors.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_tables
+        WHERE schemaname = '{output_schema}'
+          AND tablename  = 'building_surface_area'
+    ) THEN
+        RAISE EXCEPTION '[Init] FATAL ERROR: building_surface_area table does not exist after initialization. Check logs for errors.';
     END IF;
 
     IF NOT EXISTS (
