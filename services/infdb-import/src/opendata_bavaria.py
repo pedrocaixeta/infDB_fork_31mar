@@ -134,13 +134,9 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
     dgm1_base_dir.mkdir(parents=True, exist_ok=True)
 
     # ---------- 2. Read scopes (8-digit AGS) and geometries ----------
-    scopes = infdb.get_config_value([infdb.get_toolname(), "scope"]) or []
-    if isinstance(scopes, str):
-        scopes = [scopes]
-
-    scopes = [s.strip() for s in scopes if str(s).strip()]
+    scopes = utils.fetch_scope_ags_from_db(infdb)
     if not scopes:
-        log.warning("DGM1: no scopes configured nothing to do.")
+        log.warning("DGM1: scope resolved to 0 AGS values; nothing to do.")
         return
 
     # One geometry per scope in the raster SRID
@@ -177,8 +173,9 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
         log.info("DGM1: downloading from %s", download_url)
 
         utils.download_aria2c(
-            download_url,
-            scope_dir,
+            infdb=infdb,
+            url=download_url,
+            output_dir=scope_dir,
             connections=1,
             allow_overwrite=False,
             auto_file_renaming=False,
@@ -234,7 +231,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
             "-srcnodata -9999 -dstnodata -9999 "
             f'-cutline "{mask_path}" -cl mask -crop_to_cutline '
         )
-        utils.do_cmd(f'gdalwarp {gdalwarp_opts} {src_files} "{output_tif}"')
+        utils.do_cmd(infdb, f'gdalwarp {gdalwarp_opts} {src_files} "{output_tif}"')
 
         # 3f) Basic validation
         try:
@@ -262,7 +259,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
         )
 
         log.info("DGM1: importing scope %s into %s", ags, target_table)
-        utils.do_cmd(import_pipeline, shell=True)
+        utils.do_cmd(infdb, import_pipeline, shell=True)
         log.info("DGM1: scope %s import finished.", ags)
 
 
@@ -289,6 +286,7 @@ def _load_tatsaechliche_nutzung(infdb: InfDB, cfg: dict, base_path: Path, pgurl:
     else:
         log.info(f"TN: downloading TN dataset from {url}")
         utils.download_aria2c(
+            infdb=infdb,
             url=url,
             output_dir=tn_dir,
             output_filename="Nutzung_kreis.gpkg",
