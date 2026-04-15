@@ -20,3 +20,10 @@ The architecture of the `infDB-basedata-buildings` tool is based on the InfDB De
 ## Data Pipeline
 More details can be found in the [Data Pipeline](data-pipeline.md) section.
 
+## Tool Overview
+- Loads and cleans LOD2 building data for the chosen AGS (removing implausibly small buildings), additionally importing key attributes such as height, area, and floor count
+- Distributes census population across buildings proportionally by volume, then converts occupant estimates to household counts using grid-cell-level average household sizes
+- Assigns construction periods to buildings by sampling from census statistics per grid cell
+- Classifies residential buildings into types (Single-family, Terraced, Multi-family, Apartment) based on area, number of floors, and neighbourhood patterns. Missing types are defaulted to Apartment Building, then rebalances type distributions against census totals per grid cell
+- Attaches geographic weather data from OpenMeteo to each building
+- Outputs a final enriched building dataset ready for downstream tools
