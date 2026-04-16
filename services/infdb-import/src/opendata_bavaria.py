@@ -243,7 +243,7 @@ def _load_dgm1(infdb: InfDB, base_path: Path, target_epsg: int):
     psql_cmd = f'psql --no-psqlrc -q -v ON_ERROR_STOP=1 -X "{pgurl}"'
 
     import_pipeline = (
-        f'raster2pgsql -q -s {source_srid} -I -C -M -N -9999 -t 256x256 "{output_tif}" {target_table} | {psql_cmd}'
+        f'raster2pgsql -q -s {source_srid} -I -C -M -N -9999 -t 100x100 -l 4,8,16 "{output_tif}" {target_table} | {psql_cmd}'
     )
 
     log.info("DGM1: importing into %s", target_table)
@@ -329,6 +329,30 @@ def _load_tatsaechliche_nutzung(infdb: InfDB, cfg: dict, base_path: Path, pgurl:
         scope=True,  # apply scope clipping
         overwrite=True,  # overwrite existing table before import
     )
+    # ==================== 7. Create Views ====================
+    # Create vies for each nutzart to simplify querying. Each view filters the main table for one nutzart.
+    nutzart_name_dict = {"und ": "", " ": "_", "-": "", "/": "_", "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", ",": ""}
+    
+    with engine.connect() as conn:
+        nutzarten = conn.execute(text(f"SELECT DISTINCT nutzart FROM {schema}.{table}")).scalars().all()
+
+        for nutzart in nutzarten:
+            nutzart_name = nutzart
+            for o_word, n_word in nutzart_name_dict.items():
+                nutzart_name = nutzart_name.replace(o_word, n_word)
+            
+            view_name = f"{table}_{nutzart_name}"
+            conn.execute(
+                text(
+                    f"""
+                    CREATE OR REPLACE VIEW {schema}.{view_name} AS
+                    SELECT *
+                    FROM {schema}.{table}
+                    WHERE nutzart = '{nutzart}';
+                    """
+                )
+            )
+        conn.commit()
 
     # ==================== 7. FINALIZATION ====================
     # Get final row count and create spatial index if there is data
