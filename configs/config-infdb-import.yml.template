@@ -63,7 +63,7 @@ infdb-import:
             schema: opendata
             prefix: bavaria
             path: 
-                base: "{infdb-import/path/opendata}/opendata_bavaria/{infdb-import/name}"
+                base: "{infdb-import/path/opendata}/opendata_bavaria"
             datasets:
                 gelaendemodell_1m:
                     status: not-active
