@@ -3,11 +3,11 @@ services:
     profiles:
       - notebook
     # 1. Use a stable tag, not 'latest'. scipy-notebook includes pandas/numpy/sqlalchemy out of the box.
-    image: quay.io/jupyter/scipy-notebook:python-3.11
+    image: quay.io/jupyter/minimal-notebook:python-3.11
     
     # 2. FORCE the correct architecture to prevent Rosetta 2 emulation bugs.
     # Change this to linux/amd64 if you are on a Windows/Intel machine.
-    platform: linux/arm64 
+    platform: linux/amd64 
     
     restart: unless-stopped
     ports:
