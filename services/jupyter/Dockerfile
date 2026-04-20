@@ -1,19 +1,17 @@
-FROM ghcr.io/astral-sh/uv:python3.12-trixie-slim
+FROM quay.io/jupyter/base-notebook
 
-# Workdir for notebooks
-WORKDIR /app
-
-COPY pyproject.toml /app/pyproject.toml
-COPY notebooks/ /app/notebooks/
-
-# Install JupyterLab
-RUN uv sync
+# Copy default notebook into the working directory
+COPY notebooks/ /home/jovyan/work/
 
 # Expose Jupyter port
-EXPOSE 8888
+# EXPOSE 8888
 
 # Jupyter config file
-COPY jupyter_notebook_config.py /root/.jupyter/jupyter_notebook_config.py
+# COPY jupyter_notebook_config.py /root/.jupyter/jupyter_notebook_config.py
 
-# Start JupyterLab
-CMD [ "uv","run","--with","jupyter","jupyter","lab"]
+# Register and run from the same stable interpreter.
+# CMD start-notebook.py \
+# 	--NotebookApp.token="${SERVICES_JUPYTER_TOKEN}" \
+# 	--NotebookApp.allow_origin='*' \
+# 	--NotebookApp.ip='0.0.0.0' \
+# 	--NotebookApp.port=8888 \
