@@ -15,6 +15,8 @@ services:
     environment:
       # Use the newer config variable name to avoid the deprecation warnings in your log
       JUPYTER_TOKEN: ${SERVICES_JUPYTER_TOKEN:-infdb}
+    env_file:
+      - ../../.env
     volumes:
       # Local notebooks for live editing (optional - comment out to use only persistent volume)
       # Persistent volume for notebook data
