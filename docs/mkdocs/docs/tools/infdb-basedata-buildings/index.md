@@ -1,5 +1,5 @@
 # InfDB-basedata-buildings
-The tool `infDB-basedata-buildings` processes building-related data as fundamental data basis for various applications and analyses.
+The tool `InfDB-basedata-buildings` processes building-related data as fundamental data basis for various applications and analyses.
 
 <!-- ## Contents
 - Objective (Scope, Motivation)
@@ -15,7 +15,7 @@ The tool `infDB-basedata-buildings` processes building-related data as fundament
 Details on how to use the tool can be found in the [Usage](usage.md) section.
 
 ## Architecture
-The architecture of the `infDB-basedata-buildings` tool is based on the InfDB Dev Container template as described in the [Tools Template](../dev-container/index.md) section. The tool is implemented in Python and utilizes the `pyinfdb` package for interaction with infDB. The database operations are executed using SQL queries. More details can be found in the [Architecture](architecture.md) section.
+The architecture of the `InfDB-basedata-buildings` tool is based on the InfDB Dev Container template as described in the [Tools Template](../dev-container/index.md) section. The tool is implemented in Python and utilizes the `pyinfdb` package for interaction with InfDB. The database operations are executed using SQL queries. More details can be found in the [Architecture](architecture.md) section.
 
 ## Data Pipeline
 More details can be found in the [Data Pipeline](data-pipeline.md) section.
