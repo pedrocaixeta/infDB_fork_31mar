@@ -91,7 +91,6 @@ nav:
       - Structure: tools/dev-container/structure.md
       - Workflow: tools/dev-container/workflow.md
       - Data Pipeline: tools/dev-container/data-pipeline.md
-    - infdb-basedata (old): tools/infdb-basedata.md
     - infdb-basedata-ways: 
       - tools/infdb-basedata-ways/index.md
       - Data Pipeline: tools/infdb-basedata-ways/data-pipeline.md
