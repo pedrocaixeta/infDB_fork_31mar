@@ -5,6 +5,8 @@ icon: material/tools
 # Tools
 The InfDB ecosystem includes a variety of tools designed to handle different aspects of data workflows. These so called tools are software that interact with InfDB and process data through standardized, open interfaces. This modular approach allows you to tackle problems of any complexity by combining different tools into custom toolchains.
 
+![Tools Setup](tools-setup.png)
+
 Different tools can be linked together to form profiles, which are predefined sequences of tools that work together to achieve a specific goal. For example, a profile might include a data transformation tool followed by a validation tool and then an enrichment tool. By running a profile, you can execute all the included tools in the correct order with minimal effort.
 <!-- <p align="center">
   <img src="../usage/tools.png" alt="InfDB logo" width="100"/>
@@ -28,13 +30,16 @@ bash tools/tools.sh -t ro-heat 09185149
 ```
 
 ### Multiple AGS
-The `run_ags.py` script allows you to run a profile or a single tool for multiple AGS in parallel. The script uses the `uv` to manage the python packages and dependencies.
+
+![Tools Pipeline](tools-pipeline.png)
+
+The `tools.py` script allows you to run a profile or a single tool for multiple AGS in parallel. The script uses the `uv` to manage the python packages and dependencies.
 ```bash
 # Profile
-uv run python3 tools/run_ags.py -p linear [-a AGS1,AGS2,... -n NUM_WORKERS -c]
+uv run python3 tools/tools.py -p linear [-a AGS1,AGS2,... -n NUM_WORKERS -c]
 
 # Single Tool
-uv run python3 tools/run_ags.py -t ro-heat [-a AGS1,AGS2,... -n NUM_WORKERS -c]
+uv run python3 tools/tools.py -t ro-heat [-a AGS1,AGS2,... -n NUM_WORKERS -c]
 ```
 By default, the script will run all available AGS in InfDB with 5 parallel workers. You can adjust this with the following optional parameters:
 
