@@ -70,12 +70,11 @@ The InfDB allows a modular folder structure to manage multiple database instance
 infdb/
 ├── infdb-demo/
 ├── muenchen/
-├── koeln/
-├── waermeliniendichte/
-├── netzplanung/
+├── bavaria/
+├── grid-planning/
 └── ...
 ```
-The recommended structure places all instance data in docker managed volumes while keeping each instance's configuration and tools in separate directories (e.g. by region `muenchen/`, `koeln/`). This approach simplifies backups, migrations, and multi-instance management.
+The recommended structure places all instance data in docker managed volumes while keeping each instance's configuration and tools in separate directories (e.g. by region `muenchen/`, `bavaria/`). This approach simplifies backups, migrations, and multi-instance management.
 
 ### Quick Start
 You can quickly start an InfDB with default configuration and credentials by following these steps:

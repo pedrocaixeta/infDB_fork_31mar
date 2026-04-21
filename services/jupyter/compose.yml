@@ -3,7 +3,7 @@ services:
     profiles:
       - notebook
     # 1. Use a stable tag, not 'latest'. scipy-notebook includes pandas/numpy/sqlalchemy out of the box.
-    image: quay.io/jupyter/minimal-notebook:python-3.11
+    image: quay.io/jupyter/base-notebook:python-3.11
     
     # 2. FORCE the correct architecture to prevent Rosetta 2 emulation bugs.
     # Change this to linux/amd64 if you are on a Windows/Intel machine.
@@ -13,21 +13,15 @@ services:
     ports:
       - "${SERVICES_JUPYTER_EXPOSED_PORT:-8888}:8888"
     environment:
-      # Use the newer config variable name to avoid the deprecation warnings in your log
       JUPYTER_TOKEN: ${SERVICES_JUPYTER_TOKEN:-infdb}
     env_file:
       - ../../.env
 
     volumes:
-      # Local notebooks for live editing (optional - comment out to use only persistent volume)
-      # Persistent volume for notebook data
       - infdb-jupyter-data:/home/jovyan/work
       - ./notebooks/:/home/jovyan/demo
       - ./README.md:/home/jovyan/Readme.md
-      # You can safely uncomment your code mount once the kernel boots successfully
-      # - ../../src/infdb_package:/home/jovyan/work/infdb_package
     
-    # 3. Simplify the command. The official images automatically read the JUPYTER_TOKEN environment variable.
     command: start-notebook.py --ServerApp.allow_origin='*' --ServerApp.ip='0.0.0.0'
     
     networks:
