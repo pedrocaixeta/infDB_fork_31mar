@@ -1,5 +1,7 @@
 # Repository Strucuture
 
+![Repository Structure](repository-structure.png)
+
 <!-- ### Root Directory
 - **Configuration Files**: `.env`, `.env.template`, `pyproject.toml`, `pytest.ini`, `uv.lock`
 - **Docker Files**: `compose.yml`, `.dockerignore`
